@@ -64,9 +64,9 @@ SUPPORTED_OFFICIAL_CORE = {
 }
 MANIFEST_NAME = "research-bundle-v1.json"
 SCENARIOS = (
-    ("DEVELOPMENT", "development"),
-    ("HOLDOUT", "holdout"),
-    ("HOLDOUT_STRESS", "holdout-stress"),
+    ("DEVELOPMENT", "development-01"),
+    ("HOLDOUT", "holdout-02"),
+    ("HOLDOUT_STRESS", "holdout-stress-03"),
 )
 DEFAULT_RUNNER = Path(__file__).resolve().parent.parent / "scripts" / "run_freqtrade_backtest.py"
 DEFAULT_SANDBOX_EXEC = Path("/usr/bin/sandbox-exec")
