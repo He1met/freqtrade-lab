@@ -312,7 +312,7 @@ def _parse_execution_timestamp(value: Any, label: str) -> datetime:
         if _ZONED_ISO_TIMESTAMP.fullmatch(value):
             normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
             return datetime.fromisoformat(normalized).astimezone(timezone.utc)
-    except ValueError as exc:
+    except (OverflowError, ValueError) as exc:
         raise ArtifactImportError(f"{label} is not a valid ISO timestamp") from exc
     raise ArtifactImportError(
         f"{label} must use YYYY-MM-DD HH:MM:SS or timezone-aware ISO 8601"
@@ -986,10 +986,10 @@ def _empty_metrics(value: Any) -> bool:
 
 
 def _require_clean_execution(row: sqlite3.Row) -> None:
-    if row["status"] not in ("PENDING", "RUNNING"):
+    if row["status"] != "PENDING":
         raise ArtifactImportError(
             f"execution status {row['status']!r} cannot be imported; "
-            "FAILED and other terminal rows remain immutable"
+            "only PENDING executions are eligible and terminal rows remain immutable"
         )
     nullable_result_fields = (
         "result_archive_path", "stdout_path", "stderr_path", "return_code",
@@ -1176,10 +1176,8 @@ def import_backtest_execution(
                 "research profile stress_fee_multiplier",
                 minimum=1.0,
             )
-            if profile_fee <= 0 or stress_multiplier <= 1:
-                raise ArtifactImportError(
-                    "profile fee must be positive and stress multiplier must exceed 1"
-                )
+            if profile_fee <= 0:
+                raise ArtifactImportError("profile fee must be positive")
             expected_multiplier = stress_multiplier if scenario == "HOLDOUT_STRESS" else 1.0
             if not _same_number(multiplier, expected_multiplier, fee=True):
                 raise ArtifactImportError("execution fee_multiplier does not match scenario")
@@ -1265,7 +1263,7 @@ def import_backtest_execution(
                     short_profit_pct = ?,
                     metrics_json = ?,
                     error_message = NULL
-                WHERE id = ? AND status = ? AND result_archive_path IS NULL
+                WHERE id = ? AND status = 'PENDING' AND result_archive_path IS NULL
                 """,
                 (
                     str(parsed.archive_path),
@@ -1281,7 +1279,6 @@ def import_backtest_execution(
                     parsed.short_profit_pct,
                     parsed.metrics_json(),
                     row["id"],
-                    row["status"],
                 ),
             )
             if execution_update.rowcount != 1:

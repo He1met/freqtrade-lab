@@ -820,32 +820,43 @@ def test_t2_rejects_terminal_or_wrong_stage_parent(
     assert _snapshot(db_path) == before
 
 
-@pytest.mark.parametrize("kind", ["zero_fee", "unit_stress"])
-def test_t2_rejects_degenerate_fee_identity(tmp_path: Path, kind: str) -> None:
-    if kind == "unit_stress":
-        db_path = _seed_database(
-            tmp_path,
-            scenario="HOLDOUT_STRESS",
-            fee_rate=0.0005,
-            fee_multiplier=1.0,
+def test_t2_rejects_zero_profile_fee_identity(tmp_path: Path) -> None:
+    db_path = _seed_database(tmp_path)
+    with get_connection(db_path) as connection:
+        connection.execute(
+            "UPDATE research_profiles SET taker_fee_rate = 0.0"
         )
-        with get_connection(db_path) as connection:
-            connection.execute(
-                "UPDATE research_profiles SET stress_fee_multiplier = 1.0"
-            )
-            connection.commit()
-    else:
-        db_path = _seed_database(tmp_path)
-        with get_connection(db_path) as connection:
-            connection.execute(
-                "UPDATE research_profiles SET taker_fee_rate = 0.0"
-            )
-            connection.execute("UPDATE backtest_executions SET fee_rate = 0.0")
-            connection.commit()
+        connection.execute("UPDATE backtest_executions SET fee_rate = 0.0")
+        connection.commit()
     before = _snapshot(db_path)
     with pytest.raises(ArtifactImportError, match="fee must be positive"):
-        _import(db_path, scenario="HOLDOUT_STRESS" if kind == "unit_stress" else "DEVELOPMENT")
+        _import(db_path)
     assert _snapshot(db_path) == before
+
+
+@pytest.mark.parametrize("scenario", ["DEVELOPMENT", "HOLDOUT_STRESS"])
+def test_t2_allows_schema_valid_unit_stress_multiplier(
+    tmp_path: Path, scenario: str
+) -> None:
+    db_path = _seed_database(
+        tmp_path,
+        scenario=scenario,
+        fee_rate=0.0005,
+        fee_multiplier=1.0,
+    )
+    with get_connection(db_path) as connection:
+        connection.execute(
+            "UPDATE research_profiles SET stress_fee_multiplier = 1.0"
+        )
+        connection.commit()
+
+    _import(db_path, scenario=scenario)
+
+    with get_connection(db_path) as connection:
+        execution = connection.execute(
+            "SELECT status, fee_rate, fee_multiplier FROM backtest_executions"
+        ).fetchone()
+    assert tuple(execution) == ("SUCCEEDED", 0.0005, 1.0)
 
 
 def test_t2_failed_terminal_with_stale_result_state_is_immutable(tmp_path: Path) -> None:
@@ -865,6 +876,22 @@ def test_t2_failed_terminal_with_stale_result_state_is_immutable(tmp_path: Path)
     before = _snapshot(db_path)
     with pytest.raises(ArtifactImportError, match="terminal rows remain immutable"):
         _import(db_path)
+    assert _snapshot(db_path) == before
+
+
+def test_t2_running_execution_with_started_at_is_immutable(tmp_path: Path) -> None:
+    db_path = _seed_database(tmp_path, execution_status="RUNNING")
+    with get_connection(db_path) as connection:
+        connection.execute(
+            "UPDATE backtest_executions SET started_at = ?",
+            (NOW,),
+        )
+        connection.commit()
+    before = _snapshot(db_path)
+
+    with pytest.raises(ArtifactImportError, match="only PENDING"):
+        _import(db_path)
+
     assert _snapshot(db_path) == before
 
 
@@ -980,6 +1007,25 @@ def test_t1_cli_oversized_epoch_is_exit_2_without_traceback(tmp_path: Path) -> N
     result = _run_cli(db_path, root=root)
     _assert_cli_failure(result)
     assert "supported epoch range" in result.stderr
+    assert _snapshot(db_path) == before
+
+
+def test_t1_cli_extreme_zoned_timestamp_is_exit_2_without_traceback(
+    tmp_path: Path,
+) -> None:
+    db_path = _seed_database(tmp_path)
+    with get_connection(db_path) as connection:
+        connection.execute(
+            "UPDATE backtest_executions SET timerange_start = ?",
+            ("0001-01-01T00:00:00+14:00",),
+        )
+        connection.commit()
+    before = _snapshot(db_path)
+
+    result = _run_cli(db_path)
+
+    _assert_cli_failure(result)
+    assert "not a valid ISO timestamp" in result.stderr
     assert _snapshot(db_path) == before
 
 

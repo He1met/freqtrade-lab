@@ -62,13 +62,13 @@ The existing Candidate class and source SHA-256, profile pair set and execution
 timerange must match. Each reported trade fee must equal the sanitized config's
 configured fee; the execution must also satisfy
 `fee_rate = profile.taker_fee_rate * fee_multiplier`. Non-stress scenarios use
-multiplier `1.0`; `HOLDOUT_STRESS` uses the profile stress multiplier. This
-prevents one same-period artifact from being accepted for both base-fee and
-stress-fee executions.
+multiplier `1.0`; `HOLDOUT_STRESS` uses the profile stress multiplier, which may
+also be `1.0` under schema v1. The timerange/timeframe/fee identity must still
+select exactly one scenario, so an ambiguous same-period artifact fails closed.
 
-Only clean `PENDING` or `RUNNING` executions under a `RUNNING`, no-verdict
-research run at the matching `*_BACKTEST` stage are accepted. `FAILED` and
-other terminal executions remain immutable. A successful import sets
+Only clean `PENDING` executions under a `RUNNING`, no-verdict research run at
+the matching `*_BACKTEST` stage are accepted. `RUNNING`, `FAILED`, and other
+non-pending executions remain immutable. A successful import sets
 artifact-backed metrics and `status=SUCCEEDED`, but leaves `return_code`,
 stdout/stderr paths, `finished_at`, and `scenario_passed` as `NULL`: the frozen
 artifact does not prove those values. Here `SUCCEEDED` means the artifact was
