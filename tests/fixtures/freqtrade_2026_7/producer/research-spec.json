@@ -1,0 +1,25 @@
+{
+  "schema": "freqtrade-lab-research-spec-v1",
+  "profile": {
+    "name": "OKX XRP three-scenario fixture gate",
+    "history_start_date": "2026-08-01",
+    "smoke_days": 3,
+    "holdout_days": 3,
+    "stress_fee_multiplier": 2.0,
+    "max_drawdown_pct": 25.0,
+    "min_development_trades": 0,
+    "min_holdout_trades": 0,
+    "min_profit_factor": 0.0
+  },
+  "candidate": {
+    "display_name": "OKX fixture gate - StrategyTestV3Futures",
+    "class_name": "StrategyTestV3Futures",
+    "strategy_family": "FIXTURE_GATE",
+    "idea": "Exercise the real three-scenario artifact-to-database path only.",
+    "expected_failure_mode": "Internal test strategy; results are not evidence of profitability or trading suitability.",
+    "metadata": {
+      "economic_evidence": "NOT_EVALUATED",
+      "gate_only": true
+    }
+  }
+}

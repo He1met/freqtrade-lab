@@ -4,8 +4,9 @@ A small, local-first research workbench for recording Freqtrade strategy lineage
 
 The repository provides the SQLite schema v1 foundation, a fail-closed single
 artifact importer, and a narrow three-scenario bundle importer for Freqtrade
-2026.7, plus a local read-only strategy library. It does not run Freqtrade or
-prove that any strategy is profitable.
+2026.7, a synchronous three-scenario producer, and a local read-only strategy
+library. The producer can run one bounded Freqtrade research Candidate; that
+technical completion does not prove that any strategy is profitable.
 
 ## Scope
 
@@ -29,6 +30,115 @@ python3 scripts/init_database.py --path /tmp/freqtrade-lab.sqlite
 ```
 
 The default path is `workspace/lab.sqlite`; `workspace/` is local runtime data and is not tracked by Git.
+
+## Produce one real three-scenario research run
+
+`scripts/run_research_candidate.py` is the user-initiated producer entrypoint.
+It runs exactly Development, Holdout, and Holdout Stress in that order, using
+one fixed Candidate/Profile, a clean Freqtrade `2026.7` checkout at commit
+`52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`, and one explicitly supplied local
+data root. A complete invocation is:
+
+```bash
+python3 scripts/run_research_candidate.py \
+  --freqtrade-python /path/to/freqtrade-2026.7-venv/bin/python \
+  --freqtrade-source /path/to/clean/freqtrade-2026.7 \
+  --config /path/to/local-producer-root/config.json \
+  --data-dir /path/to/local-producer-root/data/okx \
+  --strategy-path /path/to/local-producer-root/strategies \
+  --strategy-file /path/to/local-producer-root/strategies/StrategyTestV3Futures.py \
+  --strategy StrategyTestV3Futures \
+  --research-spec /path/to/local-producer-root/research-spec.json \
+  --data-provenance /path/to/local-producer-root/retained-data-provenance.json \
+  --market-snapshot /path/to/local-producer-root/market_snapshot.json \
+  --leverage-tiers /path/to/local-producer-root/isolated_tiers_snapshot.json \
+  --development-timerange 20260801-20260804 \
+  --holdout-timerange 20260804-20260807 \
+  --stress-fee-multiplier 2 \
+  --output-dir /path/to/new-three-scenario-bundle \
+  --database /path/to/existing-schema-v1.sqlite
+```
+
+`--output-dir` must not exist. `--database` is optional and is never inferred
+or initialized. With it, the fully validated bundle is imported as one
+`COMPLETED` ResearchRun and three `SUCCEEDED` executions sharing one
+`research_run_id`; `verdict`, `scenario_passed`, and runtime return-code/log
+fields remain `NULL`. Without it, the command stops after atomically publishing
+the manifest, three ZIP/meta/provenance units, and their hashes.
+
+The real runner is fixed to a deny-by-default `/usr/bin/sandbox-exec` profile.
+Each scenario receives separate owned `HOME`, `TMPDIR`, and empty `user_data`
+directories inside the temporary work root; no external user-data directory is
+read or written. Before any Candidate import, a separate deny-by-default Git
+sandbox permits only the exact CommandLineTools Git executable to inspect the
+supplied checkout. The producer requires the fixed clean tag/commit, exports
+only tracked `freqtrade/` bytes with `git archive`, disables Git replacement
+objects, verifies the fixed official tree OID, rejects special archive members,
+and computes a deterministic source-tree SHA-256. Each scenario can
+read only that exported package snapshot, not `.git`, ignored files, or other
+checkout content; the runner verifies the tree hash before imports and again
+after the backtest. Package/dependency versions and official Freqtrade method
+identities are checked inside the scenario sandbox before the Candidate is
+imported. The runner also rejects additional or unknown config fields, dynamic
+pairlists, credentials, a strategy directory containing anything except the
+SHA-bound selected strategy, input symlinks, mismatched local-data hashes, and
+overlapping scenario contracts. Process spawning is not permitted, every
+scenario has a fixed one-hour timeout, Python-level engine output is bounded,
+and native ZIP member/count/expansion limits are checked before decompression.
+Each scenario receives an owned temporary data view whose stop is exclusive,
+so the Development end candle cannot become the first Holdout candle.
+
+Candidate code has an explicit integrity trust boundary: the selected strategy
+runs in the same Python process as Freqtrade and the adapter. The sandbox limits
+its readable/writable paths and denies network access, but it does not prove
+result integrity against a deliberately adversarial strategy that monkeypatches
+the running engine. Use this CLI only with a SHA-bound strategy that you have
+reviewed; each produced provenance unit records that limitation. The tracked
+GPL fixture strategy satisfies that reviewed-input boundary for integration
+testing only.
+
+Known scenario, validation, sanitization, and database failures publish no
+partial ResearchRun, and temporary raw results are removed. For an asynchronous
+interrupt around SQLite commit, the producer compares database row identities:
+it removes the bundle only when the database is visibly unchanged; if the
+database changed or cannot be read, it reports the outcome as unknown and keeps
+the validated bundle so a committed artifact locator cannot be broken. The
+final bundle uses an exclusive atomic rename and never replaces a concurrently
+created output path. Every artifact provenance binds the exact producer and
+runner file bytes as well as the exported Freqtrade source tree. The runtime
+currently requires macOS `/usr/bin/sandbox-exec` and the exact CommandLineTools
+Git executable.
+
+### Local-only OKX input fallback
+
+`PORTABLE_RETAINED_FIXTURE=BLOCKED_LICENSE`: this public repository does not
+redistribute OKX OHLCV, mark, funding, market, or leverage-tier data. The
+tracked producer fixture therefore contains only sanitized inputs, exact
+metadata/hash receipts, and a manual acquisition helper. This is based on the
+redistribution restriction in the
+[OKX API Agreement §9.4](https://www.okx.com/en-gb/help/okx-api-agreement), not
+on a claim that public endpoints are inaccessible.
+
+From an exact clean Freqtrade environment, a user may deliberately create a
+new local-only producer root outside the repository:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
+  tests/fixtures/freqtrade_2026_7/producer/fetch_okx_public_data.py \
+  --output-root /path/to/new-local-only-producer-root
+```
+
+This command is networked; tests exercise its safety functions without making
+network requests. It has no credential inputs, disables environment proxy and
+`.netrc` discovery, rejects redirects, blocks non-allowlisted requests before
+I/O, records response hashes but not raw bodies, validates exact
+Python/dependency versions plus the clean Freqtrade tag/commit using the exact
+CommandLineTools Git executable, and writes a matching local
+`retained-data-provenance.json`. Review its printed receipt/provenance hashes
+before using the root above. Future public responses may differ from the Issue
+#9 verification hashes; the output remains local-only and must not be committed.
+Exact reviewed evidence is documented in
+[`tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md`](tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md).
 
 ## Import one verified backtest artifact
 
@@ -93,7 +203,7 @@ signature or independent proof of market truth.
 
 ## Import one complete research bundle
 
-Issue #6 adds the missing local producer for a complete read-only research
+Issue #6 adds the strict assembler/importer for a complete read-only research
 summary. A strict manifest references exactly one Development, one Holdout, and
 one Holdout Stress artifact from the same controlled directory:
 

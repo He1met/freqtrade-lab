@@ -1,0 +1,116 @@
+{
+  "schema": "freqtrade-lab-retained-okx-data-v1",
+  "portable_retained_fixture": "BLOCKED_LICENSE",
+  "source": {
+    "host": "www.okx.com",
+    "authentication": "none",
+    "instrument_id": "XRP-USDT-SWAP",
+    "pair": "XRP/USDT:USDT",
+    "pair_family": "XRP-USDT",
+    "retrievals": [
+      {
+        "role": "development",
+        "receipt": "sources/development-retrieval-receipt.json",
+        "receipt_sha256": "9bc537633ba444f9d47f14143c8aab2dbc1dabba4065a1a518ee01a31b02f6e5",
+        "started_at_utc": "2026-08-30T04:50:32.905588+00:00",
+        "finished_at_utc": "2026-08-30T04:50:37.946036+00:00",
+        "start_utc": "2026-07-31T22:00:00+00:00",
+        "end_exclusive_utc": "2026-08-04T00:00:00+00:00"
+      },
+      {
+        "role": "holdout",
+        "receipt": "sources/holdout-retrieval-receipt.json",
+        "receipt_sha256": "84e380b847a46255841d85864ca97c388d373b429067c80e1e82604459c94e4d",
+        "started_at_utc": "2026-08-30T06:42:33.103528+00:00",
+        "finished_at_utc": "2026-08-30T06:42:34.331593+00:00",
+        "start_utc": "2026-08-03T22:00:00+00:00",
+        "end_exclusive_utc": "2026-08-07T00:00:00+00:00"
+      }
+    ]
+  },
+  "freqtrade": {
+    "version": "2026.7",
+    "tag": "2026.7",
+    "commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+    "dependencies": {
+      "ccxt": "4.5.68",
+      "pandas": "3.0.3",
+      "pyarrow": "25.0.0",
+      "python": "Python 3.13.13"
+    }
+  },
+  "contract": {
+    "data_dir": "data/okx",
+    "market_snapshot": "market_snapshot.json",
+    "leverage_tiers": "isolated_tiers_snapshot.json",
+    "config": "config.json",
+    "strategy": "strategies/StrategyTestV3Futures.py",
+    "development_timerange": "20260801-20260804",
+    "holdout_timerange": "20260804-20260807",
+    "timeframe": "5m"
+  },
+  "files": {
+    "config.json": {
+      "role": "sanitized_freqtrade_config",
+      "bytes": 988,
+      "sha256": "8baf9cfc681793e097ab6ae4a6f9158a95ab23e062018b50838a99cb9054ac70"
+    },
+    "research-spec.json": {
+      "role": "fixed_research_profile_and_candidate",
+      "bytes": 821,
+      "sha256": "5ba01e42486c0b723753e044e000e9f894fa138df872a61ea644fa9ec470ccc8"
+    },
+    "strategies/StrategyTestV3Futures.py": {
+      "role": "gpl_upstream_test_strategy",
+      "bytes": 6730,
+      "sha256": "db2d416b5d40daf2dcd8ef8c07a937053c846ca89a9fca1f01facab60dfadc2d"
+    },
+    "fetch_okx_public_data.py": {
+      "role": "manual_public_data_acquisition_and_validation",
+      "bytes": 23829,
+      "sha256": "5f9bed4f63a31c333e4ab0c6f0d8d72410865443d2980e52572db084707c9dd2"
+    },
+    "sources/development-retrieval-receipt.json": {
+      "role": "development_source_metadata_receipt",
+      "bytes": 4230,
+      "sha256": "9bc537633ba444f9d47f14143c8aab2dbc1dabba4065a1a518ee01a31b02f6e5"
+    },
+    "sources/holdout-retrieval-receipt.json": {
+      "role": "holdout_source_metadata_receipt",
+      "bytes": 4391,
+      "sha256": "84e380b847a46255841d85864ca97c388d373b429067c80e1e82604459c94e4d"
+    }
+  },
+  "local_only_files": {
+    "data/okx/futures/XRP_USDT_USDT-5m-futures.feather": {
+      "status": "LOCAL_ONLY_NOT_DISTRIBUTED",
+      "role": "merged_futures_ohlcv",
+      "bytes": 45866,
+      "sha256": "7b4590559e57056585a11e3ca7730b79cec4113a064f97cd6f4edc06c65545ee"
+    },
+    "data/okx/futures/XRP_USDT_USDT-1h-mark.feather": {
+      "status": "LOCAL_ONLY_NOT_DISTRIBUTED",
+      "role": "merged_mark_ohlcv",
+      "bytes": 8330,
+      "sha256": "350fba0cf91a0acfc1038aa9c18af8026abb9703a4b438b4082f66d0760adc50"
+    },
+    "data/okx/futures/XRP_USDT_USDT-1h-funding_rate.feather": {
+      "status": "LOCAL_ONLY_NOT_DISTRIBUTED",
+      "role": "merged_funding_rate_series",
+      "bytes": 3834,
+      "sha256": "f746edcaae5d727b3196b47c0f0ef3aee392c45ec53d351508b1111c83f6f3a5"
+    },
+    "market_snapshot.json": {
+      "status": "LOCAL_ONLY_NOT_DISTRIBUTED",
+      "role": "market_snapshot",
+      "bytes": 1690,
+      "sha256": "0eff7c426f0a56bec3fa18e03357bea23e8b8837202b0930e8cb1edfcb4e3f29"
+    },
+    "isolated_tiers_snapshot.json": {
+      "status": "LOCAL_ONLY_NOT_DISTRIBUTED",
+      "role": "leverage_tiers",
+      "bytes": 35877,
+      "sha256": "5630472ad69a4fb5714144415dfc142039850b67e449453c4c22e1dfa815f9db"
+    }
+  }
+}
