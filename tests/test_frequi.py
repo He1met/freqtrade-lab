@@ -19,6 +19,7 @@ from urllib.request import urlopen
 
 import pytest
 
+import lab.frequi as frequi_module
 from lab.database import get_connection, init_database
 from lab.frequi import (
     FreqUIConfigurationError,
@@ -141,6 +142,45 @@ def _copy_result_pair(archive: Path, results_root: Path) -> Tuple[Path, Path]:
     return archive_copy, metadata_copy
 
 
+def _replace_development_with_non_discoverable_copy(
+    database: Path,
+    imported: Any,
+    archives: Mapping[str, Path],
+    artifact_root: Path,
+) -> Path:
+    source_archive = archives["DEVELOPMENT"]
+    source_metadata = source_archive.with_suffix(".meta.json")
+    archive = artifact_root / "backtest-result-development.zip"
+    metadata = artifact_root / "backtest-result-development.meta.json"
+    shutil.copy2(source_archive, archive)
+    shutil.copy2(source_metadata, metadata)
+    with get_connection(database) as connection:
+        row = connection.execute(
+            """
+            SELECT id, metrics_json
+            FROM backtest_executions
+            WHERE research_run_id = ? AND scenario = 'DEVELOPMENT'
+            """,
+            (imported.research_run_id,),
+        ).fetchone()
+        metrics = json.loads(row["metrics_json"])
+        metrics["artifact"]["report_member"] = "backtest-result-development.json"
+        connection.execute(
+            """
+            UPDATE backtest_executions
+            SET result_archive_path = ?, metrics_json = ?
+            WHERE id = ?
+            """,
+            (
+                str(archive),
+                json.dumps(metrics, separators=(",", ":"), sort_keys=True),
+                row["id"],
+            ),
+        )
+        connection.commit()
+    return archive
+
+
 def _detail_paths(base: str, imported: Any) -> Tuple[str, str]:
     query = urlencode(
         {
@@ -150,6 +190,23 @@ def _detail_paths(base: str, imported: Any) -> Tuple[str, str]:
         }
     )
     return base + "/api/strategy?" + query, base + "/strategy?" + query
+
+
+@pytest.mark.parametrize(
+    ("archive_name", "discoverable"),
+    (
+        ("backtest-result-development.zip", False),
+        ("backtest-result-holdout.zip", False),
+        ("backtest-result-holdout-stress.zip", False),
+        ("backtest-result-development-2026-08-30_12-55-02.zip", True),
+        ("backtest-result-holdout-2026-08-30_12-55-03.zip", True),
+        ("backtest-result-holdout-stress-2026-08-30_12-55-04.zip", True),
+    ),
+)
+def test_fixed_2026_7_history_discovery_rule(
+    archive_name: str, discoverable: bool
+) -> None:
+    assert frequi_module._history_discoverable_archive(archive_name) is discoverable
 
 
 @pytest.mark.parametrize(
@@ -458,10 +515,12 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
         assert scenario["download"]["available"] is True
         assert frequi["available"] is True
         assert frequi["local_copy_ready"] is True
+        assert frequi["history_filename_eligible"] is True
         assert frequi["history_visibility"] is None
         assert frequi["reason"] is None
         assert frequi["message"] == (
-            "本地文件前提满足；请在 FreqUI 的 Load Results 中手动确认"
+            "文件名符合 Freqtrade 2026.7 history 扫描规则；"
+            "实际 history 可见性未验证，请在 Load Results 中手动确认"
         )
         assert frequi["url"] == origin + "/backtest"
         assert frequi["artifact_filename"] == expected_archive.name
@@ -478,7 +537,8 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
     assert "手动确认" in page
     assert "不会自动选中当前结果" in page
     assert (
-        "本地文件前提满足；请在 FreqUI 的 Load Results 中手动确认；"
+        "文件名符合 Freqtrade 2026.7 history 扫描规则；"
+        "实际 history 可见性未验证，请在 Load Results 中手动确认；"
         "不会自动选中当前结果；仅 ZIP/meta 可加载回测摘要；"
         "缺少本地 strategy 时 FreqUI 可能提示 Strategy not found。"
     ) in page
@@ -495,6 +555,48 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
         "/ui_version",
         "/backtest",
     ]
+
+
+def test_non_discoverable_result_disables_lab_api_and_page_entry(
+    tmp_path: Path,
+) -> None:
+    database, artifact_root, imported, archives = _import_frozen_bundle(tmp_path)
+    archive = _replace_development_with_non_discoverable_copy(
+        database, imported, archives, artifact_root
+    )
+    results_root = tmp_path / "frequi-results"
+    results_root.mkdir()
+    _copy_result_pair(archive, results_root)
+
+    with _stub_frequi(SUCCESS_RESPONSES) as (origin, _):
+        with _serve_library(database, artifact_root, origin, results_root) as base:
+            api_url, page_url = _detail_paths(base, imported)
+            with urlopen(api_url, timeout=5) as response:
+                payload = json.load(response)
+            with urlopen(page_url, timeout=5) as response:
+                page = response.read().decode("utf-8")
+
+    development = next(
+        scenario
+        for scenario in payload["scenarios"]
+        if scenario["scenario"] == "DEVELOPMENT"
+    )
+    frequi = development["frequi"]
+    assert development["download"]["available"] is True
+    assert frequi["available"] is False
+    assert frequi["local_copy_ready"] is True
+    assert frequi["history_filename_eligible"] is False
+    assert frequi["history_visibility"] is None
+    assert frequi["reason"] == "HISTORY_NOT_DISCOVERABLE"
+    assert frequi["message"] == (
+        "文件名不符合 Freqtrade 2026.7 backtest history 发现规则"
+    )
+    assert frequi["url"] is None
+    assert frequi["artifact_filename"] == "backtest-result-development.zip"
+    assert f'href="{origin}/backtest"' not in page
+    assert "HISTORY_NOT_DISCOVERABLE" in page
+    assert str(artifact_root) not in json.dumps(payload, ensure_ascii=False)
+    assert str(results_root) not in json.dumps(payload, ensure_ascii=False)
 
 
 @pytest.mark.parametrize(

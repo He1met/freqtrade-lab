@@ -338,14 +338,21 @@ single-result deep link, so the detail page shows the exact filename and
 strategy and asks you to choose them manually under **Load Results**. The Lab
 does not read or store a FreqUI username, password, or token. Its daily Gate is
 limited to public loopback `ping`, installed UI version, the HTML entry page,
-and local copy identity; the authenticated history/result check is confined to
-the one-time sanitized integration smoke recorded in
+local copy identity, and the fixed Freqtrade `2026.7`
+`backtest-result-*-[0-9][0-9]*.zip` history filename-eligibility rule. Passing
+that static rule does not claim actual history visibility: the Lab does not call
+the authenticated history API or independently read the Webserver config, so
+`history_visibility` remains unknown and the operator must point
+`--frequi-results-root` at that same instance's disposable
+`user_data/backtest_results`. The authenticated history/result check is
+confined to the one-time sanitized integration smoke recorded in
 [`docs/frequi-integration-smoke.md`](docs/frequi-integration-smoke.md).
 
 With either flag missing, an unsafe directory, an unreachable Webserver, no
-installed UI, or a missing/mismatched ZIP/meta pair, startup or the scenario
-entry fails closed with a visible reason. The normal strategy library remains
-usable when both FreqUI flags are omitted.
+installed UI, a missing/mismatched ZIP/meta pair, or a filename outside that
+fixed history rule, startup or the scenario entry fails closed with a visible
+reason. The normal strategy library remains usable when both FreqUI flags are
+omitted.
 
 ## Run tests
 

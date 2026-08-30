@@ -14,6 +14,7 @@ import os
 import re
 import stat
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union
 from urllib.parse import urlsplit
@@ -24,7 +25,10 @@ MAX_PROBE_BYTES = 256 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
 MAX_META_BYTES = 1024 * 1024
 SUPPORTED_FREQUI_VERSION = "3.1.1"
-_ARCHIVE_NAME = re.compile(r"^backtest-result-.+-[0-9][0-9].*\.zip$")
+FREQTRADE_2026_7_HISTORY_GLOB = "backtest-result-*-[0-9][0-9]*.zip"
+_RESULT_ARCHIVE_NAME = re.compile(
+    r"^backtest-result-[A-Za-z0-9][A-Za-z0-9._-]*\.zip$"
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -333,11 +337,14 @@ def _scenario_failure(
     strategy: Optional[str],
     version: Optional[str],
     local_copy_ready: Optional[bool] = False,
+    history_filename_eligible: Optional[bool] = None,
+    history_visibility: Optional[bool] = None,
 ) -> Dict[str, Any]:
     return {
         "available": False,
         "local_copy_ready": local_copy_ready,
-        "history_visibility": None,
+        "history_filename_eligible": history_filename_eligible,
+        "history_visibility": history_visibility,
         "reason": reason,
         "message": message,
         "url": None,
@@ -370,7 +377,7 @@ def _artifact_evidence(
     if not supplied.is_absolute() or ".." in supplied.parts:
         raise ValueError("archive path is unsafe")
     archive_name = supplied.name
-    if not _ARCHIVE_NAME.fullmatch(archive_name):
+    if not _RESULT_ARCHIVE_NAME.fullmatch(archive_name):
         raise ValueError("archive filename is unsupported")
     if not isinstance(raw_metrics, str):
         raise ValueError("metrics are missing")
@@ -395,6 +402,11 @@ def _artifact_evidence(
         raise ValueError("artifact identity is incomplete")
     metadata_name = Path(archive_name).with_suffix(".meta.json").name
     return archive_name, metadata_name, strategy, archive_sha256, metadata_sha256
+
+
+def _history_discoverable_archive(archive_name: str) -> bool:
+    """Mirror Freqtrade 2026.7's ZIP glob for backtest history discovery."""
+    return fnmatchcase(archive_name, FREQTRADE_2026_7_HISTORY_GLOB)
 
 
 def _open_results_root(config: FreqUIConfig) -> int:
@@ -594,12 +606,26 @@ def scenario_frequi_status(
             strategy=strategy,
             version=safe_version,
         )
+    if not _history_discoverable_archive(archive_name):
+        return _scenario_failure(
+            "HISTORY_NOT_DISCOVERABLE",
+            "文件名不符合 Freqtrade 2026.7 backtest history 发现规则",
+            artifact_filename=archive_name,
+            strategy=strategy,
+            version=safe_version,
+            local_copy_ready=True,
+            history_filename_eligible=False,
+        )
     return {
         "available": True,
         "local_copy_ready": True,
+        "history_filename_eligible": True,
         "history_visibility": None,
         "reason": None,
-        "message": "本地文件前提满足；请在 FreqUI 的 Load Results 中手动确认",
+        "message": (
+            "文件名符合 Freqtrade 2026.7 history 扫描规则；"
+            "实际 history 可见性未验证，请在 Load Results 中手动确认"
+        ),
         "url": probe["url"],
         "artifact_filename": archive_name,
         "filename": Path(archive_name).stem,

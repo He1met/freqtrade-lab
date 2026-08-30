@@ -82,6 +82,10 @@ MAX_RAW_ZIP_MEMBERS = 16
 MAX_RAW_ZIP_COMPRESSION_RATIO = 200
 SCENARIO_TIMEOUT_SECONDS = 60 * 60
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_NATIVE_RESULT_ARCHIVE = re.compile(
+    r"^backtest-result-(?P<timestamp>[0-9]{4}-[0-9]{2}-[0-9]{2}_"
+    r"[0-9]{2}-[0-9]{2}-[0-9]{2})\.zip$"
+)
 _TIMERANGE = re.compile(r"^(\d{8})-(\d{8})$")
 _CLASS_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]")
@@ -1553,6 +1557,28 @@ def _validate_raw_zip_infos(infos: Sequence[zipfile.ZipInfo]) -> None:
             )
 
 
+def _native_result_timestamp(archive_name: str, metadata_name: str) -> str:
+    """Return the fixed 2026.7 exporter timestamp bound to one ZIP/meta pair."""
+    match = _NATIVE_RESULT_ARCHIVE.fullmatch(archive_name)
+    if match is None:
+        raise ResearchCandidateError(
+            "raw Freqtrade archive must use the native 2026.7 timestamp name"
+        )
+    timestamp = match.group("timestamp")
+    try:
+        datetime.strptime(timestamp, "%Y-%m-%d_%H-%M-%S")
+    except ValueError as exc:
+        raise ResearchCandidateError(
+            "raw Freqtrade archive contains an invalid timestamp"
+        ) from exc
+    expected_metadata = f"{Path(archive_name).stem}.meta.json"
+    if metadata_name != expected_metadata:
+        raise ResearchCandidateError(
+            "raw Freqtrade ZIP and metadata timestamps do not match"
+        )
+    return timestamp
+
+
 def _sanitize_raw_artifact(
     *,
     scenario: str,
@@ -1581,6 +1607,7 @@ def _sanitize_raw_artifact(
         expected_source_tree_sha256=source_tree_sha256,
         expected_runner_sha256=str(implementation_receipts["runner"]["sha256"]),
     )
+    native_timestamp = _native_result_timestamp(raw_archive_name, raw_metadata_name)
     raw_archive = raw_dir / _relative_member(raw_archive_name, "runner archive")
     raw_metadata = raw_dir / _relative_member(raw_metadata_name, "runner metadata")
     raw_archive_bytes = _read_file(raw_archive, "raw Freqtrade archive", MAX_RAW_ARCHIVE_BYTES)
@@ -1623,7 +1650,7 @@ def _sanitize_raw_artifact(
     _reject_absolute_strings(sanitized_config, "sanitized config")
     config_bytes = _canonical_bytes(sanitized_config)
 
-    stem = f"backtest-result-{slug}"
+    stem = f"backtest-result-{slug}-{native_timestamp}"
     report_member = f"{stem}.json"
     config_member = f"{stem}_config.json"
     strategy_member = f"{stem}_{strategy}.py"

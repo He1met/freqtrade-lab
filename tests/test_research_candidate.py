@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -14,11 +15,13 @@ import pytest
 import lab.research_candidate as research_candidate_module
 from lab.backtest_artifact import SUPPORTED_FREQTRADE_COMMIT
 from lab.database import get_connection, init_database
+from lab.frequi import configure_frequi
 from lab.research_candidate import (
     SUPPORTED_OFFICIAL_CORE,
     ResearchCandidateError,
     run_research_candidate,
 )
+from lab.strategy_library import _open_artifact_root_fd, load_research_run_detail
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +32,11 @@ SCENARIO_FIXTURES = {
     "DEVELOPMENT": "backtest-result-2026-08-30_12-55-02",
     "HOLDOUT": "backtest-result-2026-08-30_06-43-00",
     "HOLDOUT_STRESS": "backtest-result-2026-08-30_06-43-22",
+}
+SCENARIO_SLUGS = {
+    "DEVELOPMENT": "development",
+    "HOLDOUT": "holdout",
+    "HOLDOUT_STRESS": "holdout-stress",
 }
 TABLES = (
     "research_profiles",
@@ -332,17 +340,135 @@ def test_t1_fake_subprocess_produces_imports_and_preserves_null_judge(tmp_path: 
     assert len({row["research_run_id"] for row in rows}) == 1
     assert [row["status"] for row in rows] == ["SUCCEEDED"] * 3
     assert all(row["scenario_passed"] is None and row["return_code"] is None for row in rows)
+    assert [artifact.total_trades for artifact in result.artifacts] == [11, 9, 9]
     for path in result.bundle_root.iterdir():
         data = path.read_bytes()
         assert str(tmp_path).encode() not in data
         assert b"/private/tmp/" not in data
-    provenance = json.loads(
-        (result.bundle_root / "backtest-result-development.provenance.json").read_text()
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    manifest_artifacts = {
+        artifact["scenario"]: artifact for artifact in manifest["artifacts"]
+    }
+    output_names = []
+    for produced in result.artifacts:
+        native_timestamp = SCENARIO_FIXTURES[produced.scenario].removeprefix(
+            "backtest-result-"
+        )
+        stem = (
+            f"backtest-result-{SCENARIO_SLUGS[produced.scenario]}-"
+            f"{native_timestamp}"
+        )
+        archive_path = result.bundle_root / f"{stem}.zip"
+        metadata_path = result.bundle_root / f"{stem}.meta.json"
+        provenance_path = result.bundle_root / f"{stem}.provenance.json"
+        output_names.append(archive_path.name)
+        assert produced.archive == archive_path.name
+        assert archive_path.is_file()
+        assert metadata_path.is_file()
+        assert provenance_path.is_file()
+
+        provenance_bytes = provenance_path.read_bytes()
+        provenance = json.loads(provenance_bytes)
+        manifest_artifact = manifest_artifacts[produced.scenario]
+        assert manifest_artifact == {
+            "archive": archive_path.name,
+            "provenance_sha256": _sha256(provenance_bytes),
+            "scenario": produced.scenario,
+        }
+        assert provenance["artifact"]["archive"] == archive_path.name
+        assert provenance["artifact"]["metadata"] == metadata_path.name
+        assert provenance["artifact"]["archive_sha256"] == _sha256(
+            archive_path.read_bytes()
+        )
+        assert provenance["artifact"]["metadata_sha256"] == _sha256(
+            metadata_path.read_bytes()
+        )
+        with zipfile.ZipFile(archive_path) as unit:
+            expected_members = {
+                f"{stem}.json",
+                f"{stem}_config.json",
+                f"{stem}_StrategyTestV3Futures.py",
+            }
+            assert set(unit.namelist()) == expected_members
+            assert provenance["artifact"]["members"] == {
+                name: _sha256(unit.read(name)) for name in expected_members
+            }
+
+        assert "adversarial strategy code" in provenance["generation"][
+            "candidate_code_trust"
+        ]
+        receipts = provenance["generation"]["implementation_receipts"]
+        assert set(receipts) == {"producer", "runner"}
+        assert all(len(receipt["sha256"]) == 64 for receipt in receipts.values())
+    assert len(set(output_names)) == 3
+
+    results_root = tmp_path / "frequi-results"
+    results_root.mkdir()
+    for archive_path in result.bundle_root.glob("*.zip"):
+        shutil.copy2(archive_path, results_root / archive_path.name)
+        metadata_path = archive_path.with_suffix(".meta.json")
+        shutil.copy2(metadata_path, results_root / metadata_path.name)
+    frequi_config = configure_frequi(
+        "http://127.0.0.1:18766",
+        results_root,
+        artifact_root=result.bundle_root,
     )
-    assert "adversarial strategy code" in provenance["generation"]["candidate_code_trust"]
-    receipts = provenance["generation"]["implementation_receipts"]
-    assert set(receipts) == {"producer", "runner"}
-    assert all(len(receipt["sha256"]) == 64 for receipt in receipts.values())
+    artifact_root_fd = _open_artifact_root_fd(result.bundle_root)
+    try:
+        detail = load_research_run_detail(
+            database,
+            result.imported.profile_id,
+            result.imported.candidate_id,
+            result.imported.research_run_id,
+            artifact_root=result.bundle_root,
+            artifact_root_fd=artifact_root_fd,
+            frequi_config=frequi_config,
+            frequi_probe={
+                "available": True,
+                "version": "3.1.1",
+                "url": "http://127.0.0.1:18766/backtest",
+            },
+        )
+    finally:
+        os.close(artifact_root_fd)
+    assert [scenario["total_trades"] for scenario in detail["scenarios"]] == [
+        11,
+        9,
+        9,
+    ]
+    for scenario in detail["scenarios"]:
+        assert scenario["download"]["available"] is True
+        assert scenario["frequi"]["available"] is True
+        assert scenario["frequi"]["local_copy_ready"] is True
+        assert scenario["frequi"]["history_filename_eligible"] is True
+        assert scenario["frequi"]["history_visibility"] is None
+
+
+@pytest.mark.parametrize(
+    ("archive", "metadata", "message"),
+    (
+        (
+            "backtest-result-native.zip",
+            "backtest-result-native.meta.json",
+            "native 2026.7 timestamp",
+        ),
+        (
+            "backtest-result-2026-13-30_12-55-02.zip",
+            "backtest-result-2026-13-30_12-55-02.meta.json",
+            "invalid timestamp",
+        ),
+        (
+            "backtest-result-2026-08-30_12-55-02.zip",
+            "backtest-result-2026-08-30_12-55-03.meta.json",
+            "timestamps do not match",
+        ),
+    ),
+)
+def test_t0_rejects_non_native_or_mismatched_result_timestamps(
+    archive: str, metadata: str, message: str
+) -> None:
+    with pytest.raises(ResearchCandidateError, match=message):
+        research_candidate_module._native_result_timestamp(archive, metadata)
 
 
 def test_t1_mid_scenario_failure_publishes_nothing_and_writes_no_rows(tmp_path: Path) -> None:
