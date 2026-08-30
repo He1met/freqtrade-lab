@@ -80,14 +80,14 @@ unless every hash matches.
 | `config.json` | 988 | `8baf9cfc681793e097ab6ae4a6f9158a95ab23e062018b50838a99cb9054ac70` |
 | `research-spec.json` | 821 | `5ba01e42486c0b723753e044e000e9f894fa138df872a61ea644fa9ec470ccc8` |
 | `strategies/StrategyTestV3Futures.py` | 6,730 | `db2d416b5d40daf2dcd8ef8c07a937053c846ca89a9fca1f01facab60dfadc2d` |
-| `fetch_okx_public_data.py` | 23,829 | `5f9bed4f63a31c333e4ab0c6f0d8d72410865443d2980e52572db084707c9dd2` |
+| `fetch_okx_public_data.py` | 26,695 | `8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f` |
 | `sources/development-retrieval-receipt.json` | 4,230 | `9bc537633ba444f9d47f14143c8aab2dbc1dabba4065a1a518ee01a31b02f6e5` |
 | `sources/holdout-retrieval-receipt.json` | 4,391 | `84e380b847a46255841d85864ca97c388d373b429067c80e1e82604459c94e4d` |
 
-The six files in the provenance `files` map total **40,989 bytes**.
+The six files in the provenance `files` map total **43,855 bytes**.
 `retained-data-provenance.json` is 4,248 bytes with SHA-256
-`d1f409eacf939cce313adf83486d18072863cca9a94b84a7faad97f5024f170a`;
-the tracked payload plus that receipt totals **45,237 bytes**, excluding this
+`cfd6f8e5385256bbb296186ff589fe0c5e84e878f5ae35adec9f031c64ab72f4`;
+the tracked payload plus that receipt totals **48,103 bytes**, excluding this
 narrative file.
 
 `fetch_okx_public_data.py` is manual and networked by design.  It requires an
@@ -95,11 +95,19 @@ explicit new output directory outside this repository, accepts no credentials,
 blocks every non-allowlisted request before network I/O, hashes but does not
 retain raw response bodies, validates the exact Python/dependency versions plus
 clean Freqtrade tag/commit and series continuity, and deletes its own new output
-directory on failure.  On success it also copies the sanitized config/spec/GPL
-strategy/license and writes a matching local `retained-data-provenance.json`, so
-that output directory is directly usable by the producer after review.  A
-future acquisition may differ from the reviewed hashes and must be reviewed as
-new evidence.
+directory on failure.  By default, on success it also copies the sanitized
+config/spec/GPL strategy/license and writes a matching local
+`retained-data-provenance.json`, so that output directory is directly usable by
+the producer after review.  A future acquisition may differ from the reviewed
+hashes and must be reviewed as new evidence.
+
+The optional `--strategy-file` and `--research-spec` inputs must be supplied
+together.  Before any network access, the helper reads their bytes and takes the
+selected Candidate class from the research spec.  It then keeps the fixed
+`research-spec.json` output path, preserves the strategy basename, updates the
+copied config's `strategy`, and binds the copied bytes in the same provenance
+receipt.  The producer remains the fail-closed validator for the spec, strategy,
+paths, and hashes.  Omitting both options retains the fixed GPL fixture behavior.
 
 The exact original Development process argv was not retained and is therefore
 `UNKNOWN`; the Holdout execution receipt contained private temporary paths and

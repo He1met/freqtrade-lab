@@ -67,8 +67,8 @@
     },
     "fetch_okx_public_data.py": {
       "role": "manual_public_data_acquisition_and_validation",
-      "bytes": 23829,
-      "sha256": "5f9bed4f63a31c333e4ab0c6f0d8d72410865443d2980e52572db084707c9dd2"
+      "bytes": 26695,
+      "sha256": "8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f"
     },
     "sources/development-retrieval-receipt.json": {
       "role": "development_source_metadata_receipt",
