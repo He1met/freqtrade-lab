@@ -4,8 +4,8 @@ A small, local-first research workbench for recording Freqtrade strategy lineage
 
 The repository provides the SQLite schema v1 foundation, a fail-closed single
 artifact importer, and a narrow three-scenario bundle importer for Freqtrade
-2026.7. It does not run Freqtrade, expose a web UI, or prove that any strategy
-is profitable.
+2026.7, plus a local read-only strategy library. It does not run Freqtrade or
+prove that any strategy is profitable.
 
 ## Scope
 
@@ -132,6 +132,49 @@ fee assumptions, and exact artifact hashes are documented in
 `StrategyTestV3Futures` is an upstream internal test strategy; its fixture PnL
 is integration evidence only and must not be treated as economic validation or
 trading advice.
+
+## View the local strategy library
+
+Start the one-process, server-rendered read-only UI against an explicitly chosen
+schema-v1 database:
+
+```bash
+python3 scripts/serve_strategy_library.py \
+  --database /path/to/lab.sqlite \
+  --port 8765
+```
+
+Open `http://127.0.0.1:8765/`. The corresponding JSON list is available at
+`http://127.0.0.1:8765/api/strategies`. The server is fixed to loopback and has
+no `--host` option; it is a personal local view, not an authenticated network
+service. It opens SQLite with `mode=ro` and `query_only=ON`, refuses to create a
+missing database, and validates the schema before listening. It does not modify
+the main database or business records. SQLite may still create or manage its
+normal `-wal`/`-shm` sidecar files when the database uses WAL mode, so its
+directory must remain writable; this UI does not claim filesystem-level
+immutability.
+
+Every card is scoped to one Research Profile. A unique default or the only
+Profile is selected automatically. When several Profiles exist without a
+default, the page asks for a selection and the API returns `409` until an exact
+`profile_id` is supplied; it never combines status, summaries, or counts across
+Profiles.
+
+The current status and latest usable summary have separate meanings. A newer
+`RUNNING`, failed, rejected, or incomplete ResearchRun remains the current
+status but does not hide an older complete three-scenario summary. When those
+two Runs differ, the card explicitly labels the metrics as a non-current summary
+and shows its completion time. A usable
+summary requires Development, Holdout, and Holdout Stress executions from the
+same completed ResearchRun, all `SUCCEEDED`, with every card metric present.
+The page shows only Holdout return/drawdown/PF/trades, Development return,
+Stress return, and completed/passed counts. Passed means
+`status=COMPLETED AND verdict=PASSED`; `NULL` is never displayed as a numeric
+zero. Freqtrade's `profit_factor=0.0` with zero losses is labeled “无亏损样本 / 不可直接解释” instead of ordinary PF `0.00`.
+
+An active Release badge means only that the displayed summary Run has an
+unarchived Release. Neither that badge nor a completed backtest summary proves
+profitability, trading suitability, or fund safety.
 
 ## Run tests
 
