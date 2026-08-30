@@ -20,6 +20,8 @@ workspace/
 artifacts/
 *.sqlite
 *.sqlite-*
+*.sqlite3
+*.sqlite3-*
 *.db
 *.db-*
 *.log
