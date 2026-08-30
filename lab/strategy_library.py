@@ -1451,7 +1451,9 @@ def _render_scenario_evidence(scenario: Mapping[str, Any]) -> str:
             '<div class="frequi-ready">'
             f'<a target="_blank" rel="noopener noreferrer" href="{_escape(frequi["url"])}">'
             "打开通用 FreqUI Backtest</a>"
-            f'<span>{_escape(frequi["message"])}；不会自动选中当前结果。</span>'
+            f'<span>{_escape(frequi["message"])}；不会自动选中当前结果；'
+            "仅 ZIP/meta 可加载回测摘要；缺少本地 strategy 时 "
+            "FreqUI 可能提示 Strategy not found。</span>"
             f"{identity}</div>"
         )
     else:

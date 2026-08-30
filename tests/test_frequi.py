@@ -477,6 +477,11 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
     assert "StrategyTestV3Futures" in page
     assert "手动确认" in page
     assert "不会自动选中当前结果" in page
+    assert (
+        "本地文件前提满足；请在 FreqUI 的 Load Results 中手动确认；"
+        "不会自动选中当前结果；仅 ZIP/meta 可加载回测摘要；"
+        "缺少本地 strategy 时 FreqUI 可能提示 Strategy not found。"
+    ) in page
     assert 'target="_blank" rel="noopener noreferrer"' in page
     assert '"selection": "MANUAL"' in serialized
     for private_path in (artifact_root, results_root):
