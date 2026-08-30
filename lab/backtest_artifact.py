@@ -20,7 +20,7 @@ import zlib
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 from lab.database import get_connection
@@ -73,8 +73,6 @@ class ParsedBacktestArtifact:
     """Validated values from the single supported frozen artifact format."""
 
     archive_path: Path
-    metadata_path: Path
-    provenance_path: Path
     strategy: str
     freqtrade_version: str
     freqtrade_commit: str
@@ -87,14 +85,12 @@ class ParsedBacktestArtifact:
     report_sha256: str
     config_sha256: str
     strategy_sha256: str
-    metadata_run_id: str
     exchange: str
     trading_mode: str
     margin_mode: str
     pairs: Tuple[str, ...]
     timeframe: str
     detail_timeframe: Optional[str]
-    config_timerange: str
     backtest_start: str
     backtest_end: str
     starting_balance: float
@@ -119,9 +115,9 @@ class ParsedBacktestArtifact:
         """Return the deliberately small, deterministic database payload."""
         artifact_fields = (
             "archive_sha256", "config_member", "config_sha256",
-            "freqtrade_commit", "freqtrade_version", "metadata_run_id",
-            "metadata_sha256", "provenance_sha256", "report_member",
-            "report_sha256", "strategy", "strategy_member", "strategy_sha256",
+            "freqtrade_commit", "freqtrade_version", "metadata_sha256",
+            "provenance_sha256", "report_member", "report_sha256", "strategy",
+            "strategy_member", "strategy_sha256",
         )
         payload = {
             "artifact": {name: getattr(self, name) for name in artifact_fields},
@@ -396,24 +392,6 @@ def _read_regular_file(path: Path, limit: int, label: str) -> bytes:
 
 
 def _validate_zip_info(info: zipfile.ZipInfo, limit: int) -> None:
-    path = PurePosixPath(info.filename)
-    if (
-        path.is_absolute()
-        or len(path.parts) != 1
-        or any(part in ("", ".", "..") for part in path.parts)
-        or "\\" in info.filename
-        or "\x00" in info.filename
-    ):
-        raise ArtifactImportError(f"ZIP member path {info.filename!r} is unsafe")
-    mode = info.external_attr >> 16
-    if stat.S_IFMT(mode) not in (0, stat.S_IFREG):
-        raise ArtifactImportError(f"ZIP member {info.filename!r} must be a regular file")
-    if info.is_dir() or info.flag_bits & 1:
-        raise ArtifactImportError(
-            f"ZIP member {info.filename!r} must be unencrypted and regular"
-        )
-    if info.extra or info.comment:
-        raise ArtifactImportError(f"ZIP member {info.filename!r} has unsupported metadata")
     if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
         raise ArtifactImportError(f"ZIP member {info.filename!r} uses unsupported compression")
     if info.file_size > limit:
@@ -443,12 +421,8 @@ def _load_archive(
         raise ArtifactImportError(f"invalid ZIP archive: {exc}") from exc
 
     with archive:
-        if archive.comment:
-            raise ArtifactImportError("ZIP comments are not supported")
         infos = archive.infolist()
         names = [info.filename for info in infos]
-        if len(names) != len(set(names)):
-            raise ArtifactImportError("ZIP contains duplicate member names")
         if set(names) != set(limits) or len(names) != 3:
             raise ArtifactImportError(
                 "supported Freqtrade 2026.7 ZIP must contain exactly report, config, "
@@ -457,31 +431,10 @@ def _load_archive(
         for info in infos:
             _validate_zip_info(info, limits[info.filename])
         try:
-            bad_member = archive.testzip()
-            if bad_member is not None:
-                raise ArtifactImportError(f"ZIP CRC failed for member {bad_member!r}")
             members = {info.filename: archive.read(info) for info in infos}
         except (EOFError, OSError, RuntimeError, zipfile.BadZipFile, zlib.error) as exc:
             raise ArtifactImportError(f"ZIP cannot be read safely: {exc}") from exc
     return members, report_member, config_member, strategy_member
-
-
-def _assert_comparison_number(
-    comparison: Mapping[str, Any],
-    key: str,
-    expected: Optional[float],
-) -> None:
-    if key not in comparison:
-        raise ArtifactImportError(f"strategy comparison is missing field {key!r}")
-    value = comparison[key]
-    if expected is None:
-        if value is not None:
-            raise ArtifactImportError(f"strategy comparison field {key!r} disagrees")
-        return
-    actual = _number(value, f"strategy comparison field {key!r}")
-    assert actual is not None
-    if not _same_number(actual, expected, fee=(key == "fee")):
-        raise ArtifactImportError(f"strategy comparison field {key!r} disagrees")
 
 
 def _contract_equal(contract: Mapping[str, Any], key: str, expected: Any) -> None:
@@ -587,9 +540,7 @@ def parse_backtest_artifact(
     strategy_bytes = members[strategy_member]
     report = _required_mapping(_strict_json(report_bytes, report_member), "report root")
     config = _required_mapping(_strict_json(config_bytes, config_member), "config root")
-    metadata = _required_mapping(
-        _strict_json(metadata_bytes, metadata_relative.name), "metadata root"
-    )
+    _strict_json(metadata_bytes, metadata_relative.name)
     provenance = _required_mapping(
         _strict_json(provenance_bytes, provenance_relative.name), "provenance root"
     )
@@ -606,12 +557,6 @@ def parse_backtest_artifact(
         or provenance_freqtrade.get("commit") != SUPPORTED_FREQTRADE_COMMIT
     ):
         raise ArtifactImportError("provenance does not attest the supported Freqtrade build")
-    version_stdout = _required_string(
-        provenance_freqtrade, "version_command_stdout", "provenance freqtrade"
-    )
-    if "Freqtrade Version:\tfreqtrade 2026.7" not in version_stdout:
-        raise ArtifactImportError("provenance version receipt does not match Freqtrade 2026.7")
-
     artifact_receipt = _required_mapping(
         provenance.get("artifact"), "provenance artifact"
     )
@@ -690,38 +635,23 @@ def parse_backtest_artifact(
             "config fee, balance, stake, and max_open_trades must be positive"
         )
 
-    if set(report) != {"strategy", "strategy_comparison"}:
-        raise ArtifactImportError("report root keys do not match Freqtrade 2026.7")
-    strategies = _required_mapping(report["strategy"], "report strategy")
+    strategies = _required_mapping(report.get("strategy"), "report strategy")
     if set(strategies) != {strategy}:
         raise ArtifactImportError("report strategy set does not exactly match selection")
-    if set(metadata) != {strategy}:
-        raise ArtifactImportError("metadata strategy set does not exactly match selection")
-    comparisons = report["strategy_comparison"]
-    if not isinstance(comparisons, list) or len(comparisons) != 1:
-        raise ArtifactImportError("strategy comparison must contain exactly one result")
-    comparison = _required_mapping(comparisons[0], "strategy comparison")
-    if comparison.get("key") != strategy:
-        raise ArtifactImportError("strategy comparison does not match selected strategy")
     result = _required_mapping(strategies[strategy], "strategy result")
-    metadata_result = _required_mapping(metadata[strategy], "strategy metadata")
     if _required_string(result, "strategy_name", "strategy result") != strategy:
         raise ArtifactImportError("strategy_name does not match selected strategy")
 
     report_timeframe = _required_string(result, "timeframe", "strategy result")
-    metadata_timeframe = _required_string(metadata_result, "timeframe", "metadata")
-    if report_timeframe != timeframe or metadata_timeframe != timeframe:
-        raise ArtifactImportError("config, report, and metadata timeframe disagree")
-    if "timeframe_detail" not in result or "timeframe_detail" not in metadata_result:
-        raise ArtifactImportError("report or metadata is missing timeframe_detail")
+    if report_timeframe != timeframe:
+        raise ArtifactImportError("report and config timeframe disagree")
+    if "timeframe_detail" not in result:
+        raise ArtifactImportError("strategy result is missing timeframe_detail")
     report_detail = _normalize_detail_timeframe(
         result.get("timeframe_detail"), "strategy result"
     )
-    metadata_detail = _normalize_detail_timeframe(
-        metadata_result.get("timeframe_detail"), "metadata"
-    )
-    if report_detail != detail_timeframe or metadata_detail != detail_timeframe:
-        raise ArtifactImportError("config, report, and metadata detail timeframe disagree")
+    if report_detail != detail_timeframe:
+        raise ArtifactImportError("report and config detail timeframe disagree")
     if _required_string(result, "timerange", "strategy result") != config_timerange:
         raise ArtifactImportError("report and config timerange disagree")
 
@@ -729,10 +659,6 @@ def parse_backtest_artifact(
     report_end_text = _required_string(result, "backtest_end", "strategy result")
     report_start = _parse_execution_timestamp(report_start_text, "artifact backtest_start")
     report_end = _parse_execution_timestamp(report_end_text, "artifact backtest_end")
-    start_ts = _required_int(metadata_result, "backtest_start_ts", "metadata")
-    end_ts = _required_int(metadata_result, "backtest_end_ts", "metadata")
-    metadata_start = _utc_from_epoch(start_ts, "metadata backtest_start_ts")
-    metadata_end = _utc_from_epoch(end_ts, "metadata backtest_end_ts")
     report_start_millis = _required_int(
         result, "backtest_start_ts", "strategy result"
     )
@@ -743,20 +669,9 @@ def parse_backtest_artifact(
     report_epoch_end = _utc_from_epoch_millis(
         report_end_millis, "strategy result backtest_end_ts"
     )
-    _utc_from_epoch(
-        _required_int(metadata_result, "backtest_start_time", "metadata"),
-        "metadata backtest_start_time",
-    )
-    if metadata_end < metadata_start:
-        raise ArtifactImportError("metadata backtest timerange is reversed")
-    if (
-        report_start != metadata_start
-        or report_end != metadata_end
-        or report_epoch_start != report_start
-        or report_epoch_end != report_end
-    ):
+    if report_epoch_start != report_start or report_epoch_end != report_end:
         raise ArtifactImportError(
-            "report text/millisecond and metadata second timeranges disagree"
+            "report text and millisecond timeranges disagree"
         )
     if report_start != timerange_start or report_end != timerange_end_exclusive - timedelta(
         minutes=5
@@ -764,7 +679,6 @@ def parse_backtest_artifact(
         raise ArtifactImportError("config timerange and report candle bounds disagree")
     backtest_start = _iso_z(report_start)
     backtest_end = _iso_z(report_end)
-    metadata_run_id = _required_string(metadata_result, "run_id", "metadata")
 
     if _required_string(result, "trading_mode", "strategy result") != trading_mode:
         raise ArtifactImportError("report and config trading_mode disagree")
@@ -855,22 +769,6 @@ def parse_backtest_artifact(
     if not _same_number(winrate, wins / total_trades):
         raise ArtifactImportError("winrate does not agree with wins and total_trades")
 
-    if _required_int(comparison, "trades", "strategy comparison") != total_trades:
-        raise ArtifactImportError("strategy comparison trades disagree")
-    for key, expected in (("wins", wins), ("draws", draws), ("losses", losses)):
-        if _required_int(comparison, key, "strategy comparison") != expected:
-            raise ArtifactImportError(f"strategy comparison {key} disagrees")
-    for key, expected in (
-        ("profit_total", profit_total),
-        ("max_drawdown_account", max_drawdown),
-        ("winrate", winrate),
-        ("profit_factor", profit_factor),
-        ("sharpe", sharpe),
-        ("sortino", sortino),
-        ("calmar", calmar),
-    ):
-        _assert_comparison_number(comparison, key, expected)
-
     contract = _required_mapping(provenance.get("contract"), "provenance contract")
     for key, expected in (
         ("strategy", strategy),
@@ -910,8 +808,6 @@ def parse_backtest_artifact(
 
     return ParsedBacktestArtifact(
         archive_path=archive_path,
-        metadata_path=metadata_path,
-        provenance_path=provenance_path,
         strategy=strategy,
         freqtrade_version=freqtrade_version,
         freqtrade_commit=SUPPORTED_FREQTRADE_COMMIT,
@@ -924,14 +820,12 @@ def parse_backtest_artifact(
         report_sha256=_sha256(report_bytes),
         config_sha256=_sha256(config_bytes),
         strategy_sha256=_sha256(strategy_bytes),
-        metadata_run_id=metadata_run_id,
         exchange=exchange,
         trading_mode=trading_mode,
         margin_mode=margin_mode,
         pairs=pairs,
         timeframe=timeframe,
         detail_timeframe=detail_timeframe,
-        config_timerange=config_timerange,
         backtest_start=backtest_start,
         backtest_end=backtest_end,
         starting_balance=starting_balance,

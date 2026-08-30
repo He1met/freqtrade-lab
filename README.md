@@ -52,11 +52,14 @@ python3 scripts/import_backtest_artifact.py \
 The importer does not run Freqtrade, infer a version, create an execution, or
 evaluate whether a scenario passed. It verifies provenance and every ZIP member
 hash against the caller-provided trusted provenance receipt, then binds the
-report, sanitized config, and strategy source to the existing Candidate,
-ResearchProfile, and execution. The supported boundary is
-deliberately exact: public unauthenticated `www.okx.com` evidence,
-`okx/futures/isolated`, one or more nonzero trades, `5m`, and the pinned
-Freqtrade version/commit.
+selected `report.strategy[...]` result, sanitized config, and strategy source
+to the existing Candidate, ResearchProfile, and execution. The same-stem meta
+must exist, parse as strict JSON, and match its anchored hash; the importer does
+not reinterpret its business fields. It validates the structured provenance
+`version`, `tag`, and `commit`, not the embedded version-command text. The
+supported boundary is deliberately exact: public unauthenticated `www.okx.com`
+evidence, `okx/futures/isolated`, one or more nonzero trades, `5m`, and the
+pinned Freqtrade version/commit.
 
 The existing Candidate class and source SHA-256, profile pair set and execution
 timerange must match. Each reported trade fee must equal the sanitized config's

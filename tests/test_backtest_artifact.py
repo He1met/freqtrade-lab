@@ -18,6 +18,7 @@ import pytest
 from lab.backtest_artifact import (
     SUPPORTED_FREQTRADE_COMMIT,
     ArtifactImportError,
+    _load_archive,
     import_backtest_execution,
     parse_backtest_artifact,
 )
@@ -89,16 +90,13 @@ def _mutate_evidence(
     *,
     report: Optional[JsonMutator] = None,
     config: Optional[JsonMutator] = None,
-    metadata: Optional[JsonMutator] = None,
     provenance: Optional[JsonMutator] = None,
-    strategy_bytes: Optional[bytes] = None,
-    refresh_receipt: bool = True,
 ) -> Path:
     root = _copy_evidence(tmp_path)
     members = _fixture_members(root)
     report_value = json.loads(members[REPORT_MEMBER])
     config_value = json.loads(members[CONFIG_MEMBER])
-    metadata_value = json.loads((root / META_NAME).read_bytes())
+    metadata_bytes = (root / META_NAME).read_bytes()
     provenance_value = json.loads((root / PROVENANCE_NAME).read_bytes())
 
     if report is not None:
@@ -107,25 +105,14 @@ def _mutate_evidence(
     if config is not None:
         config(config_value)
         members[CONFIG_MEMBER] = _json_bytes(config_value)
-    if strategy_bytes is not None:
-        members[STRATEGY_MEMBER] = strategy_bytes
-    if metadata is not None:
-        metadata(metadata_value)
-    metadata_bytes = _json_bytes(metadata_value)
-    (root / META_NAME).write_bytes(metadata_bytes)
     _write_zip(root / ARCHIVE_NAME, members)
 
-    if refresh_receipt:
-        artifact = provenance_value["artifact"]
-        artifact["archive_sha256"] = _sha256((root / ARCHIVE_NAME).read_bytes())
-        artifact["metadata_sha256"] = _sha256(metadata_bytes)
-        artifact["raw_metadata_sha256"] = _sha256(metadata_bytes)
-        artifact["members"] = {
-            name: _sha256(value) for name, value in members.items()
-        }
-        artifact["sanitized_config_member_sha256"] = _sha256(
-            members[CONFIG_MEMBER]
-        )
+    artifact = provenance_value["artifact"]
+    artifact["archive_sha256"] = _sha256((root / ARCHIVE_NAME).read_bytes())
+    artifact["metadata_sha256"] = _sha256(metadata_bytes)
+    artifact["raw_metadata_sha256"] = _sha256(metadata_bytes)
+    artifact["members"] = {name: _sha256(value) for name, value in members.items()}
+    artifact["sanitized_config_member_sha256"] = _sha256(members[CONFIG_MEMBER])
     if provenance is not None:
         provenance(provenance_value)
     (root / PROVENANCE_NAME).write_bytes(_json_bytes(provenance_value))
@@ -331,47 +318,39 @@ def _assert_cli_failure(result: subprocess.CompletedProcess[str]) -> None:
 def test_t0_parses_real_frozen_fixture_and_units() -> None:
     parsed = _parse()
 
-    assert parsed.freqtrade_version == "2026.7"
-    assert parsed.freqtrade_commit == SUPPORTED_FREQTRADE_COMMIT
-    assert parsed.archive_sha256 == ARCHIVE_SHA256
-    assert parsed.metadata_sha256 == META_SHA256
-    assert parsed.provenance_sha256 == PROVENANCE_SHA256
-    assert parsed.report_sha256 == REPORT_SHA256
-    assert parsed.config_sha256 == CONFIG_SHA256
-    assert parsed.strategy_sha256 == STRATEGY_SHA256
-    assert parsed.exchange == "okx"
-    assert parsed.trading_mode == "futures"
-    assert parsed.margin_mode == "isolated"
-    assert parsed.pairs == ("XRP/USDT:USDT",)
-    assert parsed.timeframe == "5m"
-    assert parsed.detail_timeframe is None
-    assert parsed.backtest_start == "2026-08-01T00:00:00Z"
-    assert parsed.backtest_end == "2026-08-03T23:55:00Z"
-    assert parsed.starting_balance == 1000.0
-    assert parsed.stake_amount == 100.0
-    assert parsed.max_open_trades == 1
+    assert (parsed.freqtrade_version, parsed.freqtrade_commit) == (
+        "2026.7", SUPPORTED_FREQTRADE_COMMIT)
+    assert (parsed.archive_sha256, parsed.metadata_sha256, parsed.provenance_sha256) == (
+        ARCHIVE_SHA256, META_SHA256, PROVENANCE_SHA256)
+    assert (parsed.report_sha256, parsed.config_sha256, parsed.strategy_sha256) == (
+        REPORT_SHA256, CONFIG_SHA256, STRATEGY_SHA256)
+    assert (parsed.exchange, parsed.trading_mode, parsed.margin_mode) == (
+        "okx", "futures", "isolated")
+    assert (parsed.pairs, parsed.timeframe, parsed.detail_timeframe) == (
+        ("XRP/USDT:USDT",), "5m", None)
+    assert (parsed.backtest_start, parsed.backtest_end) == (
+        "2026-08-01T00:00:00Z", "2026-08-03T23:55:00Z")
+    assert (parsed.starting_balance, parsed.stake_amount, parsed.max_open_trades) == (
+        1000.0, 100.0, 1)
     assert parsed.configured_fee == 0.0005
     assert (parsed.total_trades, parsed.wins, parsed.draws, parsed.losses) == (11, 8, 0, 3)
-    assert parsed.profit_pct == pytest.approx(-0.30593600299999996)
-    assert parsed.max_drawdown_pct == pytest.approx(0.4214370541505893)
-    assert parsed.win_rate == pytest.approx(72.72727272727273)
-    assert parsed.long_profit_pct == pytest.approx(0.07989229)
-    assert parsed.short_profit_pct == pytest.approx(-0.38582829299999995)
-    assert parsed.profit_factor == pytest.approx(0.2892287571951341)
-    assert parsed.sharpe == pytest.approx(-25.236478243392586)
-    assert parsed.sortino == pytest.approx(-16.902568083351948)
-    assert parsed.calmar == pytest.approx(-693.448650620233)
+    assert (
+        parsed.profit_pct, parsed.max_drawdown_pct, parsed.win_rate,
+        parsed.long_profit_pct, parsed.short_profit_pct, parsed.profit_factor,
+        parsed.sharpe, parsed.sortino, parsed.calmar,
+    ) == pytest.approx((
+        -0.30593600299999996, 0.4214370541505893, 72.72727272727273,
+        0.07989229, -0.38582829299999995, 0.2892287571951341,
+        -25.236478243392586, -16.902568083351948, -693.448650620233,
+    ))
 
 
 def test_t0_preserves_null_metrics_and_zero_profit_factor(tmp_path: Path) -> None:
     def mutate(report: Dict[str, Any]) -> None:
         result = report["strategy"][STRATEGY]
-        comparison = report["strategy_comparison"][0]
         for key in ("sharpe", "sortino", "calmar"):
             result[key] = None
-            comparison[key] = None
         result["profit_factor"] = 0.0
-        comparison["profit_factor"] = 0.0
 
     root = _mutate_evidence(tmp_path, report=mutate)
     parsed = _parse(root)
@@ -473,15 +452,6 @@ def test_t0_requires_caller_trusted_provenance_hash() -> None:
         )
 
 
-def test_t0_requires_same_stem_provenance(tmp_path: Path) -> None:
-    root = _copy_evidence(tmp_path)
-    (root / PROVENANCE_NAME).unlink()
-    with pytest.raises(ArtifactImportError, match="provenance.*missing"):
-        parse_backtest_artifact(
-            root, ARCHIVE_NAME, STRATEGY, "2026.7", PROVENANCE_SHA256
-        )
-
-
 def test_t0_rejects_extra_zip_member(tmp_path: Path) -> None:
     root = _copy_evidence(tmp_path)
     with zipfile.ZipFile(root / ARCHIVE_NAME, "a") as archive:
@@ -490,11 +460,59 @@ def test_t0_rejects_extra_zip_member(tmp_path: Path) -> None:
         _parse(root)
 
 
-def test_t0_rejects_invalid_zip(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("target", "payload", "message"),
+    [
+        (META_NAME, None, "metadata.*missing"),
+        (PROVENANCE_NAME, None, "provenance.*missing"),
+        (ARCHIVE_NAME, b"not-a-zip", "invalid ZIP"),
+        (META_NAME, b"{", "invalid UTF-8 JSON"),
+    ],
+)
+def test_t0_requires_valid_same_stem_evidence(
+    tmp_path: Path, target: str, payload: Optional[bytes], message: str
+) -> None:
     root = _copy_evidence(tmp_path)
-    (root / ARCHIVE_NAME).write_bytes(b"not-a-zip")
-    with pytest.raises(ArtifactImportError, match="invalid ZIP"):
-        _parse(root)
+    path = root / target
+    if payload is None:
+        path.unlink()
+    else:
+        path.write_bytes(payload)
+    with pytest.raises(ArtifactImportError, match=message):
+        parse_backtest_artifact(
+            root, ARCHIVE_NAME, STRATEGY, "2026.7", PROVENANCE_SHA256
+        )
+
+
+@pytest.mark.parametrize(
+    ("compression", "large_report", "message"),
+    [
+        (zipfile.ZIP_DEFLATED, True, "compression ratio"),
+        (zipfile.ZIP_BZIP2, False, "unsupported compression"),
+    ],
+)
+def test_t0_rejects_unsupported_or_unsafe_zip_compression(
+    tmp_path: Path, compression: int, large_report: bool, message: str
+) -> None:
+    members = _fixture_members()
+    if large_report:
+        members[REPORT_MEMBER] = b"0" * 100_000
+    archive_path = tmp_path / ARCHIVE_NAME
+    with zipfile.ZipFile(archive_path, "w", compression=compression) as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
+    with pytest.raises(ArtifactImportError, match=message):
+        _load_archive(archive_path.read_bytes(), ARCHIVE_STEM, STRATEGY)
+
+
+def test_t0_wraps_crc_failure_from_full_member_reads() -> None:
+    archive_bytes = bytearray((FIXTURE_ROOT / ARCHIVE_NAME).read_bytes())
+    report_bytes = _fixture_members()[REPORT_MEMBER]
+    offset = archive_bytes.find(report_bytes)
+    assert offset >= 0
+    archive_bytes[offset] ^= 1
+    with pytest.raises(ArtifactImportError, match="cannot be read safely"):
+        _load_archive(bytes(archive_bytes), ARCHIVE_STEM, STRATEGY)
 
 
 def test_t0_rejects_trade_fee_mismatch(tmp_path: Path) -> None:
@@ -509,32 +527,12 @@ def test_t0_rejects_trade_fee_mismatch(tmp_path: Path) -> None:
 def test_t0_rejects_zero_trade_report(tmp_path: Path) -> None:
     def mutate_report(report: Dict[str, Any]) -> None:
         result = report["strategy"][STRATEGY]
-        comparison = report["strategy_comparison"][0]
         result["trades"] = []
         for key in ("total_trades", "wins", "draws", "losses"):
             result[key] = 0
-        for key in ("trades", "wins", "draws", "losses"):
-            comparison[key] = 0
 
-    def mutate_provenance(provenance: Dict[str, Any]) -> None:
-        contract = provenance["contract"]
-        contract.update(report_total_trades=0, wins=0, draws=0, losses=0)
-
-    root = _mutate_evidence(
-        tmp_path, report=mutate_report, provenance=mutate_provenance
-    )
+    root = _mutate_evidence(tmp_path, report=mutate_report)
     with pytest.raises(ArtifactImportError, match="zero-trade"):
-        _parse(root)
-
-
-def test_t0_wraps_oversized_metadata_epoch(tmp_path: Path) -> None:
-    root = _mutate_evidence(
-        tmp_path,
-        metadata=lambda value: value[STRATEGY].update(
-            backtest_start_ts=253402300800
-        ),
-    )
-    with pytest.raises(ArtifactImportError, match="supported epoch range"):
         _parse(root)
 
 
@@ -567,9 +565,7 @@ def test_t0_rejects_integer_before_sqlite_overflow(tmp_path: Path) -> None:
 
 def test_t0_rejects_percentage_overflow(tmp_path: Path) -> None:
     def mutate_report(report: Dict[str, Any]) -> None:
-        result = report["strategy"][STRATEGY]
-        result["profit_total"] = 1e308
-        report["strategy_comparison"][0]["profit_total"] = 1e308
+        report["strategy"][STRATEGY]["profit_total"] = 1e308
 
     root = _mutate_evidence(tmp_path, report=mutate_report)
     with pytest.raises(ArtifactImportError, match="overflows percentage"):
@@ -602,23 +598,20 @@ def test_t2_imports_into_exact_existing_execution(tmp_path: Path) -> None:
             "SELECT * FROM backtest_executions WHERE id = 'execution-DEVELOPMENT'"
         ).fetchone()
     assert run["freqtrade_version"] == "2026.7"
-    assert execution["status"] == "SUCCEEDED"
-    assert execution["result_archive_path"] == str(parsed.archive_path)
-    assert execution["total_trades"] == 11
-    assert execution["profit_pct"] == pytest.approx(parsed.profit_pct)
-    assert execution["max_drawdown_pct"] == pytest.approx(parsed.max_drawdown_pct)
-    assert execution["win_rate"] == pytest.approx(parsed.win_rate)
-    assert execution["profit_factor"] == pytest.approx(parsed.profit_factor)
-    assert execution["sharpe"] == pytest.approx(parsed.sharpe)
-    assert execution["sortino"] == pytest.approx(parsed.sortino)
-    assert execution["calmar"] == pytest.approx(parsed.calmar)
-    assert execution["long_profit_pct"] == pytest.approx(parsed.long_profit_pct)
-    assert execution["short_profit_pct"] == pytest.approx(parsed.short_profit_pct)
-    assert execution["return_code"] is None
-    assert execution["stdout_path"] is None
-    assert execution["stderr_path"] is None
-    assert execution["finished_at"] is None
-    assert execution["scenario_passed"] is None
+    assert (
+        execution["status"], execution["result_archive_path"], execution["total_trades"]
+    ) == ("SUCCEEDED", str(parsed.archive_path), 11)
+    assert tuple(execution[key] for key in (
+        "profit_pct", "max_drawdown_pct", "win_rate", "profit_factor", "sharpe",
+        "sortino", "calmar", "long_profit_pct", "short_profit_pct",
+    )) == pytest.approx((
+        parsed.profit_pct, parsed.max_drawdown_pct, parsed.win_rate,
+        parsed.profit_factor, parsed.sharpe, parsed.sortino, parsed.calmar,
+        parsed.long_profit_pct, parsed.short_profit_pct,
+    ))
+    assert all(execution[key] is None for key in (
+        "return_code", "stdout_path", "stderr_path", "finished_at", "scenario_passed",
+    ))
     metrics = json.loads(execution["metrics_json"])
     assert metrics["artifact"]["strategy_sha256"] == STRATEGY_SHA256
     assert metrics["artifact"]["provenance_sha256"] == PROVENANCE_SHA256
@@ -992,21 +985,6 @@ def test_t1_cli_timerange_mismatch_is_exit_2_without_traceback(tmp_path: Path) -
     result = _run_cli(db_path)
     _assert_cli_failure(result)
     assert "timerange" in result.stderr
-    assert _snapshot(db_path) == before
-
-
-def test_t1_cli_oversized_epoch_is_exit_2_without_traceback(tmp_path: Path) -> None:
-    root = _mutate_evidence(
-        tmp_path,
-        metadata=lambda value: value[STRATEGY].update(
-            backtest_start_ts=253402300800
-        ),
-    )
-    db_path = _seed_database(tmp_path)
-    before = _snapshot(db_path)
-    result = _run_cli(db_path, root=root)
-    _assert_cli_failure(result)
-    assert "supported epoch range" in result.stderr
     assert _snapshot(db_path) == before
 
 
