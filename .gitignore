@@ -1,0 +1,26 @@
+.DS_Store
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Runtime data and generated evidence
+workspace/
+artifacts/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+*.out
