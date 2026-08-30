@@ -141,6 +141,7 @@ schema-v1 database:
 ```bash
 python3 scripts/serve_strategy_library.py \
   --database /path/to/lab.sqlite \
+  --artifact-root /path/to/controlled/backtest-artifacts \
   --port 8765
 ```
 
@@ -153,6 +154,14 @@ the main database or business records. SQLite may still create or manage its
 normal `-wal`/`-shm` sidecar files when the database uses WAL mode, so its
 directory must remain writable; this UI does not claim filesystem-level
 immutability.
+
+`--artifact-root` is the only directory from which evidence ZIP files may be
+downloaded. It may be omitted when only the list and detail views are needed;
+downloads then remain visibly unavailable. When configured, the server holds a
+descriptor for that exact directory, opens each path component without
+following symlinks, requires an ordinary `.zip` no larger than 4 MiB, and
+verifies both ZIP structure and the imported `archive_sha256`. It never returns
+the stored host path or derives the download filename from it.
 
 Every card is scoped to one Research Profile. A unique default or the only
 Profile is selected automatically. When several Profiles exist without a
@@ -171,6 +180,15 @@ The page shows only Holdout return/drawdown/PF/trades, Development return,
 Stress return, and completed/passed counts. Passed means
 `status=COMPLETED AND verdict=PASSED`; `NULL` is never displayed as a numeric
 zero. Freqtrade's `profit_factor=0.0` with zero losses is labeled “无亏损样本 / 不可直接解释” instead of ordinary PF `0.00`.
+
+The detail link carries the exact `profile_id`, `candidate_id`, and
+`research_run_id` represented by the card. The detail page never silently
+switches to a newer Run: it reads only that Run's fixed Development, Holdout,
+and Holdout Stress slots, marks missing slots and metrics as `UNKNOWN`, and
+shows newer or failed/interrupted Runs separately in history. Expanded metrics
+are limited to the typed database columns plus explicit wins/draws/losses from
+`metrics_json`; it does not expose commands, stdout/stderr, runtime directories,
+or database artifact paths.
 
 An active Release badge means only that the displayed summary Run has an
 unarchived Release. Neither that badge nor a completed backtest summary proves
