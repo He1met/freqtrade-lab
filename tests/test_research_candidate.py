@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -14,10 +15,16 @@ import pytest
 import lab.research_candidate as research_candidate_module
 from lab.backtest_artifact import SUPPORTED_FREQTRADE_COMMIT
 from lab.database import get_connection, init_database
+from lab.frequi import configure_frequi
 from lab.research_candidate import (
     SUPPORTED_OFFICIAL_CORE,
     ResearchCandidateError,
     run_research_candidate,
+)
+from lab.strategy_library import (
+    load_execution_archive,
+    load_research_run_detail,
+    load_strategy_library,
 )
 
 
@@ -29,6 +36,11 @@ SCENARIO_FIXTURES = {
     "DEVELOPMENT": "backtest-result-2026-08-30_12-55-02",
     "HOLDOUT": "backtest-result-2026-08-30_06-43-00",
     "HOLDOUT_STRESS": "backtest-result-2026-08-30_06-43-22",
+}
+EXPECTED_OUTPUT_STEMS = {
+    "DEVELOPMENT": "backtest-result-development-01",
+    "HOLDOUT": "backtest-result-holdout-02",
+    "HOLDOUT_STRESS": "backtest-result-holdout-stress-03",
 }
 TABLES = (
     "research_profiles",
@@ -306,7 +318,9 @@ def _counts(database: Path) -> Dict[str, int]:
         return {table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] for table in TABLES}
 
 
-def test_t1_fake_subprocess_produces_imports_and_preserves_null_judge(tmp_path: Path) -> None:
+def test_t0_t1_fake_producer_reaches_existing_read_only_consumers(
+    tmp_path: Path,
+) -> None:
     inputs = _inputs(tmp_path)
     database = init_database(tmp_path / "lab.sqlite")
     fake = FakeFreqtrade()
@@ -332,17 +346,133 @@ def test_t1_fake_subprocess_produces_imports_and_preserves_null_judge(tmp_path: 
     assert len({row["research_run_id"] for row in rows}) == 1
     assert [row["status"] for row in rows] == ["SUCCEEDED"] * 3
     assert all(row["scenario_passed"] is None and row["return_code"] is None for row in rows)
+
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    manifest_artifacts = {
+        artifact["scenario"]: artifact for artifact in manifest["artifacts"]
+    }
+    assert {
+        artifact.scenario: Path(artifact.archive).stem for artifact in result.artifacts
+    } == EXPECTED_OUTPUT_STEMS
+    assert len(set(EXPECTED_OUTPUT_STEMS.values())) == 3
+    for artifact in result.artifacts:
+        stem = EXPECTED_OUTPUT_STEMS[artifact.scenario]
+        archive = result.bundle_root / f"{stem}.zip"
+        metadata = result.bundle_root / f"{stem}.meta.json"
+        provenance_path = result.bundle_root / f"{stem}.provenance.json"
+        provenance_bytes = provenance_path.read_bytes()
+        provenance = json.loads(provenance_bytes)
+        expected_members = {
+            f"{stem}.json",
+            f"{stem}_config.json",
+            f"{stem}_StrategyTestV3Futures.py",
+        }
+
+        assert manifest_artifacts[artifact.scenario] == {
+            "scenario": artifact.scenario,
+            "archive": archive.name,
+            "provenance_sha256": _sha256(provenance_bytes),
+        }
+        assert artifact.archive == archive.name
+        assert artifact.archive_sha256 == _sha256(archive.read_bytes())
+        assert artifact.provenance_sha256 == _sha256(provenance_bytes)
+        assert provenance["artifact"]["archive"] == archive.name
+        assert provenance["artifact"]["archive_sha256"] == _sha256(
+            archive.read_bytes()
+        )
+        assert provenance["artifact"]["metadata"] == metadata.name
+        assert provenance["artifact"]["metadata_sha256"] == _sha256(
+            metadata.read_bytes()
+        )
+        with zipfile.ZipFile(archive) as unit:
+            assert set(unit.namelist()) == expected_members
+            assert provenance["artifact"]["members"] == {
+                name: _sha256(unit.read(name)) for name in expected_members
+            }
+
     for path in result.bundle_root.iterdir():
         data = path.read_bytes()
         assert str(tmp_path).encode() not in data
         assert b"/private/tmp/" not in data
     provenance = json.loads(
-        (result.bundle_root / "backtest-result-development.provenance.json").read_text()
+        (
+            result.bundle_root
+            / "backtest-result-development-01.provenance.json"
+        ).read_text()
     )
     assert "adversarial strategy code" in provenance["generation"]["candidate_code_trust"]
     receipts = provenance["generation"]["implementation_receipts"]
     assert set(receipts) == {"producer", "runner"}
     assert all(len(receipt["sha256"]) == 64 for receipt in receipts.values())
+
+    library = load_strategy_library(database)
+    assert len(library["strategies"]) == 1
+    assert (
+        library["strategies"][0]["latest_summary"]["research_run_id"]
+        == result.imported.research_run_id
+    )
+
+    results_root = tmp_path / "frequi-results"
+    results_root.mkdir()
+    for stem in EXPECTED_OUTPUT_STEMS.values():
+        shutil.copyfile(
+            result.bundle_root / f"{stem}.zip",
+            results_root / f"{stem}.zip",
+        )
+        shutil.copyfile(
+            result.bundle_root / f"{stem}.meta.json",
+            results_root / f"{stem}.meta.json",
+        )
+    frequi_config = configure_frequi(
+        "http://127.0.0.1:8080",
+        results_root,
+        artifact_root=result.bundle_root,
+    )
+    frequi_probe = {
+        "available": True,
+        "version": "3.1.1",
+        "url": "http://127.0.0.1:8080/backtest",
+    }
+    root_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(
+        os, "O_NOFOLLOW", 0
+    )
+    artifact_root_fd = os.open(result.bundle_root, root_flags)
+    try:
+        detail = load_research_run_detail(
+            database,
+            result.imported.profile_id,
+            result.imported.candidate_id,
+            result.imported.research_run_id,
+            artifact_root=result.bundle_root.resolve(),
+            artifact_root_fd=artifact_root_fd,
+            frequi_config=frequi_config,
+            frequi_probe=frequi_probe,
+        )
+        assert (
+            detail["selected_run"]["research_run_id"]
+            == result.imported.research_run_id
+        )
+        assert detail["selected_run"]["verdict"] is None
+        assert [scenario["scenario"] for scenario in detail["scenarios"]] == list(
+            EXPECTED_OUTPUT_STEMS
+        )
+        for scenario in detail["scenarios"]:
+            assert scenario["scenario_passed"] is None
+            assert scenario["download"]["available"] is True
+            assert scenario["frequi"]["available"] is True
+            assert scenario["frequi"]["local_copy_ready"] is True
+            assert scenario["frequi"]["history_visibility"] is None
+            stem = EXPECTED_OUTPUT_STEMS[scenario["scenario"]]
+            assert scenario["frequi"]["artifact_filename"] == f"{stem}.zip"
+            archive_bytes, _ = load_execution_archive(
+                database,
+                scenario["execution_id"],
+                artifact_root=result.bundle_root.resolve(),
+                artifact_root_fd=artifact_root_fd,
+            )
+            assert archive_bytes == (result.bundle_root / f"{stem}.zip").read_bytes()
+    finally:
+        os.close(artifact_root_fd)
 
 
 def test_t1_mid_scenario_failure_publishes_nothing_and_writes_no_rows(tmp_path: Path) -> None:

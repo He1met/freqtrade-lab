@@ -66,6 +66,11 @@ or initialized. With it, the fully validated bundle is imported as one
 fields remain `NULL`. Without it, the command stops after atomically publishing
 the manifest, three ZIP/meta/provenance units, and their hashes.
 
+The three final archive stems are `backtest-result-development-01`,
+`backtest-result-holdout-02`, and `backtest-result-holdout-stress-03`. Their
+numeric suffixes make the ZIP/meta pairs discoverable by the fixed Freqtrade
+`2026.7` Backtest history scanner while keeping the three scenarios distinct.
+
 The real runner is fixed to a deny-by-default `/usr/bin/sandbox-exec` profile.
 Each scenario receives separate owned `HOME`, `TMPDIR`, and empty `user_data`
 directories inside the temporary work root; no external user-data directory is

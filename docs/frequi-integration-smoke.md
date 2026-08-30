@@ -91,3 +91,36 @@ timeframe = 5m
 [历史文件扫描](https://github.com/freqtrade/freqtrade/blob/2026.7/freqtrade/data/btanalysis/bt_fileutils.py)
 及 FreqUI `3.1.1` 的
 [Backtest history store](https://github.com/freqtrade/frequi/blob/3.1.1/src/stores/ftbot.ts)。
+
+## Issue #11 producer 组合验收
+
+Issue #11 在同一固定 Freqtrade tag/commit 上重新真实运行 producer，并把同批
+三场景 ZIP/meta 普通文件复制到全新、独立的 FreqUI results 目录。producer
+manifest SHA-256 为
+`03160b8a8a6be6f68b84248f787d6c968690af40c043af2fcb7bddb4136d0e45`：
+
+| 场景 | FreqUI 可发现文件 | Trades | ZIP SHA-256 |
+| --- | --- | ---: | --- |
+| Development | `backtest-result-development-01.zip` | 11 | `88b517d30098bd37e3557ed96be7f130a6eacf07b109a5ef9774c1ab1398d047` |
+| Holdout | `backtest-result-holdout-02.zip` | 9 | `85728258114ae0300d1448e1a84e02d5be1d8317e785798ee2959138ed89c938` |
+| Holdout Stress | `backtest-result-holdout-stress-03.zip` | 9 | `451e8158eb6be6920be18b1cca26dbd662eb5e7fc8338fd794238d4ca4c65ec5` |
+
+组合验收结果：
+
+- schema-v1 仍恰好六表；三执行共享 ResearchRun
+  `4f7a346b-5c98-4d03-bf7c-e78a4955164b`，状态为 `COMPLETED`，
+  `verdict` 与三个 `scenario_passed` 均为 `NULL`；
+- Lab 的 list/detail/download 与现有 FreqUI Gate 均使用这同一批产物；三场景
+  `download_available=true`、`frequi_available=true`、
+  `local_copy_ready=true`，`history_visibility` 继续诚实保持 `NULL`；
+- Lab 下载的 Development ZIP 与冻结 Artifact SHA-256 相同；
+- 固定 Freqtrade history API 精确返回上述三条，Development result 返回
+  `status=ended`、`running=false`、一条 comparison；
+- 浏览器中的 Lab 页面显示同一 Run `3/3` 成功及三个普通 FreqUI 入口；真实
+  FreqUI **Load Results** 表显示三条新 stem，Development 可加载并在
+  **Analyze result** 中读取 11 笔交易；
+- producer 与 Webserver 均在隔离临时根运行；Webserver 只监听 loopback，
+  临时认证未写入本 receipt 或仓库。验收结束后 Lab 与 FreqUI 监听端口均已关闭。
+
+该 receipt 只证明 producer、Lab 与固定 FreqUI 的组合兼容性，不证明策略
+盈利、Judge 通过、Release 资格、可交易性或资金安全。
