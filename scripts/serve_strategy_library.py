@@ -36,6 +36,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         type=Path,
         help="fixed directory allowed to serve validated execution ZIP files",
     )
+    parser.add_argument(
+        "--frequi-base-url",
+        help="optional FreqUI origin, exactly http://127.0.0.1:<port>",
+    )
+    parser.add_argument(
+        "--frequi-results-root",
+        type=Path,
+        help="separate disposable FreqUI user_data/backtest_results directory",
+    )
     parser.add_argument("--port", type=_port, default=DEFAULT_PORT)
     return parser.parse_args(argv)
 
@@ -46,6 +55,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.database,
         args.port,
         artifact_root=args.artifact_root,
+        frequi_base_url=args.frequi_base_url,
+        frequi_results_root=args.frequi_results_root,
     )
     host, port = server.server_address[:2]
     print(f"Strategy library: http://{host}:{port}/", flush=True)

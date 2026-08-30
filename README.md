@@ -194,6 +194,49 @@ An active Release badge means only that the displayed summary Run has an
 unarchived Release. Neither that badge nor a completed backtest summary proves
 profitability, trading suitability, or fund safety.
 
+### Optional FreqUI entry
+
+The detail page can optionally open a real local FreqUI general Backtest page.
+Start Freqtrade `2026.7` in `webserver` mode with FreqUI installed, then start
+the strategy library with both optional settings:
+
+```bash
+python3 scripts/serve_strategy_library.py \
+  --database /path/to/lab.sqlite \
+  --artifact-root /path/to/frozen-artifacts \
+  --frequi-base-url http://127.0.0.1:8080 \
+  --frequi-results-root /path/to/disposable/user_data/backtest_results \
+  --port 8765
+```
+
+The two FreqUI flags are a pair. The URL accepts only the exact numeric
+loopback origin `http://127.0.0.1:<port>`. The results directory must already
+exist and must be separate from, not above, and not below the frozen Artifact
+root. This matters because FreqUI can rename or delete history results. Never
+point FreqUI at the canonical/frozen evidence directory.
+
+The project deliberately has no synchronization service. For a result that you
+want to inspect, make a one-time ordinary-file copy of its native ZIP and the
+same-stem `.meta.json` directly into that Freqtrade instance's
+`user_data/backtest_results`. Do not use a symlink or hardlink, and do not copy
+the same-stem external JSON. The strategy library stays read-only and checks
+that both disposable copies match the imported SHA-256 evidence before it
+shows an active link.
+
+The link always opens only `<base>/backtest`. FreqUI `3.1.1` has no supported
+single-result deep link, so the detail page shows the exact filename and
+strategy and asks you to choose them manually under **Load Results**. The Lab
+does not read or store a FreqUI username, password, or token. Its daily Gate is
+limited to public loopback `ping`, installed UI version, the HTML entry page,
+and local copy identity; the authenticated history/result check is confined to
+the one-time sanitized integration smoke recorded in
+[`docs/frequi-integration-smoke.md`](docs/frequi-integration-smoke.md).
+
+With either flag missing, an unsafe directory, an unreachable Webserver, no
+installed UI, or a missing/mismatched ZIP/meta pair, startup or the scenario
+entry fails closed with a visible reason. The normal strategy library remains
+usable when both FreqUI flags are omitted.
+
 ## Run tests
 
 ```bash

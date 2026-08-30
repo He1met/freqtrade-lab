@@ -22,6 +22,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlsplit
 
+from lab.frequi import (
+    FreqUIConfig,
+    FreqUIConfigurationError,
+    configure_frequi,
+    no_execution_frequi,
+    probe_frequi,
+    scenario_frequi_status,
+    unconfigured_frequi,
+)
+
 
 SCHEMA_VERSION = 1
 LOOPBACK_HOST = "127.0.0.1"
@@ -698,6 +708,9 @@ def _scenario_model(
     scenario: str,
     artifact_root: Optional[Path],
     artifact_root_fd: Optional[int],
+    frequi_config: FreqUIConfig,
+    frequi_probe: Mapping[str, Any],
+    candidate_class_name: str,
 ) -> Dict[str, Any]:
     if row is None:
         return {
@@ -733,6 +746,7 @@ def _scenario_model(
                 "message": "此 Run 没有该场景 execution",
                 "url": None,
             },
+            "frequi": no_execution_frequi(frequi_probe),
         }
     counts = _metrics_counts(row["metrics_json"])
     profit_factor = _optional_finite_float(
@@ -747,6 +761,13 @@ def _scenario_model(
     scenario_passed = row["scenario_passed"]
     if scenario_passed not in (None, 0, 1):
         raise StrategyLibraryError("database returned invalid scenario_passed")
+    download = _download_model(
+        row["id"],
+        row["result_archive_path"],
+        row["metrics_json"],
+        artifact_root,
+        artifact_root_fd,
+    )
     return {
         "scenario": scenario,
         "execution_id": row["id"],
@@ -788,12 +809,14 @@ def _scenario_model(
         "losses": counts["losses"],
         "scenario_passed": scenario_passed,
         "error_message": row["error_message"],
-        "download": _download_model(
-            row["id"],
-            row["result_archive_path"],
-            row["metrics_json"],
-            artifact_root,
-            artifact_root_fd,
+        "download": download,
+        "frequi": scenario_frequi_status(
+            frequi_config,
+            frequi_probe,
+            raw_archive_path=row["result_archive_path"],
+            raw_metrics=row["metrics_json"],
+            candidate_class_name=candidate_class_name,
+            canonical_artifact_available=bool(download["available"]),
         ),
     }
 
@@ -838,8 +861,16 @@ def load_research_run_detail(
     *,
     artifact_root: Optional[Path] = None,
     artifact_root_fd: Optional[int] = None,
+    frequi_config: Optional[FreqUIConfig] = None,
+    frequi_probe: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Load one exact profile/candidate/run snapshot and its candidate history."""
+    selected_frequi_config = frequi_config or unconfigured_frequi()
+    selected_frequi_probe = dict(
+        frequi_probe
+        if frequi_probe is not None
+        else probe_frequi(selected_frequi_config)
+    )
     with closing(_open_read_only_database(database)) as connection:
         try:
             connection.execute("BEGIN")
@@ -903,6 +934,9 @@ def load_research_run_detail(
                     scenario,
                     artifact_root,
                     artifact_root_fd,
+                    selected_frequi_config,
+                    selected_frequi_probe,
+                    selected["class_name"],
                 )
                 for scenario in REQUIRED_SCENARIOS
             ]
@@ -962,6 +996,7 @@ def load_research_run_detail(
             "strategy_family": selected["strategy_family"],
         },
         "selected_run": selected_run,
+        "frequi_service": selected_frequi_probe,
         "scenarios": scenarios,
         "history": [
             _history_model(row, research_run_id) for row in history_rows
@@ -1323,6 +1358,16 @@ def _render_scenario_row(scenario: Mapping[str, Any]) -> str:
         )
     else:
         download_html = f'<span class="unavailable">{_escape(download["message"])}</span>'
+    frequi = scenario["frequi"]
+    if frequi["available"]:
+        frequi_html = (
+            f'<a target="_blank" rel="noopener noreferrer" href="{_escape(frequi["url"])}">'
+            "打开 FreqUI</a>"
+        )
+    else:
+        frequi_html = (
+            f'<span class="unavailable">FreqUI：{_escape(frequi["message"])}</span>'
+        )
     return (
         "<tr>"
         f'<th scope="row">{_escape(_scenario_name(scenario["scenario"]))}</th>'
@@ -1332,7 +1377,7 @@ def _render_scenario_row(scenario: Mapping[str, Any]) -> str:
         f'<td>{_escape(profit_factor)}</td>'
         f'<td>{_escape(_optional_integer(scenario["total_trades"]))}</td>'
         f'<td>{_escape(_scenario_passed_label(scenario["scenario_passed"]))}</td>'
-        f"<td>{download_html}</td>"
+        f'<td>{download_html}<br>{frequi_html}</td>'
         "</tr>"
     )
 
@@ -1392,10 +1437,33 @@ def _render_scenario_evidence(scenario: Mapping[str, Any]) -> str:
         if scenario["error_message"]
         else ""
     )
+    frequi = scenario["frequi"]
+    identity = ""
+    if frequi["filename"] or frequi["strategy"]:
+        identity = (
+            '<span class="frequi-identity">'
+            f'FreqUI filename：<code>{_escape(frequi["filename"] or "UNKNOWN")}</code>'
+            f' · Strategy：<code>{_escape(frequi["strategy"] or "UNKNOWN")}</code>'
+            "</span>"
+        )
+    if frequi["available"]:
+        frequi_html = (
+            '<div class="frequi-ready">'
+            f'<a target="_blank" rel="noopener noreferrer" href="{_escape(frequi["url"])}">'
+            "打开通用 FreqUI Backtest</a>"
+            f'<span>{_escape(frequi["message"])}；不会自动选中当前结果。</span>'
+            f"{identity}</div>"
+        )
+    else:
+        frequi_html = (
+            '<div class="frequi-unavailable">'
+            f'FreqUI：{_escape(frequi["message"])}'
+            f' <code>{_escape(frequi["reason"])}</code>{identity}</div>'
+        )
     return (
         '<details class="scenario-evidence">'
         f'<summary>{_escape(_scenario_name(scenario["scenario"]))} 扩展指标</summary>'
-        f'<div class="evidence-grid">{items}</div>{pf_note}{error}</details>'
+        f'<div class="evidence-grid">{items}</div>{frequi_html}{pf_note}{error}</details>'
     )
 
 
@@ -1473,6 +1541,10 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
     .evidence-item {{ padding:8px 9px; background:var(--soft); border-radius:6px; min-width:0; }}
     .evidence-item span {{ display:block; color:var(--muted); font-size:10px; }} .evidence-item strong {{ display:block;
       margin-top:3px; overflow-wrap:anywhere; }} .caveat,.error-note {{ margin:8px 0 0; color:#92400e; font-size:11px; }}
+    .frequi-ready,.frequi-unavailable {{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;
+      margin-top:10px; padding:9px 10px; border-radius:6px; font-size:11px; }}
+    .frequi-ready {{ background:#eff6ff; color:#1e3a8a; }} .frequi-unavailable {{ background:#fffbeb; color:#92400e; }}
+    .frequi-identity {{ overflow-wrap:anywhere; }}
     .selected {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:999px; background:#eff6ff;
       color:#1d4ed8; font-size:10px; }} footer {{ margin-top:24px; color:var(--muted); font-size:11px; text-align:center; }}
     @media (max-width:700px) {{ .shell {{ width:calc(100% - 20px); padding-top:18px; }} .heading {{ flex-direction:column; }}
@@ -1488,7 +1560,7 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
     <div class="meta"><span>三场景执行</span><strong>{selected_run["succeeded_count"]}/3 成功</strong></div>
     <div class="meta"><span>完成时间</span><strong>{_escape(selected_run["finished_at"] or "UNKNOWN")}</strong></div>
   </div>
-  <div class="boundary">本页固定到链接中的同一个 ResearchRun；SUCCEEDED 只表示 Artifact 已验证落库，不代表 Judge 通过或策略盈利。</div>
+  <div class="boundary">本页固定到链接中的同一个 ResearchRun；SUCCEEDED 只表示 Artifact 已验证落库，不代表 Judge 通过或策略盈利。FreqUI 仅打开通用 Backtest 页，需按页面提示手动选择；它读取的是独立可丢弃副本，不是冻结 Artifact 根目录。</div>
   {run_error}
   <h2>三场景结果</h2><div class="table-wrap"><table><thead><tr><th>场景</th><th>状态</th><th>收益</th>
     <th>最大回撤</th><th>PF</th><th>交易数</th><th>Scenario Judge</th><th>证据</th></tr></thead>
@@ -1568,6 +1640,7 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
     sys_version = ""
     database_path: Path
     artifact_root: Optional[Path]
+    frequi_config: FreqUIConfig
 
     def _has_expected_host(self) -> bool:
         expected = f"{LOOPBACK_HOST}:{self.server.server_port}"
@@ -1659,6 +1732,7 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
                 return
             if request.path in ("/strategy", "/api/strategy"):
                 identifiers = _detail_query(request.query)
+                frequi_probe = probe_frequi(self.frequi_config)
                 model = load_research_run_detail(
                     self.database_path,
                     identifiers["profile_id"],
@@ -1666,6 +1740,8 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
                     identifiers["research_run_id"],
                     artifact_root=self.artifact_root,
                     artifact_root_fd=getattr(self.server, "artifact_root_fd", None),
+                    frequi_config=self.frequi_config,
+                    frequi_probe=frequi_probe,
                 )
                 if api:
                     body = _json_bytes(model)
@@ -1779,12 +1855,23 @@ def create_strategy_library_server(
     database: PathLike,
     port: int = DEFAULT_PORT,
     artifact_root: Optional[PathLike] = None,
+    *,
+    frequi_base_url: Optional[str] = None,
+    frequi_results_root: Optional[PathLike] = None,
 ) -> HTTPServer:
     """Validate first, then create one loopback-only single-process server."""
     if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
         raise StrategyLibraryError("port must be an integer from 0 to 65535")
     path = validate_strategy_library_database(database)
     resolved_artifact_root = _resolve_artifact_root(artifact_root)
+    try:
+        resolved_frequi_config = configure_frequi(
+            frequi_base_url,
+            frequi_results_root,
+            artifact_root=resolved_artifact_root,
+        )
+    except FreqUIConfigurationError as exc:
+        raise StrategyLibraryError(f"unsafe FreqUI configuration: {exc}") from exc
     artifact_root_fd = (
         _open_artifact_root_fd(resolved_artifact_root)
         if resolved_artifact_root is not None
@@ -1794,6 +1881,7 @@ def create_strategy_library_server(
     class BoundHandler(StrategyLibraryRequestHandler):
         database_path = path
         artifact_root = resolved_artifact_root
+        frequi_config = resolved_frequi_config
 
     try:
         server = StrategyLibraryHTTPServer((LOOPBACK_HOST, port), BoundHandler)
