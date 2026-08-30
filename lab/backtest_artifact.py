@@ -79,6 +79,7 @@ class ParsedBacktestArtifact:
     report_member: str
     config_member: str
     strategy_member: str
+    strategy_source: str
     archive_sha256: str
     metadata_sha256: str
     provenance_sha256: str
@@ -139,6 +140,24 @@ class ParsedBacktestArtifact:
             separators=(",", ":"),
             sort_keys=True,
         )
+
+
+def execution_result_values(parsed: ParsedBacktestArtifact) -> Dict[str, Any]:
+    """Return the result fields shared by execution update and bundle insert."""
+    return {
+        "result_archive_path": str(parsed.archive_path),
+        "total_trades": parsed.total_trades,
+        "profit_pct": parsed.profit_pct,
+        "max_drawdown_pct": parsed.max_drawdown_pct,
+        "win_rate": parsed.win_rate,
+        "profit_factor": parsed.profit_factor,
+        "sharpe": parsed.sharpe,
+        "sortino": parsed.sortino,
+        "calmar": parsed.calmar,
+        "long_profit_pct": parsed.long_profit_pct,
+        "short_profit_pct": parsed.short_profit_pct,
+        "metrics_json": parsed.metrics_json(),
+    }
 
 
 def _sha256(data: bytes) -> str:
@@ -814,6 +833,7 @@ def parse_backtest_artifact(
         report_member=report_member,
         config_member=config_member,
         strategy_member=strategy_member,
+        strategy_source=strategy_text,
         archive_sha256=_sha256(archive_bytes),
         metadata_sha256=_sha256(metadata_bytes),
         provenance_sha256=actual_provenance_sha256,
@@ -1140,40 +1160,28 @@ def import_backtest_execution(
                 if version_update.rowcount != 1:
                     raise ArtifactImportError("research run version changed during import")
 
+            result_values = execution_result_values(parsed)
             execution_update = connection.execute(
                 """
                 UPDATE backtest_executions
                 SET status = 'SUCCEEDED',
-                    result_archive_path = ?,
-                    total_trades = ?,
-                    profit_pct = ?,
-                    max_drawdown_pct = ?,
-                    win_rate = ?,
-                    profit_factor = ?,
-                    sharpe = ?,
-                    sortino = ?,
-                    calmar = ?,
-                    long_profit_pct = ?,
-                    short_profit_pct = ?,
-                    metrics_json = ?,
+                    result_archive_path = :result_archive_path,
+                    total_trades = :total_trades,
+                    profit_pct = :profit_pct,
+                    max_drawdown_pct = :max_drawdown_pct,
+                    win_rate = :win_rate,
+                    profit_factor = :profit_factor,
+                    sharpe = :sharpe,
+                    sortino = :sortino,
+                    calmar = :calmar,
+                    long_profit_pct = :long_profit_pct,
+                    short_profit_pct = :short_profit_pct,
+                    metrics_json = :metrics_json,
                     error_message = NULL
-                WHERE id = ? AND status = 'PENDING' AND result_archive_path IS NULL
+                WHERE id = :execution_id
+                  AND status = 'PENDING' AND result_archive_path IS NULL
                 """,
-                (
-                    str(parsed.archive_path),
-                    parsed.total_trades,
-                    parsed.profit_pct,
-                    parsed.max_drawdown_pct,
-                    parsed.win_rate,
-                    parsed.profit_factor,
-                    parsed.sharpe,
-                    parsed.sortino,
-                    parsed.calmar,
-                    parsed.long_profit_pct,
-                    parsed.short_profit_pct,
-                    parsed.metrics_json(),
-                    row["id"],
-                ),
+                {**result_values, "execution_id": row["id"]},
             )
             if execution_update.rowcount != 1:
                 raise ArtifactImportError("execution changed during import")

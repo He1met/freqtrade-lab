@@ -1,0 +1,43 @@
+{
+  "schema": "freqtrade-lab-research-bundle-v1",
+  "freqtrade_version": "2026.7",
+  "profile": {
+    "name": "OKX XRP three-scenario fixture gate",
+    "history_start_date": "2026-08-01",
+    "smoke_days": 3,
+    "holdout_days": 3,
+    "stress_fee_multiplier": 2.0,
+    "max_drawdown_pct": 25.0,
+    "min_development_trades": 0,
+    "min_holdout_trades": 0,
+    "min_profit_factor": 0.0
+  },
+  "candidate": {
+    "display_name": "OKX fixture gate - StrategyTestV3Futures",
+    "class_name": "StrategyTestV3Futures",
+    "strategy_family": "FIXTURE_GATE",
+    "idea": "Exercise the real three-scenario artifact-to-database path only.",
+    "expected_failure_mode": "Internal test strategy; results are not evidence of profitability or trading suitability.",
+    "metadata": {
+      "economic_evidence": "NOT_EVALUATED",
+      "gate_only": true
+    }
+  },
+  "artifacts": [
+    {
+      "scenario": "DEVELOPMENT",
+      "archive": "backtest-result-2026-08-30_12-55-02.zip",
+      "provenance_sha256": "132b65ebdf236940a2da645ec1ef26c1b23aedc5287416ad021b725da0648d3b"
+    },
+    {
+      "scenario": "HOLDOUT",
+      "archive": "backtest-result-2026-08-30_06-43-00.zip",
+      "provenance_sha256": "df61ed5eadb4768d2992577464a8517cab92a90cb17df998174787b3a2f51bfa"
+    },
+    {
+      "scenario": "HOLDOUT_STRESS",
+      "archive": "backtest-result-2026-08-30_06-43-22.zip",
+      "provenance_sha256": "661cf9ca15cefe85c97a3be4609310175d698a5552b4afb8c8c4a6ea91347d17"
+    }
+  ]
+}

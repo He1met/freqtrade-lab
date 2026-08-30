@@ -2,9 +2,10 @@
 
 A small, local-first research workbench for recording Freqtrade strategy lineage, research runs, backtest evidence, and releases.
 
-The repository provides the SQLite schema v1 foundation and one fail-closed
-Freqtrade 2026.7 artifact importer. It does not run Freqtrade, expose a web UI,
-or prove that any strategy is profitable.
+The repository provides the SQLite schema v1 foundation, a fail-closed single
+artifact importer, and a narrow three-scenario bundle importer for Freqtrade
+2026.7. It does not run Freqtrade, expose a web UI, or prove that any strategy
+is profitable.
 
 ## Scope
 
@@ -90,6 +91,48 @@ re-run the one-time acquisition, offline-generation, sanitization, or license
 audit recorded in the fixture evidence, and the receipt is not a digital
 signature or independent proof of market truth.
 
+## Import one complete research bundle
+
+Issue #6 adds the missing local producer for a complete read-only research
+summary. A strict manifest references exactly one Development, one Holdout, and
+one Holdout Stress artifact from the same controlled directory:
+
+```bash
+python3 scripts/import_research_bundle.py \
+  --database /path/to/initialized-lab.sqlite \
+  --bundle-root /path/to/controlled-three-scenario-bundle \
+  --manifest research-bundle-v1.json
+```
+
+The command validates the manifest, all three artifacts, and their shared
+strategy/profile contract before opening a database transaction. It then
+creates or exactly reuses the named ResearchProfile and source-identical
+Candidate, creates one ResearchRun and three `SUCCEEDED` executions, and only
+then finalizes the run as `COMPLETED`. Any validation, collision, or database
+failure rolls the transaction back. It does not initialize a missing database.
+Running the same valid bundle again deliberately records a new ResearchRun and
+three new executions while reusing the exact Profile and Candidate; the command
+is not an idempotent synchronization tool.
+
+`COMPLETED` means that the three artifact identities were assembled, not that
+the strategy passed a Judge. The ResearchRun `verdict` and each execution's
+`scenario_passed`, runtime return code, stdout/stderr paths, and execution
+timestamps remain `NULL`. The ingestion timestamp on the GenerationRun and
+ResearchRun records this local assembly lifecycle, not when Freqtrade executed
+the backtests. Because the frozen ZIP is the only retained config/source
+container, `config_path` and `strategy_path` are explicit `zip+file://...!/`
+member locators rather than fictional standalone paths. `command_json` is `[]`
+because the artifact does not attest a replayable command line.
+
+The tracked technical Gate manifest is
+[`tests/fixtures/freqtrade_2026_7/research-bundle-v1.json`](tests/fixtures/freqtrade_2026_7/research-bundle-v1.json).
+Its public-data acquisition boundary, fixed version/commit, scenario mapping,
+fee assumptions, and exact artifact hashes are documented in
+[`BUNDLE_PROVENANCE.md`](tests/fixtures/freqtrade_2026_7/BUNDLE_PROVENANCE.md).
+`StrategyTestV3Futures` is an upstream internal test strategy; its fixture PnL
+is integration evidence only and must not be treated as economic validation or
+trading advice.
+
 ## Run tests
 
 ```bash
@@ -97,13 +140,17 @@ PYTHONDONTWRITEBYTECODE=1 uv run --with pytest \
   python -m pytest -q -p no:cacheprovider
 ```
 
-Tests use temporary databases. Do not use a real research database or commit generated SQLite files, logs, credentials, or backtest artifacts.
+Tests use temporary databases. Do not use a real research database or commit
+generated SQLite files, logs, credentials, or runtime backtest artifacts. Only
+small, sanitized fixtures with frozen provenance and reviewed hashes belong in
+the repository.
 
 ## Delivery order
 
 Development proceeds in small, dependent slices:
 
 1. Parse one verified, sanitized Freqtrade backtest artifact into the existing schema.
-2. Show the latest honest three-scenario summary in a local strategy library.
-3. Add strategy details, research history, and restricted artifact download.
-4. Optionally open the general FreqUI backtest page when a real loopback instance is available.
+2. Assemble one real, complete three-scenario ResearchRun atomically.
+3. Show the latest honest three-scenario summary in a local strategy library.
+4. Add strategy details, research history, and restricted artifact download.
+5. Optionally open the general FreqUI backtest page when a real loopback instance is available.
