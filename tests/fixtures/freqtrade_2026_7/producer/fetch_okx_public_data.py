@@ -62,6 +62,9 @@ ALLOWED_PATHS = {
 }
 
 
+LocalCandidateInputs = tuple[str, bytes, bytes, str]
+
+
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -77,6 +80,31 @@ def canonical_bytes(value: object) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+def load_local_candidate_inputs(
+    strategy_file: Path | None, research_spec: Path | None
+) -> LocalCandidateInputs | None:
+    if strategy_file is None and research_spec is None:
+        return None
+    if strategy_file is None or research_spec is None:
+        raise RuntimeError(
+            "--strategy-file and --research-spec must be provided together"
+        )
+
+    try:
+        strategy_path = strategy_file.expanduser()
+        strategy_bytes = strategy_path.read_bytes()
+        spec_bytes = research_spec.expanduser().read_bytes()
+        spec_value = json.loads(spec_bytes)
+        candidate = spec_value["candidate"]
+        class_name = candidate["class_name"]
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise RuntimeError(f"local Candidate inputs cannot be read: {exc}") from exc
+    if not isinstance(class_name, str) or not class_name:
+        raise RuntimeError("research spec candidate.class_name must be a non-empty string")
+
+    return strategy_path.name, strategy_bytes, spec_bytes, class_name
 
 
 def request_receipt(exchange: ccxt.okx, label: str) -> dict[str, object]:
@@ -533,33 +561,63 @@ def file_record(path: Path, role: str, *, status: str | None = None) -> dict[str
 
 
 def write_local_producer_inputs(
-    root: Path, receipt_path: Path, runtime: dict[str, object]
+    root: Path,
+    receipt_path: Path,
+    runtime: dict[str, object],
+    local_candidate: LocalCandidateInputs | None = None,
 ) -> Path:
     """Create a self-contained local producer root without redistributing it."""
-    tracked_sources = {
-        "config.json": (FIXTURE_ROOT / "config.json", "sanitized_freqtrade_config"),
-        "research-spec.json": (
-            FIXTURE_ROOT / "research-spec.json",
-            "fixed_research_profile_and_candidate",
-        ),
-        "strategies/StrategyTestV3Futures.py": (
-            FIXTURE_ROOT / "strategies" / "StrategyTestV3Futures.py",
-            "gpl_upstream_test_strategy",
-        ),
-        "UPSTREAM_LICENSE.txt": (
-            FIXTURE_ROOT.parent / "UPSTREAM_LICENSE.txt",
-            "upstream_gpl_license",
-        ),
-        "fetch_okx_public_data.py": (
-            Path(__file__).resolve(strict=True),
-            "manual_public_data_acquisition_and_validation",
-        ),
-    }
+    if local_candidate is None:
+        strategy_relative = "strategies/StrategyTestV3Futures.py"
+        tracked_sources: dict[str, tuple[Path | bytes, str]] = {
+            "config.json": (
+                FIXTURE_ROOT / "config.json",
+                "sanitized_freqtrade_config",
+            ),
+            "research-spec.json": (
+                FIXTURE_ROOT / "research-spec.json",
+                "fixed_research_profile_and_candidate",
+            ),
+            strategy_relative: (
+                FIXTURE_ROOT / strategy_relative,
+                "gpl_upstream_test_strategy",
+            ),
+            "UPSTREAM_LICENSE.txt": (
+                FIXTURE_ROOT.parent / "UPSTREAM_LICENSE.txt",
+                "upstream_gpl_license",
+            ),
+        }
+    else:
+        strategy_name, strategy_bytes, research_spec_bytes, class_name = local_candidate
+        fixed_config = json.loads((FIXTURE_ROOT / "config.json").read_bytes())
+        fixed_config["strategy"] = class_name
+        strategy_relative = f"strategies/{strategy_name}"
+        tracked_sources = {
+            "config.json": (
+                canonical_bytes(fixed_config),
+                "fixed_okx_config_with_user_selected_candidate",
+            ),
+            "research-spec.json": (
+                research_spec_bytes,
+                "user_selected_local_research_spec",
+            ),
+            strategy_relative: (
+                strategy_bytes,
+                "user_selected_local_candidate_strategy",
+            ),
+        }
+    tracked_sources["fetch_okx_public_data.py"] = (
+        Path(__file__).resolve(strict=True),
+        "manual_public_data_acquisition_and_validation",
+    )
     files: dict[str, object] = {}
     for relative, (source, role) in tracked_sources.items():
         destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, destination)
+        if isinstance(source, bytes):
+            destination.write_bytes(source)
+        else:
+            shutil.copyfile(source, destination)
         files[relative] = file_record(destination, role)
     files[receipt_path.name] = file_record(receipt_path, "local_public_retrieval_receipt")
 
@@ -610,7 +668,7 @@ def write_local_producer_inputs(
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
             "config": "config.json",
-            "strategy": "strategies/StrategyTestV3Futures.py",
+            "strategy": strategy_relative,
             "development_timerange": "20260801-20260804",
             "holdout_timerange": "20260804-20260807",
             "timeframe": "5m",
@@ -636,7 +694,20 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="new output directory outside this repository",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--strategy-file",
+        type=Path,
+        help="reviewed local Candidate strategy source; requires --research-spec",
+    )
+    parser.add_argument(
+        "--research-spec",
+        type=Path,
+        help="local ResearchProfile/Candidate JSON; requires --strategy-file",
+    )
+    args = parser.parse_args()
+    if (args.strategy_file is None) != (args.research_spec is None):
+        parser.error("--strategy-file and --research-spec must be provided together")
+    return args
 
 
 def is_same_or_below_existing_directory(candidate_parent: Path, boundary: Path) -> bool:
@@ -654,6 +725,10 @@ def is_same_or_below_existing_directory(candidate_parent: Path, boundary: Path) 
 
 def main() -> None:
     args = parse_args()
+    local_candidate = load_local_candidate_inputs(
+        args.strategy_file,
+        args.research_spec,
+    )
     runtime = validate_runtime()
     root = args.output_root.expanduser().resolve()
     if is_same_or_below_existing_directory(root.parent, REPOSITORY_ROOT):
@@ -663,7 +738,9 @@ def main() -> None:
     root.mkdir(parents=False, exist_ok=False)
     try:
         receipt_path = acquire(root, runtime)
-        provenance_path = write_local_producer_inputs(root, receipt_path, runtime)
+        provenance_path = write_local_producer_inputs(
+            root, receipt_path, runtime, local_candidate
+        )
     except BaseException:
         shutil.rmtree(root)
         raise

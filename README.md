@@ -8,6 +8,55 @@ artifact importer, and a narrow three-scenario bundle importer for Freqtrade
 library. The producer can run one bounded Freqtrade research Candidate; that
 technical completion does not prove that any strategy is profitable.
 
+## Quickstart: trusted local Candidate
+
+Use persistent absolute paths outside this Git repository. The Candidate source
+must be local code that you selected and reviewed; the acquisition command uses
+only the fixed public OKX data endpoints described below.
+
+```bash
+FTLAB_FREQTRADE_PYTHON=/absolute/path/to/freqtrade-2026.7-venv/bin/python
+FTLAB_FREQTRADE_SOURCE=/absolute/path/to/clean/freqtrade-2026.7
+FTLAB_INPUT_ROOT=/absolute/persistent/path/okx-xrp-input
+FTLAB_WORKSPACE=/absolute/persistent/path/freqtrade-lab-workspace
+FTLAB_CANDIDATE=/absolute/path/to/ReviewedCandidate.py
+FTLAB_RESEARCH_SPEC=/absolute/path/to/research-spec.json
+
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_FREQTRADE_PYTHON" \
+  tests/fixtures/freqtrade_2026_7/producer/fetch_okx_public_data.py \
+  --output-root "$FTLAB_INPUT_ROOT" \
+  --strategy-file "$FTLAB_CANDIDATE" \
+  --research-spec "$FTLAB_RESEARCH_SPEC"
+```
+
+The input root is new and local-only; do not commit it. Run the complete
+three-scenario producer and atomic database import with one research command:
+
+```bash
+python3 scripts/run_research_candidate.py \
+  --freqtrade-python "$FTLAB_FREQTRADE_PYTHON" \
+  --freqtrade-source "$FTLAB_FREQTRADE_SOURCE" \
+  --input-root "$FTLAB_INPUT_ROOT" \
+  --workspace "$FTLAB_WORKSPACE"
+```
+
+On success the producer prints this directly executable page command and the
+URL `http://127.0.0.1:8765/`; it does not start a background service:
+
+```bash
+python3 scripts/serve_strategy_library.py \
+  --database "$FTLAB_WORKSPACE/lab.sqlite" \
+  --artifact-root "$FTLAB_WORKSPACE/artifacts" \
+  --port 8765
+```
+
+The workspace contains the existing schema-v1 SQLite database and unique
+per-run directories below `artifacts/`. A missing database is initialized; an
+existing database is validated before Freqtrade runs, and an Artifact output is
+never replaced. `COMPLETED` and three `SUCCEEDED` executions mean only that the
+technical evidence loop completed; they are not a Judge or a profitability,
+tradability, or capital-safety claim.
+
 ## Scope
 
 Schema v1 contains exactly six business tables:
@@ -34,10 +83,11 @@ The default path is `workspace/lab.sqlite`; `workspace/` is local runtime data a
 ## Produce one real three-scenario research run
 
 `scripts/run_research_candidate.py` is the user-initiated producer entrypoint.
-It runs exactly Development, Holdout, and Holdout Stress in that order, using
-one fixed Candidate/Profile, a clean Freqtrade `2026.7` checkout at commit
-`52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`, and one explicitly supplied local
-data root. A complete invocation is:
+The preset form above resolves the selected Candidate and fixed data contract
+from the existing retained provenance and research spec. It runs exactly
+Development, Holdout, and Holdout Stress in that order, using a clean Freqtrade
+`2026.7` checkout at commit `52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`.
+The original fully explicit form remains available for compatibility:
 
 ```bash
 python3 scripts/run_research_candidate.py \
@@ -59,8 +109,8 @@ python3 scripts/run_research_candidate.py \
   --database /path/to/existing-schema-v1.sqlite
 ```
 
-`--output-dir` must not exist. `--database` is optional and is never inferred
-or initialized. With it, the fully validated bundle is imported as one
+In explicit mode, `--output-dir` must not exist and `--database` remains
+optional, never inferred, and never initialized. With it, the fully validated bundle is imported as one
 `COMPLETED` ResearchRun and three `SUCCEEDED` executions sharing one
 `research_run_id`; `verdict`, `scenario_passed`, and runtime return-code/log
 fields remain `NULL`. Without it, the command stops after atomically publishing
@@ -125,12 +175,17 @@ redistribution restriction in the
 on a claim that public endpoints are inaccessible.
 
 From an exact clean Freqtrade environment, a user may deliberately create a
-new local-only producer root outside the repository:
+new local-only producer root outside the repository. Supplying the optional
+Candidate pair selects reviewed local code instead of the tracked integration
+fixture, rewrites only the copied config strategy name, and binds all selected
+bytes into the existing retained provenance:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
   tests/fixtures/freqtrade_2026_7/producer/fetch_okx_public_data.py \
-  --output-root /path/to/new-local-only-producer-root
+  --output-root /path/to/new-local-only-producer-root \
+  --strategy-file /path/to/ReviewedCandidate.py \
+  --research-spec /path/to/research-spec.json
 ```
 
 This command is networked; tests exercise its safety functions without making

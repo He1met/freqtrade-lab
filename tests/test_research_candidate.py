@@ -13,8 +13,9 @@ from typing import Any, Dict, Mapping, Optional
 import pytest
 
 import lab.research_candidate as research_candidate_module
+import scripts.run_research_candidate as candidate_entry
 from lab.backtest_artifact import SUPPORTED_FREQTRADE_COMMIT
-from lab.database import get_connection, init_database
+from lab.database import get_connection, get_schema_version, init_database
 from lab.frequi import configure_frequi
 from lab.research_candidate import (
     SUPPORTED_OFFICIAL_CORE,
@@ -204,6 +205,54 @@ def _inputs(tmp_path: Path) -> Dict[str, Any]:
         "sandbox_exec": sandbox,
         "runner_script": runner,
     }
+
+
+def _preset_root(
+    tmp_path: Path,
+    *,
+    class_name: str = "StrategyTestV3Futures",
+) -> tuple[Dict[str, Any], Path]:
+    inputs = _inputs(tmp_path)
+    root = Path(inputs["data_provenance"]).parent
+    shutil.copytree(inputs["data_dir"], root / "data" / "okx")
+    shutil.copyfile(inputs["market_snapshot"], root / "market_snapshot.json")
+    shutil.copyfile(
+        inputs["leverage_tiers"], root / "isolated_tiers_snapshot.json"
+    )
+    if class_name == "StrategyTestV3Futures":
+        return inputs, root
+
+    old_strategy = root / "strategies" / "StrategyTestV3Futures.py"
+    strategy = root / "strategies" / f"{class_name}.py"
+    strategy.write_bytes(
+        old_strategy.read_bytes().replace(b"StrategyTestV3Futures", class_name.encode())
+    )
+    old_strategy.unlink()
+
+    config_path = root / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["strategy"] = class_name
+    config_path.write_bytes(_json_bytes(config))
+
+    spec_path = root / "research-spec.json"
+    research_spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    research_spec["candidate"]["class_name"] = class_name
+    research_spec["candidate"]["display_name"] = f"Preset test - {class_name}"
+    spec_path.write_bytes(_json_bytes(research_spec))
+
+    provenance_path = root / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    provenance["contract"]["strategy"] = f"strategies/{class_name}.py"
+    del provenance["files"]["strategies/StrategyTestV3Futures.py"]
+    provenance["files"].update(
+        {
+            "config.json": _record(config_path),
+            "research-spec.json": _record(spec_path),
+            f"strategies/{class_name}.py": _record(strategy),
+        }
+    )
+    provenance_path.write_bytes(_json_bytes(provenance))
+    return inputs, root
 
 
 class FakeFreqtrade:
@@ -852,3 +901,259 @@ def test_cli_invalid_input_is_exit_2_without_traceback(tmp_path: Path) -> None:
     assert result.returncode == 2
     assert "Research candidate failed:" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def _preset_argv(inputs: Mapping[str, Any], root: Path, workspace: Path) -> list[str]:
+    return [
+        "--freqtrade-python",
+        str(inputs["freqtrade_python"]),
+        "--freqtrade-source",
+        str(inputs["freqtrade_source"]),
+        "--input-root",
+        str(root),
+        "--workspace",
+        str(workspace),
+    ]
+
+
+def test_preset_maps_existing_contract_and_non_fixture_candidate(
+    tmp_path: Path,
+) -> None:
+    inputs, root = _preset_root(tmp_path, class_name="TrustedLocalCandidate")
+    workspace = tmp_path / "persistent-workspace"
+    explicit_output = tmp_path / "controlled-output"
+    args = candidate_entry.parse_args(
+        [*_preset_argv(inputs, root, workspace), "--output-dir", str(explicit_output)]
+    )
+
+    values, serve_root = candidate_entry._run_arguments(args)
+
+    assert values["config"] == root / "config.json"
+    assert values["data_dir"] == root / "data" / "okx"
+    assert values["strategy_path"] == root / "strategies"
+    assert values["strategy_file"] == root / "strategies" / "TrustedLocalCandidate.py"
+    assert values["strategy"] == "TrustedLocalCandidate"
+    assert values["research_spec"] == root / "research-spec.json"
+    assert values["development_timerange"] == "20260801-20260804"
+    assert values["holdout_timerange"] == "20260804-20260807"
+    assert values["stress_fee_multiplier"] == 2.0
+    assert values["database"] == workspace / "lab.sqlite"
+    assert values["output_dir"] == explicit_output
+    assert serve_root == explicit_output
+    assert get_schema_version(values["database"]) == 1
+
+
+def test_preset_requires_existing_json_before_workspace_creation(tmp_path: Path) -> None:
+    inputs, root = _preset_root(tmp_path)
+    (root / "research-spec.json").unlink()
+    workspace = tmp_path / "workspace-never-created"
+
+    with pytest.raises(ResearchCandidateError, match="cannot be read as JSON"):
+        candidate_entry._run_arguments(
+            candidate_entry.parse_args(_preset_argv(inputs, root, workspace))
+        )
+
+    assert not workspace.exists()
+
+
+def test_preset_requires_complete_mode_and_rejects_explicit_input_mix(
+    tmp_path: Path,
+) -> None:
+    inputs, root = _preset_root(tmp_path)
+    common = [
+        "--freqtrade-python",
+        str(inputs["freqtrade_python"]),
+        "--freqtrade-source",
+        str(inputs["freqtrade_source"]),
+    ]
+    with pytest.raises(ResearchCandidateError, match="both --input-root and --workspace"):
+        candidate_entry._run_arguments(
+            candidate_entry.parse_args([*common, "--input-root", str(root)])
+        )
+    with pytest.raises(ResearchCandidateError, match="remove: --config"):
+        candidate_entry._run_arguments(
+            candidate_entry.parse_args(
+                [
+                    *_preset_argv(inputs, root, tmp_path / "workspace"),
+                    "--config",
+                    str(root / "config.json"),
+                ]
+            )
+        )
+
+
+def test_preset_initializes_reuses_workspace_and_prints_executable_serve_command(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    inputs, root = _preset_root(tmp_path)
+    workspace = tmp_path / "persistent-workspace"
+    fake = FakeFreqtrade()
+
+    def run_with_fake(**kwargs):
+        return run_research_candidate(
+            **kwargs,
+            sandbox_exec=inputs["sandbox_exec"],
+            runner_script=inputs["runner_script"],
+            command_runner=fake,
+        )
+
+    monkeypatch.setattr(candidate_entry, "run_research_candidate", run_with_fake)
+    argv = _preset_argv(inputs, root, workspace)
+
+    assert candidate_entry.main(argv) == 0
+    first_output = capsys.readouterr().out
+    first_bundles = set((workspace / "artifacts").iterdir())
+    assert len(first_bundles) == 1
+    assert _counts(workspace / "lab.sqlite")["research_runs"] == 1
+    assert _counts(workspace / "lab.sqlite")["backtest_executions"] == 3
+    assert "Strategy library command:" in first_output
+    assert str(workspace / "lab.sqlite") in first_output
+    assert str(workspace / "artifacts") in first_output
+    assert "--port 8765" in first_output
+    assert "Strategy library URL: http://127.0.0.1:8765/" in first_output
+
+    assert candidate_entry.main(argv) == 0
+    second_output = capsys.readouterr().out
+    second_bundles = set((workspace / "artifacts").iterdir())
+    assert len(second_bundles) == 2
+    assert first_bundles < second_bundles
+    assert _counts(workspace / "lab.sqlite")["research_runs"] == 2
+    assert _counts(workspace / "lab.sqlite")["backtest_executions"] == 6
+    assert "Strategy library command:" in second_output
+    assert fake.scenarios == [
+        "DEVELOPMENT",
+        "HOLDOUT",
+        "HOLDOUT_STRESS",
+        "DEVELOPMENT",
+        "HOLDOUT",
+        "HOLDOUT_STRESS",
+    ]
+
+
+def test_preset_mid_scenario_failure_leaves_empty_database_and_no_bundle(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    inputs, root = _preset_root(tmp_path)
+    workspace = tmp_path / "failure-workspace"
+    fake = FakeFreqtrade(fail_scenario="HOLDOUT")
+
+    def run_with_fake(**kwargs):
+        return run_research_candidate(
+            **kwargs,
+            sandbox_exec=inputs["sandbox_exec"],
+            runner_script=inputs["runner_script"],
+            command_runner=fake,
+        )
+
+    monkeypatch.setattr(candidate_entry, "run_research_candidate", run_with_fake)
+    with pytest.raises(ResearchCandidateError, match="HOLDOUT backtesting failed"):
+        candidate_entry.main(_preset_argv(inputs, root, workspace))
+
+    assert fake.scenarios == ["DEVELOPMENT", "HOLDOUT"]
+    assert _counts(workspace / "lab.sqlite") == {table: 0 for table in TABLES}
+    assert list((workspace / "artifacts").iterdir()) == []
+    assert not list((workspace / "artifacts").glob(".*.work-*"))
+
+
+def test_preset_rejects_bad_database_and_hash_mismatch_before_any_scenario(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    bad_inputs, bad_root = _preset_root(tmp_path / "bad-database")
+    bad_workspace = tmp_path / "bad-database-workspace"
+    bad_database = tmp_path / "schema-zero.sqlite"
+    sqlite3.connect(bad_database).close()
+    called = False
+
+    def should_not_run(**kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("producer must not run")
+
+    monkeypatch.setattr(candidate_entry, "run_research_candidate", should_not_run)
+    with pytest.raises(ResearchCandidateError, match="schema-v1 validation"):
+        candidate_entry.main(
+            [
+                *_preset_argv(bad_inputs, bad_root, bad_workspace),
+                "--database",
+                str(bad_database),
+            ]
+        )
+    assert called is False
+
+    inputs, root = _preset_root(tmp_path / "hash-mismatch")
+    workspace = tmp_path / "hash-mismatch-workspace"
+    Path(root / "strategies" / "StrategyTestV3Futures.py").write_bytes(
+        b"class StrategyTestV3Futures(object):\n    pass\n"
+    )
+    fake = FakeFreqtrade()
+
+    def run_with_fake(**kwargs):
+        return run_research_candidate(
+            **kwargs,
+            sandbox_exec=inputs["sandbox_exec"],
+            runner_script=inputs["runner_script"],
+            command_runner=fake,
+        )
+
+    monkeypatch.setattr(candidate_entry, "run_research_candidate", run_with_fake)
+    with pytest.raises(ResearchCandidateError, match="does not match its retained receipt"):
+        candidate_entry.main(_preset_argv(inputs, root, workspace))
+    assert fake.scenarios == []
+    assert _counts(workspace / "lab.sqlite") == {table: 0 for table in TABLES}
+    assert list((workspace / "artifacts").iterdir()) == []
+
+
+def test_legacy_explicit_cli_maps_all_original_arguments(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+) -> None:
+    inputs = _inputs(tmp_path)
+    captured: Dict[str, Any] = {}
+
+    class Result:
+        bundle_root = inputs["output_dir"]
+        manifest_path = inputs["output_dir"] / "research-bundle-v1.json"
+        manifest_sha256 = "0" * 64
+        artifacts = ()
+        imported = None
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return Result()
+
+    monkeypatch.setattr(candidate_entry, "run_research_candidate", capture)
+    argv = []
+    original_options = (
+        ("--freqtrade-python", "freqtrade_python"),
+        ("--freqtrade-source", "freqtrade_source"),
+        ("--config", "config"),
+        ("--data-dir", "data_dir"),
+        ("--strategy-path", "strategy_path"),
+        ("--strategy-file", "strategy_file"),
+        ("--strategy", "strategy"),
+        ("--research-spec", "research_spec"),
+        ("--data-provenance", "data_provenance"),
+        ("--market-snapshot", "market_snapshot"),
+        ("--leverage-tiers", "leverage_tiers"),
+        ("--development-timerange", "development_timerange"),
+        ("--holdout-timerange", "holdout_timerange"),
+        ("--stress-fee-multiplier", "stress_fee_multiplier"),
+        ("--output-dir", "output_dir"),
+    )
+    for option, key in original_options:
+        argv.extend((option, str(inputs[key])))
+
+    assert candidate_entry.main(argv) == 0
+
+    assert captured == {
+        key: (float(inputs[key]) if key == "stress_fee_multiplier" else inputs[key])
+        for _, key in original_options
+    } | {"database": None}
+    output = capsys.readouterr().out
+    assert "Database import: not requested" in output
+    assert "Strategy library command:" not in output
