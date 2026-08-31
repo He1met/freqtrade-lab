@@ -10,14 +10,110 @@ from scripts.run_freqtrade_backtest import (
     OfflineBacktestError,
     _BoundedTextSink,
     _owned_scenario_data_directory,
+    _parse_args,
+    _resolve_new_receipt,
+    _write_scenario_open_receipt,
     _validate_native_zip_infos,
     _validate_raw_config_boundary,
+    _validate_results,
     _verify_dependency_versions,
     _verify_source_snapshot,
 )
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _runner_argv() -> list[str]:
+    return [
+        "--runner-sha256",
+        "0" * 64,
+        "--freqtrade-source",
+        "/tmp/freqtrade-source",
+        "--source-tree-sha256",
+        "1" * 64,
+        "--scenario",
+        "DEVELOPMENT",
+        "--config",
+        "/tmp/config.json",
+        "--data-dir",
+        "/tmp/data",
+        "--user-data-dir",
+        "/tmp/user-data",
+        "--strategy-path",
+        "/tmp/strategies",
+        "--strategy-file",
+        "/tmp/strategies/Strategy.py",
+        "--strategy-sha256",
+        "2" * 64,
+        "--strategy",
+        "Strategy",
+        "--timerange",
+        "20260801-20260802",
+        "--fee",
+        "0.0005",
+        "--export-dir",
+        "/tmp/export",
+        "--market-snapshot",
+        "/tmp/market.json",
+        "--leverage-tiers",
+        "/tmp/tiers.json",
+        "--data-provenance",
+        "/tmp/provenance.json",
+    ]
+
+
+def test_allow_zero_trades_cli_is_explicit_and_defaults_false() -> None:
+    assert _parse_args(_runner_argv()).allow_zero_trades is False
+    assert _parse_args(_runner_argv()).scenario_open_receipt is None
+    assert _parse_args([*_runner_argv(), "--allow-zero-trades"]).allow_zero_trades is True
+
+
+def test_scenario_open_receipt_is_exclusive_and_persisted(tmp_path: Path) -> None:
+    path = _resolve_new_receipt(tmp_path / "HOLDOUT.json", "scenario receipt")
+    value = {"schema": "test", "scenario": "HOLDOUT"}
+
+    receipt_sha = _write_scenario_open_receipt(path, value)
+
+    assert receipt_sha == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert json.loads(path.read_bytes()) == value
+    with pytest.raises(OfflineBacktestError, match="already exists"):
+        _write_scenario_open_receipt(path, value)
+
+
+def test_zero_trade_result_requires_explicit_allowance_and_matching_count() -> None:
+    results = {
+        "strategy": {
+            "Strategy": {
+                "trades": [],
+                "total_trades": 0,
+            }
+        }
+    }
+
+    with pytest.raises(OfflineBacktestError, match="produced zero trades"):
+        _validate_results(results, "Strategy", "XRP/USDT:USDT", 0.0005)
+
+    assert (
+        _validate_results(
+            results,
+            "Strategy",
+            "XRP/USDT:USDT",
+            0.0005,
+            allow_zero_trades=True,
+        )
+        == 0
+    )
+
+    results["strategy"]["Strategy"]["total_trades"] = 1
+    with pytest.raises(OfflineBacktestError, match="disagrees with trade records"):
+        _validate_results(
+            results,
+            "Strategy",
+            "XRP/USDT:USDT",
+            0.0005,
+            allow_zero_trades=True,
+        )
 
 
 def test_owned_scenario_data_cleanup_never_deletes_preexisting_sibling(

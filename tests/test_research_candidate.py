@@ -804,6 +804,100 @@ def test_t0_uses_argument_arrays_and_network_deny_sandbox(tmp_path: Path) -> Non
         assert "--leverage-tiers" in command
         assert "--strategy-file" in command
         assert "--strategy-sha256" in command
+        assert "--allow-zero-trades" not in command
+
+
+def test_run_scenario_forwards_explicit_zero_trade_allowance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured = []
+
+    def fake_runner(command, **kwargs):
+        captured.append(command)
+        return subprocess.CompletedProcess(command, 0, "{}\n", "")
+
+    monkeypatch.setattr(
+        research_candidate_module,
+        "_sandbox_policy",
+        lambda **kwargs: "(version 1)\n(deny default)",
+    )
+    path = tmp_path / "placeholder"
+    research_candidate_module._run_scenario(
+        scenario="DEVELOPMENT",
+        timerange="20260801-20260802",
+        fee=0.0005,
+        python=path,
+        source=path,
+        source_tree_sha256="0" * 64,
+        runner_script=path,
+        runner_sha256="1" * 64,
+        sandbox_exec=path,
+        config_path=path,
+        data_dir=path,
+        user_data_dir=path,
+        strategy_path=path,
+        strategy_file=path,
+        strategy_sha256="2" * 64,
+        strategy="Strategy",
+        export_dir=path,
+        market_snapshot=path,
+        leverage_tiers=path,
+        data_provenance=path,
+        home=path,
+        command_runner=fake_runner,
+        allow_zero_trades=True,
+    )
+
+    assert len(captured) == 1
+    assert captured[0].count("--allow-zero-trades") == 1
+
+
+def test_run_scenario_forwards_and_redacts_open_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured = []
+
+    def fake_runner(command, **kwargs):
+        captured.append(command)
+        return subprocess.CompletedProcess(command, 0, "{}\n", "")
+
+    monkeypatch.setattr(
+        research_candidate_module,
+        "_sandbox_policy",
+        lambda **kwargs: "(version 1)\n(deny default)",
+    )
+    path = tmp_path / "placeholder"
+    receipt = tmp_path / "scenario-opens" / "HOLDOUT.json"
+    receipt.parent.mkdir()
+    _, _, shape = research_candidate_module._run_scenario(
+        scenario="HOLDOUT",
+        timerange="20260801-20260802",
+        fee=0.0005,
+        python=path,
+        source=path,
+        source_tree_sha256="0" * 64,
+        runner_script=path,
+        runner_sha256="1" * 64,
+        sandbox_exec=path,
+        config_path=path,
+        data_dir=path,
+        user_data_dir=path,
+        strategy_path=path,
+        strategy_file=path,
+        strategy_sha256="2" * 64,
+        strategy="Strategy",
+        export_dir=path,
+        market_snapshot=path,
+        leverage_tiers=path,
+        data_provenance=path,
+        home=path,
+        command_runner=fake_runner,
+        scenario_open_receipt=receipt,
+    )
+
+    assert captured[0][captured[0].index("--scenario-open-receipt") + 1] == str(receipt)
+    assert "<scenario-open-receipt>" in shape
+    assert str(receipt) not in shape
 
 
 def test_publication_never_replaces_a_concurrently_created_directory(

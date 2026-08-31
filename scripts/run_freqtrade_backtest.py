@@ -19,6 +19,7 @@ import io
 import json
 import logging
 import math
+import os
 import platform
 import re
 import shutil
@@ -165,6 +166,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--market-snapshot", required=True, type=Path)
     parser.add_argument("--leverage-tiers", required=True, type=Path)
     parser.add_argument("--data-provenance", required=True, type=Path)
+    parser.add_argument(
+        "--scenario-open-receipt",
+        type=Path,
+        help="optional durable receipt written immediately before scenario engine setup",
+    )
+    parser.add_argument("--allow-zero-trades", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -210,6 +217,45 @@ def _resolve_directory(value: Path, label: str) -> Path:
     if not path.is_dir():
         raise OfflineBacktestError(f"{label} must be a directory")
     return path
+
+
+def _resolve_new_receipt(value: Path, label: str) -> Path:
+    if not value.is_absolute() or value.name in {"", ".", ".."}:
+        raise OfflineBacktestError(f"{label} must be an absolute new file")
+    parent = _resolve_directory(value.parent, f"{label} parent")
+    path = parent / value.name
+    if path.exists() or path.is_symlink():
+        raise OfflineBacktestError(f"{label} already exists")
+    return path
+
+
+def _write_scenario_open_receipt(path: Path, value: Mapping[str, Any]) -> str:
+    data = (
+        json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    try:
+        with path.open("xb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise OfflineBacktestError("scenario open receipt already exists") from exc
+    try:
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except OSError as exc:
+        raise OfflineBacktestError(f"scenario open receipt cannot be persisted: {exc}") from exc
+    return _sha256(data)
 
 
 def _strict_json(data: bytes, label: str) -> Any:
@@ -895,14 +941,23 @@ def _finite_trade_number(value: Any, label: str, *, positive: bool = False) -> f
     return number
 
 
-def _validate_results(results: Any, strategy: str, pair: str, fee: float) -> int:
+def _validate_results(
+    results: Any,
+    strategy: str,
+    pair: str,
+    fee: float,
+    *,
+    allow_zero_trades: bool = False,
+) -> int:
     root = _mapping(results, "backtest results")
     strategies = _mapping(root.get("strategy"), "backtest result strategies")
     if set(strategies) != {strategy}:
         raise OfflineBacktestError("backtest did not produce exactly the selected strategy")
     result = _mapping(strategies[strategy], "selected strategy result")
     trades = result.get("trades")
-    if not isinstance(trades, list) or not trades:
+    if not isinstance(trades, list):
+        raise OfflineBacktestError("backtest trades are invalid")
+    if not trades and not allow_zero_trades:
         raise OfflineBacktestError("backtest produced zero trades")
     total_trades = result.get("total_trades")
     if isinstance(total_trades, bool) or not isinstance(total_trades, int):
@@ -1065,6 +1120,15 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     _, provenance_bytes = _resolve_file(
         args.data_provenance, "data provenance"
     )
+    scenario_open_receipt = None
+    if args.scenario_open_receipt is not None:
+        if args.scenario == "DEVELOPMENT":
+            raise OfflineBacktestError(
+                "scenario open receipts are limited to Holdout and Holdout Stress"
+            )
+        scenario_open_receipt = _resolve_new_receipt(
+            args.scenario_open_receipt, "scenario open receipt"
+        )
     if any(export_dir.iterdir()):
         raise OfflineBacktestError("export directory must start empty")
 
@@ -1114,6 +1178,30 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             strategy_path=strategy_path,
             export_dir=export_dir,
         )
+
+        if scenario_open_receipt is not None:
+            stop = datetime.strptime(
+                args.timerange.split("-", 1)[1], "%Y%m%d"
+            ).replace(tzinfo=timezone.utc)
+            _write_scenario_open_receipt(
+                scenario_open_receipt,
+                {
+                    "schema": "freqtrade-lab-scenario-open-v1",
+                    "scenario": args.scenario,
+                    "timerange": args.timerange,
+                    "strategy": args.strategy,
+                    "strategy_sha256": args.strategy_sha256,
+                    "data_provenance_sha256": _sha256(provenance_bytes),
+                    "exclusive_stop_utc": stop.isoformat().replace("+00:00", "Z"),
+                    "meaning": (
+                        "one-shot scenario execution budget was consumed before retained "
+                        "market data validation began"
+                    ),
+                    "opened_at_utc": datetime.now(timezone.utc)
+                    .isoformat(timespec="milliseconds")
+                    .replace("+00:00", "Z"),
+                },
+            )
 
         receipt_summary = _verify_data_provenance(
             provenance,
@@ -1182,7 +1270,11 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             ):
                 raise OfflineBacktestError("runner implementation changed during execution")
             total_trades = _validate_results(
-                backtesting.results, args.strategy, pair, args.fee
+                backtesting.results,
+                args.strategy,
+                pair,
+                args.fee,
+                allow_zero_trades=args.allow_zero_trades,
             )
             archive_name, metadata_name = _verify_native_exports(
                 export_dir, args.strategy

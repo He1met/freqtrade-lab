@@ -60,6 +60,14 @@ class ProfileSpec:
 
 
 @dataclass(frozen=True)
+class GenerationSpec:
+    source: str
+    model: Optional[str]
+    returned_strategy_count: int
+    source_item_index: int
+
+
+@dataclass(frozen=True)
 class CandidateSpec:
     display_name: str
     class_name: str
@@ -67,6 +75,7 @@ class CandidateSpec:
     idea: Optional[str]
     expected_failure_mode: Optional[str]
     metadata: Mapping[str, Any]
+    generation: GenerationSpec
 
 
 @dataclass(frozen=True)
@@ -371,6 +380,52 @@ def _parse_profile(value: Any) -> ProfileSpec:
     )
 
 
+def _parse_generation(metadata: Mapping[str, Any]) -> GenerationSpec:
+    if "generation" not in metadata:
+        return GenerationSpec(
+            source="MANUAL",
+            model=None,
+            returned_strategy_count=1,
+            source_item_index=0,
+        )
+
+    generation = _mapping(metadata["generation"], "candidate metadata generation")
+    _exact_keys(
+        generation,
+        ("source", "model", "returned_strategy_count", "source_item_index"),
+        "candidate metadata generation",
+    )
+    if generation["source"] != "CODEX":
+        raise ResearchBundleImportError(
+            "candidate metadata generation source must be CODEX"
+        )
+    model = _optional_string(generation["model"], "generation model")
+    returned_strategy_count = _integer(
+        generation["returned_strategy_count"],
+        "generation returned_strategy_count",
+        minimum=1,
+    )
+    if returned_strategy_count > 3:
+        raise ResearchBundleImportError(
+            "generation returned_strategy_count must be less than or equal to 3"
+        )
+    source_item_index = _integer(
+        generation["source_item_index"],
+        "generation source_item_index",
+        minimum=0,
+    )
+    if source_item_index >= returned_strategy_count:
+        raise ResearchBundleImportError(
+            "generation source_item_index must be less than returned_strategy_count"
+        )
+    return GenerationSpec(
+        source="CODEX",
+        model=model,
+        returned_strategy_count=returned_strategy_count,
+        source_item_index=source_item_index,
+    )
+
+
 def _parse_candidate(value: Any) -> CandidateSpec:
     candidate = _mapping(value, "manifest candidate")
     keys = (
@@ -400,6 +455,7 @@ def _parse_candidate(value: Any) -> CandidateSpec:
             "candidate expected_failure_mode",
         ),
         metadata=metadata,
+        generation=_parse_generation(metadata),
     )
 
 
@@ -687,10 +743,15 @@ def _require_candidate_match(
     artifact: ParsedBacktestArtifact,
     profile_id: str,
 ) -> None:
+    generation = spec.generation
     if (
         row["generation_profile_id"] != profile_id
-        or row["generation_source"] != "MANUAL"
+        or row["generation_source"] != generation.source
+        or row["generation_model"] != generation.model
+        or row["generation_returned_strategy_count"]
+        != generation.returned_strategy_count
         or row["generation_status"] != "COMPLETED"
+        or row["source_item_index"] != generation.source_item_index
     ):
         raise ResearchBundleImportError(
             "existing candidate generation lineage conflicts with the bundle profile"
@@ -796,6 +857,8 @@ def import_research_bundle(
                 SELECT c.*,
                     gr.research_profile_id AS generation_profile_id,
                     gr.source AS generation_source,
+                    gr.model AS generation_model,
+                    gr.returned_strategy_count AS generation_returned_strategy_count,
                     gr.status AS generation_status
                 FROM candidates AS c
                 JOIN generation_runs AS gr ON gr.id = c.generation_run_id
@@ -807,6 +870,7 @@ def import_research_bundle(
             if candidate_row is None:
                 generation_run_id = str(uuid.uuid4())
                 candidate_id = str(uuid.uuid4())
+                generation = bundle.candidate.generation
                 connection.execute(
                     """
                     INSERT INTO generation_runs (
@@ -815,19 +879,22 @@ def import_research_bundle(
                         returned_strategy_count, parse_report_json, error_message,
                         started_at, finished_at, created_at, updated_at
                     ) VALUES (
-                        ?, ?, 'MANUAL', NULL, 'COMPLETED', ?, NULL, NULL,
-                        1, ?, NULL, ?, ?, ?, ?
+                        ?, ?, ?, ?, 'COMPLETED', ?, NULL, NULL,
+                        ?, ?, NULL, ?, ?, ?, ?
                     )
                     """,
                     (
                         generation_run_id,
                         profile_id,
+                        generation.source,
+                        generation.model,
                         _canonical_json(
                             {
                                 "kind": "research_bundle_import",
                                 "manifest_sha256": bundle.manifest_sha256,
                             }
                         ),
+                        generation.returned_strategy_count,
                         _canonical_json(
                             {
                                 "artifact_count": 3,
@@ -849,12 +916,13 @@ def import_research_bundle(
                         strategy_family, idea, expected_failure_mode, code_text,
                         code_sha256, metadata_json, created_at, updated_at
                     ) VALUES (
-                        ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
                     """,
                     (
                         candidate_id,
                         generation_run_id,
+                        generation.source_item_index,
                         bundle.candidate.display_name,
                         bundle.candidate.class_name,
                         first_artifact.timeframe,
