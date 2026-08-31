@@ -50,12 +50,13 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
-## Local Research Console: bounded Codex generation and CHECK_DATA
+## Local Research Console: bounded Codex generation and one Development run
 
 The Research Console keeps the Strategy Library routes on the same loopback
 server and adds a small page at `http://127.0.0.1:8765/console`. The page can
-run either one fixed `CHECK_DATA` child or one bounded Codex Candidate
-generation in the same single slot. For generation, the browser may submit
+run one fixed `CHECK_DATA` child, one bounded Codex Candidate generation, or
+one approved Candidate's fixed `DEVELOPMENT` backtest in the same single slot.
+For generation, the browser may submit
 only a Profile id, an optional same-Profile approved parent id, a bounded idea,
 an optional strategy family, and an optional expected failure mode. It cannot
 supply an executable, working directory, arguments, prompt template, model,
@@ -72,6 +73,8 @@ python3 scripts/serve_research_console.py \
   --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
   --runtime-root /absolute/private/path/freqtrade-lab-console-runtime \
   --pilot-root /absolute/private/path/frozen-pilot \
+  --freqtrade-python /absolute/private/path/freqtrade-2026.7-venv/bin/python \
+  --freqtrade-source /absolute/private/path/clean-freqtrade-2026.7 \
   --artifact-root /absolute/private/path/freqtrade-lab-workspace/artifacts \
   --port 8765
 ```
@@ -91,6 +94,22 @@ and one PENDING Candidate. `APPROVE` only makes that Candidate visible to the
 Strategy Library; it does not run Freqtrade, create a ResearchRun, set a
 verdict, prove safety or profitability, or authorize trading. PENDING and
 REJECTED Candidates stay out of the Strategy Library.
+
+The Development action accepts exactly one browser field: `candidate_id`. At
+the same `BEGIN IMMEDIATE` consumption boundary it rebinds the current approved
+source SHA, completed generation report, frozen Profile/request lineage, and
+the versioned `BOUNDED_CAUSAL_STRATEGY_V1` 5m allowlist. It then creates one
+`ResearchRun` and exactly one `DEVELOPMENT` execution. The child receives a
+copied physical Development-only data view and no Pilot root, acquisition
+directory, Holdout values, Holdout receipt, Search input, FreqUI path, or
+Release/trading action. The economic Gate is frozen to
+`POSITIVE_DEVELOPMENT_V1`: trades >= 30, profit >= 0.5%, profit factor >= 1.1,
+and max drawdown <= 5%. Failure produces `COMPLETED / REJECTED`; success leaves
+`PENDING` with `verdict = NULL` and
+`next_phase = HOLDOUT_AUTHORIZATION_REQUIRED`. Both Holdout states remain
+`SEALED_UNREAD`, with no later-phase execution rows. A missing or changed Pilot
+root, exact Freqtrade Python, or clean source checkout is reported as
+`BLOCKED_DATA`; the Console and Codex generation remain available.
 
 Normalized state/events and private raw child logs
 stay under `--runtime-root`; the page never returns raw output or local paths.

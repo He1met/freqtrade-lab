@@ -119,10 +119,57 @@ def _mutate_evidence(
     return root
 
 
-def _parse(root: Path = FIXTURE_ROOT):
+def _zero_trade_evidence(
+    tmp_path: Path,
+    *,
+    mutate_zero_report: Optional[JsonMutator] = None,
+    mutate_zero_config: Optional[JsonMutator] = None,
+    mutate_zero_provenance: Optional[JsonMutator] = None,
+) -> Path:
+    def mutate_report(report: Dict[str, Any]) -> None:
+        result = report["strategy"][STRATEGY]
+        result["trades"] = []
+        for key in ("total_trades", "wins", "draws", "losses"):
+            result[key] = 0
+        for key in (
+            "profit_total",
+            "max_drawdown_account",
+            "winrate",
+            "profit_factor",
+            "sharpe",
+            "sortino",
+            "calmar",
+            "profit_total_long",
+            "profit_total_short",
+        ):
+            result[key] = 0.0
+        if mutate_zero_report is not None:
+            mutate_zero_report(report)
+
+    def mutate_provenance(provenance: Dict[str, Any]) -> None:
+        contract = provenance["contract"]
+        for key in ("report_total_trades", "wins", "draws", "losses"):
+            contract[key] = 0
+        if mutate_zero_provenance is not None:
+            mutate_zero_provenance(provenance)
+
+    return _mutate_evidence(
+        tmp_path,
+        report=mutate_report,
+        config=mutate_zero_config,
+        provenance=mutate_provenance,
+    )
+
+
+def _parse(root: Path = FIXTURE_ROOT, *, allow_zero_trades: bool = False):
     receipt = _sha256((root / PROVENANCE_NAME).read_bytes())
     return parse_backtest_artifact(
-        root, ARCHIVE_NAME, STRATEGY, "2026.7", receipt
+        root,
+        ARCHIVE_NAME,
+        STRATEGY,
+        "2026.7",
+        receipt,
+        allow_zero_trades=allow_zero_trades,
     )
 
 
@@ -255,6 +302,7 @@ def _import(
     *,
     root: Path = FIXTURE_ROOT,
     scenario: str = "DEVELOPMENT",
+    allow_zero_trades: bool = False,
 ):
     return import_backtest_execution(
         db_path,
@@ -265,6 +313,7 @@ def _import(
         STRATEGY,
         "2026.7",
         _sha256((root / PROVENANCE_NAME).read_bytes()),
+        allow_zero_trades=allow_zero_trades,
     )
 
 
@@ -525,15 +574,77 @@ def test_t0_rejects_trade_fee_mismatch(tmp_path: Path) -> None:
 
 
 def test_t0_rejects_zero_trade_report(tmp_path: Path) -> None:
-    def mutate_report(report: Dict[str, Any]) -> None:
-        result = report["strategy"][STRATEGY]
-        result["trades"] = []
-        for key in ("total_trades", "wins", "draws", "losses"):
-            result[key] = 0
-
-    root = _mutate_evidence(tmp_path, report=mutate_report)
+    root = _zero_trade_evidence(tmp_path)
     with pytest.raises(ArtifactImportError, match="zero-trade"):
         _parse(root)
+
+
+def test_t0_explicitly_allows_self_consistent_zero_trade_report(
+    tmp_path: Path,
+) -> None:
+    parsed = _parse(_zero_trade_evidence(tmp_path), allow_zero_trades=True)
+
+    assert (parsed.total_trades, parsed.wins, parsed.draws, parsed.losses) == (
+        0,
+        0,
+        0,
+        0,
+    )
+    assert (
+        parsed.profit_pct,
+        parsed.max_drawdown_pct,
+        parsed.win_rate,
+        parsed.profit_factor,
+        parsed.sharpe,
+        parsed.sortino,
+        parsed.calmar,
+        parsed.long_profit_pct,
+        parsed.short_profit_pct,
+    ) == pytest.approx((0.0,) * 9)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("wins", 1, "wins \\+ draws \\+ losses"),
+        ("trades", [{}], "trade list length"),
+        ("winrate", 0.5, "winrate does not agree"),
+        ("profit_total", 0.1, "profit_total must be zero"),
+        ("sharpe", 1.0, "sharpe must be zero or null"),
+    ],
+)
+def test_t0_zero_trade_opt_in_still_requires_self_consistent_report(
+    tmp_path: Path,
+    key: str,
+    value: Any,
+    message: str,
+) -> None:
+    def mutate(report: Dict[str, Any]) -> None:
+        report["strategy"][STRATEGY][key] = value
+
+    root = _zero_trade_evidence(tmp_path, mutate_zero_report=mutate)
+    with pytest.raises(ArtifactImportError, match=message):
+        _parse(root, allow_zero_trades=True)
+
+
+def test_t0_zero_trade_opt_in_still_validates_config(tmp_path: Path) -> None:
+    def mutate(config: Dict[str, Any]) -> None:
+        config["strategy"] = "OtherStrategy"
+
+    root = _zero_trade_evidence(tmp_path, mutate_zero_config=mutate)
+    with pytest.raises(ArtifactImportError, match="config strategy"):
+        _parse(root, allow_zero_trades=True)
+
+
+def test_t0_zero_trade_opt_in_still_validates_provenance_contract(
+    tmp_path: Path,
+) -> None:
+    def mutate(provenance: Dict[str, Any]) -> None:
+        provenance["contract"]["report_total_trades"] = 1
+
+    root = _zero_trade_evidence(tmp_path, mutate_zero_provenance=mutate)
+    with pytest.raises(ArtifactImportError, match="report_total_trades"):
+        _parse(root, allow_zero_trades=True)
 
 
 def test_t0_cross_checks_report_millisecond_epochs(tmp_path: Path) -> None:
@@ -624,6 +735,44 @@ def test_t2_imports_into_exact_existing_execution(tmp_path: Path) -> None:
         "trading_mode": "futures",
     }
     assert {key: len(value) for key, value in _snapshot(db_path).items()} == table_counts_before
+
+
+def test_t2_zero_trade_import_requires_opt_in_and_preserves_real_zeros(
+    tmp_path: Path,
+) -> None:
+    root = _zero_trade_evidence(tmp_path)
+    db_path = _seed_database(tmp_path)
+    before = _snapshot(db_path)
+
+    with pytest.raises(ArtifactImportError, match="zero-trade"):
+        _import(db_path, root=root)
+    assert _snapshot(db_path) == before
+
+    parsed = _import(db_path, root=root, allow_zero_trades=True)
+
+    assert parsed.total_trades == 0
+    with get_connection(db_path) as connection:
+        execution = connection.execute(
+            "SELECT * FROM backtest_executions WHERE id = 'execution-DEVELOPMENT'"
+        ).fetchone()
+    assert execution["status"] == "SUCCEEDED"
+    assert execution["total_trades"] == 0
+    assert tuple(
+        execution[key]
+        for key in (
+            "profit_pct",
+            "max_drawdown_pct",
+            "win_rate",
+            "profit_factor",
+            "sharpe",
+            "sortino",
+            "calmar",
+            "long_profit_pct",
+            "short_profit_pct",
+        )
+    ) == pytest.approx((0.0,) * 9)
+    metrics = json.loads(execution["metrics_json"])
+    assert (metrics["wins"], metrics["draws"], metrics["losses"]) == (0, 0, 0)
 
 
 @pytest.mark.parametrize(

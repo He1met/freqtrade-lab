@@ -1477,7 +1477,10 @@ def _validate_runner_summary(
     expected_input_receipts: Mapping[str, Any],
     expected_source_tree_sha256: str,
     expected_runner_sha256: str,
+    allow_zero_trades: bool = False,
 ) -> Tuple[str, str, int]:
+    if not isinstance(allow_zero_trades, bool):
+        raise ResearchCandidateError("allow_zero_trades must be boolean")
     _exact_keys(
         summary,
         (
@@ -1554,7 +1557,16 @@ def _validate_runner_summary(
                 f"runner scenario data view sha256 {name!r} is invalid"
             )
 
-    total_trades = _positive_integer(summary["total_trades"], "runner total_trades")
+    total_trades_value = summary["total_trades"]
+    if (
+        isinstance(total_trades_value, bool)
+        or not isinstance(total_trades_value, int)
+        or total_trades_value < 0
+    ):
+        raise ResearchCandidateError("runner total_trades must be a non-negative integer")
+    total_trades = total_trades_value
+    if total_trades == 0 and not allow_zero_trades:
+        raise ResearchCandidateError("runner total_trades must be a positive integer")
     archive_name = _nonempty_string(summary["archive"], "runner archive")
     metadata_name = _nonempty_string(summary["metadata"], "runner metadata")
     return archive_name, metadata_name, total_trades
@@ -1649,6 +1661,7 @@ def _sanitize_raw_artifact(
     implementation_receipts: Mapping[str, Any],
     timerange: str,
     network_policy: str,
+    allow_zero_trades: bool = False,
 ) -> ProducedArtifact:
     raw_archive_name, raw_metadata_name, runner_total_trades = _validate_runner_summary(
         runner_summary,
@@ -1658,6 +1671,7 @@ def _sanitize_raw_artifact(
         expected_input_receipts=expected_input_receipts,
         expected_source_tree_sha256=source_tree_sha256,
         expected_runner_sha256=str(implementation_receipts["runner"]["sha256"]),
+        allow_zero_trades=allow_zero_trades,
     )
     raw_archive = raw_dir / _relative_member(raw_archive_name, "runner archive")
     raw_metadata = raw_dir / _relative_member(raw_metadata_name, "runner metadata")
@@ -1733,7 +1747,7 @@ def _sanitize_raw_artifact(
     ):
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             raise ResearchCandidateError(f"strategy result {label} is invalid")
-    if total_trades <= 0:
+    if total_trades == 0 and not allow_zero_trades:
         raise ResearchCandidateError("each scenario must produce at least one trade")
     if total_trades != runner_total_trades:
         raise ResearchCandidateError("runner total_trades disagrees with the native report")
@@ -1846,6 +1860,7 @@ def _sanitize_raw_artifact(
         strategy,
         SUPPORTED_FREQTRADE_VERSION,
         provenance_sha,
+        allow_zero_trades=allow_zero_trades,
     )
     return ProducedArtifact(
         scenario=scenario,
