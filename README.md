@@ -50,13 +50,16 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
-## Local Research Console: fixed CHECK_DATA slice
+## Local Research Console: bounded Codex generation and CHECK_DATA
 
 The Research Console keeps the Strategy Library routes on the same loopback
-server and adds a small page at `http://127.0.0.1:8765/console`. Its current
-write surface is intentionally limited to one fixed `CHECK_DATA` child and a
-cancel action. The browser cannot supply an executable, working directory,
-arguments, prompt, model, environment, or output path.
+server and adds a small page at `http://127.0.0.1:8765/console`. The page can
+run either one fixed `CHECK_DATA` child or one bounded Codex Candidate
+generation in the same single slot. For generation, the browser may submit
+only a Profile id, an optional same-Profile approved parent id, a bounded idea,
+an optional strategy family, and an optional expected failure mode. It cannot
+supply an executable, working directory, arguments, prompt template, model,
+environment, command, or output path.
 
 Prepare one private runtime directory outside this repository, then start the
 single service with an existing schema-v1 database and frozen Pilot root:
@@ -81,7 +84,15 @@ Library detail links under the same safety rules as before. Preflight only runs
 local capability checks; it does not invoke a Codex model, read credentials,
 download data, run Freqtrade research, open Holdout, or create a Release. A
 `SUCCEEDED` CHECK_DATA status only means the frozen data contract passed its
-existing technical check. Normalized state/events and private raw child logs
+existing technical check. Codex generation uses the startup-frozen binary and
+optional `--codex-model`, an isolated Git-external workspace, a fixed
+read-only/no-tool CLI contract, controlled stdin, strict JSON/AST validation,
+and one PENDING Candidate. `APPROVE` only makes that Candidate visible to the
+Strategy Library; it does not run Freqtrade, create a ResearchRun, set a
+verdict, prove safety or profitability, or authorize trading. PENDING and
+REJECTED Candidates stay out of the Strategy Library.
+
+Normalized state/events and private raw child logs
 stay under `--runtime-root`; the page never returns raw output or local paths.
 The process owner locks the frozen runtime directory inode itself; there is no
 unlinkable lock-file fallback. State and stdout checks use no-follow, bounded
@@ -92,8 +103,8 @@ The Console never initializes a missing database: `/console` remains available,
 SQLite is shown as `UNAVAILABLE`, and Strategy Library reads fail closed. If a
 restart recovers an unclosed task, or a reaped leader leaves a process group
 that cannot be safely signalled or confirmed gone, the runtime stays latched at
-`INTERRUPTED_NEEDS_CONFIRMATION`; Slice 1 has no browser confirmation action and
-will not start another child from that runtime. Confirm the old process state
+`INTERRUPTED_NEEDS_CONFIRMATION`; the Console has no browser confirmation action
+and will not start another child from that runtime. Confirm the old process state
 outside the Console, then use a new private runtime directory.
 
 The workspace contains the existing schema-v1 SQLite database and unique

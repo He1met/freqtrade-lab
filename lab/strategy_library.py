@@ -74,9 +74,19 @@ class ArtifactUnavailableError(StrategyLibraryError):
 
 REQUIRED_SCENARIOS = ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
 MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024
+CANDIDATE_LIBRARY_VISIBILITY_SQL = """
+(
+    json_type(c.metadata_json, '$.review') IS NULL
+    OR (
+        json_type(c.metadata_json, '$.review') = 'object'
+        AND json_type(c.metadata_json, '$.review.status') = 'text'
+        AND json_extract(c.metadata_json, '$.review.status') = 'APPROVED'
+    )
+)
+""".strip()
 
 
-STRATEGY_LIBRARY_SQL = """
+STRATEGY_LIBRARY_SQL = f"""
 WITH
 scoped_candidates AS (
     SELECT
@@ -89,6 +99,7 @@ scoped_candidates AS (
     FROM candidates AS c
     JOIN generation_runs AS g ON g.id = c.generation_run_id
     WHERE g.research_profile_id = :profile_id
+      AND {CANDIDATE_LIBRARY_VISIBILITY_SQL}
 ),
 scoped_runs AS (
     SELECT r.*
@@ -872,7 +883,7 @@ def load_research_run_detail(
         try:
             connection.execute("BEGIN")
             selected = connection.execute(
-                """
+                f"""
                 SELECT
                     p.id AS profile_id,
                     p.name AS profile_name,
@@ -900,6 +911,7 @@ def load_research_run_detail(
                   ON r.candidate_id = c.id
                  AND r.research_profile_id = p.id
                 WHERE p.id = ? AND c.id = ? AND r.id = ?
+                  AND {CANDIDATE_LIBRARY_VISIBILITY_SQL}
                 """,
                 (profile_id, candidate_id, research_run_id),
             ).fetchone()
@@ -908,7 +920,7 @@ def load_research_run_detail(
                     "research profile, candidate, and run do not match"
                 )
             execution_rows = connection.execute(
-                """
+                f"""
                 SELECT
                     id, scenario, status, sequence,
                     timerange_start, timerange_end, timeframe, detail_timeframe,
@@ -1012,7 +1024,7 @@ def load_execution_archive(
     with closing(_open_read_only_database(database)) as connection:
         try:
             row = connection.execute(
-                """
+                f"""
                 SELECT e.result_archive_path, e.metrics_json
                 FROM backtest_executions AS e
                 JOIN research_runs AS r ON r.id = e.research_run_id
@@ -1020,6 +1032,7 @@ def load_execution_archive(
                 JOIN generation_runs AS g ON g.id = c.generation_run_id
                 WHERE e.id = ?
                   AND g.research_profile_id = r.research_profile_id
+                  AND {CANDIDATE_LIBRARY_VISIBILITY_SQL}
                 """,
                 (execution_id,),
             ).fetchone()

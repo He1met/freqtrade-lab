@@ -23,10 +23,14 @@ import pytest
 from lab.database import get_connection, init_database
 from lab.research_bundle import import_research_bundle
 from lab.strategy_library import (
+    ExecutionNotFoundError,
     ProfileNotFoundError,
     ProfileRequiredError,
+    ResearchRunNotFoundError,
     StrategyLibraryError,
     create_strategy_library_server,
+    load_execution_archive,
+    load_research_run_detail,
     load_strategy_library,
     render_strategy_library_page,
 )
@@ -257,6 +261,74 @@ def test_real_bundle_is_a_complete_but_not_passed_summary(database: Path) -> Non
     assert "最近完整摘要（非当前 Run）" not in render_strategy_library_page(
         model
     ).decode("utf-8")
+
+
+def test_t0_library_visibility_is_legacy_or_approved_only(database: Path) -> None:
+    imported = _import_real_bundle(database)
+    with get_connection(database) as connection:
+        original = json.loads(
+            connection.execute(
+                "SELECT metadata_json FROM candidates WHERE id = ?",
+                (imported.candidate_id,),
+            ).fetchone()[0]
+        )
+        execution_id = connection.execute(
+            """
+            SELECT id FROM backtest_executions
+            WHERE research_run_id = ? ORDER BY sequence LIMIT 1
+            """,
+            (imported.research_run_id,),
+        ).fetchone()[0]
+
+    assert len(load_strategy_library(database)["strategies"]) == 1
+    load_research_run_detail(
+        database,
+        imported.profile_id,
+        imported.candidate_id,
+        imported.research_run_id,
+    )
+
+    cases = (
+        ({**original, "review": {"status": "APPROVED"}}, True),
+        ({**original, "review": {"status": "PENDING"}}, False),
+        ({**original, "review": {"status": "REJECTED"}}, False),
+        ({**original, "review": {"status": "UNKNOWN"}}, False),
+        ({**original, "review": None}, False),
+        ({**original, "review": "APPROVED"}, False),
+    )
+    for metadata, visible in cases:
+        with get_connection(database) as connection:
+            connection.execute(
+                "UPDATE candidates SET metadata_json = ? WHERE id = ?",
+                (
+                    json.dumps(metadata, separators=(",", ":"), sort_keys=True),
+                    imported.candidate_id,
+                ),
+            )
+            connection.commit()
+        assert bool(load_strategy_library(database)["strategies"]) is visible
+        if visible:
+            load_research_run_detail(
+                database,
+                imported.profile_id,
+                imported.candidate_id,
+                imported.research_run_id,
+            )
+        else:
+            with pytest.raises(ResearchRunNotFoundError):
+                load_research_run_detail(
+                    database,
+                    imported.profile_id,
+                    imported.candidate_id,
+                    imported.research_run_id,
+                )
+            with pytest.raises(ExecutionNotFoundError):
+                load_execution_archive(
+                    database,
+                    execution_id,
+                    artifact_root=None,
+                    artifact_root_fd=None,
+                )
 
 
 def test_empty_query_selects_no_explicit_profile() -> None:

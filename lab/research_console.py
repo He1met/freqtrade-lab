@@ -1,7 +1,8 @@
 """Single-process local Research Console for fixed, bounded actions.
 
-The console deliberately exposes no generic command runner.  Its first slice
-can only run the existing ``check-data`` command with paths frozen at startup.
+The console deliberately exposes no generic command runner.  It can only run
+the existing ``check-data`` command or one bounded Codex generation with all
+runtime inputs frozen at startup.
 """
 
 from __future__ import annotations
@@ -29,6 +30,29 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
+from lab.codex_generation import (
+    CODEX_DISABLED_FEATURES,
+    CODEX_REQUIRED_FALSE_FEATURES,
+    GenerationContractError,
+    GenerationRequest,
+    MAX_CODE_BYTES,
+    MAX_JSONL_BYTES,
+    PreparedGeneration,
+    build_codex_argv,
+    build_codex_feature_probe_argv,
+    build_prompt,
+    codex_output_schema,
+    complete_generation,
+    fail_generation,
+    load_generation,
+    load_generation_context,
+    parse_candidate_output,
+    review_generation as review_candidate_generation,
+    start_generation,
+    validate_codex_jsonl,
+    validate_generation_request,
+    validate_model_name,
+)
 from lab.frequi import (
     FreqUIConfig,
     FreqUIConfigurationError,
@@ -53,8 +77,9 @@ STATUS_SCHEMA = "freqtrade-lab-research-console-status-v1"
 EVENTS_SCHEMA = "freqtrade-lab-research-console-events-v1"
 REQUEST_SCHEMA = "freqtrade-lab-research-console-request-v1"
 OWNER_SCHEMA = "freqtrade-lab-research-console-owner-v1"
-MAX_REQUEST_BYTES = 4096
+MAX_REQUEST_BYTES = 16 * 1024
 MAX_STATE_BYTES = 256 * 1024
+MAX_CODEX_STDERR_BYTES = 256 * 1024
 MAX_EVENTS = 128
 PROBE_OUTPUT_BYTES = 64 * 1024
 GROUP_EXIT_CONFIRM_SECONDS = 0.25
@@ -75,16 +100,23 @@ NONTERMINAL_STATUSES = frozenset(
         "RUNNING",
         "CANCEL_REQUESTED",
         "TIMEOUT_TERMINATING",
+        "OUTPUT_LIMIT_TERMINATING",
         "INTERRUPTING",
     }
 )
 CODEX_REQUIRED_FLAGS = (
     "--cd",
+    "--disable",
     "--ephemeral",
     "--ignore-user-config",
+    "--ignore-rules",
     "--json",
+    "--output-schema",
     "--output-last-message",
     "--sandbox",
+    "--skip-git-repo-check",
+    "--color",
+    "--config",
 )
 BUSINESS_TABLES = (
     "research_profiles",
@@ -122,6 +154,8 @@ class ResearchConsoleConfig:
     campaigns_identity: Tuple[int, int]
     pilot_identity: Tuple[int, int]
     codex_binary: Optional[Path]
+    codex_identity: Optional[Tuple[int, int, int]]
+    codex_model: Optional[str]
     check_data_python: Path
     task_timeout_seconds: float
 
@@ -129,6 +163,7 @@ class ResearchConsoleConfig:
 @dataclass
 class _ActiveJob:
     campaign_id: str
+    action: str
     process: subprocess.Popen[bytes]
     process_group_id: int
     deadline: float
@@ -137,9 +172,11 @@ class _ActiveJob:
     timed_out: bool = False
     signal_sent_at: Optional[float] = None
     shutdown_requested: bool = False
+    output_limit_exceeded: bool = False
     termination_identity_verified: bool = False
     lifecycle_lock: threading.RLock = field(default_factory=threading.RLock)
     receipt_lock: threading.Lock = field(default_factory=threading.Lock)
+    prepared_generation: Optional[PreparedGeneration] = None
 
 
 def _utc_now() -> str:
@@ -193,6 +230,18 @@ def _resolve_executable(
     return resolved
 
 
+def _executable_identity(path: Optional[Path]) -> Optional[Tuple[int, int, int]]:
+    if path is None:
+        return None
+    try:
+        inspected = os.lstat(path)
+    except OSError:
+        return None
+    if not stat.S_ISREG(inspected.st_mode) or not os.access(path, os.X_OK):
+        return None
+    return (inspected.st_dev, inspected.st_ino, inspected.st_mode)
+
+
 def _minimal_environment() -> Dict[str, str]:
     return {
         "LANG": "C.UTF-8",
@@ -201,6 +250,16 @@ def _minimal_environment() -> Dict[str, str]:
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1",
     }
+
+
+def _codex_environment() -> Dict[str, str]:
+    """Pass only fixed locale/path plus the existing auth-location variables."""
+    environment = _minimal_environment()
+    for name in ("HOME", "CODEX_HOME"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    return environment
 
 
 def build_check_data_argv(
@@ -309,6 +368,92 @@ def _atomic_write_json_at(
             os.unlink(temporary, dir_fd=directory_fd)
         except FileNotFoundError:
             pass
+
+
+def _atomic_publish_bytes_at(directory_fd: int, name: str, body: bytes) -> None:
+    """Publish one immutable private file without replacing an existing target."""
+    if not name or Path(name).name != name:
+        raise ValueError("invalid private filename")
+    temporary = f".{name}.{uuid4().hex}.tmp"
+    descriptor: Optional[int] = None
+    linked = False
+    try:
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | os.O_NOFOLLOW
+            | os.O_CLOEXEC,
+            0o600,
+            dir_fd=directory_fd,
+        )
+        inspected = os.fstat(descriptor)
+        if not stat.S_ISREG(inspected.st_mode) or inspected.st_nlink != 1:
+            raise OSError("temporary private file is unsafe")
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            descriptor = None
+            handle.write(body)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(
+            temporary,
+            name,
+            src_dir_fd=directory_fd,
+            dst_dir_fd=directory_fd,
+            follow_symlinks=False,
+        )
+        linked = True
+        os.unlink(temporary, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if not linked:
+            try:
+                os.unlink(temporary, dir_fd=directory_fd)
+            except FileNotFoundError:
+                pass
+
+
+def _read_bounded_private_file_at(
+    directory_fd: int, name: str, maximum: int
+) -> bytes:
+    if not name or Path(name).name != name or maximum <= 0:
+        raise ValueError("invalid private file request")
+    descriptor = os.open(
+        name,
+        os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+        dir_fd=directory_fd,
+    )
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_nlink != 1
+            or before.st_size > maximum
+        ):
+            raise ValueError("private file is unsafe")
+        chunks = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(64 * 1024, maximum + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum:
+                raise ValueError("private file is too large")
+        after = os.fstat(descriptor)
+        if (
+            (after.st_dev, after.st_ino) != (before.st_dev, before.st_ino)
+            or after.st_size != before.st_size
+            or after.st_mtime_ns != before.st_mtime_ns
+        ):
+            raise ValueError("private file changed while reading")
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
 
 
 def _read_json_object_at(directory_fd: int, name: str) -> Dict[str, Any]:
@@ -438,6 +583,7 @@ class ResearchConsoleController:
         pilot_root: PathLike,
         *,
         codex_binary: Optional[PathLike] = None,
+        codex_model: Optional[str] = None,
         check_data_python: PathLike = sys.executable,
         webserver_base_url: str = "http://127.0.0.1:8080",
         task_timeout_seconds: float = 300.0,
@@ -461,6 +607,10 @@ class ResearchConsoleController:
             normalized_webserver = _loopback_base_url(webserver_base_url)
         except FreqUIConfigurationError as exc:
             raise ResearchConsoleError("webserver probe URL is unsafe") from exc
+        try:
+            selected_codex_model = validate_model_name(codex_model)
+        except GenerationContractError as exc:
+            raise ResearchConsoleError("Codex model is unsafe") from exc
         self._runtime_lock_fd = _acquire_runtime_lock(runtime, runtime_identity)
         self._campaigns_fd = -1
         self._lock = threading.RLock()
@@ -494,6 +644,7 @@ class ResearchConsoleController:
                 raise ResearchConsoleError(
                     f"runtime campaigns path cannot be prepared: {exc}"
                 ) from exc
+            resolved_codex = _resolve_executable(codex_binary, "codex")
             self.config = ResearchConsoleConfig(
                 database_path=database_path,
                 runtime_root=runtime,
@@ -504,7 +655,9 @@ class ResearchConsoleController:
                     opened_campaigns.st_ino,
                 ),
                 pilot_identity=pilot_identity,
-                codex_binary=_resolve_executable(codex_binary, "codex"),
+                codex_binary=resolved_codex,
+                codex_identity=_executable_identity(resolved_codex),
+                codex_model=selected_codex_model,
                 check_data_python=resolved_python,
                 task_timeout_seconds=float(task_timeout_seconds),
             )
@@ -513,6 +666,7 @@ class ResearchConsoleController:
             )
             self.campaigns_root = campaigns
             self.check_data_argv = build_check_data_argv(pilot, resolved_python)
+            self._frozen_codex_capability = self._codex_preflight()
             self._restart_confirmation_required = (
                 self._recover_interrupted_campaigns()
             )
@@ -699,6 +853,80 @@ class ResearchConsoleController:
             if descriptor is not None:
                 os.close(descriptor)
 
+    def _reconcile_codex_generation_at(
+        self,
+        campaign_fd: int,
+        campaign_id: str,
+        current: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Reconcile one local campaign against the atomic Codex DB state."""
+        finished = _utc_now()
+        try:
+            database_state = fail_generation(
+                self.config.database_path,
+                campaign_id,
+                error_code="RESTART_INTERRUPTED",
+                error_message="Service restarted before generation closed",
+                finished_at=finished,
+            )
+        except GenerationContractError as exc:
+            if exc.code == "generation_not_found":
+                return None
+            self._state_unavailable.add(campaign_id)
+            return "UNKNOWN"
+
+        try:
+            payload = load_generation(self.config.database_path, campaign_id)
+        except GenerationContractError:
+            self._state_unavailable.add(campaign_id)
+            return "UNKNOWN"
+        started_at = payload.get("started_at")
+        finished_at = payload.get("finished_at") or finished
+        if database_state == "COMPLETED":
+            recovered = self._status_document(
+                campaign_id,
+                "SUCCEEDED",
+                action="CODEX_GENERATION",
+                created_at=str(started_at or finished_at),
+                started_at=(str(started_at) if started_at is not None else None),
+                finished_at=str(finished_at),
+                return_code=0,
+                message="数据库已原子完成 Candidate；未重跑 Codex",
+            )
+            recovered["requires_confirmation"] = False
+            _atomic_write_json_at(campaign_fd, "status.json", recovered)
+            self._append_event_at(
+                campaign_fd,
+                campaign_id,
+                "RECOVERED_COMPLETED",
+                "SUCCEEDED",
+                "已按数据库原子终态恢复显示；未重跑 Codex",
+            )
+            return "COMPLETED"
+
+        interrupted = self._status_document(
+            campaign_id,
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            action="CODEX_GENERATION",
+            created_at=str(
+                (current or {}).get("created_at_utc") or started_at or finished_at
+            ),
+            started_at=(str(started_at) if started_at is not None else None),
+            finished_at=str(finished_at),
+            return_code=None,
+            message="服务重启，Codex Generation 已原子记为 FAILED；旧进程终态仍需确认",
+        )
+        interrupted["requires_confirmation"] = True
+        _atomic_write_json_at(campaign_fd, "status.json", interrupted)
+        self._append_event_at(
+            campaign_fd,
+            campaign_id,
+            "INTERRUPTED",
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            "服务重启，Generation 已失败且旧进程终态需要人工确认",
+        )
+        return "FAILED"
+
     def _recover_interrupted_campaigns(self) -> bool:
         confirmation_required = False
         try:
@@ -716,6 +944,15 @@ class ResearchConsoleController:
                 current = _read_json_object_at(campaign_fd, "status.json")
             except (ControlRequestError, OSError, RecursionError, ValueError):
                 if campaign_fd is not None:
+                    try:
+                        database_state = self._reconcile_codex_generation_at(
+                            campaign_fd, campaign_id, None
+                        )
+                    except Exception:
+                        self._state_unavailable.add(campaign_id)
+                        database_state = "UNKNOWN"
+                    if database_state in {"FAILED", "UNKNOWN"}:
+                        confirmation_required = True
                     os.close(campaign_fd)
                 continue
             try:
@@ -723,6 +960,29 @@ class ResearchConsoleController:
                     current.get("schema") != STATUS_SCHEMA
                     or current.get("campaign_id") != campaign_id
                 ):
+                    try:
+                        database_state = self._reconcile_codex_generation_at(
+                            campaign_fd, campaign_id, current
+                        )
+                    except Exception:
+                        self._state_unavailable.add(campaign_id)
+                        database_state = "UNKNOWN"
+                    if database_state in {"FAILED", "UNKNOWN"}:
+                        confirmation_required = True
+                    continue
+                if current.get("action") == "CODEX_GENERATION" and (
+                    current.get("status") in NONTERMINAL_STATUSES
+                    or current.get("status") == "INTERRUPTED_NEEDS_CONFIRMATION"
+                ):
+                    try:
+                        database_state = self._reconcile_codex_generation_at(
+                            campaign_fd, campaign_id, current
+                        )
+                    except Exception:
+                        self._state_unavailable.add(campaign_id)
+                        database_state = "UNKNOWN"
+                    if database_state in {"FAILED", "UNKNOWN", None}:
+                        confirmation_required = True
                     continue
                 if current.get("status") == "INTERRUPTED_NEEDS_CONFIRMATION":
                     if current.get("requires_confirmation") is False:
@@ -788,6 +1048,13 @@ class ResearchConsoleController:
             )
         )
 
+    def _codex_binary_unchanged(self) -> bool:
+        binary = self.config.codex_binary
+        expected = self.config.codex_identity
+        if binary is None or expected is None:
+            return False
+        return _executable_identity(binary) == expected
+
     def _latest_status(self) -> Optional[Dict[str, Any]]:
         latest: Optional[Dict[str, Any]] = None
         try:
@@ -811,6 +1078,7 @@ class ResearchConsoleController:
 
     def _codex_preflight(self) -> Dict[str, Any]:
         binary = self.config.codex_binary
+        unknown_features = {feature: None for feature in CODEX_DISABLED_FEATURES}
         if binary is None:
             return {
                 "status": "UNAVAILABLE",
@@ -820,6 +1088,8 @@ class ResearchConsoleController:
                 "required_exec_flags": {
                     flag: False for flag in CODEX_REQUIRED_FLAGS
                 },
+                "sensitive_feature_states": unknown_features,
+                "shell_gate_disabled": False,
                 "model_invoked": False,
                 "message": "Codex CLI 不可用",
             }
@@ -829,7 +1099,10 @@ class ResearchConsoleController:
         help_code, help_output, help_timeout = _bounded_capability(
             (str(binary), "exec", "--help")
         )
-        if version_timeout or help_timeout:
+        feature_code, feature_output, feature_timeout = _bounded_capability(
+            build_codex_feature_probe_argv(binary)
+        )
+        if version_timeout or help_timeout or feature_timeout:
             return {
                 "status": "UNKNOWN",
                 "binary_available": True,
@@ -838,6 +1111,8 @@ class ResearchConsoleController:
                 "required_exec_flags": {
                     flag: False for flag in CODEX_REQUIRED_FLAGS
                 },
+                "sensitive_feature_states": unknown_features,
+                "shell_gate_disabled": False,
                 "model_invoked": False,
                 "message": "Codex CLI capability check 超时",
             }
@@ -845,29 +1120,59 @@ class ResearchConsoleController:
             help_text = help_output.decode("utf-8", "strict")
         except UnicodeDecodeError:
             help_text = ""
+        feature_states: Dict[str, Optional[bool]] = dict(unknown_features)
+        try:
+            feature_text = feature_output.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            feature_text = ""
+        if feature_code == 0:
+            for line in feature_text.splitlines():
+                parts = line.split()
+                if len(parts) >= 3 and parts[-1] in {"true", "false"}:
+                    name = parts[0]
+                    if name in feature_states:
+                        feature_states[name] = parts[-1] == "true"
         version = _safe_version_line(version_output) if version_code == 0 else None
         flags = {
             flag: help_code == 0 and flag in help_text
             for flag in CODEX_REQUIRED_FLAGS
         }
         has_flags = all(flags.values())
-        ready = version is not None and has_flags
+        shell_gate_disabled = feature_states.get("shell_tool") is False
+        sensitive_features_disabled = all(
+            feature_states.get(feature) is False
+            for feature in CODEX_REQUIRED_FALSE_FEATURES
+        ) and feature_states.get("unified_exec") is not None
+        ready = (
+            version is not None
+            and has_flags
+            and feature_code == 0
+            and shell_gate_disabled
+            and sensitive_features_disabled
+        )
         return {
             "status": "READY" if ready else "UNAVAILABLE",
             "binary_available": True,
             "version": version,
             "exec_available": help_code == 0,
             "required_exec_flags": flags,
+            "sensitive_feature_states": feature_states,
+            "shell_gate_disabled": shell_gate_disabled,
             "model_invoked": False,
             "message": (
-                "Codex CLI capability 可用"
+                "Codex CLI 固定参数与敏感工具禁用门可用"
                 if ready
-                else "Codex CLI 缺少后续受控生成所需参数"
+                else "Codex CLI 缺少受控生成所需参数或敏感工具禁用门"
             ),
         }
 
     def preflight(self) -> Dict[str, Any]:
-        codex = self._codex_preflight()
+        codex = json.loads(json.dumps(self._frozen_codex_capability))
+        codex_identity_unchanged = self._codex_binary_unchanged()
+        codex["binary_identity_unchanged"] = codex_identity_unchanged
+        if codex.get("binary_available") and not codex_identity_unchanged:
+            codex["status"] = "UNAVAILABLE"
+            codex["message"] = "启动时冻结的 Codex executable 身份已变化"
         try:
             database = validate_strategy_library_database(self.config.database_path)
             with closing(_open_read_only_database(database)) as connection:
@@ -1005,6 +1310,7 @@ class ResearchConsoleController:
         campaign_id: str,
         status_value: str,
         *,
+        action: str = "CHECK_DATA",
         created_at: str,
         started_at: Optional[str],
         finished_at: Optional[str],
@@ -1014,7 +1320,7 @@ class ResearchConsoleController:
         return {
             "schema": STATUS_SCHEMA,
             "campaign_id": campaign_id,
-            "action": "CHECK_DATA",
+            "action": action,
             "status": status_value,
             "created_at_utc": created_at,
             "started_at_utc": started_at,
@@ -1263,6 +1569,7 @@ class ResearchConsoleController:
                 ) from exc
             job = _ActiveJob(
                 campaign_id=campaign_id,
+                action="CHECK_DATA",
                 process=process,
                 process_group_id=process.pid,
                 deadline=time.monotonic() + self.config.task_timeout_seconds,
@@ -1337,6 +1644,321 @@ class ResearchConsoleController:
                     "固定 CHECK_DATA 无法安全完成启动",
                 ) from exc
 
+    def _persist_generation_failure(
+        self,
+        generation_id: str,
+        *,
+        error_code: str,
+        error_message: str,
+        finished_at: str,
+        details: Optional[Mapping[str, Any]] = None,
+    ) -> bool:
+        try:
+            state = fail_generation(
+                self.config.database_path,
+                generation_id,
+                error_code=error_code,
+                error_message=error_message,
+                finished_at=finished_at,
+                details=details,
+            )
+        except GenerationContractError:
+            with self._lock:
+                self._state_unavailable.add(generation_id)
+                self._restart_confirmation_required = True
+            return False
+        return state == "FAILED"
+
+    def create_generation(self, request: GenerationRequest) -> Dict[str, Any]:
+        """Start one fixed Codex generation in the existing single process slot."""
+        with self._lock:
+            if self._closed or self._shutting_down:
+                raise ControlRequestError(
+                    409, "console_shutting_down", "Research Console 正在关闭"
+                )
+            if self._restart_confirmation_required:
+                raise ControlRequestError(
+                    409,
+                    "restart_confirmation_required",
+                    "检测到崩溃前未闭合任务；请人工确认后换用新的运行目录",
+                )
+            if self._active is not None:
+                raise ControlRequestError(
+                    409, "active_campaign", "已有一个受控任务正在运行"
+                )
+            if not self._runtime_paths_unchanged():
+                raise ControlRequestError(
+                    409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
+                )
+            binary = self.config.codex_binary
+            if (
+                binary is None
+                or self._frozen_codex_capability.get("status") != "READY"
+            ):
+                raise ControlRequestError(
+                    503,
+                    "codex_capability_unavailable",
+                    "Codex CLI 固定参数或敏感工具禁用门不可用",
+                )
+            if not self._codex_binary_unchanged():
+                raise ControlRequestError(
+                    409,
+                    "codex_binary_changed",
+                    "启动时冻结的 Codex executable 身份已变化",
+                )
+
+            generation_id = str(uuid4())
+            campaign_dir = self._campaign_directory(
+                generation_id, must_exist=False
+            )
+            try:
+                os.mkdir(generation_id, 0o700, dir_fd=self._campaigns_fd)
+            except OSError as exc:
+                raise ControlRequestError(
+                    500, "generation_create_failed", "生成运行目录无法创建"
+                ) from exc
+            created = _utc_now()
+            starting = self._status_document(
+                generation_id,
+                "STARTING",
+                action="CODEX_GENERATION",
+                created_at=created,
+                started_at=None,
+                finished_at=None,
+                return_code=None,
+                message="正在启动固定 Codex Candidate 生成",
+            )
+            stdout_handle = None
+            stderr_handle = None
+            stdin_handle = None
+            campaign_fd: Optional[int] = None
+            workspace_fd: Optional[int] = None
+            try:
+                campaign_fd = self._open_campaign_fd(generation_id)
+                os.mkdir("workspace", 0o700, dir_fd=campaign_fd)
+                workspace_fd = os.open(
+                    "workspace",
+                    os.O_RDONLY
+                    | os.O_DIRECTORY
+                    | os.O_NOFOLLOW
+                    | os.O_CLOEXEC,
+                    dir_fd=campaign_fd,
+                )
+                workspace_stat = os.fstat(workspace_fd)
+                if not stat.S_ISDIR(workspace_stat.st_mode):
+                    raise OSError("isolated workspace is unsafe")
+                os.fchmod(workspace_fd, 0o700)
+                _atomic_write_json_at(
+                    campaign_fd, "output-schema.json", codex_output_schema()
+                )
+                _atomic_write_json_at(
+                    campaign_fd,
+                    "request.json",
+                    {
+                        "schema": REQUEST_SCHEMA,
+                        "campaign_id": generation_id,
+                        "action": "CODEX_GENERATION",
+                        "created_at_utc": created,
+                        "input": request.public_fields(),
+                    },
+                )
+                _atomic_write_json_at(campaign_fd, "status.json", starting)
+                self._append_event_at(
+                    campaign_fd,
+                    generation_id,
+                    "CREATED",
+                    "STARTING",
+                    "已创建固定 Codex Candidate 生成任务",
+                )
+                stdout_handle = _open_private_output_at(campaign_fd, "stdout.log")
+                stderr_handle = _open_private_output_at(campaign_fd, "stderr.log")
+            except (OSError, ControlRequestError, ValueError) as exc:
+                if stdout_handle is not None:
+                    stdout_handle.close()
+                if stderr_handle is not None:
+                    stderr_handle.close()
+                self._record_transition(
+                    campaign_dir,
+                    "FAILED",
+                    "固定 Codex 生成私有运行文件无法创建",
+                    "OUTPUT_CREATE_FAILED",
+                    finished_at_utc=_utc_now(),
+                    return_code=None,
+                )
+                raise ControlRequestError(
+                    500, "output_create_failed", "固定 Codex 生成无法安全启动"
+                ) from exc
+            finally:
+                if workspace_fd is not None:
+                    os.close(workspace_fd)
+                if campaign_fd is not None:
+                    os.close(campaign_fd)
+
+            prepared: Optional[PreparedGeneration] = None
+            process: Optional[subprocess.Popen[bytes]] = None
+            job: Optional[_ActiveJob] = None
+            try:
+                prepared = start_generation(
+                    self.config.database_path,
+                    generation_id,
+                    request,
+                    model=self.config.codex_model,
+                    started_at=created,
+                )
+                workspace = campaign_dir / "workspace"
+                prompt = build_prompt(request, prepared.profile, prepared.parent)
+                stdin_handle = tempfile.TemporaryFile(mode="w+b", dir=campaign_dir)
+                os.fchmod(stdin_handle.fileno(), 0o600)
+                stdin_handle.write(prompt)
+                stdin_handle.flush()
+                stdin_handle.seek(0)
+                argv = build_codex_argv(
+                    binary,
+                    workspace,
+                    campaign_dir / "output-schema.json",
+                    campaign_dir / "codex-output.json",
+                    model=self.config.codex_model,
+                )
+                process = subprocess.Popen(
+                    argv,
+                    cwd=str(workspace),
+                    stdin=stdin_handle,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    env=_codex_environment(),
+                    shell=False,
+                    start_new_session=True,
+                    close_fds=True,
+                    umask=0o077,
+                )
+                stdin_handle.close()
+                stdin_handle = None
+                job = _ActiveJob(
+                    campaign_id=generation_id,
+                    action="CODEX_GENERATION",
+                    process=process,
+                    process_group_id=process.pid,
+                    deadline=time.monotonic() + self.config.task_timeout_seconds,
+                    prepared_generation=prepared,
+                )
+                self._active = job
+            except (GenerationContractError, OSError, BrokenPipeError) as exc:
+                if stdin_handle is not None:
+                    stdin_handle.close()
+                if stdout_handle is not None and not stdout_handle.closed:
+                    stdout_handle.close()
+                if stderr_handle is not None and not stderr_handle.closed:
+                    stderr_handle.close()
+                terminated = True
+                if job is not None:
+                    terminated = self._terminate_owned_job(job)
+                    if self._active is job:
+                        self._active = None
+                finished = _utc_now()
+                persisted = (
+                    True
+                    if prepared is None
+                    else self._persist_generation_failure(
+                        generation_id,
+                        error_code="START_FAILED",
+                        error_message="Codex generation could not start safely",
+                        finished_at=finished,
+                    )
+                )
+                self._record_transition(
+                    campaign_dir,
+                    "FAILED" if terminated and persisted else "INTERRUPTED_NEEDS_CONFIRMATION",
+                    (
+                        "固定 Codex 生成无法启动"
+                        if terminated and persisted
+                        else "固定 Codex 生成启动失败且终态无法确认"
+                    ),
+                    "START_FAILED",
+                    finished_at_utc=finished,
+                    return_code=(None if process is None else process.returncode),
+                    requires_confirmation=not (terminated and persisted),
+                )
+                if not terminated or not persisted:
+                    self._restart_confirmation_required = True
+                status = exc.status if isinstance(exc, GenerationContractError) else 500
+                code = exc.code if isinstance(exc, GenerationContractError) else "start_failed"
+                raise ControlRequestError(
+                    status, code, "固定 Codex 生成无法安全启动"
+                ) from exc
+
+            if stdout_handle is not None and not stdout_handle.closed:
+                stdout_handle.close()
+            if stderr_handle is not None and not stderr_handle.closed:
+                stderr_handle.close()
+            assert process is not None and job is not None
+            try:
+                started = _utc_now()
+                campaign_fd = self._open_campaign_fd(generation_id)
+                try:
+                    _atomic_write_json_at(
+                        campaign_fd,
+                        "owner.json",
+                        {
+                            "schema": OWNER_SCHEMA,
+                            "campaign_id": generation_id,
+                            "server_pid": os.getpid(),
+                            "child_pid": process.pid,
+                            "process_group_id": job.process_group_id,
+                            "started_at_utc": started,
+                        },
+                    )
+                finally:
+                    os.close(campaign_fd)
+                    campaign_fd = None
+                self._write_status(
+                    campaign_dir,
+                    "RUNNING",
+                    "固定 Codex Candidate 生成正在运行",
+                    started_at_utc=started,
+                )
+                self._append_event(
+                    campaign_dir,
+                    "STARTED",
+                    "RUNNING",
+                    "固定 Codex Candidate 生成已启动",
+                )
+                monitor = threading.Thread(
+                    target=self._monitor_job,
+                    args=(job,),
+                    name=f"research-console-generation-{generation_id[:8]}",
+                    daemon=True,
+                )
+                job.monitor = monitor
+                monitor.start()
+                return self.get_generation(generation_id)
+            except Exception as exc:
+                terminated = self._terminate_owned_job(job)
+                finished = _utc_now()
+                persisted = self._persist_generation_failure(
+                    generation_id,
+                    error_code="START_RECEIPT_FAILED",
+                    error_message="Codex generation start receipt failed",
+                    finished_at=finished,
+                )
+                self._record_transition(
+                    campaign_dir,
+                    "FAILED" if terminated and persisted else "INTERRUPTED_NEEDS_CONFIRMATION",
+                    "Codex 生成启动收据失败",
+                    "START_RECEIPT_FAILED",
+                    finished_at_utc=finished,
+                    return_code=self._leader_return_code(job),
+                    requires_confirmation=not (terminated and persisted),
+                )
+                if self._active is job:
+                    self._active = None
+                if not terminated or not persisted:
+                    self._restart_confirmation_required = True
+                raise ControlRequestError(
+                    500,
+                    "start_receipt_failed",
+                    "固定 Codex 生成无法安全完成启动",
+                ) from exc
+
     def _signal_process_group(
         self, job: _ActiveJob, selected: signal.Signals
     ) -> bool:
@@ -1378,6 +2000,98 @@ class ResearchConsoleController:
             return False
         return value.get("status") == "DATA_READY"
 
+    def _codex_private_outputs_within_limits(self, campaign_id: str) -> bool:
+        campaign_fd: Optional[int] = None
+        try:
+            campaign_fd = self._open_campaign_fd(campaign_id)
+            for name, maximum, optional in (
+                ("stdout.log", MAX_JSONL_BYTES, False),
+                ("stderr.log", MAX_CODEX_STDERR_BYTES, False),
+                ("codex-output.json", MAX_CODE_BYTES * 2, True),
+            ):
+                try:
+                    inspected = os.stat(
+                        name, dir_fd=campaign_fd, follow_symlinks=False
+                    )
+                except FileNotFoundError:
+                    if optional:
+                        continue
+                    return False
+                if (
+                    not stat.S_ISREG(inspected.st_mode)
+                    or inspected.st_nlink != 1
+                    or inspected.st_size > maximum
+                ):
+                    return False
+            return True
+        except (ControlRequestError, OSError, ValueError):
+            return False
+        finally:
+            if campaign_fd is not None:
+                os.close(campaign_fd)
+
+    def _finalize_codex_generation(
+        self,
+        job: _ActiveJob,
+        campaign_dir: Path,
+        finished_at: str,
+    ) -> Tuple[str, str, str]:
+        prepared = job.prepared_generation
+        if prepared is None:
+            raise GenerationContractError(
+                "generation_state_conflict", "Generation context is unavailable"
+            )
+        campaign_fd: Optional[int] = None
+        try:
+            campaign_fd = self._open_campaign_fd(job.campaign_id)
+            jsonl = _read_bounded_private_file_at(
+                campaign_fd, "stdout.log", MAX_JSONL_BYTES
+            )
+            output = _read_bounded_private_file_at(
+                campaign_fd, "codex-output.json", MAX_CODE_BYTES * 2
+            )
+            stderr = _read_bounded_private_file_at(
+                campaign_fd, "stderr.log", MAX_CODEX_STDERR_BYTES
+            )
+            if stderr:
+                raise GenerationContractError(
+                    "codex_stderr_nonempty",
+                    "Codex emitted private diagnostics; generation failed closed",
+                )
+            summary = validate_codex_jsonl(jsonl)
+            candidate = parse_candidate_output(
+                output,
+                timeframe=str(prepared.profile["timeframe"]),
+            )
+            _atomic_publish_bytes_at(
+                campaign_fd,
+                "candidate.py",
+                candidate.code_text.encode("utf-8", "strict"),
+            )
+        except GenerationContractError:
+            raise
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise GenerationContractError(
+                "private_output_invalid",
+                "Codex private output could not be read or published safely",
+            ) from exc
+        finally:
+            if campaign_fd is not None:
+                os.close(campaign_fd)
+        complete_generation(
+            self.config.database_path,
+            prepared,
+            candidate,
+            raw_output=output,
+            jsonl_summary=summary,
+            finished_at=finished_at,
+        )
+        return (
+            "SUCCEEDED",
+            "Codex Candidate 已生成并以 PENDING 等待人工审核；尚未证明安全、有效、盈利或可交易",
+            "SUCCEEDED",
+        )
+
     def _monitor_job(self, job: _ActiveJob) -> None:
         campaign_dir: Optional[Path] = None
         process_group_finalized = False
@@ -1387,6 +2101,26 @@ class ResearchConsoleController:
             )
             while True:
                 timeout_started = False
+                output_limit_started = False
+                if (
+                    job.action == "CODEX_GENERATION"
+                    and not job.cancel_requested
+                    and not job.timed_out
+                    and not job.shutdown_requested
+                    and not job.output_limit_exceeded
+                    and not self._codex_private_outputs_within_limits(
+                        job.campaign_id
+                    )
+                ):
+                    with self._lock:
+                        if (
+                            not job.cancel_requested
+                            and not job.timed_out
+                            and not job.shutdown_requested
+                            and not job.output_limit_exceeded
+                        ):
+                            job.output_limit_exceeded = True
+                            output_limit_started = True
                 with self._lock:
                     current = time.monotonic()
                     if (
@@ -1401,6 +2135,7 @@ class ResearchConsoleController:
                         job.cancel_requested
                         or job.timed_out
                         or job.shutdown_requested
+                        or job.output_limit_exceeded
                     )
                     return_code = (
                         None if terminating else self._poll_leader(job)
@@ -1419,6 +2154,18 @@ class ResearchConsoleController:
                             "任务超时，正在终止受控进程组",
                             "TIMEOUT",
                         )
+                if output_limit_started:
+                    if self._signal_process_group(job, signal.SIGTERM):
+                        with self._lock:
+                            if job.signal_sent_at is None:
+                                job.signal_sent_at = time.monotonic()
+                    with job.receipt_lock:
+                        self._record_transition(
+                            campaign_dir,
+                            "OUTPUT_LIMIT_TERMINATING",
+                            "Codex 私有输出超过固定上限，正在终止受控进程组",
+                            "OUTPUT_LIMIT_EXCEEDED",
+                        )
                 if terminating:
                     process_group_finalized = self._terminate_owned_job(job)
                     break
@@ -1430,6 +2177,7 @@ class ResearchConsoleController:
                     job.cancel_requested
                     or job.timed_out
                     or job.shutdown_requested
+                    or job.output_limit_exceeded
                 )
                 else GROUP_EXIT_CONFIRM_SECONDS
             )
@@ -1438,11 +2186,18 @@ class ResearchConsoleController:
                     job, confirmation_timeout
                 )
             if not process_group_finalized:
+                if job.action == "CODEX_GENERATION":
+                    self._persist_generation_failure(
+                        job.campaign_id,
+                        error_code="PROCESS_GROUP_UNCONFIRMED",
+                        error_message="Codex process group could not be confirmed gone",
+                        finished_at=_utc_now(),
+                    )
                 with job.receipt_lock:
                     receipt = self._record_transition(
                         campaign_dir,
                         "INTERRUPTED_NEEDS_CONFIRMATION",
-                        "CHECK_DATA 进程组仍存在或无法确认消失；未继续发送未经确认的信号",
+                        f"{job.action} 进程组仍存在或无法确认消失；未继续发送未经确认的信号",
                         "PROCESS_GROUP_UNCONFIRMED",
                         finished_at_utc=_utc_now(),
                         return_code=return_code,
@@ -1466,18 +2221,74 @@ class ResearchConsoleController:
                 status_value = "CANCELLED"
                 message = "任务已由页面请求取消"
                 event_type = "CANCELLED"
-            elif return_code == 0 and self._has_data_ready_output(campaign_dir):
+            elif job.output_limit_exceeded:
+                status_value = "FAILED"
+                message = "Codex 私有输出超过固定上限；未读取、展示或入库"
+                event_type = "FAILED"
+            elif job.action == "CODEX_GENERATION" and return_code == 0:
+                try:
+                    status_value, message, event_type = (
+                        self._finalize_codex_generation(job, campaign_dir, finished)
+                    )
+                except GenerationContractError as exc:
+                    persisted = self._persist_generation_failure(
+                        job.campaign_id,
+                        error_code=(
+                            "DUPLICATE_CODE_SHA256"
+                            if exc.code == "duplicate_candidate"
+                            else exc.code.upper()
+                        ),
+                        error_message=exc.message,
+                        finished_at=finished,
+                        details=(
+                            {"existing_candidate_id": exc.existing_candidate_id}
+                            if exc.existing_candidate_id is not None
+                            else None
+                        ),
+                    )
+                    if not persisted:
+                        raise
+                    status_value = "FAILED"
+                    message = (
+                        "生成源码与既有 Candidate 重复；未覆盖，既有 Candidate 标识可在规范化状态中查看"
+                        if exc.code == "duplicate_candidate"
+                        else "Codex 生成输出未通过固定合同；私有日志不会显示在页面"
+                    )
+                    event_type = "FAILED"
+            elif job.action == "CHECK_DATA" and return_code == 0 and self._has_data_ready_output(campaign_dir):
                 status_value = "SUCCEEDED"
                 message = "CHECK_DATA 已完成；此状态不代表策略有效或盈利"
                 event_type = "SUCCEEDED"
             else:
                 status_value = "FAILED"
                 message = (
-                    "CHECK_DATA 输出合同无效；原始输出仅保存在 Git 外运行目录"
+                    f"{job.action} 输出合同无效；原始输出仅保存在 Git 外运行目录"
                     if return_code == 0
-                    else "CHECK_DATA 执行失败；原始输出仅保存在 Git 外运行目录"
+                    else f"{job.action} 执行失败；原始输出仅保存在 Git 外运行目录"
                 )
                 event_type = "FAILED"
+            if job.action == "CODEX_GENERATION" and status_value != "SUCCEEDED":
+                reason_codes = {
+                    "INTERRUPTED": "SERVER_INTERRUPTED",
+                    "TIMED_OUT": "TIMED_OUT",
+                    "CANCELLED": "CANCELLED",
+                    "FAILED": (
+                        "OUTPUT_LIMIT_EXCEEDED"
+                        if job.output_limit_exceeded
+                        else "CODEX_NONZERO" if return_code else "OUTPUT_INVALID"
+                    ),
+                }
+                persisted = self._persist_generation_failure(
+                    job.campaign_id,
+                    error_code=reason_codes.get(status_value, "GENERATION_FAILED"),
+                    error_message=message,
+                    finished_at=finished,
+                )
+                if not persisted:
+                    raise GenerationContractError(
+                        "generation_state_conflict",
+                        "Generation terminal state could not be persisted",
+                    )
             with job.receipt_lock:
                 receipt = self._record_transition(
                     campaign_dir,
@@ -1494,6 +2305,13 @@ class ResearchConsoleController:
                     self._restart_confirmation_required = True
         except Exception:
             process_group_finalized = self._terminate_owned_job(job)
+            if job.action == "CODEX_GENERATION":
+                self._persist_generation_failure(
+                    job.campaign_id,
+                    error_code="CONTROLLER_FAILED",
+                    error_message="Generation controller failed",
+                    finished_at=_utc_now(),
+                )
             if campaign_dir is not None:
                 with job.receipt_lock:
                     receipt = self._record_transition(
@@ -1541,6 +2359,74 @@ class ResearchConsoleController:
             )
         return _public_status(status_value)
 
+    def generation_context(self) -> Dict[str, Any]:
+        try:
+            return load_generation_context(self.config.database_path)
+        except GenerationContractError as exc:
+            raise ControlRequestError(exc.status, exc.code, exc.message) from exc
+
+    def get_generation(self, generation_id: str) -> Dict[str, Any]:
+        try:
+            payload = load_generation(self.config.database_path, generation_id)
+        except GenerationContractError as exc:
+            raise ControlRequestError(exc.status, exc.code, exc.message) from exc
+        try:
+            runtime = self.get_status(generation_id)
+        except ControlRequestError:
+            runtime = None
+        if runtime is not None and runtime.get("action") != "CODEX_GENERATION":
+            raise ControlRequestError(
+                404, "generation_not_found", "Generation 不存在"
+            )
+        payload["runtime_status"] = (
+            None if runtime is None else runtime.get("status")
+        )
+        payload["message"] = None if runtime is None else runtime.get("message")
+        candidate = payload.get("candidate")
+        review_status = (
+            candidate.get("review_status") if isinstance(candidate, dict) else None
+        )
+        if payload["runtime_status"] == "SUCCEEDED" and review_status == "APPROVED":
+            payload["message"] = (
+                "Candidate 已人工批准进入后续研究；仍未证明安全、有效、盈利或可交易"
+            )
+        elif payload["runtime_status"] == "SUCCEEDED" and review_status == "REJECTED":
+            payload["message"] = "Candidate 已人工拒绝；GenerationRun 仍保持真实完成状态"
+        return payload
+
+    def cancel_generation(self, generation_id: str) -> Dict[str, Any]:
+        with self._lock:
+            job = self._active
+            if job is not None and job.campaign_id == generation_id:
+                if job.action != "CODEX_GENERATION":
+                    raise ControlRequestError(
+                        404, "generation_not_found", "Generation 不存在"
+                    )
+                self.cancel_campaign(
+                    generation_id, expected_action="CODEX_GENERATION"
+                )
+                return self.get_generation(generation_id)
+            current = self.get_generation(generation_id)
+            if current["status"] in {"COMPLETED", "FAILED"}:
+                return current
+            raise ControlRequestError(
+                409, "generation_not_active", "Generation 不由当前服务持有"
+            )
+
+    def review_generation(
+        self, generation_id: str, decision: str
+    ) -> Dict[str, Any]:
+        try:
+            review_candidate_generation(
+                self.config.database_path,
+                generation_id,
+                decision,
+                decided_at=_utc_now(),
+            )
+            return self.get_generation(generation_id)
+        except GenerationContractError as exc:
+            raise ControlRequestError(exc.status, exc.code, exc.message) from exc
+
     def get_events(self, campaign_id: str, after: int = 0) -> Dict[str, Any]:
         with self._lock:
             if campaign_id in self._state_unavailable:
@@ -1571,14 +2457,21 @@ class ResearchConsoleController:
             "next_after": next_after,
         }
 
-    def cancel_campaign(self, campaign_id: str) -> Dict[str, Any]:
+    def cancel_campaign(
+        self, campaign_id: str, *, expected_action: str = "CHECK_DATA"
+    ) -> Dict[str, Any]:
         with self._lock:
             job = self._active
             if (
                 job is None
                 or job.campaign_id != campaign_id
+                or job.action != expected_action
             ):
                 current = self.get_status(campaign_id)
+                if current.get("action") != expected_action:
+                    raise ControlRequestError(
+                        404, "campaign_not_found", "Campaign 不存在"
+                    )
                 if current["status"] in TERMINAL_STATUSES:
                     return current
                 raise ControlRequestError(
@@ -1713,38 +2606,96 @@ CONSOLE_HTML = """<!doctype html>
 <title>Research Console</title>
 <style>
 :root{{color-scheme:light;font:14px/1.5 system-ui,sans-serif;color:#172033;background:#f6f7f9}}
-body{{margin:0}}main{{max-width:1000px;margin:auto;padding:24px}}
+body{{margin:0}}main{{max-width:1040px;margin:auto;padding:24px}}
 header{{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}}
-h1,h2{{margin:0 0 10px}}a{{color:#3157d5}}section{{background:#fff;border:1px solid #dde2ea;border-radius:10px;padding:16px;margin:12px 0}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}}
-.check{{border:1px solid #e6e9ef;border-radius:8px;padding:10px}}.name{{font-weight:650}}.status{{font-family:ui-monospace,monospace}}
-button{{border:1px solid #3157d5;border-radius:7px;background:#3157d5;color:#fff;padding:8px 12px;margin-right:8px}}button.secondary{{background:#fff;color:#3157d5}}button:disabled{{opacity:.45}}
-pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;border-radius:7px;min-height:42px}}
+h1,h2,h3{{margin:0 0 10px}}a{{color:#3157d5}}section{{background:#fff;border:1px solid #dde2ea;border-radius:10px;padding:16px;margin:12px 0}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}}.field{{display:flex;flex-direction:column;gap:4px}}
+.wide{{grid-column:1/-1}}label,.name{{font-weight:650}}select,input,textarea{{font:inherit;border:1px solid #cbd2dd;border-radius:7px;padding:8px;background:#fff}}textarea{{min-height:86px;resize:vertical}}
+.check{{border:1px solid #e6e9ef;border-radius:8px;padding:10px}}.status{{font-family:ui-monospace,monospace}}
+button{{border:1px solid #3157d5;border-radius:7px;background:#3157d5;color:#fff;padding:8px 12px;margin:8px 8px 0 0}}button.secondary{{background:#fff;color:#3157d5}}button.danger{{background:#fff;color:#a32929;border-color:#a32929}}button:disabled{{opacity:.45}}
+pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;border-radius:7px;min-height:42px;max-height:440px;overflow:auto}}
 .note{{color:#5d687a}}ul{{padding-left:20px}}
 </style><script src="/console.js" defer></script></head>
 <body><main><header><div><h1>Research Console</h1><div class="note">本地单进程 · 固定动作 · 无任意命令入口</div></div><a href="/">策略库</a></header>
 <section><h2>Preflight</h2><div id="overall" class="status">CHECKING</div><div id="checks" class="grid"></div></section>
-<section><h2>受控任务</h2><p class="note">本 Slice 只运行已冻结 Pilot 目录的 CHECK_DATA；成功不代表策略有效、盈利或可交易。</p>
+<section><h2>Codex 生成 Candidate</h2><p class="note">每次只生成 1 个草稿。批准仅表示允许进入后续研究，不代表安全、有效、盈利或可交易。</p>
+<div class="grid">
+<div class="field"><label for="profile">ResearchProfile</label><select id="profile"></select></div>
+<div class="field"><label for="parent">已批准父 Candidate（可选）</label><select id="parent"><option value="">无父 Candidate</option></select></div>
+<div class="field wide"><label for="idea">研究假设</label><textarea id="idea" required></textarea></div>
+<div class="field"><label for="family">策略族（可选）</label><input id="family"></div>
+<div class="field"><label for="failure">预期失败模式（可选）</label><input id="failure"></div>
+</div>
+<button id="generate">Codex 生成</button><button id="generation-cancel" class="secondary" disabled>取消生成</button><button id="approve" disabled>批准进入研究</button><button id="reject" class="danger" disabled>拒绝</button>
+<h3>规范化状态</h3><pre id="generation-status">尚未生成</pre><h3>源码预览</h3><pre id="candidate-code">暂无源码</pre>
+</section>
+<section><h2>数据检查</h2><p class="note">只运行已冻结 Pilot 目录的 CHECK_DATA；成功不代表策略有效、盈利或可交易。</p>
 <button id="run">运行 CHECK_DATA</button><button id="cancel" class="secondary" disabled>取消当前任务</button><pre id="job">尚未启动</pre></section>
-<section><h2>规范化事件</h2><ul id="events"><li>暂无事件</li></ul></section>
+<section><h2>CHECK_DATA 规范化事件</h2><ul id="events"><li>暂无事件</li></ul></section>
 </main></body></html>"""
 
 
 CONSOLE_JS = r"""'use strict';
 const token = document.querySelector('meta[name="csrf-token"]').content;
+const postHeaders = {'Content-Type':'application/json','X-CSRF-Token':token};
 const runButton = document.getElementById('run');
 const cancelButton = document.getElementById('cancel');
 const jobBox = document.getElementById('job');
 const eventList = document.getElementById('events');
+const profileSelect = document.getElementById('profile');
+const parentSelect = document.getElementById('parent');
+const generateButton = document.getElementById('generate');
+const generationCancel = document.getElementById('generation-cancel');
+const approveButton = document.getElementById('approve');
+const rejectButton = document.getElementById('reject');
+const generationStatus = document.getElementById('generation-status');
+const candidateCode = document.getElementById('candidate-code');
 let campaignId = null;
 let timer = null;
+let generationId = null;
+let generationTimer = null;
+let generationContext = null;
 function showJob(value) { jobBox.textContent = JSON.stringify(value, null, 2); }
 function terminal(status) { return ['SUCCEEDED','FAILED','CANCELLED','TIMED_OUT','INTERRUPTED','INTERRUPTED_NEEDS_CONFIRMATION'].includes(status); }
 async function request(path, options = {}) {
   const response = await fetch(path, options);
   const value = await response.json();
-  if (!response.ok) throw new Error(value.message || value.error || `HTTP ${response.status}`);
+  if (!response.ok && !(response.status === 409 && value.status === 'FAILED')) {
+    const error = new Error(value.message || value.error || `HTTP ${response.status}`); error.payload = value; throw error;
+  }
   return value;
+}
+function renderGeneration(value) {
+  const safe = JSON.parse(JSON.stringify(value));
+  const code = safe.candidate ? safe.candidate.code_text : null;
+  if (safe.candidate) delete safe.candidate.code_text;
+  generationStatus.textContent = JSON.stringify(safe, null, 2);
+  candidateCode.textContent = code || '暂无源码';
+  const runtimeActive = value.runtime_status !== null && !terminal(value.runtime_status);
+  const running = value.status === 'RUNNING' || runtimeActive;
+  const pending = value.status === 'COMPLETED' && value.runtime_status === 'SUCCEEDED' && value.candidate && value.candidate.review_status === 'PENDING';
+  generationCancel.disabled = !running;
+  generateButton.disabled = running;
+  approveButton.disabled = !pending;
+  rejectButton.disabled = !pending;
+}
+function refreshParents() {
+  const selected = parentSelect.value; parentSelect.replaceChildren();
+  const empty = document.createElement('option'); empty.value = ''; empty.textContent = '无父 Candidate'; parentSelect.append(empty);
+  if (!generationContext) return;
+  generationContext.approved_parents.filter(item => item.profile_id === profileSelect.value).forEach(item => {
+    const option = document.createElement('option'); option.value = item.id; option.textContent = `${item.display_name} · ${item.class_name}`; parentSelect.append(option);
+  });
+  if ([...parentSelect.options].some(option => option.value === selected)) parentSelect.value = selected;
+}
+async function loadGenerationContext() {
+  generationContext = await request('/api/generation/context'); profileSelect.replaceChildren();
+  generationContext.profiles.forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = `${profile.name} · ${profile.timeframe}`; profileSelect.append(option); });
+  document.getElementById('idea').maxLength = generationContext.limits.idea_chars;
+  document.getElementById('family').maxLength = generationContext.limits.strategy_family_chars;
+  document.getElementById('failure').maxLength = generationContext.limits.expected_failure_mode_chars;
+  refreshParents();
+  if (generationContext.latest_generation_id) { generationId = generationContext.latest_generation_id; await pollGeneration(); }
 }
 async function loadPreflight() {
   try {
@@ -1759,50 +2710,58 @@ async function loadPreflight() {
         .filter(([key]) => key !== 'status').map(([key, item]) => `${key}: ${item === null ? 'UNKNOWN' : (typeof item === 'object' ? JSON.stringify(item) : String(item))}`).join(' · ');
       box.append(title, status, message); root.append(box);
     });
-    if (value.latest_campaign) {
-      campaignId = value.latest_campaign.campaign_id;
-      showJob(value.latest_campaign);
-      await poll();
+    if (value.latest_campaign && value.latest_campaign.action === 'CHECK_DATA') {
+      campaignId = value.latest_campaign.campaign_id; showJob(value.latest_campaign); await poll();
       if (!terminal(value.latest_campaign.status) && !timer) timer = setInterval(poll, 750);
     }
   } catch (error) { document.getElementById('overall').textContent = `ERROR: ${error.message}`; }
 }
+async function pollGeneration() {
+  if (!generationId) return;
+  try {
+    const value = await request(`/api/generations/${generationId}`); renderGeneration(value);
+    if (value.status === 'RUNNING' || (value.runtime_status !== null && !terminal(value.runtime_status))) { if (!generationTimer) generationTimer = setInterval(pollGeneration, 750); }
+    else { clearInterval(generationTimer); generationTimer = null; }
+  } catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
+}
+async function generationAction(action) {
+  if (!generationId) return;
+  try {
+    const value = await request(`/api/generations/${generationId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action})});
+    renderGeneration(value); if (action !== 'CANCEL') await loadGenerationContext();
+  } catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
+}
+generateButton.addEventListener('click', async () => {
+  const payload = {profile_id:profileSelect.value,idea:document.getElementById('idea').value};
+  const parent = parentSelect.value, family = document.getElementById('family').value.trim(), failure = document.getElementById('failure').value.trim();
+  if (parent) payload.parent_candidate_id = parent; if (family) payload.strategy_family = family; if (failure) payload.expected_failure_mode = failure;
+  generateButton.disabled = true;
+  try { const value = await request('/api/generations', {method:'POST',headers:postHeaders,body:JSON.stringify(payload)}); generationId = value.id; renderGeneration(value); await pollGeneration(); }
+  catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); generateButton.disabled = false; }
+});
+generationCancel.addEventListener('click', () => generationAction('CANCEL'));
+approveButton.addEventListener('click', () => generationAction('APPROVE'));
+rejectButton.addEventListener('click', () => generationAction('REJECT'));
+profileSelect.addEventListener('change', refreshParents);
 async function poll() {
   if (!campaignId) return;
   try {
-    const [status, events] = await Promise.all([
-      request(`/api/campaigns/${campaignId}`),
-      request(`/api/campaigns/${campaignId}/events`)
-    ]);
-    showJob(status); eventList.replaceChildren();
-    events.events.forEach(event => { const item = document.createElement('li'); item.textContent = `${event.at_utc} · ${event.status} · ${event.message}`; eventList.append(item); });
-    cancelButton.disabled = terminal(status.status);
-    runButton.disabled = !terminal(status.status);
-    if (terminal(status.status)) { clearInterval(timer); timer = null; }
-  } catch (error) { showJob({error: error.message}); }
+    const [status, events] = await Promise.all([request(`/api/campaigns/${campaignId}`),request(`/api/campaigns/${campaignId}/events`)]);
+    showJob(status); eventList.replaceChildren(); events.events.forEach(event => { const item = document.createElement('li'); item.textContent = `${event.at_utc} · ${event.status} · ${event.message}`; eventList.append(item); });
+    cancelButton.disabled = terminal(status.status); runButton.disabled = !terminal(status.status); if (terminal(status.status)) { clearInterval(timer); timer = null; }
+  } catch (error) { showJob({error:error.message}); }
 }
 runButton.addEventListener('click', async () => {
   runButton.disabled = true;
-  try {
-    const value = await request('/api/campaigns', {
-      method: 'POST', headers: {'Content-Type':'application/json','X-CSRF-Token':token},
-      body: JSON.stringify({action:'CHECK_DATA'})
-    });
-    campaignId = value.campaign_id; cancelButton.disabled = false; showJob(value);
-    await poll(); if (!timer) timer = setInterval(poll, 750);
-  } catch (error) { showJob({error:error.message}); runButton.disabled = false; }
+  try { const value = await request('/api/campaigns', {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CHECK_DATA'})}); campaignId = value.campaign_id; cancelButton.disabled = false; showJob(value); await poll(); if (!timer) timer = setInterval(poll,750); }
+  catch (error) { showJob({error:error.message}); runButton.disabled = false; }
 });
 cancelButton.addEventListener('click', async () => {
-  if (!campaignId) return;
-  cancelButton.disabled = true;
-  try {
-    showJob(await request(`/api/campaigns/${campaignId}/actions`, {
-      method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':token},
-      body:JSON.stringify({action:'CANCEL'})
-    }));
-  } catch (error) { showJob({error:error.message}); }
+  if (!campaignId) return; cancelButton.disabled = true;
+  try { showJob(await request(`/api/campaigns/${campaignId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})})); }
+  catch (error) { showJob({error:error.message}); }
 });
-loadPreflight();
+Promise.all([loadPreflight(), loadGenerationContext()]).catch(error => { generationStatus.textContent = `ERROR: ${error.message}`; });
 """
 
 
@@ -1915,7 +2874,11 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             "/console.js",
             "/api/control/preflight",
             "/api/campaigns",
-        ) or path.startswith("/api/campaigns/")
+            "/api/generation/context",
+            "/api/generations",
+        ) or path.startswith("/api/campaigns/") or path.startswith(
+            "/api/generations/"
+        )
         if not is_control:
             super()._dispatch(head_only=head_only)
             return
@@ -1958,6 +2921,56 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     200,
                     json.dumps(
                         self.controller.preflight(),
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
+                return
+            if path == "/api/generation/context":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.generation_context()
+                self._send(
+                    200,
+                    json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
+                return
+            if path == "/api/generations":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                self._send_control_method_not_allowed(path, head_only=head_only)
+                return
+            generation_match = re.fullmatch(r"/api/generations/([^/]+)", path)
+            if generation_match is not None:
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.get_generation(generation_match.group(1))
+                response_status = (
+                    409
+                    if payload.get("error_code") == "DUPLICATE_CODE_SHA256"
+                    else 200
+                )
+                if response_status == 409:
+                    payload = {
+                        **payload,
+                        "error": "duplicate_candidate",
+                        "message": payload.get("message")
+                        or "生成源码与既有 Candidate 重复",
+                    }
+                self._send(
+                    response_status,
+                    json.dumps(
+                        payload,
                         ensure_ascii=False,
                         separators=(",", ":"),
                         sort_keys=True,
@@ -2044,8 +3057,17 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             self._control_error(exc.status, exc.code, exc.message)
             return
         create_route = request.path == "/api/campaigns"
+        create_generation_route = request.path == "/api/generations"
         action_match = re.fullmatch(r"/api/campaigns/([^/]+)/actions", request.path)
-        if not create_route and action_match is None:
+        generation_action_match = re.fullmatch(
+            r"/api/generations/([^/]+)/actions", request.path
+        )
+        if (
+            not create_route
+            and not create_generation_route
+            and action_match is None
+            and generation_action_match is None
+        ):
             self._method_not_allowed()
             return
         if not self._has_expected_host():
@@ -2074,14 +3096,48 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                         400, "invalid_action", "只允许固定 CHECK_DATA action"
                     )
                 payload = self.controller.create_campaign()
-            else:
+                response_status = 202
+            elif create_generation_route:
+                try:
+                    generation_request = validate_generation_request(body)
+                except GenerationContractError as exc:
+                    raise ControlRequestError(
+                        exc.status, exc.code, exc.message
+                    ) from exc
+                payload = self.controller.create_generation(generation_request)
+                response_status = 202
+            elif action_match is not None:
                 if body != {"action": "CANCEL"}:
                     raise ControlRequestError(
                         400, "invalid_action", "只允许固定 CANCEL action"
                     )
                 payload = self.controller.cancel_campaign(action_match.group(1))
+                response_status = 202
+            else:
+                if set(body) != {"action"} or body.get("action") not in {
+                    "CANCEL",
+                    "APPROVE",
+                    "REJECT",
+                }:
+                    raise ControlRequestError(
+                        400,
+                        "invalid_action",
+                        "Generation action 只允许 CANCEL、APPROVE 或 REJECT",
+                    )
+                selected_action = str(body["action"])
+                if selected_action == "CANCEL":
+                    payload = self.controller.cancel_generation(
+                        generation_action_match.group(1)
+                    )
+                    response_status = 202
+                else:
+                    payload = self.controller.review_generation(
+                        generation_action_match.group(1),
+                        "APPROVED" if selected_action == "APPROVE" else "REJECTED",
+                    )
+                    response_status = 200
             self._send(
-                202,
+                response_status,
                 json.dumps(
                     payload,
                     ensure_ascii=False,
@@ -2102,7 +3158,8 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
     ) -> None:
         allow = (
             "POST"
-            if path == "/api/campaigns" or path.endswith("/actions")
+            if path in ("/api/campaigns", "/api/generations")
+            or path.endswith("/actions")
             else "GET, HEAD"
         )
         self._send(
@@ -2124,9 +3181,16 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             self._control_error(exc.status, exc.code, exc.message)
             return
         if (
-            path in ("/console", "/console.js", "/api/control/preflight")
+            path in (
+                "/console",
+                "/console.js",
+                "/api/control/preflight",
+                "/api/generation/context",
+            )
             or path == "/api/campaigns"
             or path.startswith("/api/campaigns/")
+            or path == "/api/generations"
+            or path.startswith("/api/generations/")
         ):
             if not self._has_expected_host():
                 self._control_error(
@@ -2171,6 +3235,7 @@ def create_research_console_server(
     frequi_base_url: Optional[str] = None,
     frequi_results_root: Optional[PathLike] = None,
     codex_binary: Optional[PathLike] = None,
+    codex_model: Optional[str] = None,
     check_data_python: PathLike = sys.executable,
     webserver_base_url: str = "http://127.0.0.1:8080",
     task_timeout_seconds: float = 300.0,
@@ -2193,6 +3258,7 @@ def create_research_console_server(
             runtime_root,
             pilot_root,
             codex_binary=codex_binary,
+            codex_model=codex_model,
             check_data_python=check_data_python,
             webserver_base_url=webserver_base_url,
             task_timeout_seconds=task_timeout_seconds,
