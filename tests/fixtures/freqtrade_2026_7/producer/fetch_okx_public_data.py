@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch the bounded Issue #9 OKX public dataset into an untracked local path.
+"""Fetch a bounded OKX public dataset into an untracked local path.
 
 This is a manual acquisition helper, not a test that may silently use the
 network.  It deliberately has no credential inputs and permits only the five
@@ -52,6 +52,15 @@ EXPECTED_VERSIONS = {
 }
 EXPECTED_FREQTRADE_COMMIT = "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5"
 GIT_EXECUTABLE = Path("/Library/Developer/CommandLineTools/usr/bin/git")
+WINDOW_SPEC_SCHEMA = "freqtrade-lab-okx-window-v1"
+WINDOW_SPEC_FIELDS = (
+    "data_start_utc",
+    "development_start_utc",
+    "holdout_start_utc",
+    "end_exclusive_utc",
+)
+FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000
+MAX_FUNDING_BATCH = 100
 
 ALLOWED_PATHS = {
     "/api/v5/public/instruments",
@@ -80,6 +89,110 @@ def canonical_bytes(value: object) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+def _strict_json_object(path: Path, label: str) -> dict:
+    def no_duplicates(pairs: list[tuple[str, object]]) -> dict:
+        value = {}
+        for key, child in pairs:
+            if key in value:
+                raise RuntimeError(f"{label} contains duplicate key {key!r}")
+            value[key] = child
+        return value
+
+    def reject_constant(value: str) -> object:
+        raise RuntimeError(f"{label} contains non-finite number {value}")
+
+    try:
+        raw = path.expanduser().read_bytes()
+        value = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=no_duplicates,
+            parse_constant=reject_constant,
+        )
+    except RuntimeError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise RuntimeError(f"{label} cannot be read as strict JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{label} must be a JSON object")
+    return value
+
+
+def _utc_z_datetime(value: object, label: str) -> datetime:
+    if not isinstance(value, str) or len(value) != 20 or not value.endswith("Z"):
+        raise RuntimeError(f"{label} must use YYYY-MM-DDTHH:MM:SSZ")
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise RuntimeError(f"{label} must use YYYY-MM-DDTHH:MM:SSZ") from exc
+    if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+        raise RuntimeError(f"{label} must use YYYY-MM-DDTHH:MM:SSZ")
+    return parsed
+
+
+def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime]:
+    value = _strict_json_object(path, "window spec")
+    expected = {"schema", *WINDOW_SPEC_FIELDS}
+    missing = sorted(expected - set(value))
+    unknown = sorted(set(value) - expected)
+    if missing:
+        raise RuntimeError(f"window spec is missing fields: {', '.join(missing)}")
+    if unknown:
+        raise RuntimeError(f"window spec contains unknown fields: {', '.join(unknown)}")
+    if value["schema"] != WINDOW_SPEC_SCHEMA:
+        raise RuntimeError("window spec schema is not supported")
+
+    data_start, development_start, holdout_start, end_exclusive = (
+        _utc_z_datetime(value[field], f"window spec {field}")
+        for field in WINDOW_SPEC_FIELDS
+    )
+    if not data_start < development_start < holdout_start < end_exclusive:
+        raise RuntimeError(
+            "window spec must satisfy data_start < development_start < "
+            "holdout_start < end_exclusive"
+        )
+
+    for label, boundary in (
+        ("development_start_utc", development_start),
+        ("holdout_start_utc", holdout_start),
+        ("end_exclusive_utc", end_exclusive),
+    ):
+        if any((boundary.hour, boundary.minute, boundary.second, boundary.microsecond)):
+            raise RuntimeError(f"window spec {label} must be UTC midnight")
+    if any((data_start.minute, data_start.second, data_start.microsecond)):
+        raise RuntimeError("window spec data_start_utc must be aligned to an UTC hour")
+
+    day_seconds = 24 * 60 * 60
+    development_seconds = int((holdout_start - development_start).total_seconds())
+    holdout_seconds = int((end_exclusive - holdout_start).total_seconds())
+    if development_seconds % day_seconds or holdout_seconds % day_seconds:
+        raise RuntimeError("window spec Development and Holdout must be whole days")
+    research_days = (development_seconds + holdout_seconds) // day_seconds
+    if not 60 <= research_days <= 90:
+        raise RuntimeError("window spec research window must be from 60 to 90 whole days")
+
+    warmup_seconds = int((development_start - data_start).total_seconds())
+    if not 0 < warmup_seconds <= day_seconds:
+        raise RuntimeError("window spec warmup must be greater than zero and at most one day")
+    if end_exclusive >= datetime.now(UTC):
+        raise RuntimeError("window spec end_exclusive_utc must be fully closed")
+    return data_start, development_start, holdout_start, end_exclusive
+
+
+def configure_window(path: Path | None) -> None:
+    """Apply an optional frozen window while preserving the six-day default."""
+    if path is None:
+        return
+    global DATA_START, DEVELOPMENT_START, HOLDOUT_START, DATA_END
+    global DATA_START_MS, DATA_END_MS
+    DATA_START, DEVELOPMENT_START, HOLDOUT_START, DATA_END = load_window_spec(path)
+    DATA_START_MS = int(DATA_START.timestamp() * 1000)
+    DATA_END_MS = int(DATA_END.timestamp() * 1000)
+
+
+def scenario_timerange(start: datetime, end: datetime) -> str:
+    return f"{start:%Y%m%d}-{end:%Y%m%d}"
 
 
 def load_local_candidate_inputs(
@@ -227,7 +340,7 @@ def validate_funding_history(funding: list[dict]) -> dict[str, object]:
         range(
             int(DEVELOPMENT_START.timestamp() * 1000),
             DATA_END_MS,
-            8 * 60 * 60 * 1000,
+            FUNDING_INTERVAL_MS,
         )
     )
     if funding_timestamps != expected_funding:
@@ -242,6 +355,47 @@ def validate_funding_history(funding: list[dict]) -> dict[str, object]:
         "duplicates": 0,
         "outside_window": 0,
     }
+
+
+def fetch_funding_history(
+    exchange: ccxt.okx,
+    requests: list[dict[str, object]],
+) -> list[dict]:
+    expected_timestamps = list(
+        range(
+            int(DEVELOPMENT_START.timestamp() * 1000),
+            DATA_END_MS,
+            FUNDING_INTERVAL_MS,
+        )
+    )
+    batches = math.ceil(len(expected_timestamps) / MAX_FUNDING_BATCH)
+    output: list[dict] = []
+    for offset in range(0, len(expected_timestamps), MAX_FUNDING_BATCH):
+        batch_number = offset // MAX_FUNDING_BATCH + 1
+        batch_timestamps = expected_timestamps[offset : offset + MAX_FUNDING_BATCH]
+        batch_start = batch_timestamps[0]
+        count = len(batch_timestamps)
+        batch_end = batch_start + count * FUNDING_INTERVAL_MS
+        rows = exchange.fetch_funding_rate_history(
+            SYMBOL,
+            since=batch_start,
+            limit=count,
+            params={"after": batch_end},
+        )
+        label = (
+            "funding-history"
+            if batches == 1
+            else f"funding-history-{batch_number}"
+        )
+        requests.append(request_receipt(exchange, label))
+        if not isinstance(rows, list) or len(rows) != count:
+            received = len(rows) if isinstance(rows, list) else "non-list"
+            raise RuntimeError(
+                f"funding history batch {batch_number}: expected {count} rows, "
+                f"received {received}"
+            )
+        output.extend(rows)
+    return output
 
 
 def validate_ohlcv_values(
@@ -453,13 +607,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
             label="mark-1h",
             requests=requests,
         )
-        funding = exchange.fetch_funding_rate_history(
-            SYMBOL,
-            since=DATA_START_MS,
-            limit=100,
-            params={"after": DATA_END_MS},
-        )
-        requests.append(request_receipt(exchange, "funding-history"))
+        funding = fetch_funding_history(exchange, requests)
     finally:
         exchange.close()
 
@@ -669,8 +817,10 @@ def write_local_producer_inputs(
             "leverage_tiers": "isolated_tiers_snapshot.json",
             "config": "config.json",
             "strategy": strategy_relative,
-            "development_timerange": "20260801-20260804",
-            "holdout_timerange": "20260804-20260807",
+            "development_timerange": scenario_timerange(
+                DEVELOPMENT_START, HOLDOUT_START
+            ),
+            "holdout_timerange": scenario_timerange(HOLDOUT_START, DATA_END),
             "timeframe": "5m",
         },
         "files": files,
@@ -684,7 +834,7 @@ def write_local_producer_inputs(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Fetch fixed, public OKX XRP-USDT-SWAP regression inputs. "
+            "Fetch bounded, public OKX XRP-USDT-SWAP research inputs. "
             "The output is local-only and must stay outside Git."
         )
     )
@@ -703,6 +853,13 @@ def parse_args() -> argparse.Namespace:
         "--research-spec",
         type=Path,
         help="local ResearchProfile/Candidate JSON; requires --strategy-file",
+    )
+    parser.add_argument(
+        "--window-spec",
+        type=Path,
+        help=(
+            "optional strict freqtrade-lab-okx-window-v1 JSON; keeps XRP/5m/OKX fixed"
+        ),
     )
     args = parser.parse_args()
     if (args.strategy_file is None) != (args.research_spec is None):
@@ -725,6 +882,7 @@ def is_same_or_below_existing_directory(candidate_parent: Path, boundary: Path) 
 
 def main() -> None:
     args = parse_args()
+    configure_window(getattr(args, "window_spec", None))
     local_candidate = load_local_candidate_inputs(
         args.strategy_file,
         args.research_spec,

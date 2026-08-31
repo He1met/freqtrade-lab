@@ -293,6 +293,17 @@ def _resolve_output(path_value: PathLike) -> Path:
     return output
 
 
+def _resolve_new_receipt(path_value: PathLike, label: str) -> Path:
+    value = Path(path_value).expanduser()
+    if not value.is_absolute() or value.name in ("", ".", ".."):
+        raise ResearchCandidateError(f"{label} must name one absolute new file")
+    parent = _resolve_directory(value.parent, f"{label} parent")
+    path = parent / value.name
+    if path.exists() or path.is_symlink():
+        raise ResearchCandidateError(f"{label} already exists")
+    return path
+
+
 def _publish_directory_exclusive(source: Path, destination: Path) -> None:
     """Atomically publish without replacing a concurrently created target."""
     if sys.platform == "darwin":
@@ -808,6 +819,7 @@ def _sandbox_policy(
     leverage_tiers: Path,
     data_provenance: Path,
     home: Path,
+    scenario_open_receipt: Optional[Path] = None,
 ) -> str:
     """Build a deny-by-default Seatbelt profile for one bounded scenario."""
     python_chain = _executable_symlink_chain(python)
@@ -876,9 +888,13 @@ def _sandbox_policy(
         data_provenance,
         pyvenv_config,
     }
+    write_literals: set[Path] = set()
+    if scenario_open_receipt is not None:
+        write_literals.update((scenario_open_receipt, scenario_open_receipt.parent))
+        read_literals.add(scenario_open_receipt.parent)
     process_executables = {*python_chain, python_target}
     metadata_paths: set[Path] = set()
-    for allowed_path in read_subpaths | read_literals | process_executables | {
+    for allowed_path in read_subpaths | read_literals | write_literals | process_executables | {
         export_dir.parent,
         home,
     }:
@@ -922,6 +938,7 @@ def _sandbox_policy(
         )
     )
     lines.extend(allow_rules("file-write*", "subpath", {export_dir.parent, home}))
+    lines.extend(allow_rules("file-write*", "literal", write_literals))
     lines.extend(("(deny network*)", ""))
     return "\n".join(lines)
 
@@ -1245,6 +1262,8 @@ def _run_scenario(
     data_provenance: Path,
     home: Path,
     command_runner: CommandRunner,
+    allow_zero_trades: bool = False,
+    scenario_open_receipt: Optional[Path] = None,
 ) -> Tuple[subprocess.CompletedProcess, Mapping[str, Any], Tuple[str, ...]]:
     sandbox_policy = _sandbox_policy(
         python=python,
@@ -1260,6 +1279,7 @@ def _run_scenario(
         leverage_tiers=leverage_tiers,
         data_provenance=data_provenance,
         home=home,
+        scenario_open_receipt=scenario_open_receipt,
     )
     command = (
         str(sandbox_exec),
@@ -1302,6 +1322,10 @@ def _run_scenario(
         "--data-provenance",
         str(data_provenance),
     )
+    if allow_zero_trades:
+        command += ("--allow-zero-trades",)
+    if scenario_open_receipt is not None:
+        command += ("--scenario-open-receipt", str(scenario_open_receipt))
     completed = _run_command(
         command_runner,
         command,
@@ -1327,6 +1351,11 @@ def _run_scenario(
                 leverage_tiers: "<leverage-tiers>",
                 data_provenance: "<data-provenance>",
                 sandbox_exec: "<sandbox-exec>",
+                **(
+                    {scenario_open_receipt: "<scenario-open-receipt>"}
+                    if scenario_open_receipt is not None
+                    else {}
+                ),
             },
         )
         for part in command
@@ -1376,6 +1405,55 @@ def _iso_z(value: Any, label: str) -> str:
         parsed = parsed.replace(tzinfo=timezone.utc)
     parsed = parsed.astimezone(timezone.utc)
     return parsed.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _validate_scenario_open_receipt(
+    path: Path,
+    *,
+    scenario: str,
+    timerange: str,
+    strategy: str,
+    strategy_sha256: str,
+    data_provenance_sha256: str,
+) -> str:
+    data = _read_file(path, "scenario open receipt")
+    value = _mapping(
+        _strict_json(data, "scenario open receipt"), "scenario open receipt"
+    )
+    _exact_keys(
+        value,
+        (
+            "schema",
+            "scenario",
+            "timerange",
+            "strategy",
+            "strategy_sha256",
+            "data_provenance_sha256",
+            "exclusive_stop_utc",
+            "meaning",
+            "opened_at_utc",
+        ),
+        "scenario open receipt",
+    )
+    _, stop = _parse_timerange(timerange, "scenario open receipt timerange")
+    if (
+        value["schema"] != "freqtrade-lab-scenario-open-v1"
+        or value["scenario"] != scenario
+        or value["timerange"] != timerange
+        or value["strategy"] != strategy
+        or value["strategy_sha256"] != strategy_sha256
+        or value["data_provenance_sha256"] != data_provenance_sha256
+        or value["exclusive_stop_utc"]
+        != stop.isoformat().replace("+00:00", "Z")
+        or value["meaning"]
+        != (
+            "one-shot scenario execution budget was consumed before retained market data "
+            "validation began"
+        )
+    ):
+        raise ResearchCandidateError("scenario open receipt disagrees with the invocation")
+    _iso_z(value["opened_at_utc"], "scenario open receipt opened_at_utc")
+    return _sha256(data)
 
 
 def _zip_bytes(members: Sequence[Tuple[str, bytes]]) -> bytes:
@@ -1814,6 +1892,7 @@ def run_research_candidate(
     sandbox_exec: PathLike = DEFAULT_SANDBOX_EXEC,
     runner_script: PathLike = DEFAULT_RUNNER,
     command_runner: CommandRunner = subprocess.run,
+    scenario_open_receipts: Optional[Mapping[str, PathLike]] = None,
 ) -> ResearchCandidateResult:
     """Run, validate, atomically publish, and optionally import one Candidate."""
     python_path = _resolve_executable(freqtrade_python, "Freqtrade Python")
@@ -1828,6 +1907,18 @@ def run_research_candidate(
     tiers_path = _resolve_file(leverage_tiers, "leverage tiers")
     sandbox_path = _resolve_file(sandbox_exec, "sandbox-exec", executable=True)
     runner_path = _resolve_file(runner_script, "Freqtrade backtest runner")
+    open_receipt_paths: Dict[str, Path] = {}
+    if scenario_open_receipts is not None:
+        if set(scenario_open_receipts) != {"HOLDOUT", "HOLDOUT_STRESS"}:
+            raise ResearchCandidateError(
+                "scenario open receipts must name exactly HOLDOUT and HOLDOUT_STRESS"
+            )
+        for scenario in ("HOLDOUT", "HOLDOUT_STRESS"):
+            open_receipt_paths[scenario] = _resolve_new_receipt(
+                scenario_open_receipts[scenario], f"{scenario} open receipt"
+            )
+        if len(set(open_receipt_paths.values())) != 2:
+            raise ResearchCandidateError("scenario open receipt paths must be distinct")
     producer_path = _resolve_file(Path(__file__), "research Candidate producer implementation")
     producer_bytes = _read_file(producer_path, "research Candidate producer implementation")
     runner_bytes = _read_file(runner_path, "Freqtrade backtest runner implementation")
@@ -1991,7 +2082,17 @@ def run_research_candidate(
                 data_provenance=data_provenance_path,
                 home=scenario_home,
                 command_runner=command_runner,
+                scenario_open_receipt=open_receipt_paths.get(scenario),
             )
+            if scenario in open_receipt_paths:
+                _validate_scenario_open_receipt(
+                    open_receipt_paths[scenario],
+                    scenario=scenario,
+                    timerange=timerange,
+                    strategy=strategy,
+                    strategy_sha256=strategy_sha256,
+                    data_provenance_sha256=data_receipt_sha,
+                )
             _check_file_hash(
                 producer_path,
                 len(producer_bytes),

@@ -59,6 +59,24 @@ def _write_manifest(root: Path, value: Dict[str, Any]) -> None:
     )
 
 
+def _add_codex_generation(
+    root: Path,
+    *,
+    model: str | None = "gpt-5.6-sol",
+    returned_strategy_count: int = 3,
+    source_item_index: int = 1,
+) -> Dict[str, Any]:
+    manifest = _manifest(root)
+    manifest["candidate"]["metadata"]["generation"] = {
+        "source": "CODEX",
+        "model": model,
+        "returned_strategy_count": returned_strategy_count,
+        "source_item_index": source_item_index,
+    }
+    _write_manifest(root, manifest)
+    return manifest
+
+
 def _snapshot(database: Path) -> Dict[str, list[tuple[Any, ...]]]:
     with get_connection(database) as connection:
         return {
@@ -165,6 +183,125 @@ def test_second_bundle_reuses_exact_profile_and_candidate_only(tmp_path: Path) -
         "backtest_executions": 6,
         "releases": 0,
     }
+
+
+@pytest.mark.parametrize("model", [None, "gpt-5.6-sol"])
+def test_codex_generation_lineage_is_inserted_and_reused_exactly(
+    tmp_path: Path,
+    model: str | None,
+) -> None:
+    root = _copy_bundle(tmp_path)
+    manifest = _add_codex_generation(root, model=model)
+    database = _database(tmp_path)
+
+    first = import_research_bundle(database, root, MANIFEST_NAME)
+    second = import_research_bundle(database, root, MANIFEST_NAME)
+
+    assert second.profile_reused is True
+    assert second.candidate_reused is True
+    assert second.generation_run_id == first.generation_run_id
+    assert second.candidate_id == first.candidate_id
+    with get_connection(database) as connection:
+        generation = connection.execute("SELECT * FROM generation_runs").fetchone()
+        candidate = connection.execute("SELECT * FROM candidates").fetchone()
+    assert generation["source"] == "CODEX"
+    assert generation["model"] == model
+    assert generation["status"] == "COMPLETED"
+    assert generation["returned_strategy_count"] == 3
+    assert candidate["source_item_index"] == 1
+    assert json.loads(candidate["metadata_json"]) == manifest["candidate"]["metadata"]
+    assert _counts(database) == {
+        "research_profiles": 1,
+        "generation_runs": 1,
+        "candidates": 1,
+        "research_runs": 2,
+        "backtest_executions": 6,
+        "releases": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    ("table", "update"),
+    [
+        ("generation_runs", "UPDATE generation_runs SET source = 'MANUAL'"),
+        ("generation_runs", "UPDATE generation_runs SET model = 'different-model'"),
+        (
+            "generation_runs",
+            "UPDATE generation_runs SET returned_strategy_count = 2",
+        ),
+        ("generation_runs", "UPDATE generation_runs SET status = 'FAILED'"),
+        ("candidates", "UPDATE candidates SET source_item_index = 0"),
+    ],
+)
+def test_codex_generation_reuse_rejects_lineage_mismatch(
+    tmp_path: Path,
+    table: str,
+    update: str,
+) -> None:
+    root = _copy_bundle(tmp_path)
+    _add_codex_generation(root)
+    database = _database(tmp_path)
+    import_research_bundle(database, root, MANIFEST_NAME)
+    with get_connection(database) as connection:
+        connection.execute(update)
+        connection.commit()
+    before = _snapshot(database)
+
+    with pytest.raises(ResearchBundleImportError, match="generation lineage"):
+        import_research_bundle(database, root, MANIFEST_NAME)
+
+    assert _snapshot(database) == before
+    assert _counts(database)[table] == 1
+
+
+@pytest.mark.parametrize(
+    "generation",
+    [
+        None,
+        {
+            "source": "MANUAL",
+            "model": None,
+            "returned_strategy_count": 1,
+            "source_item_index": 0,
+        },
+        {
+            "source": "CODEX",
+            "model": "",
+            "returned_strategy_count": 1,
+            "source_item_index": 0,
+        },
+        {
+            "source": "CODEX",
+            "model": None,
+            "returned_strategy_count": 4,
+            "source_item_index": 0,
+        },
+        {
+            "source": "CODEX",
+            "model": None,
+            "returned_strategy_count": 1,
+            "source_item_index": 1,
+        },
+        {
+            "source": "CODEX",
+            "model": None,
+            "returned_strategy_count": 1,
+            "source_item_index": 0,
+            "unexpected": True,
+        },
+    ],
+)
+def test_codex_generation_metadata_is_strict(
+    tmp_path: Path,
+    generation: Any,
+) -> None:
+    root = _copy_bundle(tmp_path)
+    manifest = _manifest(root)
+    manifest["candidate"]["metadata"]["generation"] = generation
+    _write_manifest(root, manifest)
+
+    with pytest.raises(ResearchBundleImportError, match="generation"):
+        validate_research_bundle(root, MANIFEST_NAME)
 
 
 @pytest.mark.parametrize("mutation", ["missing", "duplicate", "unknown"])

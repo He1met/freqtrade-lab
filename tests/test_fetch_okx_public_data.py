@@ -62,6 +62,20 @@ def _runtime(acquisition_module) -> dict[str, object]:
     }
 
 
+def _write_window_spec(root: Path, **overrides) -> Path:
+    value = {
+        "schema": "freqtrade-lab-okx-window-v1",
+        "data_start_utc": "2026-05-31T22:00:00Z",
+        "development_start_utc": "2026-06-01T00:00:00Z",
+        "holdout_start_utc": "2026-07-31T00:00:00Z",
+        "end_exclusive_utc": "2026-08-30T00:00:00Z",
+    }
+    value.update(overrides)
+    path = root / "window-spec.json"
+    path.write_text(json.dumps(value), encoding="utf-8")
+    return path
+
+
 @pytest.fixture
 def acquisition_module(monkeypatch):
     ccxt = types.ModuleType("ccxt")
@@ -129,6 +143,19 @@ class _Exchange:
         return self.session.request(method, url, headers=headers, data=body)
 
 
+class _FundingExchange:
+    def __init__(self, interval_ms: int):
+        self.interval_ms = interval_ms
+        self.calls = []
+
+    def fetch_funding_rate_history(self, symbol, *, since, limit, params):
+        self.calls.append((symbol, since, limit, dict(params)))
+        return [
+            {"timestamp": timestamp, "fundingRate": 0.0001}
+            for timestamp in range(since, params["after"], self.interval_ms)
+        ]
+
+
 def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     acquisition_module,
 ) -> None:
@@ -151,6 +178,66 @@ def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     assert len(exchange.session.calls) == call_count
 
 
+def test_window_spec_is_strict_and_updates_the_frozen_contract(
+    acquisition_module, tmp_path: Path
+) -> None:
+    spec_path = _write_window_spec(tmp_path)
+    acquisition_module.configure_window(spec_path)
+
+    assert acquisition_module.DATA_START.isoformat() == "2026-05-31T22:00:00+00:00"
+    assert acquisition_module.DEVELOPMENT_START.isoformat() == (
+        "2026-06-01T00:00:00+00:00"
+    )
+    assert acquisition_module.HOLDOUT_START.isoformat() == "2026-07-31T00:00:00+00:00"
+    assert acquisition_module.DATA_END.isoformat() == "2026-08-30T00:00:00+00:00"
+
+    output_root = tmp_path / "output"
+    receipt = _prepare_generated_root(output_root)
+    provenance_path = acquisition_module.write_local_producer_inputs(
+        output_root, receipt, _runtime(acquisition_module)
+    )
+    contract = json.loads(provenance_path.read_bytes())["contract"]
+    assert contract["development_timerange"] == "20260601-20260731"
+    assert contract["holdout_timerange"] == "20260731-20260830"
+    assert contract["timeframe"] == "5m"
+
+
+def test_window_spec_rejects_duplicate_unknown_and_out_of_bounds_fields(
+    acquisition_module, tmp_path: Path
+) -> None:
+    duplicate = tmp_path / "duplicate.json"
+    duplicate.write_text(
+        '{"schema":"freqtrade-lab-okx-window-v1",'
+        '"schema":"freqtrade-lab-okx-window-v1",'
+        '"data_start_utc":"2026-05-31T22:00:00Z",'
+        '"development_start_utc":"2026-06-01T00:00:00Z",'
+        '"holdout_start_utc":"2026-07-31T00:00:00Z",'
+        '"end_exclusive_utc":"2026-08-30T00:00:00Z"}',
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError, match="duplicate key"):
+        acquisition_module.load_window_spec(duplicate)
+
+    unknown = _write_window_spec(tmp_path, pair="BTC/USDT:USDT")
+    with pytest.raises(RuntimeError, match="unknown fields: pair"):
+        acquisition_module.load_window_spec(unknown)
+
+    short = _write_window_spec(
+        tmp_path,
+        holdout_start_utc="2026-07-01T00:00:00Z",
+        end_exclusive_utc="2026-07-30T00:00:00Z",
+    )
+    with pytest.raises(RuntimeError, match="60 to 90"):
+        acquisition_module.load_window_spec(short)
+
+    long_warmup = _write_window_spec(
+        tmp_path,
+        data_start_utc="2026-05-30T23:00:00Z",
+    )
+    with pytest.raises(RuntimeError, match="warmup"):
+        acquisition_module.load_window_spec(long_warmup)
+
+
 def test_funding_history_requires_the_complete_fixed_window(acquisition_module) -> None:
     step = 8 * 60 * 60 * 1000
     start = int(acquisition_module.DEVELOPMENT_START.timestamp() * 1000)
@@ -160,6 +247,65 @@ def test_funding_history_requires_the_complete_fixed_window(acquisition_module) 
     assert acquisition_module.validate_funding_history(complete)["rows"] == len(complete)
     with pytest.raises(RuntimeError, match="every fixed eight-hour timestamp"):
         acquisition_module.validate_funding_history(complete[:-1])
+
+
+def test_default_funding_history_uses_the_same_single_batch_path(
+    acquisition_module, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        acquisition_module,
+        "request_receipt",
+        lambda exchange, label: {"label": label},
+    )
+    exchange = _FundingExchange(acquisition_module.FUNDING_INTERVAL_MS)
+    requests = []
+
+    funding = acquisition_module.fetch_funding_history(exchange, requests)
+
+    assert len(funding) == 18
+    assert [call[2] for call in exchange.calls] == [18]
+    assert exchange.calls[0][1] == int(
+        acquisition_module.DEVELOPMENT_START.timestamp() * 1000
+    )
+    assert exchange.calls[0][3] == {"after": acquisition_module.DATA_END_MS}
+    assert requests == [{"label": "funding-history"}]
+    assert acquisition_module.validate_funding_history(funding)["rows"] == 18
+
+
+def test_ninety_day_funding_history_uses_three_bounded_batches(
+    acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    acquisition_module.configure_window(_write_window_spec(tmp_path))
+    monkeypatch.setattr(
+        acquisition_module,
+        "request_receipt",
+        lambda exchange, label: {"label": label},
+    )
+    exchange = _FundingExchange(acquisition_module.FUNDING_INTERVAL_MS)
+    requests = []
+
+    funding = acquisition_module.fetch_funding_history(exchange, requests)
+
+    assert len(funding) == 270
+    assert [call[2] for call in exchange.calls] == [100, 100, 70]
+    assert all(call[2] <= 100 for call in exchange.calls)
+    assert [request["label"] for request in requests] == [
+        "funding-history-1",
+        "funding-history-2",
+        "funding-history-3",
+    ]
+    for _, since, limit, params in exchange.calls:
+        assert params == {
+            "after": since + limit * acquisition_module.FUNDING_INTERVAL_MS
+        }
+    assert exchange.calls[0][1] == int(
+        acquisition_module.DEVELOPMENT_START.timestamp() * 1000
+    )
+    assert exchange.calls[-1][3]["after"] == acquisition_module.DATA_END_MS
+    assert [call[1] for call in exchange.calls[1:]] == [
+        call[3]["after"] for call in exchange.calls[:-1]
+    ]
+    assert acquisition_module.validate_funding_history(funding)["rows"] == 270
 
 
 def test_ohlcv_values_reject_corrupt_prices_and_volume(acquisition_module) -> None:
