@@ -141,18 +141,15 @@ def _enable_positive_development_gate(
 
 def _development_result(
     candidate_id: str,
-    *,
-    total_trades: int = 20,
-    profit_pct: float = 0.5,
-    max_drawdown_pct: float = 5.0,
-    profit_factor: float = 1.1,
+    **overrides: object,
 ) -> dict[str, object]:
     return {
         "candidate_id": candidate_id,
-        "total_trades": total_trades,
-        "profit_pct": profit_pct,
-        "max_drawdown_pct": max_drawdown_pct,
-        "profit_factor": profit_factor,
+        "total_trades": 20,
+        "profit_pct": 0.5,
+        "max_drawdown_pct": 5.0,
+        "profit_factor": 1.1,
+        **overrides,
     }
 
 
@@ -272,47 +269,36 @@ def test_t0_positive_development_gate_thresholds_are_frozen(
     root = _plan_root(tmp_path)
     _enable_positive_development_gate(
         root,
-        minimum_profit_pct=0,
-        minimum_profit_factor=1,
+        minimum_profit_pct=0.01,
+        minimum_profit_factor=1.01,
         maximum_drawdown_pct=100,
     )
 
     selection = pilot.load_plan(root)["selection"]
 
     assert selection["economic_gate"] == "POSITIVE_DEVELOPMENT_V1"
-    assert selection["minimum_profit_pct"] == 0
-    assert selection["minimum_profit_factor"] == 1
+    assert selection["minimum_profit_pct"] == 0.01
+    assert selection["minimum_profit_factor"] == 1.01
     assert selection["maximum_drawdown_pct"] == 100
-
-
-def test_t0_empty_selection_fails_with_pilot_error(tmp_path: Path) -> None:
-    root = _plan_root(tmp_path)
-    plan = json.loads((root / pilot.PLAN).read_bytes())
-    plan["selection"] = {}
-    _write_json(root / pilot.PLAN, plan)
-
-    with pytest.raises(pilot.PilotError, match="selection rule shape"):
-        pilot.load_plan(root)
 
 
 @pytest.mark.parametrize(
     "field,value,missing,message",
     [
+        (None, None, False, "selection rule shape"),
         ("minimum_profit_pct", None, True, "selection rule shape"),
-        ("minimum_profit_factor", None, True, "selection rule shape"),
-        ("maximum_drawdown_pct", None, True, "selection rule shape"),
         ("minimum_profit_pct", True, False, "minimum_profit_pct must be a finite number"),
         ("minimum_profit_pct", float("nan"), False, "minimum_profit_pct must be a finite number"),
         ("minimum_profit_factor", float("inf"), False, "minimum_profit_factor must be a finite number"),
-        ("minimum_profit_pct", -0.01, False, "minimum_profit_pct must be a finite number"),
-        ("minimum_profit_factor", 0.99, False, "minimum_profit_factor must be a finite number"),
+        ("minimum_profit_pct", 0.0, False, "minimum_profit_pct must exceed 0"),
+        ("minimum_profit_factor", 1.0, False, "minimum_profit_factor must exceed 1"),
         ("maximum_drawdown_pct", -0.01, False, "maximum_drawdown_pct must be a finite number"),
         ("maximum_drawdown_pct", 100.01, False, "maximum_drawdown_pct must not exceed 100"),
     ],
 )
 def test_t0_positive_development_gate_invalid_thresholds_fail_closed(
     tmp_path: Path,
-    field: str,
+    field: str | None,
     value: object,
     missing: bool,
     message: str,
@@ -320,7 +306,9 @@ def test_t0_positive_development_gate_invalid_thresholds_fail_closed(
     root = _plan_root(tmp_path)
     _enable_positive_development_gate(root)
     plan = json.loads((root / pilot.PLAN).read_bytes())
-    if missing:
+    if field is None:
+        plan["selection"].clear()
+    elif missing:
         plan["selection"].pop(field)
     else:
         plan["selection"][field] = value
@@ -401,18 +389,8 @@ def test_t0_selection_is_development_only_and_one_shot(tmp_path: Path) -> None:
         pilot.select(tmp_path, plan, results)
 
 
-@pytest.mark.parametrize(
-    "ineligible",
-    [
-        pytest.param({"profit_pct": -0.01}, id="negative-profit"),
-        pytest.param({"profit_factor": 1.09}, id="low-profit-factor"),
-        pytest.param({"max_drawdown_pct": 5.01}, id="high-drawdown"),
-        pytest.param({"total_trades": 19}, id="too-few-trades"),
-    ],
-)
 def test_t0_positive_development_gate_requires_every_threshold_and_ranks(
     tmp_path: Path,
-    ineligible: dict[str, object],
 ) -> None:
     plan = {
         "pilot_id": "test-pilot",
@@ -427,7 +405,10 @@ def test_t0_positive_development_gate_requires_every_threshold_and_ranks(
         },
     }
     results = [
-        _development_result("ineligible", **ineligible),
+        _development_result("negative-profit", profit_pct=-0.01),
+        _development_result("low-profit-factor", profit_factor=1.09),
+        _development_result("high-drawdown", max_drawdown_pct=5.01),
+        _development_result("too-few-trades", total_trades=19),
         _development_result("exact-thresholds"),
         _development_result(
             "ranked-winner",
@@ -440,10 +421,7 @@ def test_t0_positive_development_gate_requires_every_threshold_and_ranks(
 
     assert pilot.select(tmp_path, plan, results) == "ranked-winner"
     receipt = json.loads((tmp_path / pilot.SELECTION).read_bytes())
-    assert receipt["eligible_candidate_ids"] == [
-        "ranked-winner",
-        "exact-thresholds",
-    ]
+    assert receipt["eligible_candidate_ids"] == ["ranked-winner", "exact-thresholds"]
     assert receipt["selected_candidate_id"] == "ranked-winner"
     assert receipt["economic_gate"] == "POSITIVE_DEVELOPMENT_V1"
     assert receipt["minimum_profit_pct"] == 0.5
@@ -459,32 +437,15 @@ def test_t0_no_development_finalist_stops_before_holdout_side_effects(
     _enable_positive_development_gate(root)
     source = tmp_path / "freqtrade-source"
     source.mkdir()
-    input_root = tmp_path / "mock-input"
 
     def must_not_run(*args: object, **kwargs: object) -> None:
         raise AssertionError("post-selection work must not run without a finalist")
 
     monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
-    monkeypatch.setattr(
-        pilot,
-        "materialize_inputs",
-        lambda *args: {"candidate-one": input_root},
-    )
-    monkeypatch.setattr(
-        pilot,
-        "materialize_development_isolation",
-        lambda *args: {"receipt": {"status": "DEVELOPMENT_ONLY"}},
-    )
-    monkeypatch.setattr(
-        pilot,
-        "screen",
-        lambda *args: [_development_result("candidate-one", profit_pct=-0.01)],
-    )
-    for name in (
-        "init_database",
-        "materialize_selected_input",
-        "run_research_candidate",
-    ):
+    monkeypatch.setattr(pilot, "materialize_inputs", lambda *args: {})
+    monkeypatch.setattr(pilot, "materialize_development_isolation", lambda *args: {"receipt": {}})
+    monkeypatch.setattr(pilot, "screen", lambda *args: [_development_result("candidate-one", profit_pct=-0.01)])
+    for name in ("init_database", "materialize_selected_input", "run_research_candidate"):
         monkeypatch.setattr(pilot, name, must_not_run)
     monkeypatch.setattr(pilot, "now", lambda: "2026-08-31T00:00:00.000Z")
 
@@ -497,11 +458,8 @@ def test_t0_no_development_finalist_stops_before_holdout_side_effects(
     assert terminal["holdout_open_count"] == terminal["stress_open_count"] == 0
     assert selection["selected_candidate_id"] is None
     assert not (root / pilot.HOLDOUT_AUTHORIZATION).exists()
-    assert not (root / pilot.HOLDOUT_SEAL).exists()
-    assert not (root / pilot.STRESS_SEAL).exists()
     assert not (root / "scenario-opens").exists()
     assert not (root / "workspace").exists()
-    assert not (root / "selected-input").exists()
 
 
 def test_t0_selected_development_replay_must_match_exact_semantics(

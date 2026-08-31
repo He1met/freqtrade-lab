@@ -440,8 +440,10 @@ def load_plan(root: Path) -> dict[str, Any]:
     ):
         raise PilotError("selection rule is not the fixed technical Pilot rule")
     if gate == POSITIVE_ECONOMIC_GATE:
-        finite(selection["minimum_profit_pct"], "minimum_profit_pct", 0)
-        finite(selection["minimum_profit_factor"], "minimum_profit_factor", 1)
+        if finite(selection["minimum_profit_pct"], "minimum_profit_pct") <= 0:
+            raise PilotError("minimum_profit_pct must exceed 0")
+        if finite(selection["minimum_profit_factor"], "minimum_profit_factor") <= 1:
+            raise PilotError("minimum_profit_factor must exceed 1")
         maximum_drawdown = finite(
             selection["maximum_drawdown_pct"], "maximum_drawdown_pct", 0
         )
