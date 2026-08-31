@@ -14,17 +14,32 @@ SCHEMA_VERSION = 1
 PathLike = Union[str, Path]
 
 
-def get_connection(db_path: PathLike = DEFAULT_DB_PATH) -> sqlite3.Connection:
-    """Return a new configured SQLite connection for ``db_path``."""
-    path = Path(db_path).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
+def get_connection(
+    db_path: PathLike = DEFAULT_DB_PATH,
+    *,
+    read_only: bool = False,
+) -> sqlite3.Connection:
+    """Return a configured SQLite connection for ``db_path``.
 
-    connection = sqlite3.connect(str(path))
+    ``read_only`` uses SQLite URI mode and enables ``query_only`` without
+    creating a missing database or changing its journal mode.
+    """
+    path = Path(db_path).expanduser()
+    if read_only:
+        path = path.resolve(strict=True)
+        connection = sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(path))
+
     try:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA busy_timeout = 5000")
         connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA journal_mode = WAL")
+        if read_only:
+            connection.execute("PRAGMA query_only = ON")
+        else:
+            connection.execute("PRAGMA journal_mode = WAL")
     except Exception:
         connection.close()
         raise

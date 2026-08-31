@@ -50,6 +50,46 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
+## Local Research Console: fixed CHECK_DATA slice
+
+The Research Console keeps the Strategy Library routes on the same loopback
+server and adds a small page at `http://127.0.0.1:8765/console`. Its current
+write surface is intentionally limited to one fixed `CHECK_DATA` child and a
+cancel action. The browser cannot supply an executable, working directory,
+arguments, prompt, model, environment, or output path.
+
+Prepare one private runtime directory outside this repository, then start the
+single service with an existing schema-v1 database and frozen Pilot root:
+
+```bash
+mkdir -p /absolute/private/path/freqtrade-lab-console-runtime
+chmod 700 /absolute/private/path/freqtrade-lab-console-runtime
+
+python3 scripts/serve_research_console.py \
+  --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
+  --runtime-root /absolute/private/path/freqtrade-lab-console-runtime \
+  --pilot-root /absolute/private/path/frozen-pilot \
+  --artifact-root /absolute/private/path/freqtrade-lab-workspace/artifacts \
+  --port 8765
+```
+
+Preflight always probes the public numeric-loopback origin configured by
+`--webserver-base-url` (default `http://127.0.0.1:8080`). A stopped service is
+shown as `UNAVAILABLE`, never `READY`. The optional `--frequi-base-url` and
+`--frequi-results-root` pair is separate: it enables the existing Strategy
+Library detail links under the same safety rules as before. Preflight only runs
+local capability checks; it does not invoke a Codex model, read credentials,
+download data, run Freqtrade research, open Holdout, or create a Release. A
+`SUCCEEDED` CHECK_DATA status only means the frozen data contract passed its
+existing technical check. Normalized state/events and private raw child logs
+stay under `--runtime-root`; the page never returns raw output or local paths.
+The Console never initializes a missing database: `/console` remains available,
+SQLite is shown as `UNAVAILABLE`, and Strategy Library reads fail closed. If a
+restart recovers an unclosed task, the runtime stays latched at
+`INTERRUPTED_NEEDS_CONFIRMATION`; Slice 1 has no browser confirmation action and
+will not start another child from that runtime. Confirm the old process state
+outside the Console, then use a new private runtime directory.
+
 The workspace contains the existing schema-v1 SQLite database and unique
 per-run directories below `artifacts/`. A missing database is initialized; an
 existing database is validated before Freqtrade runs, and an Artifact output is

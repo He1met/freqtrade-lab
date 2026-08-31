@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlsplit
 
+from lab.database import get_connection
 from lab.frequi import (
     FreqUIConfig,
     FreqUIConfigurationError,
@@ -247,12 +248,8 @@ def _resolve_database_path(database: PathLike) -> Path:
 
 def _open_read_only_database(database: PathLike) -> sqlite3.Connection:
     path = _resolve_database_path(database)
-    uri = f"{path.as_uri()}?mode=ro"
     try:
-        connection = sqlite3.connect(uri, uri=True)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA busy_timeout = 5000")
-        connection.execute("PRAGMA query_only = ON")
+        connection = get_connection(path, read_only=True)
         query_only = connection.execute("PRAGMA query_only").fetchone()
         if query_only is None or int(query_only[0]) != 1:
             raise StrategyLibraryError("SQLite query_only mode could not be enabled")
@@ -268,7 +265,7 @@ def _open_read_only_database(database: PathLike) -> sqlite3.Connection:
         except (NameError, sqlite3.Error):
             pass
         raise
-    except sqlite3.Error as exc:
+    except (OSError, RuntimeError, ValueError, sqlite3.Error) as exc:
         try:
             connection.close()
         except (NameError, sqlite3.Error):
@@ -1643,6 +1640,10 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
     database_path: Path
     artifact_root: Optional[Path]
     frequi_config: FreqUIConfig
+    content_security_policy = (
+        "default-src 'none'; style-src 'unsafe-inline'; "
+        "form-action 'self'; frame-ancestors 'none'"
+    )
 
     def _has_expected_host(self) -> bool:
         expected = f"{LOOPBACK_HOST}:{self.server.server_port}"
@@ -1663,11 +1664,7 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'none'; style-src 'unsafe-inline'; "
-            "form-action 'self'; frame-ancestors 'none'",
-        )
+        self.send_header("Content-Security-Policy", self.content_security_policy)
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
@@ -1844,6 +1841,10 @@ class StrategyLibraryHTTPServer(HTTPServer):
 
     artifact_root_fd: Optional[int] = None
 
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        """Keep handler failures from printing request data or tracebacks."""
+        return
+
     def server_close(self) -> None:
         try:
             super().server_close()
@@ -1860,11 +1861,27 @@ def create_strategy_library_server(
     *,
     frequi_base_url: Optional[str] = None,
     frequi_results_root: Optional[PathLike] = None,
+    request_handler_class: type[StrategyLibraryRequestHandler] = (
+        StrategyLibraryRequestHandler
+    ),
+    validate_database: bool = True,
 ) -> HTTPServer:
     """Validate first, then create one loopback-only single-process server."""
     if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
         raise StrategyLibraryError("port must be an integer from 0 to 65535")
-    path = validate_strategy_library_database(database)
+    if not isinstance(request_handler_class, type) or not issubclass(
+        request_handler_class, StrategyLibraryRequestHandler
+    ):
+        raise StrategyLibraryError(
+            "request handler must extend StrategyLibraryRequestHandler"
+        )
+    if not isinstance(validate_database, bool):
+        raise StrategyLibraryError("validate_database must be a boolean")
+    path = (
+        validate_strategy_library_database(database)
+        if validate_database
+        else Path(database).expanduser().absolute()
+    )
     resolved_artifact_root = _resolve_artifact_root(artifact_root)
     try:
         resolved_frequi_config = configure_frequi(
@@ -1880,7 +1897,7 @@ def create_strategy_library_server(
         else None
     )
 
-    class BoundHandler(StrategyLibraryRequestHandler):
+    class BoundHandler(request_handler_class):  # type: ignore[valid-type,misc]
         database_path = path
         artifact_root = resolved_artifact_root
         frequi_config = resolved_frequi_config

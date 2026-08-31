@@ -293,6 +293,57 @@ def test_connection_pragmas(connection: sqlite3.Connection) -> None:
     assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
     assert connection.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
+    assert connection.execute("PRAGMA query_only").fetchone()[0] == 0
+    connection.execute("CREATE TEMP TABLE writable_probe (value INTEGER NOT NULL)")
+    connection.execute("INSERT INTO writable_probe (value) VALUES (1)")
+    assert connection.execute("SELECT value FROM writable_probe").fetchone()[0] == 1
+
+
+def test_read_only_connection_does_not_create_a_missing_database(tmp_path: Path) -> None:
+    missing = tmp_path / "missing" / "lab.sqlite"
+
+    with pytest.raises(FileNotFoundError):
+        get_connection(missing, read_only=True)
+
+    assert not missing.exists()
+    assert not missing.parent.exists()
+
+
+def test_read_only_connection_enables_query_only_and_rejects_writes(
+    db_path: Path,
+) -> None:
+    connection = get_connection(db_path, read_only=True)
+    try:
+        assert connection.execute("PRAGMA query_only").fetchone()[0] == 1
+        assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            connection.execute("CREATE TABLE forbidden_write (id INTEGER)")
+    finally:
+        connection.close()
+
+
+def test_read_only_connection_preserves_existing_journal_mode(tmp_path: Path) -> None:
+    path = tmp_path / "delete-journal.sqlite"
+    setup = sqlite3.connect(path)
+    try:
+        assert setup.execute("PRAGMA journal_mode = DELETE").fetchone()[0] == "delete"
+        setup.execute("CREATE TABLE marker (value INTEGER NOT NULL)")
+        setup.commit()
+    finally:
+        setup.close()
+
+    connection = get_connection(path, read_only=True)
+    try:
+        assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+    finally:
+        connection.close()
+
+    verification = sqlite3.connect(path)
+    try:
+        assert verification.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+    finally:
+        verification.close()
 
 
 def test_complete_relationship_chain(connection: sqlite3.Connection) -> None:
