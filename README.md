@@ -83,9 +83,15 @@ download data, run Freqtrade research, open Holdout, or create a Release. A
 `SUCCEEDED` CHECK_DATA status only means the frozen data contract passed its
 existing technical check. Normalized state/events and private raw child logs
 stay under `--runtime-root`; the page never returns raw output or local paths.
+The process owner locks the frozen runtime directory inode itself; there is no
+unlinkable lock-file fallback. State and stdout checks use no-follow, bounded
+descriptor reads, and state receipts use descriptor-scoped atomic writes. A
+graceful server shutdown that confirms the whole owned process group is gone
+records `INTERRUPTED` without a confirmation latch.
 The Console never initializes a missing database: `/console` remains available,
 SQLite is shown as `UNAVAILABLE`, and Strategy Library reads fail closed. If a
-restart recovers an unclosed task, the runtime stays latched at
+restart recovers an unclosed task, or a reaped leader leaves a process group
+that cannot be safely signalled or confirmed gone, the runtime stays latched at
 `INTERRUPTED_NEEDS_CONFIRMATION`; Slice 1 has no browser confirmation action and
 will not start another child from that runtime. Confirm the old process state
 outside the Console, then use a new private runtime directory.

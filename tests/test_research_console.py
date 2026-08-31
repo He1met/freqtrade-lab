@@ -39,12 +39,14 @@ TERMINAL_STATUSES = {
     "FAILED",
     "CANCELLED",
     "TIMED_OUT",
+    "INTERRUPTED",
     "INTERRUPTED_NEEDS_CONFIRMATION",
 }
 FAKE_CHILD_SOURCE = r"""
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -63,6 +65,57 @@ if mode == "fail":
 if mode == "invalid":
     print(json.dumps({"status": "NOT_DATA_READY"}), flush=True)
     raise SystemExit(0)
+if mode == "leader_exit_with_descendant":
+    descendant_marker = Path(str(marker) + ".descendant")
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import os,sys,time; from pathlib import Path; "
+            "Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8'); "
+            "time.sleep(60)",
+            str(descendant_marker),
+        ],
+        close_fds=True,
+    )
+    deadline = time.monotonic() + 2
+    while not descendant_marker.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    print(json.dumps({"status": "DATA_READY"}), flush=True)
+    raise SystemExit(0)
+if mode == "leader_with_descendant":
+    descendant_marker = Path(str(marker) + ".descendant")
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import os,sys,time; from pathlib import Path; "
+            "Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8'); "
+            "time.sleep(60)",
+            str(descendant_marker),
+        ],
+        close_fds=True,
+    )
+    while True:
+        time.sleep(0.05)
+if mode == "leader_with_term_ignoring_descendant":
+    descendant_marker = Path(str(marker) + ".descendant")
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import os,signal,sys,time; from pathlib import Path; "
+            "marker=Path(sys.argv[1]); "
+            "signal.signal(signal.SIGTERM, lambda *_: "
+            "Path(str(marker)+'.term').write_text('TERM', encoding='utf-8')); "
+            "marker.write_text(str(os.getpid()), encoding='utf-8'); "
+            "time.sleep(60)",
+            str(descendant_marker),
+        ],
+        close_fds=True,
+    )
+    while True:
+        time.sleep(0.05)
 if mode == "sleep":
     while True:
         time.sleep(0.05)
@@ -256,13 +309,39 @@ def _wait_terminal(server: Any, campaign_id: str, timeout: float = 5.0) -> dict[
     pytest.fail(f"campaign did not reach a terminal state: {last!r}")
 
 
-def _wait_file(path: Path, timeout: float = 2.0) -> None:
+def _wait_file(path: Path, timeout: float = 3.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if path.is_file():
             return
         time.sleep(0.01)
     pytest.fail(f"fake child did not create its marker: {path.name}")
+
+
+def _process_group_exists(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def _wait_process_group_gone(process_group_id: int, timeout: float = 3.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not _process_group_exists(process_group_id):
+            return
+        time.sleep(0.02)
+    pytest.fail(f"process group did not exit: {process_group_id}")
+
+
+def _kill_test_process(process_id: Optional[int]) -> None:
+    if process_id is None:
+        return
+    try:
+        os.kill(process_id, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
 
 
 def _sqlite_snapshot(database: Path) -> dict[str, Any]:
@@ -463,9 +542,14 @@ def test_t0_child_invocation_is_one_fixed_argv_and_never_a_shell(
 
     class AlreadyDone:
         pid = 987654
+        returncode = 0
 
         @staticmethod
         def poll() -> int:
+            return 0
+
+        @staticmethod
+        def wait(timeout: Optional[float] = None) -> int:
             return 0
 
     def fake_popen(argv: Sequence[str], **kwargs: Any) -> AlreadyDone:
@@ -636,18 +720,139 @@ def test_t0_atomic_writer_preserves_old_document_when_replace_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     target = tmp_path / "status.json"
-    research_console._atomic_write_json(target, {"status": "OLD"})
-    before = target.read_bytes()
+    directory_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        research_console._atomic_write_json_at(
+            directory_fd, target.name, {"status": "OLD"}
+        )
+        before = target.read_bytes()
 
-    def fail_replace(_source: Path, _target: Path) -> None:
-        raise OSError("injected replace failure")
+        def fail_replace(
+            _source: str, _target: str, **_kwargs: Any
+        ) -> None:
+            raise OSError("injected replace failure")
 
-    monkeypatch.setattr(research_console.os, "replace", fail_replace)
-    with pytest.raises(OSError, match="injected replace failure"):
-        research_console._atomic_write_json(target, {"status": "NEW"})
+        monkeypatch.setattr(research_console.os, "replace", fail_replace)
+        with pytest.raises(OSError, match="injected replace failure"):
+            research_console._atomic_write_json_at(
+                directory_fd, target.name, {"status": "NEW"}
+            )
 
-    assert target.read_bytes() == before
-    assert list(tmp_path.glob(".status.json.*.tmp")) == []
+        assert target.read_bytes() == before
+        assert list(tmp_path.glob(".status.json.*.tmp")) == []
+    finally:
+        os.close(directory_fd)
+
+
+@pytest.mark.parametrize("filename", ("status.json", "stdout.log"))
+def test_t0_descriptor_read_rejects_symlink_swap_at_open(
+    database: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    filename: str,
+) -> None:
+    with _serve_console(monkeypatch, database, tmp_path, mode=None) as (
+        server,
+        _marker,
+        runtime,
+    ):
+        campaign_id = str(uuid4())
+        campaign = runtime / "campaigns" / campaign_id
+        campaign.mkdir(mode=0o700)
+        target = campaign / filename
+        if filename == "status.json":
+            original = {
+                "schema": research_console.STATUS_SCHEMA,
+                "campaign_id": campaign_id,
+                "status": "RUNNING",
+            }
+            replacement = dict(original, status="SUCCEEDED")
+            target.write_text(json.dumps(original), encoding="utf-8")
+            secret_body = json.dumps(replacement)
+        else:
+            target.write_text('{"status":"NOT_DATA_READY"}\n', encoding="utf-8")
+            secret_body = '{"status":"DATA_READY"}\n'
+        secret = tmp_path / f"replacement-{filename}"
+        secret.write_text(secret_body, encoding="utf-8")
+        original_open = research_console.os.open
+        swapped = False
+
+        def swap_at_open(
+            path: Any,
+            flags: int,
+            mode: int = 0o777,
+            *,
+            dir_fd: Optional[int] = None,
+        ) -> int:
+            nonlocal swapped
+            if path == filename and dir_fd is not None and not swapped:
+                swapped = True
+                target.unlink()
+                target.symlink_to(secret)
+            return original_open(path, flags, mode, dir_fd=dir_fd)
+
+        monkeypatch.setattr(research_console.os, "open", swap_at_open)
+        controller = server.research_console_controller
+        if filename == "status.json":
+            with pytest.raises(research_console.ControlRequestError):
+                controller.get_status(campaign_id)
+        else:
+            assert controller._has_data_ready_output(campaign) is False
+
+
+def test_t0_status_transition_writes_only_through_frozen_campaign_fd(
+    database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _serve_console(monkeypatch, database, tmp_path, mode=None) as (
+        server,
+        _marker,
+        runtime,
+    ):
+        campaign_id = str(uuid4())
+        campaign = runtime / "campaigns" / campaign_id
+        campaign.mkdir(mode=0o700)
+        original = {
+            "schema": research_console.STATUS_SCHEMA,
+            "campaign_id": campaign_id,
+            "action": "CHECK_DATA",
+            "status": "RUNNING",
+            "message": "original",
+        }
+        (campaign / "status.json").write_text(
+            json.dumps(original), encoding="utf-8"
+        )
+        external = tmp_path / "external-campaign"
+        external.mkdir()
+        external_status = external / "status.json"
+        external_status.write_text("external-sentinel", encoding="utf-8")
+        frozen = campaign.with_name(f"{campaign.name}-frozen")
+        original_read = research_console._read_json_object_at
+        swapped = False
+
+        def swap_campaign_after_read(
+            directory_fd: int, name: str
+        ) -> dict[str, Any]:
+            nonlocal swapped
+            value = original_read(directory_fd, name)
+            if name == "status.json" and not swapped:
+                swapped = True
+                campaign.rename(frozen)
+                campaign.symlink_to(external, target_is_directory=True)
+            return value
+
+        monkeypatch.setattr(
+            research_console, "_read_json_object_at", swap_campaign_after_read
+        )
+        updated = server.research_console_controller._write_status(
+            campaign, "FAILED", "descriptor-only update"
+        )
+
+        assert updated["status"] == "FAILED"
+        assert external_status.read_text(encoding="utf-8") == "external-sentinel"
+        frozen_status = json.loads(
+            (frozen / "status.json").read_text(encoding="utf-8")
+        )
+        assert frozen_status["message"] == "descriptor-only update"
 
 
 def test_t0_runtime_root_has_one_process_owner(
@@ -658,6 +863,10 @@ def test_t0_runtime_root_has_one_process_owner(
         _marker,
         runtime,
     ):
+        campaigns = runtime / "campaigns"
+        campaigns.chmod(0o755)
+        sentinel = campaigns / "owner-sentinel"
+        sentinel.write_text("unchanged", encoding="utf-8")
         with pytest.raises(
             research_console.ResearchConsoleError,
             match="already owned",
@@ -669,6 +878,46 @@ def test_t0_runtime_root_has_one_process_owner(
                 0,
                 codex_binary=tmp_path / "missing-codex",
             )
+        assert campaigns.stat().st_mode & 0o777 == 0o755
+        assert sentinel.read_text(encoding="utf-8") == "unchanged"
+
+
+def test_t2_runtime_directory_lock_survives_legacy_lock_path_unlink(
+    database: Path, tmp_path: Path
+) -> None:
+    runtime = tmp_path / "runtime-lock-unlink"
+    pilot = tmp_path / "pilot-lock-unlink"
+    runtime.mkdir()
+    pilot.mkdir()
+    legacy_lock = runtime / "research-console.lock"
+    legacy_lock.write_text("legacy", encoding="utf-8")
+    first = research_console.create_research_console_server(
+        database,
+        runtime,
+        pilot,
+        0,
+        codex_binary=tmp_path / "missing-codex",
+    )
+    second = None
+    try:
+        legacy_lock.unlink()
+        with pytest.raises(
+            research_console.ResearchConsoleError,
+            match="already owned",
+        ):
+            second = research_console.create_research_console_server(
+                database,
+                runtime,
+                pilot,
+                0,
+                codex_binary=tmp_path / "missing-codex",
+            )
+    finally:
+        if second is not None:
+            second.research_console_controller.shutdown()
+            second.server_close()
+        first.research_console_controller.shutdown()
+        first.server_close()
 
 
 def test_t0_post_spawn_receipt_failure_terminates_and_reaps_child(
@@ -676,7 +925,7 @@ def test_t0_post_spawn_receipt_failure_terminates_and_reaps_child(
 ) -> None:
     spawned: list[subprocess.Popen[bytes]] = []
     original_popen = research_console.subprocess.Popen
-    original_atomic = research_console._atomic_write_json
+    original_atomic = research_console._atomic_write_json_at
     failed_owner = False
 
     def capture_popen(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
@@ -684,15 +933,19 @@ def test_t0_post_spawn_receipt_failure_terminates_and_reaps_child(
         spawned.append(process)
         return process
 
-    def fail_first_owner(path: Path, payload: Mapping[str, Any]) -> None:
+    def fail_first_owner(
+        directory_fd: int, name: str, payload: Mapping[str, Any]
+    ) -> None:
         nonlocal failed_owner
-        if path.name == "owner.json" and not failed_owner:
+        if name == "owner.json" and not failed_owner:
             failed_owner = True
             raise OSError("injected owner receipt failure")
-        original_atomic(path, payload)
+        original_atomic(directory_fd, name, payload)
 
     monkeypatch.setattr(research_console.subprocess, "Popen", capture_popen)
-    monkeypatch.setattr(research_console, "_atomic_write_json", fail_first_owner)
+    monkeypatch.setattr(
+        research_console, "_atomic_write_json_at", fail_first_owner
+    )
     with _serve_console(
         monkeypatch, database, tmp_path, mode="sleep"
     ) as (server, marker, _runtime):
@@ -793,6 +1046,51 @@ def test_t0_missing_sqlite_is_unavailable_without_creating_it(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+@pytest.mark.parametrize(
+    ("probe", "expected_freqtrade", "expected_frequi"),
+    (
+        (
+            {
+                "configured": True,
+                "reachable": True,
+                "available": False,
+                "ui_installed": None,
+                "reason": "WEBSERVER_RESPONSE_INVALID",
+                "message": "invalid public response",
+            },
+            "UNKNOWN",
+            "UNKNOWN",
+        ),
+        (
+            {
+                "configured": True,
+                "reachable": True,
+                "available": False,
+                "ui_installed": False,
+                "reason": "FREQUI_NOT_INSTALLED",
+                "message": "valid ping without FreqUI",
+            },
+            "READY",
+            "UNAVAILABLE",
+        ),
+    ),
+)
+def test_t0_preflight_requires_a_verified_freqtrade_ping_contract(
+    database: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    probe: Mapping[str, Any],
+    expected_freqtrade: str,
+    expected_frequi: str,
+) -> None:
+    with _serve_console(monkeypatch, database, tmp_path) as (server, _marker, _runtime):
+        monkeypatch.setattr(research_console, "probe_frequi", lambda _config: probe)
+        status, _, _, preflight = _request(server, "/api/control/preflight")
+        assert status == 200
+        assert preflight["checks"]["freqtrade"]["status"] == expected_freqtrade
+        assert preflight["checks"]["frequi"]["status"] == expected_frequi
 
 
 def test_t1_console_preflight_and_strategy_library_share_one_loopback_server(
@@ -1161,8 +1459,19 @@ def test_t2_restart_marks_running_interrupted_and_preserves_six_table_database(
     assert _sqlite_snapshot(database) == before
 
 
-def test_t2_legacy_interrupted_receipt_without_confirmation_field_stays_latched(
-    database: Path, tmp_path: Path
+@pytest.mark.parametrize(
+    ("legacy_confirmation", "expected_status", "expected_latch"),
+    (
+        (None, "INTERRUPTED_NEEDS_CONFIRMATION", True),
+        (False, "INTERRUPTED", False),
+    ),
+)
+def test_t2_legacy_interrupted_receipt_is_normalized_consistently(
+    database: Path,
+    tmp_path: Path,
+    legacy_confirmation: Optional[bool],
+    expected_status: str,
+    expected_latch: bool,
 ) -> None:
     runtime = tmp_path / "runtime-legacy-interrupted"
     pilot = tmp_path / "pilot-legacy-interrupted"
@@ -1170,21 +1479,21 @@ def test_t2_legacy_interrupted_receipt_without_confirmation_field_stays_latched(
     campaign = runtime / "campaigns" / campaign_id
     campaign.mkdir(parents=True)
     pilot.mkdir()
+    receipt = {
+        "schema": research_console.STATUS_SCHEMA,
+        "campaign_id": campaign_id,
+        "action": "CHECK_DATA",
+        "status": "INTERRUPTED_NEEDS_CONFIRMATION",
+        "created_at_utc": "2026-09-03T00:00:00.000Z",
+        "started_at_utc": "2026-09-03T00:00:01.000Z",
+        "finished_at_utc": "2026-09-03T00:00:02.000Z",
+        "return_code": None,
+        "message": "legacy interruption receipt",
+    }
+    if legacy_confirmation is not None:
+        receipt["requires_confirmation"] = legacy_confirmation
     (campaign / "status.json").write_text(
-        json.dumps(
-            {
-                "schema": research_console.STATUS_SCHEMA,
-                "campaign_id": campaign_id,
-                "action": "CHECK_DATA",
-                "status": "INTERRUPTED_NEEDS_CONFIRMATION",
-                "created_at_utc": "2026-09-03T00:00:00.000Z",
-                "started_at_utc": "2026-09-03T00:00:01.000Z",
-                "finished_at_utc": "2026-09-03T00:00:02.000Z",
-                "return_code": None,
-                "message": "legacy interruption receipt",
-            }
-        ),
-        encoding="utf-8",
+        json.dumps(receipt), encoding="utf-8"
     )
     server = research_console.create_research_console_server(
         database,
@@ -1195,15 +1504,196 @@ def test_t2_legacy_interrupted_receipt_without_confirmation_field_stays_latched(
     )
     try:
         controller = server.research_console_controller
-        assert controller._restart_confirmation_required is True
-        with pytest.raises(
-            research_console.ControlRequestError,
-            match="未闭合任务",
-        ):
-            controller.create_campaign()
+        assert controller._restart_confirmation_required is expected_latch
+        normalized = controller.get_status(campaign_id)
+        assert normalized["status"] == expected_status
+        assert normalized["requires_confirmation"] is expected_latch
+        if expected_latch:
+            with pytest.raises(
+                research_console.ControlRequestError,
+                match="未闭合任务",
+            ):
+                controller.create_campaign()
     finally:
         server.research_console_controller.shutdown()
         server.server_close()
+
+
+def test_t2_reaped_leader_with_live_descendant_fails_closed_without_pgid_signal(
+    database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    descendant_pid: Optional[int] = None
+    process_group_id: Optional[int] = None
+    try:
+        with _serve_console(
+            monkeypatch,
+            database,
+            tmp_path,
+            mode="leader_exit_with_descendant",
+        ) as (server, marker, _runtime):
+            status, _, _, created = _post(
+                server, "/api/campaigns", {"action": "CHECK_DATA"}
+            )
+            assert status == 202
+            descendant_marker = Path(str(marker) + ".descendant")
+            _wait_file(descendant_marker)
+            descendant_pid = int(descendant_marker.read_text(encoding="utf-8"))
+            process_group_id = int(
+                json.loads(marker.read_text(encoding="utf-8"))["pid"]
+            )
+
+            terminal = _wait_terminal(server, created["campaign_id"])
+            assert terminal["status"] == "INTERRUPTED_NEEDS_CONFIRMATION"
+            assert terminal["requires_confirmation"] is True
+            assert _process_group_exists(process_group_id)
+
+            status, _, _, preflight = _request(server, "/api/control/preflight")
+            assert status == 200
+            assert preflight["checks"]["runtime_root"][
+                "restart_confirmation_required"
+            ] is True
+            status, _, _, blocked = _post(
+                server, "/api/campaigns", {"action": "CHECK_DATA"}
+            )
+            assert status == 409
+            assert blocked["error"] == "restart_confirmation_required"
+    finally:
+        _kill_test_process(descendant_pid)
+        if process_group_id is not None:
+            _wait_process_group_gone(process_group_id)
+
+
+def test_t2_lifecycle_lock_prevents_reap_between_identity_check_and_killpg(
+    database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _serve_console(
+        monkeypatch, database, tmp_path, mode="sleep"
+    ) as (server, marker, _runtime):
+        status, _, _, created = _post(
+            server, "/api/campaigns", {"action": "CHECK_DATA"}
+        )
+        assert status == 202
+        _wait_file(marker)
+        controller = server.research_console_controller
+        job = controller._active
+        assert job is not None
+        entered = threading.Event()
+        release = threading.Event()
+        poll_started = threading.Event()
+        signal_result: list[bool] = []
+        poll_result: list[Optional[int]] = []
+        observed_return_codes: list[Optional[int]] = []
+        original_getpgid = research_console.os.getpgid
+        original_killpg = research_console.os.killpg
+        blocked_once = False
+
+        def block_after_identity_check(pid: int) -> int:
+            nonlocal blocked_once
+            result = original_getpgid(pid)
+            if pid == job.process.pid and not blocked_once:
+                blocked_once = True
+                entered.set()
+                assert release.wait(timeout=5)
+            return result
+
+        def observe_killpg(process_group_id: int, selected: int) -> None:
+            if selected != 0:
+                observed_return_codes.append(job.process.returncode)
+                return
+            original_killpg(process_group_id, selected)
+
+        monkeypatch.setattr(research_console.os, "getpgid", block_after_identity_check)
+        monkeypatch.setattr(research_console.os, "killpg", observe_killpg)
+        signal_thread = threading.Thread(
+            target=lambda: signal_result.append(
+                controller._signal_process_group(job, signal.SIGTERM)
+            )
+        )
+        signal_thread.start()
+        assert entered.wait(timeout=2)
+        os.kill(job.process.pid, signal.SIGTERM)
+
+        def poll_leader() -> None:
+            poll_started.set()
+            poll_result.append(controller._poll_leader(job))
+
+        poll_thread = threading.Thread(target=poll_leader)
+        poll_thread.start()
+        assert poll_started.wait(timeout=2)
+        time.sleep(0.05)
+        assert poll_thread.is_alive()
+        release.set()
+        signal_thread.join(timeout=3)
+        poll_thread.join(timeout=3)
+
+        assert signal_result == [True]
+        assert observed_return_codes[0] is None
+        assert poll_result == [-signal.SIGTERM]
+        assert _wait_terminal(server, created["campaign_id"])["status"] == "FAILED"
+
+
+@pytest.mark.parametrize(
+    ("termination", "expected_status"),
+    (
+        ("cancel", "CANCELLED"),
+        ("timeout", "TIMED_OUT"),
+        ("shutdown", "INTERRUPTED"),
+    ),
+)
+def test_t2_owned_process_group_is_gone_before_controlled_terminal(
+    database: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    termination: str,
+    expected_status: str,
+) -> None:
+    descendant_pid: Optional[int] = None
+    leader_pid: Optional[int] = None
+    try:
+        with _serve_console(
+            monkeypatch,
+            database,
+            tmp_path,
+            mode="leader_with_term_ignoring_descendant",
+            timeout=0.2 if termination == "timeout" else 5.0,
+        ) as (server, marker, runtime):
+            status, _, _, created = _post(
+                server, "/api/campaigns", {"action": "CHECK_DATA"}
+            )
+            assert status == 202
+            descendant_marker = Path(str(marker) + ".descendant")
+            _wait_file(descendant_marker)
+            descendant_pid = int(descendant_marker.read_text(encoding="utf-8"))
+            leader_pid = int(json.loads(marker.read_text(encoding="utf-8"))["pid"])
+
+            if termination == "cancel":
+                status, _, _, _ = _post(
+                    server,
+                    f"/api/campaigns/{created['campaign_id']}/actions",
+                    {"action": "CANCEL"},
+                )
+                assert status == 202
+                terminal = _wait_terminal(server, created["campaign_id"])
+            elif termination == "timeout":
+                terminal = _wait_terminal(server, created["campaign_id"])
+            else:
+                server.research_console_controller.shutdown()
+                terminal = json.loads(
+                    (
+                        runtime
+                        / "campaigns"
+                        / created["campaign_id"]
+                        / "status.json"
+                    ).read_text(encoding="utf-8")
+                )
+
+            assert terminal["status"] == expected_status
+            assert terminal["requires_confirmation"] is False
+            assert Path(str(descendant_marker) + ".term").read_text() == "TERM"
+            _wait_process_group_gone(leader_pid)
+    finally:
+        _kill_test_process(descendant_pid)
+        _kill_test_process(leader_pid)
 
 
 def test_t2_shutdown_keeps_runtime_lock_until_terminal_monitor_finishes(
@@ -1307,10 +1797,10 @@ def test_t2_terminal_receipt_failure_clears_owner_and_restart_fails_closed(
         codex_binary=tmp_path / "missing-codex",
     )
     controller = server.research_console_controller
-    original_write_status = controller._write_status
+    original_write_status = controller._write_status_at
 
     def fail_succeeded_status(
-        campaign_dir: Path,
+        campaign_fd: int,
         status_value: str,
         message: str,
         **updates: Any,
@@ -1318,10 +1808,10 @@ def test_t2_terminal_receipt_failure_clears_owner_and_restart_fails_closed(
         if status_value == "SUCCEEDED":
             raise OSError("injected terminal status failure")
         return original_write_status(
-            campaign_dir, status_value, message, **updates
+            campaign_fd, status_value, message, **updates
         )
 
-    monkeypatch.setattr(controller, "_write_status", fail_succeeded_status)
+    monkeypatch.setattr(controller, "_write_status_at", fail_succeeded_status)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -1385,7 +1875,7 @@ def test_t2_terminal_receipt_failure_clears_owner_and_restart_fails_closed(
 def test_t2_shutdown_reaps_child_and_unlocks_when_all_receipt_writes_fail(
     database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    original_atomic = research_console._atomic_write_json
+    original_atomic = research_console._atomic_write_json_at
     runtime: Optional[Path] = None
     with _serve_console(
         monkeypatch, database, tmp_path, mode="sleep"
@@ -1401,19 +1891,19 @@ def test_t2_shutdown_reaps_child_and_unlocks_when_all_receipt_writes_fail(
         assert job is not None
 
         def fail_all_receipts(
-            _path: Path, _payload: Mapping[str, Any]
+            _directory_fd: int, _name: str, _payload: Mapping[str, Any]
         ) -> None:
             raise OSError("injected persistent receipt failure")
 
         monkeypatch.setattr(
-            research_console, "_atomic_write_json", fail_all_receipts
+            research_console, "_atomic_write_json_at", fail_all_receipts
         )
         controller.shutdown()
         assert job.process.poll() is not None
         assert controller._active is None
         assert controller._closed is True
         monkeypatch.setattr(
-            research_console, "_atomic_write_json", original_atomic
+            research_console, "_atomic_write_json_at", original_atomic
         )
 
         disk = json.loads(
@@ -1496,7 +1986,7 @@ print(json.dumps({"status": "DATA_READY"}), flush=True)
         )
         assert status == 202
         campaign_id = json.loads(raw)["campaign_id"]
-        _wait_file(marker)
+        _wait_file(marker, timeout=8.0)
         invocation = json.loads(marker.read_text(encoding="utf-8").splitlines()[0])
         assert invocation["argv"] == [
             str(research_console.PILOT_SCRIPT),
@@ -1616,14 +2106,14 @@ time.sleep(30)
         )
         assert status == 202
         campaign_id = json.loads(raw)["campaign_id"]
-        _wait_file(pilot / "sigint-marker.json")
+        _wait_file(pilot / "sigint-marker.json", timeout=8.0)
 
         first.send_signal(signal.SIGINT)
         assert first.wait(timeout=5) == 0
         terminal = json.loads(
             (runtime / "campaigns" / campaign_id / "status.json").read_text()
         )
-        assert terminal["status"] == "INTERRUPTED_NEEDS_CONFIRMATION"
+        assert terminal["status"] == "INTERRUPTED"
         assert terminal["return_code"] == -signal.SIGTERM
         assert terminal["requires_confirmation"] is False
 
