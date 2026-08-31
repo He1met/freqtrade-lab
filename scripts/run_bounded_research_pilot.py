@@ -1220,7 +1220,6 @@ def run(
     workspace.mkdir()
     database = workspace / "lab.sqlite"
     init_database(database)
-    validate_strategy_library_database(database)
     artifacts = workspace / "artifacts"
     artifacts.mkdir()
     opens = root / "scenario-opens"
@@ -1279,7 +1278,14 @@ def run(
     )
     evidence = database_evidence(database, produced.imported.research_run_id)
     replay = development_replay_evidence(results, chosen, evidence, produced)
-    frequi = copy_frequi_results(root, chosen, produced)
+    frequi_history_visibility: Optional[str] = None
+    try:
+        validate_strategy_library_database(database)
+        frequi = copy_frequi_results(root, chosen, produced)
+    except Exception:
+        # Core research evidence is complete; presentation stays best-effort.
+        frequi = {"root": None, "files": None}
+        frequi_history_visibility = "UNKNOWN"
     terminal = {
         "schema": SCHEMA,
         "pilot_id": plan["pilot_id"],
@@ -1301,7 +1307,7 @@ def run(
         "frequi_base_url": frequi_base_url,
         "frequi_results_root": frequi["root"],
         "frequi_copy_receipts": frequi["files"],
-        "frequi_history_visibility": None,
+        "frequi_history_visibility": frequi_history_visibility,
         "research_claim": "NOT_EVALUATED",
         "trading_claim": "NONE",
         "created_at_utc": now(),
@@ -1433,8 +1439,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if terminal["status"] == "PILOT_COMPLETED_NO_VERDICT":
         print(f"Selected Candidate: {terminal['selected_candidate_id']}")
         print(f"Research run: {terminal['database_evidence']['research_run_id']}")
-        print(f"Strategy library command: {strategy_library_command(terminal)}")
-        print(f"Strategy library URL: http://127.0.0.1:{DEFAULT_PORT}/")
+        if terminal.get("frequi_results_root") is None:
+            print(
+                "Warning: optional presentation is UNKNOWN",
+                file=sys.stderr,
+            )
+        else:
+            print(f"Strategy library command: {strategy_library_command(terminal)}")
+            print(f"Strategy library URL: http://127.0.0.1:{DEFAULT_PORT}/")
     return 0 if terminal["status"] == "PILOT_COMPLETED_NO_VERDICT" else 3
 
 
