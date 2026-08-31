@@ -1120,7 +1120,7 @@ def prepare_round_two(
         candidate_plans = [
             _candidate_plan(snapshot, _planned_strategy_file(snapshot, 2), round_number=2,
                             changed_factor=changed_factor, parent_sha256=parent.code_sha256)
-            for snapshot, changed_factor in zip(snapshots, changed_factors, strict=True)
+            for snapshot, changed_factor in zip(snapshots, changed_factors)
         ]
         parent_identity = {
             "candidate_id": parent.candidate_id,
