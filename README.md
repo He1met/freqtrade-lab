@@ -70,6 +70,70 @@ Schema v1 contains exactly six business tables:
 
 The project intentionally starts without an ORM, migration framework, task queue, authentication, or multi-user platform layer.
 
+## Screen one Bounded Evolution V1 Search round
+
+`screen-search` is the Search-only Gate for a new V2 campaign. It accepts one
+30-day Search window and one to three SHA-bound Candidates, runs only the
+existing isolated Freqtrade screen, and emits no database row or later-phase
+authorization:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
+  scripts/run_bounded_research_pilot.py screen-search \
+  --campaign-root /absolute/path/outside-git/search-campaign \
+  --freqtrade-python /path/to/freqtrade-2026.7-venv/bin/python \
+  --freqtrade-source /path/to/clean/freqtrade-2026.7
+```
+
+The campaign root contains `campaign.json`, append-only `trials.jsonl`, retained
+Search result directories, and—when Search terminates—one write-once
+`search-terminal.json`. Temporary runner input and isolation directories are
+removed after each round. The root must stay outside Git. Its `acquisition/`
+input uses `freqtrade-lab-retained-search-data-v2` provenance with only
+`search_timerange`; it freezes the exact dependency versions and SHA/size/row
+receipts for config, snapshots, and Search-only data. A contract containing
+Development, Validation, Holdout, or Stress references is rejected before any
+Candidate screen, as is a source data file containing post-Search rows.
+
+`campaign.json` freezes `schema=freqtrade-lab-bounded-evolution-search-v2`,
+`campaign_id`, Freqtrade `2026.7`, `round`, the exact 30-day
+`search_timerange`, `data_provenance_sha256`, `budget.maximum_attempts=6`,
+`ranking`, `finalist_gate`, the prior parent/receipt binding, and one to three
+Candidates. Every Candidate
+binds its id, class, mechanism, relationship, optional changed factor, parent
+SHA, relative strategy path, and strategy SHA-256. Round 1 requires distinct
+`MECHANISM_SEED` mechanisms. After its write-once round receipt, use the printed
+receipt SHA and selected-parent identity to prepare round 2 `campaign.json`
+containing only declared `SINGLE_FACTOR_CHILD` Candidates. There
+is no third round and no more than six total attempts; duplicate source,
+invalid syntax, and causal-template failure still receive a trial record and
+consume budget.
+
+The frozen ranking is net return after the configured base fee descending,
+drawdown ascending, then Candidate id. PF is shown only as a diagnostic and is
+not a rank or Gate input. A relative parent may have negative Search return and
+is not a finalist. Only after round 2, at most one ranked Candidate becomes the
+Search finalist when trades are at least 30, net return after the base fee is
+strictly positive, and maximum drawdown is at most 10%. These are new V2
+campaign rules; they do not revise any historical ADA/Pilot receipt.
+
+Exit `0` means either that round 1 produced a parent brief or that round 2 froze
+a Search finalist. Exit `3` means Search terminated with no parent/finalist;
+contract or infrastructure failures exit `2`. The brief contains only campaign,
+round/budget, Candidate identity/SHA, Search metrics or technical failure,
+frozen ranking, and selected parent. It contains no acquisition or later-phase
+path/value.
+
+This command does not initialize SQLite, call the producer/importer, create
+`workspace/` or `selected-input/`, open later-phase receipts, set a verdict, or
+create a Release. Internally the reused low-level runner still calls its
+existing `DEVELOPMENT` enum while using the Search timerange; this is only an
+engine label. Protocol phase B is a separate one-shot Validation that would map
+to the existing database `DEVELOPMENT` scenario, and this Search command never
+enters it. B/C integration is intentionally not implemented by this slice; the
+existing final `run` command and its one-shot later-phase safety boundary remain
+unchanged.
+
 ## Initialize a database
 
 Use a disposable or explicitly chosen path while developing:

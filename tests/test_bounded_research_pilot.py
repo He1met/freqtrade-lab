@@ -1,11 +1,14 @@
 import importlib.util
 import json
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+from scripts import run_freqtrade_backtest as offline_runner
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -244,6 +247,185 @@ def _main_args(root: Path, source: Path) -> list[str]:
     return [
         "run", "--pilot-root", str(root), "--freqtrade-python", sys.executable,
         "--freqtrade-source", str(source), "--frequi-base-url", "http://127.0.0.1:18766",
+    ]
+
+
+def _search_root(tmp_path: Path) -> tuple[Path, Path]:
+    root = tmp_path / "search-campaign"
+    data_root = root / "acquisition" / "data" / "okx"
+    data_root.mkdir(parents=True)
+    market_data = b"sanitized-search-data\n"
+    market_file = data_root / "market.feather"
+    market_file.write_bytes(market_data)
+    _write_json(root / "acquisition" / "config.json", {"fee": 0.001})
+    _write_json(root / "acquisition" / "market_snapshot.json", {"frozen": True})
+    _write_json(
+        root / "acquisition" / "isolated_tiers_snapshot.json", {"frozen": True}
+    )
+    retrieval = {
+        "series": {
+            "futures_5m": {"rows": 8640},
+            "mark_1h": {"rows": 720},
+            "funding_history": {"rows": 90},
+        }
+    }
+    _write_json(root / "acquisition" / "retrieval.json", retrieval)
+    config = (root / "acquisition" / "config.json").read_bytes()
+    market = (root / "acquisition" / "market_snapshot.json").read_bytes()
+    tiers = (root / "acquisition" / "isolated_tiers_snapshot.json").read_bytes()
+    provenance = {
+        "schema": "freqtrade-lab-retained-search-data-v2",
+        "source": {
+            "host": "www.okx.com",
+            "authentication": "none",
+            "pair": "TEST/USDT:USDT",
+            "retrieval_receipt": "retrieval.json",
+        },
+        "freqtrade": {
+            "version": "2026.7",
+            "tag": "2026.7",
+            "commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+            "dependencies": dict(offline_runner.SUPPORTED_DEPENDENCIES),
+        },
+        "contract": {
+            "timeframe": "5m",
+            "search_timerange": "20260101-20260131",
+            "data_dir": "data/okx",
+            "market_snapshot": "market_snapshot.json",
+            "leverage_tiers": "isolated_tiers_snapshot.json",
+        },
+        "local_only_files": {
+            "data/okx/market.feather": {
+                "bytes": len(market_data),
+                "sha256": pilot.digest(market_data),
+                "rows": 1,
+            },
+            "market_snapshot.json": {
+                "bytes": len(market),
+                "sha256": pilot.digest(market),
+            },
+            "isolated_tiers_snapshot.json": {
+                "bytes": len(tiers),
+                "sha256": pilot.digest(tiers),
+            },
+        },
+        "files": {
+            "config.json": {
+                "bytes": len(config),
+                "sha256": pilot.digest(config),
+            }
+        },
+    }
+    _write_json(root / "acquisition" / "retained-data-provenance.json", provenance)
+    source = tmp_path / "freqtrade-source"
+    source.mkdir()
+    return root, source
+
+
+def _search_candidate(
+    root: Path,
+    candidate_id: str,
+    class_name: str,
+    mechanism: str,
+    *,
+    relationship: str = "MECHANISM_SEED",
+    changed_factor: str | None = None,
+    parent_sha256: str | None = None,
+    body: str = "return dataframe",
+) -> dict[str, object]:
+    path = root / "candidates" / f"{class_name}.py"
+    path.parent.mkdir(exist_ok=True)
+    source = _candidate_source(class_name, body)
+    path.write_bytes(source)
+    return {
+        "candidate_id": candidate_id,
+        "class_name": class_name,
+        "mechanism": mechanism,
+        "relationship": relationship,
+        "changed_factor": changed_factor,
+        "parent_strategy_sha256": parent_sha256,
+        "strategy_file": f"candidates/{path.name}",
+        "strategy_sha256": pilot.digest(source),
+    }
+
+
+def _write_search_campaign(
+    root: Path,
+    candidates: list[dict[str, object]],
+    *,
+    round_number: int = 1,
+    parent: dict[str, object] | None = None,
+    previous_receipt_sha256: str | None = None,
+) -> None:
+    _write_json(
+        root / pilot.SEARCH_CAMPAIGN,
+        {
+            "schema": pilot.SEARCH_SCHEMA,
+            "campaign_id": "bounded-evolution-test",
+            "freqtrade_version": "2026.7",
+            "round": round_number,
+            "previous_round_receipt_sha256": previous_receipt_sha256,
+            "search_timerange": "20260101-20260131",
+            "data_provenance_sha256": pilot.digest(
+                (root / "acquisition" / "retained-data-provenance.json").read_bytes()
+            ),
+            "budget": {"maximum_attempts": 6},
+            "ranking": list(pilot.SEARCH_RANKING),
+            "finalist_gate": pilot.SEARCH_GATE_CONTRACT,
+            "parent": parent,
+            "candidates": candidates,
+        },
+    )
+
+
+def _patch_search_screen(
+    monkeypatch: pytest.MonkeyPatch,
+    metrics: dict[str, dict[str, object]],
+) -> None:
+    monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
+    monkeypatch.setattr(
+        pilot,
+        "materialize_screening_isolation",
+        lambda *args, **kwargs: {"receipt": {}, "provenance": Path("unused"), "data_dir": Path("unused")},
+    )
+    monkeypatch.setattr(
+        pilot,
+        "materialize_inputs",
+        lambda root, plan, **kwargs: {
+            item["candidate_id"]: root for item in plan["candidates"]
+        },
+    )
+
+    def fake_screen(
+        root: Path, plan: dict[str, object], *args: object, **kwargs: object
+    ) -> list[dict[str, object]]:
+        return [
+            {
+                "candidate_id": item["candidate_id"],
+                "class_name": item["class_name"],
+                "strategy_sha256": item["strategy_sha256"],
+                "technical_status": "VALID",
+                "failure_reason": None,
+                **metrics[item["candidate_id"]],
+            }
+            for item in plan["candidates"]
+        ]
+
+    monkeypatch.setattr(pilot, "screen", fake_screen)
+
+
+def _parent_contract(outcome: dict[str, object]) -> dict[str, object]:
+    selected = outcome["brief"]["selected_parent"]
+    return {
+        key: selected[key]
+        for key in ("candidate_id", "class_name", "mechanism", "strategy_sha256")
+    }
+
+
+def _search_records(root: Path) -> list[dict[str, object]]:
+    return [
+        json.loads(line)
+        for line in (root / pilot.SEARCH_TRIALS).read_text(encoding="utf-8").splitlines()
     ]
 
 
@@ -612,3 +794,633 @@ def test_t0_opened_research_failure_remains_blocked(
     terminal = json.loads((root / pilot.TERMINAL).read_bytes())
     assert terminal["status"] == "BLOCKED"
     assert terminal["holdout_open_count"] == terminal["stress_open_count"] == 1
+
+
+def test_t0_search_negative_candidate_can_be_parent_but_not_finalist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    candidates = [
+        _search_candidate(root, "seed-a", "SeedA", "ema"),
+        _search_candidate(root, "seed-b", "SeedB", "rsi"),
+        _search_candidate(root, "seed-c", "SeedC", "channel"),
+    ]
+    _write_search_campaign(root, candidates)
+    _patch_search_screen(
+        monkeypatch,
+        {
+            "seed-a": {"total_trades": 40, "profit_pct": -2.0, "max_drawdown_pct": 3.0, "profit_factor": 0.7},
+            "seed-b": {"total_trades": 5, "profit_pct": -0.5, "max_drawdown_pct": 2.0, "profit_factor": 0.2},
+            "seed-c": {"total_trades": 80, "profit_pct": -4.0, "max_drawdown_pct": 1.0, "profit_factor": 0.9},
+        },
+    )
+
+    outcome = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+
+    assert outcome["status"] == "SEARCH_ROUND_READY_FOR_CHILDREN"
+    assert outcome["brief"]["selected_parent"]["candidate_id"] == "seed-b"
+    assert outcome["brief"]["selected_parent"]["search_metrics"][
+        "net_profit_after_base_fees_pct"
+    ] < 0
+    assert "search_finalist" not in outcome["brief"]
+    assert not (root / pilot.SEARCH_TERMINAL).exists()
+    round_receipt = _search_records(root)[-1]
+    assert round_receipt["record_type"] == "ROUND_RECEIPT"
+    assert set(round_receipt["brief"]) == {
+        "campaign",
+        "candidates",
+        "frozen_ranking",
+        "selected_parent",
+    }
+
+
+def test_t0_search_finalist_gate_is_positive_without_pf_threshold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    seeds = [
+        _search_candidate(root, "seed-a", "SeedA", "ema"),
+        _search_candidate(root, "seed-b", "SeedB", "rsi"),
+        _search_candidate(root, "seed-c", "SeedC", "channel"),
+    ]
+    _write_search_campaign(root, seeds)
+    metrics = {
+        "seed-a": {"total_trades": 40, "profit_pct": -0.2, "max_drawdown_pct": 3.0, "profit_factor": 0.8},
+        "seed-b": {"total_trades": 40, "profit_pct": -0.5, "max_drawdown_pct": 2.0, "profit_factor": 0.9},
+        "seed-c": {"total_trades": 40, "profit_pct": -1.0, "max_drawdown_pct": 1.0, "profit_factor": 0.95},
+    }
+    _patch_search_screen(monkeypatch, metrics)
+    first = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+    parent = _parent_contract(first)
+    children = [
+        _search_candidate(
+            root,
+            "child-high-dd",
+            "ChildHighDd",
+            parent["mechanism"],
+            relationship="SINGLE_FACTOR_CHILD",
+            changed_factor="ema-period",
+            parent_sha256=parent["strategy_sha256"],
+        ),
+        _search_candidate(
+            root,
+            "child-finalist",
+            "ChildFinalist",
+            parent["mechanism"],
+            relationship="SINGLE_FACTOR_CHILD",
+            changed_factor="adx-period",
+            parent_sha256=parent["strategy_sha256"],
+        ),
+        _search_candidate(
+            root,
+            "child-zero",
+            "ChildZero",
+            parent["mechanism"],
+            relationship="SINGLE_FACTOR_CHILD",
+            changed_factor="entry-cross",
+            parent_sha256=parent["strategy_sha256"],
+        ),
+    ]
+    _write_search_campaign(
+        root,
+        children,
+        round_number=2,
+        parent=parent,
+        previous_receipt_sha256=first["round_receipt_sha256"],
+    )
+    metrics.update(
+        {
+            "child-high-dd": {"total_trades": 50, "profit_pct": 5.0, "max_drawdown_pct": 10.01, "profit_factor": 9.0},
+            "child-finalist": {"total_trades": 30, "profit_pct": 0.01, "max_drawdown_pct": 10.0, "profit_factor": 0.2},
+            "child-zero": {"total_trades": 100, "profit_pct": 0.0, "max_drawdown_pct": 0.1, "profit_factor": 99.0},
+        }
+    )
+    _patch_search_screen(monkeypatch, metrics)
+
+    second = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+
+    terminal = json.loads((root / pilot.SEARCH_TERMINAL).read_bytes())
+    assert second["status"] == terminal["status"] == "SEARCH_FINALIST_FROZEN"
+    terminal_before = (root / pilot.SEARCH_TERMINAL).read_bytes()
+    assert terminal["brief"]["selected_parent"]["candidate_id"] == "child-high-dd"
+    assert terminal["search_finalist"]["candidate_id"] == "child-finalist"
+    assert terminal["search_finalist"]["search_metrics"]["profit_factor"] == 0.2
+    assert terminal["brief"]["campaign"]["budget"]["consumed_total"] == 6
+    assert terminal["finalist_gate"] == pilot.SEARCH_GATE_CONTRACT
+    assert "minimum_profit_factor" not in terminal["finalist_gate"]
+    with pytest.raises(pilot.PilotError, match="terminal receipt already exists"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert (root / pilot.SEARCH_TERMINAL).read_bytes() == terminal_before
+
+
+def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    valid = _search_candidate(root, "valid", "ValidSeed", "ema")
+    duplicate = _search_candidate(root, "duplicate", "DuplicateSeed", "rsi")
+    duplicate["strategy_file"] = valid["strategy_file"]
+    duplicate["strategy_sha256"] = valid["strategy_sha256"]
+    invalid = _search_candidate(
+        root, "invalid", "InvalidSeed", "channel", body="dataframe["
+    )
+    _write_search_campaign(root, [valid, duplicate, invalid])
+    _patch_search_screen(
+        monkeypatch,
+        {
+            "valid": {"total_trades": 10, "profit_pct": -1.0, "max_drawdown_pct": 2.0, "profit_factor": 0.5}
+        },
+    )
+
+    outcome = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+
+    statuses = {
+        item["candidate_id"]: item["technical_status"]
+        for item in outcome["brief"]["candidates"]
+    }
+    assert statuses == {"valid": "VALID", "duplicate": "INVALID", "invalid": "INVALID"}
+    assert outcome["brief"]["campaign"]["budget"] == {
+        "maximum_attempts": 6,
+        "consumed_before_round": 0,
+        "consumed_this_round": 3,
+        "consumed_total": 3,
+        "remaining": 3,
+    }
+    assert len(
+        [item for item in _search_records(root) if item["record_type"] == "TRIAL"]
+    ) == 3
+    serialized = json.dumps(outcome["brief"], sort_keys=True).lower()
+    for forbidden in ("acquisition", "validation", "development", "holdout", "stress"):
+        assert forbidden not in serialized
+    with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+
+
+@pytest.mark.parametrize(
+    "relative",
+    (
+        "config.json",
+        "market_snapshot.json",
+        "isolated_tiers_snapshot.json",
+        "data/okx/market.feather",
+    ),
+)
+def test_t0_search_runner_inputs_are_sha_bound_before_screen(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    relative: str,
+) -> None:
+    root, source = _search_root(tmp_path)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+    target = root / pilot.ACQUISITION / relative
+    target.write_bytes(target.read_bytes() + b"changed")
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("a changed Search input must fail before screening")
+
+    monkeypatch.setattr(pilot, "materialize_screening_isolation", forbidden)
+    with pytest.raises(pilot.PilotError, match="receipt mismatch"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+
+
+def test_t0_search_batch_is_reserved_before_candidate_processing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    candidates = [
+        _search_candidate(root, "seed-a", "SeedA", "ema"),
+        _search_candidate(root, "seed-b", "SeedB", "rsi"),
+        _search_candidate(root, "seed-c", "SeedC", "channel"),
+    ]
+    _write_search_campaign(root, candidates)
+    monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
+
+    def interrupted(*args: object, **kwargs: object) -> None:
+        raise pilot.PilotError("injected interruption")
+
+    monkeypatch.setattr(pilot, "_validate_search_candidates", interrupted)
+    plan = pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
+    with pytest.raises(pilot.PilotError, match="injected interruption"):
+        pilot.screen_search(root, plan, Path(sys.executable), source)
+
+    records = _search_records(root)
+    assert [item["record_type"] for item in records] == ["ROUND_STARTED"]
+    assert [item["attempt_number"] for item in records[0]["attempts"]] == [1, 2, 3]
+    with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
+        pilot.screen_search(root, plan, Path(sys.executable), source)
+
+
+def test_t0_completed_round_one_cli_retry_does_not_poison_round_two(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    candidate = _search_candidate(root, "seed-a", "SeedA", "ema")
+    _write_search_campaign(root, [candidate])
+    _patch_search_screen(
+        monkeypatch,
+        {
+            "seed-a": {
+                "total_trades": 30,
+                "profit_pct": -0.1,
+                "max_drawdown_pct": 1.0,
+                "profit_factor": 0.9,
+            }
+        },
+    )
+    assert (
+        pilot.main(
+            [
+                "screen-search",
+                "--campaign-root",
+                str(root),
+                "--freqtrade-python",
+                sys.executable,
+                "--freqtrade-source",
+                str(source),
+            ]
+        )
+        == 0
+    )
+
+    with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
+        pilot.main(
+            [
+                "screen-search",
+                "--campaign-root",
+                str(root),
+                "--freqtrade-python",
+                sys.executable,
+                "--freqtrade-source",
+                str(source),
+            ]
+        )
+    assert not (root / pilot.SEARCH_TERMINAL).exists()
+
+
+def test_t0_search_failure_text_cannot_leak_paths_or_later_phase_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    candidate = _search_candidate(root, "seed-a", "SeedA", "ema")
+    _write_search_campaign(root, [candidate])
+    _patch_search_screen(monkeypatch, {"seed-a": {}})
+
+    def failed_screen(
+        unused_root: Path,
+        plan: dict[str, object],
+        *args: object,
+        **kwargs: object,
+    ) -> list[dict[str, object]]:
+        item = plan["candidates"][0]
+        return [
+            {
+                "candidate_id": item["candidate_id"],
+                "class_name": item["class_name"],
+                "strategy_sha256": item["strategy_sha256"],
+                "technical_status": "FAILED",
+                "failure_reason": (
+                    f"DEVELOPMENT failed at {root}/acquisition/HOLDOUT/secret; "
+                    "Validation and Stress are unavailable"
+                ),
+            }
+        ]
+
+    monkeypatch.setattr(pilot, "screen", failed_screen)
+    outcome = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+
+    serialized = (
+        json.dumps(outcome["brief"], sort_keys=True)
+        + (root / pilot.SEARCH_TRIALS).read_text(encoding="utf-8")
+        + (root / pilot.SEARCH_TERMINAL).read_text(encoding="utf-8")
+    ).lower()
+    assert str(root).lower() not in serialized
+    for forbidden in ("acquisition", "validation", "development", "holdout", "stress"):
+        assert forbidden not in serialized
+
+
+def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    provenance["local_only_files"]["data/okx/market.feather"]["rows"] = 2
+    _write_json(provenance_path, provenance)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+
+    def filtered_view(
+        source_root: Path,
+        destination_root: Path,
+        timerange: str,
+        expected: dict[str, str],
+    ) -> dict[str, object]:
+        destination = destination_root / "market.feather"
+        shutil.copyfile(source_root / "market.feather", destination)
+        return {
+            "exclusive_stop_utc": "2026-01-31T00:00:00Z",
+            "files": {
+                "market.feather": {
+                    "rows": 1,
+                    "sha256": expected["market.feather"],
+                }
+            },
+        }
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("post-window data must fail before Candidate screening")
+
+    monkeypatch.setattr(pilot, "_create_scenario_data_view", filtered_view)
+    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 2)
+    monkeypatch.setattr(pilot, "screen", forbidden)
+    with pytest.raises(pilot.PilotError, match="post-window data"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert not (root / "search-isolation-round-1").exists()
+
+
+def test_t0_search_ledger_symlink_is_rejected_without_touching_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+    _patch_search_screen(monkeypatch, {"seed-a": {}})
+    target = tmp_path / "outside-ledger"
+    target.write_bytes(b"unchanged\n")
+    (root / pilot.SEARCH_TRIALS).symlink_to(target)
+
+    with pytest.raises(pilot.PilotError, match="cannot be opened safely"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert target.read_bytes() == b"unchanged\n"
+
+
+def test_t0_search_config_toctou_fails_before_candidate_screen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+
+    def mutate_after_preflight(
+        campaign_root: Path,
+        plan: dict[str, object],
+        **kwargs: object,
+    ) -> dict[str, object]:
+        config = campaign_root / pilot.ACQUISITION / "config.json"
+        config.write_bytes(config.read_bytes() + b"changed")
+        isolation_root = campaign_root / str(kwargs["directory_name"])
+        isolation_root.mkdir()
+        return {
+            "receipt": {},
+            "provenance": isolation_root / "retained-data-provenance.json",
+            "data_dir": isolation_root,
+        }
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("changed config must fail before Candidate screening")
+
+    monkeypatch.setattr(
+        pilot, "materialize_screening_isolation", mutate_after_preflight
+    )
+    monkeypatch.setattr(pilot, "screen", forbidden)
+    with pytest.raises(pilot.PilotError, match="config changed after preflight"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert not (root / "search-isolation-round-1").exists()
+    assert not (root / "search-inputs-round-1").exists()
+
+
+def test_t0_search_runtime_inputs_are_cleaned_after_screen_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+    monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
+
+    def isolation(
+        campaign_root: Path,
+        plan: dict[str, object],
+        **kwargs: object,
+    ) -> dict[str, object]:
+        isolation_root = campaign_root / str(kwargs["directory_name"])
+        isolation_root.mkdir()
+        return {
+            "receipt": {},
+            "provenance": isolation_root / "retained-data-provenance.json",
+            "data_dir": isolation_root,
+        }
+
+    def failed_screen(*args: object, **kwargs: object) -> None:
+        assert (root / "search-isolation-round-1").is_dir()
+        assert (root / "search-inputs-round-1").is_dir()
+        raise pilot.PilotError("injected screen failure")
+
+    monkeypatch.setattr(pilot, "materialize_screening_isolation", isolation)
+    monkeypatch.setattr(pilot, "screen", failed_screen)
+    with pytest.raises(pilot.PilotError, match="injected screen failure"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert not (root / "search-isolation-round-1").exists()
+    assert not (root / "search-inputs-round-1").exists()
+
+
+def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, source = _search_root(tmp_path)
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Search must not enter database or producer paths")
+
+    for name in ("init_database", "run_research_candidate", "materialize_selected_input"):
+        monkeypatch.setattr(pilot, name, forbidden)
+
+    def create_view(
+        source_root: Path,
+        destination_root: Path,
+        timerange: str,
+        expected: dict[str, str],
+    ) -> dict[str, object]:
+        files = {}
+        for relative, sha256 in expected.items():
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_root / relative, destination)
+            files[relative] = {"sha256": sha256, "rows": 1}
+        return {"exclusive_stop_utc": "2026-01-31T00:00:00Z", "files": files}
+
+    def isolated_screen(
+        campaign_root: Path,
+        plan: dict[str, object],
+        inputs: dict[str, Path],
+        python: Path,
+        source_root: Path,
+        isolation: dict[str, object],
+        **kwargs: object,
+    ) -> list[dict[str, object]]:
+        provenance = json.loads(Path(isolation["provenance"]).read_bytes())
+        first_input = next(iter(inputs.values()))
+        offline_runner._verify_dependency_versions(
+            provenance, offline_runner.SUPPORTED_DEPENDENCIES
+        )
+        offline_runner._verify_data_provenance(
+            provenance,
+            scenario="DEVELOPMENT",
+            timerange=plan["search_timerange"],
+            pair="TEST/USDT:USDT",
+            data_dir=Path(isolation["data_dir"]),
+            market_snapshot=first_input / "market_snapshot.json",
+            leverage_tiers=first_input / "isolated_tiers_snapshot.json",
+        )
+        (campaign_root / kwargs["directory_name"]).mkdir()
+        return [
+            {
+                "candidate_id": candidate["candidate_id"],
+                "class_name": candidate["class_name"],
+                "strategy_sha256": candidate["strategy_sha256"],
+                "technical_status": "VALID",
+                "failure_reason": None,
+                "total_trades": 35,
+                "profit_pct": 0.25 if candidate["candidate_id"] == "child-a" else -0.25,
+                "max_drawdown_pct": 5.0,
+                "profit_factor": 0.8,
+            }
+            for candidate in plan["candidates"]
+        ]
+
+    monkeypatch.setattr(pilot, "_create_scenario_data_view", create_view)
+    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 1)
+    monkeypatch.setattr(pilot, "screen", isolated_screen)
+    seeds = [
+        _search_candidate(root, "seed-a", "SeedA", "ema"),
+        _search_candidate(root, "seed-b", "SeedB", "rsi"),
+        _search_candidate(root, "seed-c", "SeedC", "channel"),
+    ]
+    _write_search_campaign(root, seeds)
+    first = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+    parent = _parent_contract(first)
+    children = [
+        _search_candidate(
+            root,
+            candidate_id,
+            class_name,
+            parent["mechanism"],
+            relationship="SINGLE_FACTOR_CHILD",
+            changed_factor=factor,
+            parent_sha256=parent["strategy_sha256"],
+        )
+        for candidate_id, class_name, factor in (
+            ("child-a", "ChildA", "period-a"),
+            ("child-b", "ChildB", "period-b"),
+            ("child-c", "ChildC", "period-c"),
+        )
+    ]
+    _write_search_campaign(
+        root,
+        children,
+        round_number=2,
+        parent=parent,
+        previous_receipt_sha256=first["round_receipt_sha256"],
+    )
+
+    second = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+
+    assert second["status"] == "SEARCH_FINALIST_FROZEN"
+    records = _search_records(root)
+    assert len([item for item in records if item["record_type"] == "TRIAL"]) == 6
+    assert sum(
+        len(item["attempts"])
+        for item in records
+        if item["record_type"] == "ROUND_STARTED"
+    ) == 6
+    for name in (
+        "workspace",
+        "selected-input",
+        "scenario-opens",
+        pilot.HOLDOUT_AUTHORIZATION,
+        pilot.TERMINAL,
+    ):
+        assert not (root / name).exists()
+    assert not list(root.rglob("*.sqlite"))
+    assert not (root / "search-isolation-round-1").exists()
+    assert not (root / "search-isolation-round-2").exists()
+    assert not (root / "search-inputs-round-1").exists()
+    assert not (root / "search-inputs-round-2").exists()
+    assert (root / "search-results-round-1").is_dir()
+    assert (root / "search-results-round-2").is_dir()
+    assert (root / pilot.SEARCH_TERMINAL).is_file()
