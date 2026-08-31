@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import sqlite3
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -116,6 +118,100 @@ def _plan_root(tmp_path: Path) -> Path:
     }
     _write_json(root / pilot.PLAN, plan)
     return root
+
+
+def _write_open_receipts(root: Path, plan: dict[str, object]) -> None:
+    candidate = plan["candidates"][0]
+    provenance = root / "selected-input" / "retained-data-provenance.json"
+    stop = pilot.timerange(plan["holdout_timerange"], "Holdout")[1]
+    for scenario, relative in (
+        ("HOLDOUT", pilot.HOLDOUT_SEAL),
+        ("HOLDOUT_STRESS", pilot.STRESS_SEAL),
+    ):
+        _write_json(
+            root / relative,
+            {
+                "schema": "freqtrade-lab-scenario-open-v1",
+                "scenario": scenario,
+                "timerange": plan["holdout_timerange"],
+                "strategy": candidate["class_name"],
+                "strategy_sha256": candidate["strategy_sha256"],
+                "data_provenance_sha256": pilot.digest(provenance.read_bytes()),
+                "exclusive_stop_utc": stop.isoformat().replace("+00:00", "Z"),
+                "meaning": "one-shot scenario execution budget was consumed before retained market data validation began",
+                "opened_at_utc": "2026-08-31T00:00:00.000Z",
+            },
+        )
+
+
+def _mock_pilot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, display_failure: str | None = None, research_failure: str | None = None) -> tuple[Path, Path]:
+    root = _plan_root(tmp_path)
+    plan = pilot.load_plan(root)
+    candidate = plan["candidates"][0]
+    source = tmp_path / "freqtrade-source"
+    source.mkdir()
+    input_root = root / "selected-input"
+    input_root.mkdir()
+    _write_json(input_root / "retained-data-provenance.json", {"frozen": True})
+    produced = SimpleNamespace(imported=SimpleNamespace(research_run_id="research-run-1"), manifest_sha256="a" * 64, bundle_root=root / "mock-bundle", artifacts=[])
+
+    def select(*args: object) -> str:
+        pilot.write_once(root / pilot.SELECTION, {"selected_candidate_id": candidate["candidate_id"]})
+        return candidate["candidate_id"]
+
+    def producer(**kwargs: object) -> object:
+        if research_failure is not None:
+            _write_open_receipts(root, plan)
+        return produced
+
+    def evidence(database: Path, run_id: str) -> dict[str, object]:
+        assert run_id == produced.imported.research_run_id
+        if research_failure == "database":
+            raise sqlite3.DatabaseError("database evidence unavailable")
+        return {
+            "research_run_id": run_id,
+            "verdict": None,
+            "release_count": 0,
+            "scenarios": [{"scenario": scenario, "scenario_passed": None} for scenario in ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")],
+        }
+
+    def replay(*args: object) -> dict[str, str]:
+        return {"status": "EXACT_REPORT_SEMANTICS_AND_DATA_VIEW_MATCH"}
+
+    def library(database: Path) -> None:
+        if display_failure == "library":
+            raise pilot.StrategyLibraryError("display unavailable")
+
+    def frequi(*args: object) -> dict[str, object]:
+        if display_failure == "frequi":
+            raise pilot.PresentationUnavailableError("target unavailable")
+        if research_failure == "unexpected":
+            raise AttributeError("source provenance shape is invalid")
+        return {"root": str(root / "frequi-results"), "files": []}
+
+    monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
+    monkeypatch.setattr(pilot, "materialize_inputs", lambda *args: {candidate["candidate_id"]: input_root})
+    monkeypatch.setattr(pilot, "materialize_development_isolation", lambda *args: {"receipt": {}})
+    monkeypatch.setattr(pilot, "screen", lambda *args: [])
+    monkeypatch.setattr(pilot, "select", select)
+    monkeypatch.setattr(pilot, "init_database", lambda *args: None)
+    monkeypatch.setattr(pilot, "materialize_selected_input", lambda *args: input_root)
+    monkeypatch.setattr(pilot, "verify_candidate_copy", lambda *args: None)
+    monkeypatch.setattr(pilot, "run_research_candidate", producer)
+    monkeypatch.setattr(pilot, "scenario_open_evidence", lambda *args: {"holdout_open_count": 1, "stress_open_count": 1, "receipts": {}})
+    monkeypatch.setattr(pilot, "database_evidence", evidence)
+    monkeypatch.setattr(pilot, "development_replay_evidence", replay)
+    monkeypatch.setattr(pilot, "validate_strategy_library_database", library)
+    monkeypatch.setattr(pilot, "copy_frequi_results", frequi)
+    monkeypatch.setattr(pilot, "now", lambda: "2026-08-31T00:00:00.000Z")
+    return root, source
+
+
+def _main_args(root: Path, source: Path) -> list[str]:
+    return [
+        "run", "--pilot-root", str(root), "--freqtrade-python", sys.executable,
+        "--freqtrade-source", str(source), "--frequi-base-url", "http://127.0.0.1:18766",
+    ]
 
 
 def test_t0_plan_freezes_candidate_hash_and_codex_lineage(tmp_path: Path) -> None:
@@ -299,3 +395,46 @@ def test_t0_materialized_candidate_hashes_are_rechecked(tmp_path: Path) -> None:
 
     with pytest.raises(pilot.PilotError, match="research spec changed"):
         pilot.verify_candidate_copy(candidate, controls, "test")
+
+
+@pytest.mark.parametrize(
+    "display_failure",
+    [None, "library", "frequi"],
+    ids=["success", "library-unknown", "frequi-unknown"],
+)
+def test_t0_completed_research_survives_classified_display_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    display_failure: str | None,
+) -> None:
+    root, source = _mock_pilot(tmp_path, monkeypatch, display_failure=display_failure)
+
+    assert pilot.main(_main_args(root, source)) == 0
+    captured = capsys.readouterr()
+    terminal = json.loads((root / pilot.TERMINAL).read_bytes())
+    assert terminal["status"] == "PILOT_COMPLETED_NO_VERDICT"
+    assert terminal["research_claim"] == "NOT_EVALUATED"
+    assert terminal["trading_claim"] == "NONE"
+    if display_failure is None:
+        assert terminal["frequi_results_root"] == str(root / "frequi-results")
+    else:
+        assert terminal["frequi_results_root"] is None
+        assert terminal["frequi_history_visibility"] == "UNKNOWN"
+        assert "optional presentation is UNKNOWN" in captured.err
+
+
+@pytest.mark.parametrize("research_failure", ["database", "unexpected"])
+def test_t0_opened_research_failure_remains_blocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    research_failure: str,
+) -> None:
+    root, source = _mock_pilot(tmp_path, monkeypatch, research_failure=research_failure)
+
+    with pytest.raises(pilot.PilotError):
+        pilot.main(_main_args(root, source))
+
+    terminal = json.loads((root / pilot.TERMINAL).read_bytes())
+    assert terminal["status"] == "BLOCKED"
+    assert terminal["holdout_open_count"] == terminal["stress_open_count"] == 1

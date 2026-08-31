@@ -41,7 +41,11 @@ from lab.research_candidate import (
     _runtime_config,
     run_research_candidate,
 )
-from lab.strategy_library import DEFAULT_PORT, validate_strategy_library_database
+from lab.strategy_library import (
+    DEFAULT_PORT,
+    StrategyLibraryError,
+    validate_strategy_library_database,
+)
 from scripts.run_freqtrade_backtest import _create_scenario_data_view
 
 
@@ -99,6 +103,10 @@ ALLOWED_DATAFRAME_CALLS = {"max", "min", "rolling", "shift"}
 
 class PilotError(ValueError):
     """A terminal, fail-closed Pilot error."""
+
+
+class PresentationUnavailableError(PilotError):
+    """The isolated optional presentation target cannot be published."""
 
 
 def digest(data: bytes) -> str:
@@ -1107,7 +1115,10 @@ def copy_frequi_results(root: Path, chosen: str, produced: Any) -> dict[str, Any
         / "user_data"
         / "backtest_results"
     )
-    destination.mkdir(parents=True)
+    try:
+        destination.mkdir(parents=True)
+    except OSError as exc:
+        raise PresentationUnavailableError("FreqUI target directory is unavailable") from exc
     copied: list[dict[str, Any]] = []
     for artifact in produced.artifacts:
         archive = produced.bundle_root / artifact.archive
@@ -1115,7 +1126,9 @@ def copy_frequi_results(root: Path, chosen: str, produced: Any) -> dict[str, Any
         provenance, _ = load_json(
             produced.bundle_root / provenance_name, "artifact provenance"
         )
-        artifact_receipt = provenance.get("artifact", {})
+        artifact_receipt = provenance.get("artifact")
+        if not isinstance(artifact_receipt, Mapping):
+            raise PilotError("FreqUI copy provenance is incomplete")
         metadata_name = artifact_receipt.get("metadata")
         metadata_sha256 = artifact_receipt.get("metadata_sha256")
         if (
@@ -1131,13 +1144,27 @@ def copy_frequi_results(root: Path, chosen: str, produced: Any) -> dict[str, Any
             (archive, artifact.archive_sha256),
             (metadata, metadata_sha256),
         ):
-            data = source_path.read_bytes()
+            try:
+                data = source_path.read_bytes()
+            except OSError as exc:
+                raise PilotError("FreqUI source cannot be read") from exc
             if digest(data) != expected_sha:
                 raise PilotError("FreqUI source changed before copy")
             target = destination / source_path.name
-            shutil.copyfile(source_path, target)
-            if target.is_symlink() or target.stat().st_nlink != 1 or digest(target.read_bytes()) != expected_sha:
-                raise PilotError("FreqUI isolated copy failed its identity check")
+            try:
+                if target.is_symlink():
+                    raise PresentationUnavailableError("FreqUI target is a symlink")
+                with target.open("xb") as handle:
+                    handle.write(data)
+                if (
+                    target.stat().st_nlink != 1
+                    or digest(target.read_bytes()) != expected_sha
+                ):
+                    raise PresentationUnavailableError("FreqUI target identity check failed")
+            except PresentationUnavailableError:
+                raise
+            except OSError as exc:
+                raise PresentationUnavailableError("FreqUI target copy is unavailable") from exc
         copied.append(
             {
                 "scenario": artifact.scenario,
@@ -1147,8 +1174,14 @@ def copy_frequi_results(root: Path, chosen: str, produced: Any) -> dict[str, Any
                 "metadata_sha256": metadata_sha256,
             }
         )
-    if len(copied) != 3 or len(list(destination.iterdir())) != 6:
-        raise PilotError("isolated FreqUI root lacks three exact ZIP/meta pairs")
+    if len(copied) != 3:
+        raise PilotError("FreqUI source lacks three scenario artifacts")
+    try:
+        target_count = len(list(destination.iterdir()))
+    except OSError as exc:
+        raise PresentationUnavailableError("FreqUI target directory is unavailable") from exc
+    if target_count != 6:
+        raise PresentationUnavailableError("FreqUI target lacks three exact ZIP/meta pairs")
     return {"root": str(destination), "files": copied}
 
 
@@ -1220,7 +1253,6 @@ def run(
     workspace.mkdir()
     database = workspace / "lab.sqlite"
     init_database(database)
-    validate_strategy_library_database(database)
     artifacts = workspace / "artifacts"
     artifacts.mkdir()
     opens = root / "scenario-opens"
@@ -1279,7 +1311,13 @@ def run(
     )
     evidence = database_evidence(database, produced.imported.research_run_id)
     replay = development_replay_evidence(results, chosen, evidence, produced)
-    frequi = copy_frequi_results(root, chosen, produced)
+    frequi_history_visibility: Optional[str] = None
+    try:
+        validate_strategy_library_database(database)
+        frequi = copy_frequi_results(root, chosen, produced)
+    except (PresentationUnavailableError, StrategyLibraryError):
+        frequi = {"root": None, "files": None}
+        frequi_history_visibility = "UNKNOWN"
     terminal = {
         "schema": SCHEMA,
         "pilot_id": plan["pilot_id"],
@@ -1301,7 +1339,7 @@ def run(
         "frequi_base_url": frequi_base_url,
         "frequi_results_root": frequi["root"],
         "frequi_copy_receipts": frequi["files"],
-        "frequi_history_visibility": None,
+        "frequi_history_visibility": frequi_history_visibility,
         "research_claim": "NOT_EVALUATED",
         "trading_claim": "NONE",
         "created_at_utc": now(),
@@ -1424,7 +1462,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             args.freqtrade_source.expanduser().resolve(strict=True),
             args.frequi_base_url,
         )
-    except (PilotError, OSError, RuntimeError, ValueError) as exc:
+    except Exception as exc:
         if args.command == "run":
             write_failure(root, plan, exc)
         raise PilotError(str(exc)) from exc
@@ -1433,8 +1471,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if terminal["status"] == "PILOT_COMPLETED_NO_VERDICT":
         print(f"Selected Candidate: {terminal['selected_candidate_id']}")
         print(f"Research run: {terminal['database_evidence']['research_run_id']}")
-        print(f"Strategy library command: {strategy_library_command(terminal)}")
-        print(f"Strategy library URL: http://127.0.0.1:{DEFAULT_PORT}/")
+        if terminal.get("frequi_results_root") is None:
+            print(
+                "Warning: optional presentation is UNKNOWN",
+                file=sys.stderr,
+            )
+        else:
+            print(f"Strategy library command: {strategy_library_command(terminal)}")
+            print(f"Strategy library URL: http://127.0.0.1:{DEFAULT_PORT}/")
     return 0 if terminal["status"] == "PILOT_COMPLETED_NO_VERDICT" else 3
 
 
