@@ -771,6 +771,204 @@ def test_t0_completed_research_survives_classified_display_failure(
         assert "optional presentation is UNKNOWN" in captured.err
 
 
+def test_t0_happy_path_order_producer_once_and_complete_terminal_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, source = _mock_pilot(tmp_path, monkeypatch)
+    plan = pilot.load_plan(root)
+    candidate = plan["candidates"][0]
+    scenario_data_view = {
+        "exclusive_stop_utc": "2026-07-31T00:00:00Z",
+        "files": {"market.feather": {"sha256": "b" * 64}},
+    }
+    development_results = [
+        {
+            "candidate_id": "candidate-one",
+            "class_name": "CandidateOne",
+            "strategy_sha256": candidate["strategy_sha256"],
+            "exit_code": 0,
+            "scenario_data_view": scenario_data_view,
+            "archive": "screened-development.zip",
+            "archive_sha256": "c" * 64,
+            "report_semantic_sha256": "d" * 64,
+            "total_trades": 20,
+            "profit_pct": 0.5,
+            "max_drawdown_pct": 5.0,
+            "profit_factor": 1.1,
+        }
+    ]
+    open_evidence = {
+        "holdout_open_count": 1,
+        "stress_open_count": 1,
+        "receipts": {
+            "HOLDOUT": {
+                "sha256": "e" * 64,
+                "opened_at_utc": "2026-08-31T00:00:00.000Z",
+            },
+            "HOLDOUT_STRESS": {
+                "sha256": "f" * 64,
+                "opened_at_utc": "2026-08-31T00:00:00.000Z",
+            },
+        },
+    }
+    scenarios = [
+        {
+            "scenario": scenario,
+            "status": "SUCCEEDED",
+            "total_trades": 20,
+            "profit_pct": 0.5,
+            "max_drawdown_pct": 5.0,
+            "profit_factor": 1.1,
+            "scenario_passed": None,
+        }
+        for scenario in ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
+    ]
+    evidence = {
+        "research_run_id": "research-run-1",
+        "candidate_class_name": "CandidateOne",
+        "generation_source": "CODEX",
+        "generation_model": None,
+        "returned_strategy_count": 1,
+        "source_item_index": 0,
+        "status": "COMPLETED",
+        "verdict": None,
+        "release_count": 0,
+        "scenarios": scenarios,
+    }
+    replay = {
+        "status": "EXACT_REPORT_SEMANTICS_AND_DATA_VIEW_MATCH",
+        "screened_archive_sha256": "c" * 64,
+        "screened_report_semantic_sha256": "d" * 64,
+        "producer_report_semantic_sha256": "d" * 64,
+        "scenario_data_view": scenario_data_view,
+        "metrics": {
+            label: {"screened": value, "producer_replay": value}
+            for label, value in (
+                ("total_trades", 20),
+                ("profit_pct", 0.5),
+                ("max_drawdown_pct", 5.0),
+                ("profit_factor", 1.1),
+            )
+        },
+    }
+    frequi_receipts = [
+        {
+            "scenario": scenario,
+            "archive": f"{stem}.zip",
+            "archive_sha256": archive_sha,
+            "metadata": f"{stem}.meta.json",
+            "metadata_sha256": metadata_sha,
+        }
+        for scenario, stem, archive_sha, metadata_sha in (
+            (
+                "DEVELOPMENT",
+                "backtest-result-development-01",
+                "1" * 64,
+                "2" * 64,
+            ),
+            (
+                "HOLDOUT",
+                "backtest-result-holdout-02",
+                "3" * 64,
+                "4" * 64,
+            ),
+            (
+                "HOLDOUT_STRESS",
+                "backtest-result-holdout-stress-03",
+                "5" * 64,
+                "6" * 64,
+            ),
+        )
+    ]
+    original_producer = pilot.run_research_candidate
+
+    def producer(**kwargs: object) -> object:
+        assert (root / pilot.HOLDOUT_AUTHORIZATION).is_file()
+        assert (root / "scenario-opens").is_dir()
+        assert kwargs["scenario_open_receipts"] == {
+            "HOLDOUT": root / pilot.HOLDOUT_SEAL,
+            "HOLDOUT_STRESS": root / pilot.STRESS_SEAL,
+        }
+        return original_producer(**kwargs)
+
+    monkeypatch.setattr(pilot, "screen", lambda *args: development_results)
+    monkeypatch.setattr(pilot, "run_research_candidate", producer)
+    monkeypatch.setattr(pilot, "scenario_open_evidence", lambda *args: open_evidence)
+    monkeypatch.setattr(pilot, "database_evidence", lambda *args: evidence)
+    monkeypatch.setattr(pilot, "development_replay_evidence", lambda *args: replay)
+    monkeypatch.setattr(
+        pilot,
+        "copy_frequi_results",
+        lambda *args: {
+            "root": str(root / "frequi-results"),
+            "files": frequi_receipts,
+        },
+    )
+    events: list[str] = []
+    stages = (
+        "verify_data",
+        "materialize_inputs",
+        "materialize_development_isolation",
+        "screen",
+        "select",
+        "init_database",
+        "materialize_selected_input",
+        "verify_candidate_copy",
+        "run_research_candidate",
+        "scenario_open_evidence",
+        "database_evidence",
+        "development_replay_evidence",
+        "validate_strategy_library_database",
+        "copy_frequi_results",
+    )
+    for stage in stages:
+        original = getattr(pilot, stage)
+
+        def record(
+            *args: object,
+            _stage: str = stage,
+            _original: object = original,
+            **kwargs: object,
+        ) -> object:
+            events.append(_stage)
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(pilot, stage, record)
+
+    assert pilot.main(_main_args(root, source)) == 0
+
+    terminal = json.loads((root / pilot.TERMINAL).read_bytes())
+    assert events == list(stages)
+    assert events.count("run_research_candidate") == 1
+    assert terminal == {
+        "schema": pilot.SCHEMA,
+        "pilot_id": "test-pilot",
+        "plan_sha256": plan["_sha256"],
+        "status": "PILOT_COMPLETED_NO_VERDICT",
+        "data": {"status": "DATA_READY"},
+        "development_isolation": {},
+        "development_results": development_results,
+        "development_replay": replay,
+        "selected_candidate_id": "candidate-one",
+        "selection_basis": plan["selection"],
+        **open_evidence,
+        "retry_allowed": False,
+        "tuning_after_result": False,
+        "manifest_sha256": "a" * 64,
+        "bundle_root": str(root / "mock-bundle"),
+        "database": str(root / "workspace" / "lab.sqlite"),
+        "database_evidence": evidence,
+        "frequi_base_url": "http://127.0.0.1:18766",
+        "frequi_results_root": str(root / "frequi-results"),
+        "frequi_copy_receipts": frequi_receipts,
+        "frequi_history_visibility": None,
+        "research_claim": "NOT_EVALUATED",
+        "trading_claim": "NONE",
+        "created_at_utc": "2026-08-31T00:00:00.000Z",
+    }
+
+
 @pytest.mark.parametrize("research_failure", ["database", "unexpected"])
 def test_t0_opened_research_failure_remains_blocked(
     tmp_path: Path,
@@ -785,6 +983,35 @@ def test_t0_opened_research_failure_remains_blocked(
     terminal = json.loads((root / pilot.TERMINAL).read_bytes())
     assert terminal["status"] == "BLOCKED"
     assert terminal["holdout_open_count"] == terminal["stress_open_count"] == 1
+
+
+def test_t0_opened_research_failure_with_invalid_receipt_is_unknown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, source = _mock_pilot(
+        tmp_path, monkeypatch, research_failure="database"
+    )
+    original = pilot.run_research_candidate
+
+    def producer_with_invalid_receipt(**kwargs: object) -> object:
+        produced = original(**kwargs)
+        (root / pilot.HOLDOUT_SEAL).write_text("{}\n", encoding="utf-8")
+        return produced
+
+    monkeypatch.setattr(
+        pilot, "run_research_candidate", producer_with_invalid_receipt
+    )
+
+    with pytest.raises(pilot.PilotError):
+        pilot.main(_main_args(root, source))
+
+    terminal = json.loads((root / pilot.TERMINAL).read_bytes())
+    assert terminal["status"] == "BLOCKED"
+    assert terminal["holdout_opened"] is None
+    assert terminal["holdout_open_count"] is None
+    assert terminal["stress_open_count"] is None
+    assert terminal["open_receipt_integrity"] == "UNKNOWN_INVALID_OR_PARTIAL_RECEIPT"
 
 
 def test_t0_search_negative_candidate_can_be_parent_but_not_finalist(
