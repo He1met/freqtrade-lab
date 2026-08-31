@@ -22,7 +22,6 @@ import re
 import shlex
 import shutil
 import sqlite3
-import stat
 import subprocess
 import sys
 import tempfile
@@ -437,7 +436,7 @@ def _reject_later_phase_references(value: Any, label: str) -> None:
 
 
 def _load_search_campaign(
-    root: Path, plan: dict[str, Any], plan_bytes: bytes
+    plan: dict[str, Any], plan_bytes: bytes
 ) -> dict[str, Any]:
     required = {
         "schema",
@@ -542,7 +541,7 @@ def load_plan(root: Path, name: str = PLAN) -> dict[str, Any]:
     label = "Search campaign" if name == SEARCH_CAMPAIGN else "pilot spec"
     plan, plan_bytes = load_json(root / name, label)
     if name == SEARCH_CAMPAIGN:
-        return _load_search_campaign(root, plan, plan_bytes)
+        return _load_search_campaign(plan, plan_bytes)
     required = {
         "schema",
         "pilot_id",
@@ -754,6 +753,17 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
             or config_receipt.get("sha256") != digest(config_bytes)
         ):
             raise PilotError("Search config receipt mismatch")
+        return {
+            "status": "DATA_READY",
+            "source": {
+                "host": source["host"],
+                "authentication": "none",
+                "pair": source.get("pair"),
+            },
+            "provenance_sha256": digest(provenance_bytes),
+            "local_files": len(local),
+            "search_timerange": plan["search_timerange"],
+        }
     receipt_name = source.get("retrieval_receipt")
     receipt, receipt_bytes = load_json(
         safe_file(data_root, receipt_name, "retrieval receipt"), "retrieval receipt"
@@ -772,13 +782,10 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
         "provenance_sha256": digest(provenance_bytes),
         "local_files": len(local),
     }
-    if search_only:
-        result["search_timerange"] = plan["search_timerange"]
-    else:
-        result["timeranges"] = [
-            plan["development_timerange"],
-            plan["holdout_timerange"],
-        ]
+    result["timeranges"] = [
+        plan["development_timerange"],
+        plan["holdout_timerange"],
+    ]
     return result
 
 
@@ -797,12 +804,16 @@ def _search_feather_rows(path: Path) -> int:
 def materialize_screening_isolation(
     root: Path,
     plan: Mapping[str, Any],
-    *,
-    phase: str,
-    timerange_key: str,
-    directory_name: str,
 ) -> dict[str, Any]:
     """Create a physical view containing no candle at/after the screen stop."""
+    search_only = plan.get("schema") == SEARCH_SCHEMA
+    phase = "Search" if search_only else "Development"
+    timerange_key = "search_timerange" if search_only else "development_timerange"
+    directory_name = (
+        f"search-isolation-round-{plan['round']}"
+        if search_only
+        else "development-isolation"
+    )
     isolation_root = root / directory_name
     if isolation_root.exists():
         raise PilotError(f"{phase} isolation already exists; replay is forbidden")
@@ -832,7 +843,7 @@ def materialize_screening_isolation(
     if not expected:
         raise PilotError(f"{phase} source receipt has no market data")
     source_rows: dict[str, int] = {}
-    if phase == "Search":
+    if search_only:
         for relative in expected:
             actual_rows = _search_feather_rows(
                 root / ACQUISITION / "data" / "okx" / relative
@@ -853,10 +864,7 @@ def materialize_screening_isolation(
         if receipt.get("sha256") != digest(data):
             raise PilotError(f"{phase} isolation receipt disagrees with its file")
         source_receipt = local[f"{prefix}/{relative}"]
-        if (
-            phase == "Search"
-            and receipt.get("rows") != source_rows.get(relative)
-        ):
+        if search_only and receipt.get("rows") != source_rows.get(relative):
             raise PilotError("Search source contains post-window data")
         updated_local[f"{prefix}/{relative}"] = {
             "bytes": len(data),
@@ -884,7 +892,7 @@ def materialize_screening_isolation(
         "filesystem_mode": "files=0444,directories=0555",
         "files": view["files"],
     }
-    if phase == "Development":
+    if not search_only:
         receipt["holdout_values_present"] = False
     else:
         receipt["outside_search_values_present"] = False
@@ -908,21 +916,18 @@ def materialize_screening_isolation(
 def materialize_development_isolation(
     root: Path, plan: Mapping[str, Any]
 ) -> dict[str, Any]:
-    return materialize_screening_isolation(
-        root,
-        plan,
-        phase="Development",
-        timerange_key="development_timerange",
-        directory_name="development-isolation",
-    )
+    return materialize_screening_isolation(root, plan)
 
 
 def materialize_inputs(
     root: Path,
     plan: Mapping[str, Any],
-    *,
-    directory_name: str = "candidate-inputs",
 ) -> dict[str, Path]:
+    directory_name = (
+        f"search-inputs-round-{plan['round']}"
+        if plan.get("schema") == SEARCH_SCHEMA
+        else "candidate-inputs"
+    )
     inputs_root = root / directory_name
     if inputs_root.exists():
         raise PilotError("candidate inputs already exist; replay is forbidden")
@@ -1189,12 +1194,13 @@ def screen(
     python: Path,
     source: Path,
     isolation: Mapping[str, Any],
-    *,
-    phase: str = "Development",
-    timerange_key: str = "development_timerange",
-    directory_name: str = "development",
-    continue_on_error: bool = False,
 ) -> list[dict[str, Any]]:
+    search_only = plan.get("schema") == SEARCH_SCHEMA
+    phase = "Search" if search_only else "Development"
+    timerange_key = "search_timerange" if search_only else "development_timerange"
+    directory_name = (
+        f"search-results-round-{plan['round']}" if search_only else "development"
+    )
     output = root / directory_name
     if output.exists():
         raise PilotError(f"{phase} outputs already exist; replay is forbidden")
@@ -1219,12 +1225,12 @@ def screen(
                     timerange_value=plan[timerange_key],
                     phase=phase,
                 )
-                if continue_on_error:
+                if search_only:
                     item.update(
                         {"technical_status": "VALID", "failure_reason": None}
                     )
             except Exception as exc:
-                if not continue_on_error:
+                if not search_only:
                     raise
                 failed_root = output / candidate["candidate_id"]
                 shutil.rmtree(failed_root / "user_data", ignore_errors=True)
@@ -1363,24 +1369,12 @@ def _search_identity(candidate: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _open_search_ledger(path: Path) -> Any:
-    no_follow = getattr(os, "O_NOFOLLOW", None)
-    if no_follow is None:
-        raise PilotError("Search ledger no-follow support is unavailable")
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        raise PilotError("Search trial ledger cannot be opened safely")
     try:
-        descriptor = os.open(
-            path,
-            os.O_RDWR | os.O_CREAT | os.O_APPEND | no_follow,
-            0o600,
-        )
+        return path.open("a+b")
     except OSError as exc:
         raise PilotError("Search trial ledger cannot be opened safely") from exc
-    try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-            raise PilotError("Search trial ledger must be a regular file")
-        return os.fdopen(descriptor, "a+b")
-    except BaseException:
-        os.close(descriptor)
-        raise
 
 
 def _load_search_records(handle: Any, campaign_id: str) -> list[dict[str, Any]]:
@@ -1610,15 +1604,14 @@ def screen_search(
         receipts = [
             item for item in records if item["record_type"] == "ROUND_RECEIPT"
         ]
-        reservations = [
-            attempt
+        reserved_numbers = [
+            number
             for started in starts
-            for attempt in started.get("attempts", [])
-            if isinstance(started.get("attempts"), list)
+            if isinstance(started.get("attempt_numbers"), list)
+            for number in started["attempt_numbers"]
         ]
-        reserved_numbers = [item.get("attempt_number") for item in reservations]
         trial_numbers = [item.get("attempt_number") for item in trials]
-        if reserved_numbers != list(range(1, len(reservations) + 1)) or any(
+        if reserved_numbers != list(range(1, len(reserved_numbers) + 1)) or any(
             number not in reserved_numbers for number in trial_numbers
         ):
             raise PilotError("Search trial ledger attempt sequence is invalid")
@@ -1651,12 +1644,12 @@ def screen_search(
                 or plan["parent"] != _search_identity(prior_parent)
             ):
                 raise PilotError("Search round 2 parent changed after selection")
-        if len(reservations) + len(plan["candidates"]) > SEARCH_MAX_ATTEMPTS:
+        if len(reserved_numbers) + len(plan["candidates"]) > SEARCH_MAX_ATTEMPTS:
             raise PilotError("Search candidate batch exceeds the six-attempt budget")
         attempt_numbers = list(
             range(
-                len(reservations) + 1,
-                len(reservations) + len(plan["candidates"]) + 1,
+                len(reserved_numbers) + 1,
+                len(reserved_numbers) + len(plan["candidates"]) + 1,
             )
         )
         started = {
@@ -1665,22 +1658,11 @@ def screen_search(
             "campaign_id": plan["campaign_id"],
             "campaign_sha256": plan["_sha256"],
             "round": plan["round"],
-            "attempts": [
-                {
-                    "attempt_number": number,
-                    **_search_identity(candidate),
-                    "relationship": candidate["relationship"],
-                    "changed_factor": candidate["changed_factor"],
-                }
-                for number, candidate in zip(
-                    attempt_numbers, plan["candidates"], strict=True
-                )
-            ],
-            "started_at_utc": now(),
+            "attempt_numbers": attempt_numbers,
         }
         _append_search_record(ledger, started)
         records.append(started)
-        reservations.extend(started["attempts"])
+        reserved_numbers.extend(attempt_numbers)
         valid, failures = _validate_search_candidates(root, plan, trials)
         screened: dict[str, Mapping[str, Any]] = {}
         if valid:
@@ -1692,15 +1674,8 @@ def screen_search(
                 isolation = materialize_screening_isolation(
                     root,
                     valid_plan,
-                    phase="Search",
-                    timerange_key="search_timerange",
-                    directory_name=isolation_name,
                 )
-                inputs = materialize_inputs(
-                    root,
-                    valid_plan,
-                    directory_name=inputs_name,
-                )
+                inputs = materialize_inputs(root, valid_plan)
                 screened = {
                     item["candidate_id"]: item
                     for item in screen(
@@ -1710,10 +1685,6 @@ def screen_search(
                         python,
                         source,
                         isolation,
-                        phase="Search",
-                        timerange_key="search_timerange",
-                        directory_name=f"search-results-round-{plan['round']}",
-                        continue_on_error=True,
                     )
                 }
             finally:
@@ -1738,11 +1709,9 @@ def screen_search(
                 "schema": SEARCH_TRIAL_SCHEMA,
                 "record_type": "TRIAL",
                 "campaign_id": plan["campaign_id"],
-                "campaign_sha256": plan["_sha256"],
                 "round": plan["round"],
                 "attempt_number": number,
                 **result_value,
-                "completed_at_utc": now(),
             }
             _append_search_record(ledger, record)
             records.append(record)
@@ -1751,7 +1720,7 @@ def screen_search(
         ranked = _rank_search_results(trials)
         selected_parent = _search_parent(ranked[0] if ranked else None)
         finalist = _search_finalist(ranked) if plan["round"] == SEARCH_MAX_ROUNDS else None
-        consumed = len(reservations)
+        consumed = len(reserved_numbers)
         budget = {
             "maximum_attempts": SEARCH_MAX_ATTEMPTS,
             "consumed_before_round": consumed - len(attempt_numbers),
@@ -1794,7 +1763,6 @@ def screen_search(
             "contract_sha256": plan["_contract_sha256"],
             "round": plan["round"],
             "status": status,
-            "attempt_numbers": attempt_numbers,
             "ledger_prefix_sha256": digest(
                 b"".join(canonical(item) for item in records)
             ),
