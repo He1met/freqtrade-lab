@@ -502,8 +502,12 @@ def parse_backtest_artifact(
     strategy: str,
     freqtrade_version: str,
     expected_provenance_sha256: str,
+    *,
+    allow_zero_trades: bool = False,
 ) -> ParsedBacktestArtifact:
     """Parse and cross-check the frozen, provenance-bound Freqtrade format."""
+    if not isinstance(allow_zero_trades, bool):
+        raise ArtifactImportError("allow_zero_trades must be boolean")
     if freqtrade_version != SUPPORTED_FREQTRADE_VERSION:
         raise ArtifactImportError(
             f"unsupported Freqtrade version {freqtrade_version!r}; "
@@ -726,7 +730,7 @@ def parse_backtest_artifact(
     wins = _required_int(result, "wins", "strategy result")
     draws = _required_int(result, "draws", "strategy result")
     losses = _required_int(result, "losses", "strategy result")
-    if total_trades == 0:
+    if total_trades == 0 and not allow_zero_trades:
         raise ArtifactImportError("zero-trade reports cannot prove pair or fee identity")
     if wins + draws + losses != total_trades:
         raise ArtifactImportError("wins + draws + losses must equal total_trades")
@@ -785,8 +789,31 @@ def parse_backtest_artifact(
     assert profit_factor is not None
     assert profit_total_long is not None
     assert profit_total_short is not None
-    if not _same_number(winrate, wins / total_trades):
+    expected_winrate = 0.0 if total_trades == 0 else wins / total_trades
+    if not _same_number(winrate, expected_winrate):
         raise ArtifactImportError("winrate does not agree with wins and total_trades")
+    if total_trades == 0:
+        zero_metrics = {
+            "profit_total": profit_total,
+            "max_drawdown_account": max_drawdown,
+            "profit_factor": profit_factor,
+            "profit_total_long": profit_total_long,
+            "profit_total_short": profit_total_short,
+        }
+        for label, value in zero_metrics.items():
+            if not _same_number(value, 0.0):
+                raise ArtifactImportError(
+                    f"zero-trade strategy result {label} must be zero"
+                )
+        for label, value in (
+            ("sharpe", sharpe),
+            ("sortino", sortino),
+            ("calmar", calmar),
+        ):
+            if value is not None and not _same_number(value, 0.0):
+                raise ArtifactImportError(
+                    f"zero-trade strategy result {label} must be zero or null"
+                )
 
     contract = _required_mapping(provenance.get("contract"), "provenance contract")
     for key, expected in (
@@ -934,12 +961,17 @@ def import_backtest_execution(
     strategy: str,
     freqtrade_version: str,
     expected_provenance_sha256: str,
+    *,
+    allow_zero_trades: bool = False,
+    mark_execution_finished: bool = False,
 ) -> ParsedBacktestArtifact:
     """Atomically update one existing execution with a validated artifact."""
     if not isinstance(research_run_id, str) or not research_run_id:
         raise ArtifactImportError("research_run_id must be a non-empty string")
     if scenario not in SUPPORTED_SCENARIOS:
         raise ArtifactImportError(f"unsupported scenario {scenario!r}")
+    if not isinstance(mark_execution_finished, bool):
+        raise ArtifactImportError("mark_execution_finished must be boolean")
 
     parsed = parse_backtest_artifact(
         artifact_root,
@@ -947,6 +979,7 @@ def import_backtest_execution(
         strategy,
         freqtrade_version,
         expected_provenance_sha256,
+        allow_zero_trades=allow_zero_trades,
     )
     database_path = _resolve_database_path(db_path)
     try:
@@ -1161,6 +1194,11 @@ def import_backtest_execution(
                     raise ArtifactImportError("research run version changed during import")
 
             result_values = execution_result_values(parsed)
+            execution_finished_at = (
+                datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                if mark_execution_finished
+                else None
+            )
             execution_update = connection.execute(
                 """
                 UPDATE backtest_executions
@@ -1177,11 +1215,16 @@ def import_backtest_execution(
                     long_profit_pct = :long_profit_pct,
                     short_profit_pct = :short_profit_pct,
                     metrics_json = :metrics_json,
-                    error_message = NULL
+                    error_message = NULL,
+                    finished_at = :finished_at
                 WHERE id = :execution_id
                   AND status = 'PENDING' AND result_archive_path IS NULL
                 """,
-                {**result_values, "execution_id": row["id"]},
+                {
+                    **result_values,
+                    "execution_id": row["id"],
+                    "finished_at": execution_finished_at,
+                },
             )
             if execution_update.rowcount != 1:
                 raise ArtifactImportError("execution changed during import")

@@ -55,6 +55,16 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="trusted startup-frozen Python/fake executable for fixed CHECK_DATA argv",
     )
     parser.add_argument(
+        "--freqtrade-python",
+        type=Path,
+        help="startup-frozen Freqtrade 2026.7 Python for Development research",
+    )
+    parser.add_argument(
+        "--freqtrade-source",
+        type=Path,
+        help="startup-frozen clean Freqtrade 2026.7 source checkout",
+    )
+    parser.add_argument(
         "--webserver-base-url",
         default="http://127.0.0.1:8080",
         help="public numeric-loopback Freqtrade/FreqUI probe origin",
@@ -77,6 +87,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         codex_binary=args.codex_binary,
         codex_model=args.codex_model,
         check_data_python=args.check_data_python,
+        freqtrade_python=args.freqtrade_python,
+        freqtrade_source=args.freqtrade_source,
         webserver_base_url=args.webserver_base_url,
         task_timeout_seconds=args.task_timeout_seconds,
     )

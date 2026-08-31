@@ -12,7 +12,6 @@ It never enters the producer/database path or reads later research windows.
 from __future__ import annotations
 
 import argparse
-import ast
 import fcntl
 import hashlib
 import json
@@ -36,6 +35,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from lab.database import init_database
+from lab.bounded_strategy import (
+    BoundedStrategyError,
+    validate_bounded_causal_strategy_file,
+)
 from lab.research_candidate import (
     DEFAULT_RUNNER,
     DEFAULT_SANDBOX_EXEC,
@@ -105,38 +108,6 @@ SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 LOOPBACK_URL = re.compile(r"^http://127\.0\.0\.1:([1-9][0-9]{0,4})$")
 RUNNER_SHA = hashlib.sha256(DEFAULT_RUNNER.read_bytes()).hexdigest()
-
-EXPECTED_IMPORTS = (
-    "import talib.abstract as ta",
-    "from pandas import DataFrame",
-    "from technical import qtpylib",
-    "from freqtrade.strategy import IStrategy",
-)
-ALLOWED_STRATEGY_FIELDS = {
-    "INTERFACE_VERSION",
-    "timeframe",
-    "can_short",
-    "startup_candle_count",
-    "process_only_new_candles",
-    "minimal_roi",
-    "stoploss",
-}
-ALLOWED_STRATEGY_METHODS = {
-    "populate_indicators",
-    "populate_entry_trend",
-    "populate_exit_trend",
-}
-ALLOWED_LIBRARY_CALLS = {
-    "ta.ADX",
-    "ta.EMA",
-    "ta.RSI",
-    "qtpylib.bollinger_bands",
-    "qtpylib.crossed_above",
-    "qtpylib.crossed_below",
-    "qtpylib.typical_price",
-}
-ALLOWED_DATAFRAME_CALLS = {"max", "min", "rolling", "shift"}
-
 
 class PilotError(ValueError):
     """A terminal, fail-closed Pilot error."""
@@ -216,196 +187,11 @@ def safe_file(root: Path, value: Any, label: str) -> Path:
     return resolved
 
 
-def _dotted_name(node: ast.AST) -> Optional[str]:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        parent = _dotted_name(node.value)
-        return None if parent is None else f"{parent}.{node.attr}"
-    return None
-
-
-def _literal_assignment(node: ast.Assign, label: str) -> Any:
-    try:
-        return ast.literal_eval(node.value)
-    except (ValueError, TypeError) as exc:
-        raise PilotError(f"{label} must be a literal") from exc
-
-
 def causal_source(path: Path, class_name: str) -> None:
     try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, SyntaxError) as exc:
-        raise PilotError(f"{class_name} is not valid Python: {exc}") from exc
-    imports = [node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))]
-    expected_imports = [ast.parse(value).body[0] for value in EXPECTED_IMPORTS]
-    if [ast.dump(node) for node in imports] != [ast.dump(node) for node in expected_imports]:
-        raise PilotError(f"{class_name} imports are outside the frozen template")
-    if any(not isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef)) for node in tree.body):
-        raise PilotError(f"{class_name} has executable top-level code")
-    classes = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == class_name]
-    if len(classes) != 1:
-        raise PilotError(f"{class_name} must be declared exactly once")
-    strategy_class = classes[0]
-    if (
-        strategy_class.decorator_list
-        or strategy_class.keywords
-        or [_dotted_name(base) for base in strategy_class.bases] != ["IStrategy"]
-    ):
-        raise PilotError(f"{class_name} must directly extend only IStrategy")
-    assignments = [node for node in strategy_class.body if isinstance(node, ast.Assign)]
-    methods = [node for node in strategy_class.body if isinstance(node, ast.FunctionDef)]
-    if any(not isinstance(node, (ast.Assign, ast.FunctionDef)) for node in strategy_class.body):
-        raise PilotError(f"{class_name} class body is outside the frozen template")
-    assigned_names: dict[str, Any] = {}
-    for node in assignments:
-        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
-            raise PilotError(f"{class_name} has a dynamic class assignment")
-        field = node.targets[0].id
-        if field not in ALLOWED_STRATEGY_FIELDS or field in assigned_names:
-            raise PilotError(f"{class_name} class field {field} is not allowed")
-        assigned_names[field] = _literal_assignment(node, f"{class_name}.{field}")
-    if set(assigned_names) != ALLOWED_STRATEGY_FIELDS:
-        raise PilotError(f"{class_name} must freeze the exact strategy fields")
-    if (
-        assigned_names["INTERFACE_VERSION"] != 3
-        or assigned_names["timeframe"] != "5m"
-        or assigned_names["can_short"] is not True
-        or assigned_names["startup_candle_count"] != 20
-        or assigned_names["process_only_new_candles"] is not True
-        or not isinstance(assigned_names["minimal_roi"], dict)
-        or not isinstance(assigned_names["stoploss"], (int, float))
-        or not -1 < float(assigned_names["stoploss"]) < 0
-    ):
-        raise PilotError(f"{class_name} strategy fields violate the fixed 5m template")
-    if {method.name for method in methods} != ALLOWED_STRATEGY_METHODS or len(methods) != 3:
-        raise PilotError(f"{class_name} must implement exactly the three populate methods")
-    for method in methods:
-        arguments = method.args
-        if (
-            method.decorator_list
-            or arguments.posonlyargs
-            or arguments.kwonlyargs
-            or arguments.vararg is not None
-            or arguments.kwarg is not None
-            or [argument.arg for argument in arguments.args] != ["self", "dataframe", "metadata"]
-        ):
-            raise PilotError(f"{class_name}.{method.name} signature is not allowed")
-    startup = [
-        node.value.value
-        for node in classes[0].body
-        if isinstance(node, ast.Assign)
-        and any(isinstance(target, ast.Name) and target.id == "startup_candle_count" for target in node.targets)
-        and isinstance(node.value, ast.Constant)
-        and isinstance(node.value.value, int)
-    ]
-    if startup != [20]:
-        raise PilotError(f"{class_name} must freeze startup_candle_count = 20")
-    for node in ast.walk(tree):
-        if isinstance(
-            node,
-            (
-                ast.AsyncFunctionDef,
-                ast.Await,
-                ast.ClassDef,
-                ast.Delete,
-                ast.DictComp,
-                ast.For,
-                ast.FunctionDef,
-                ast.GeneratorExp,
-                ast.Global,
-                ast.If,
-                ast.IfExp,
-                ast.Import,
-                ast.ImportFrom,
-                ast.Lambda,
-                ast.ListComp,
-                ast.NamedExpr,
-                ast.Nonlocal,
-                ast.Raise,
-                ast.SetComp,
-                ast.Try,
-                ast.While,
-                ast.With,
-                ast.Yield,
-                ast.YieldFrom,
-            ),
-        ) and node not in {*classes, *imports, *methods}:
-            raise PilotError(f"{class_name} uses code outside the frozen template")
-        if isinstance(node, ast.Attribute) and node.attr in {"iloc", "iat"}:
-            raise PilotError(f"{class_name} uses future-ambiguous positional indexing")
-        if isinstance(node, ast.Attribute) and node.attr.startswith("_"):
-            raise PilotError(f"{class_name} uses a private attribute")
-        if isinstance(node, ast.Subscript):
-            if isinstance(node.value, ast.Attribute) and node.value.attr == "loc":
-                valid_slice = (
-                    isinstance(node.slice, ast.Tuple)
-                    and len(node.slice.elts) == 2
-                    and isinstance(node.slice.elts[1], ast.Constant)
-                    and isinstance(node.slice.elts[1].value, str)
-                )
-            else:
-                valid_slice = (
-                    isinstance(node.value, ast.Name)
-                    and node.value.id in {"dataframe", "bands"}
-                    and isinstance(node.slice, ast.Constant)
-                    and isinstance(node.slice.value, str)
-                )
-            if not valid_slice:
-                raise PilotError(f"{class_name} uses future-ambiguous positional indexing")
-        if not isinstance(node, ast.Call):
-            continue
-        call_name = _dotted_name(node.func)
-        name = node.func.attr if isinstance(node.func, ast.Attribute) else None
-        dataframe_call = (
-            name in ALLOWED_DATAFRAME_CALLS
-            and isinstance(node.func, ast.Attribute)
-            and any(isinstance(value, ast.Name) and value.id == "dataframe" for value in ast.walk(node.func.value))
-        )
-        if call_name not in ALLOWED_LIBRARY_CALLS and not dataframe_call:
-            raise PilotError(f"{class_name} uses forbidden call {call_name or name or 'dynamic'}()")
-        if name == "shift":
-            period = node.args[0] if node.args else ast.Constant(1)
-            for keyword in node.keywords:
-                if keyword.arg == "periods":
-                    period = keyword.value
-            if not isinstance(period, ast.Constant) or not isinstance(period.value, int) or period.value < 1:
-                raise PilotError(f"{class_name} has a negative or dynamic shift")
-        if name in {"max", "min"}:
-            receiver = node.func.value
-            if (
-                node.args
-                or node.keywords
-                or not isinstance(receiver, ast.Call)
-                or not isinstance(receiver.func, ast.Attribute)
-                or receiver.func.attr != "rolling"
-            ):
-                raise PilotError(f"{class_name} uses forbidden full-sample aggregate {name}()")
-        if name == "rolling":
-            if (
-                len(node.args) != 1
-                or node.keywords
-                or not isinstance(node.args[0], ast.Constant)
-                or isinstance(node.args[0].value, bool)
-                or not isinstance(node.args[0].value, int)
-                or not 2 <= node.args[0].value <= 100
-            ):
-                raise PilotError(f"{class_name} uses centered/dynamic rolling")
-        if call_name in {"ta.ADX", "ta.EMA", "ta.RSI"}:
-            period_keywords = [keyword for keyword in node.keywords if keyword.arg == "timeperiod"]
-            maximum = 10 if call_name == "ta.ADX" else 20
-            if (
-                len(node.args) != 1
-                or not isinstance(node.args[0], ast.Name)
-                or node.args[0].id != "dataframe"
-                or len(period_keywords) != 1
-                or len(node.keywords) != 1
-                or not isinstance(period_keywords[0].value, ast.Constant)
-                or isinstance(period_keywords[0].value.value, bool)
-                or not isinstance(period_keywords[0].value.value, int)
-                or not 2 <= period_keywords[0].value.value <= maximum
-            ):
-                raise PilotError(f"{class_name} indicator lookback exceeds startup bounds")
+        validate_bounded_causal_strategy_file(path, class_name)
+    except BoundedStrategyError as exc:
+        raise PilotError(str(exc)) from exc
 
 
 def _search_contract(plan: Mapping[str, Any]) -> dict[str, Any]:

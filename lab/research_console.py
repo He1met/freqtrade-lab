@@ -59,6 +59,17 @@ from lab.frequi import (
     _loopback_base_url,
     probe_frequi,
 )
+from lab.development_run import (
+    DevelopmentRunError,
+    FrozenDevelopmentCapability,
+    development_worker_argv,
+    fail_development_run,
+    finalize_development_gate,
+    freeze_development_capability,
+    load_public_research_run,
+    prepare_development_run,
+    research_context,
+)
 from lab.strategy_library import (
     DEFAULT_PORT,
     LOOPBACK_HOST,
@@ -152,11 +163,13 @@ class ResearchConsoleConfig:
     pilot_root: Path
     runtime_identity: Tuple[int, int]
     campaigns_identity: Tuple[int, int]
-    pilot_identity: Tuple[int, int]
+    pilot_identity: Optional[Tuple[int, int]]
     codex_binary: Optional[Path]
     codex_identity: Optional[Tuple[int, int, int]]
     codex_model: Optional[str]
     check_data_python: Path
+    freqtrade_python: Optional[Path]
+    freqtrade_source: Optional[Path]
     task_timeout_seconds: float
 
 
@@ -206,6 +219,25 @@ def _resolve_external_directory(value: PathLike, label: str) -> Tuple[Path, Tupl
     else:
         raise ResearchConsoleError(f"{label} must stay outside Git")
     return resolved, (inspected.st_dev, inspected.st_ino)
+
+
+def _resolve_pilot_directory(
+    value: PathLike,
+) -> Tuple[Path, Optional[Tuple[int, int]]]:
+    """Keep a missing external Pilot as a blocked capability, not a server failure."""
+    selected = Path(value).expanduser()
+    if selected.exists() or selected.is_symlink():
+        return _resolve_external_directory(selected, "pilot root")
+    try:
+        resolved = selected.resolve(strict=False)
+        resolved.relative_to(PROJECT_ROOT.resolve(strict=True))
+    except ValueError:
+        return resolved, None
+    except (OSError, RuntimeError) as exc:
+        raise ResearchConsoleError(
+            f"pilot root cannot be resolved safely: {exc}"
+        ) from exc
+    raise ResearchConsoleError("pilot root must stay outside Git")
 
 
 def _resolve_executable(
@@ -585,6 +617,8 @@ class ResearchConsoleController:
         codex_binary: Optional[PathLike] = None,
         codex_model: Optional[str] = None,
         check_data_python: PathLike = sys.executable,
+        freqtrade_python: Optional[PathLike] = None,
+        freqtrade_source: Optional[PathLike] = None,
         webserver_base_url: str = "http://127.0.0.1:8080",
         task_timeout_seconds: float = 300.0,
     ) -> None:
@@ -599,7 +633,7 @@ class ResearchConsoleController:
         runtime, runtime_identity = _resolve_external_directory(
             runtime_root, "runtime root"
         )
-        pilot, pilot_identity = _resolve_external_directory(pilot_root, "pilot root")
+        pilot, pilot_identity = _resolve_pilot_directory(pilot_root)
         resolved_python = _resolve_executable(check_data_python, None)
         if resolved_python is None:
             raise ResearchConsoleError("CHECK_DATA Python is unavailable")
@@ -659,6 +693,16 @@ class ResearchConsoleController:
                 codex_identity=_executable_identity(resolved_codex),
                 codex_model=selected_codex_model,
                 check_data_python=resolved_python,
+                freqtrade_python=(
+                    None
+                    if freqtrade_python is None
+                    else Path(freqtrade_python).expanduser()
+                ),
+                freqtrade_source=(
+                    None
+                    if freqtrade_source is None
+                    else Path(freqtrade_source).expanduser()
+                ),
                 task_timeout_seconds=float(task_timeout_seconds),
             )
             self.webserver_probe_config = FreqUIConfig(
@@ -667,6 +711,11 @@ class ResearchConsoleController:
             self.campaigns_root = campaigns
             self.check_data_argv = build_check_data_argv(pilot, resolved_python)
             self._frozen_codex_capability = self._codex_preflight()
+            self._development_capability = freeze_development_capability(
+                pilot,
+                freqtrade_python,
+                freqtrade_source,
+            )
             self._restart_confirmation_required = (
                 self._recover_interrupted_campaigns()
             )
@@ -678,7 +727,11 @@ class ResearchConsoleController:
             os.close(self._runtime_lock_fd)
             raise
 
-    def _directory_unchanged(self, path: Path, identity: Tuple[int, int]) -> bool:
+    def _directory_unchanged(
+        self, path: Path, identity: Optional[Tuple[int, int]]
+    ) -> bool:
+        if identity is None:
+            return False
         try:
             inspected = os.stat(path)
         except OSError:
@@ -927,6 +980,86 @@ class ResearchConsoleController:
         )
         return "FAILED"
 
+    def _reconcile_development_at(
+        self,
+        campaign_fd: int,
+        campaign_id: str,
+        current: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Reconcile a Development campaign from its six-table DB contract."""
+        try:
+            payload = load_public_research_run(
+                self.config.database_path, campaign_id
+            )
+        except DevelopmentRunError as exc:
+            if exc.code == "run_not_found":
+                return None
+            self._state_unavailable.add(campaign_id)
+            return "UNKNOWN"
+        if payload.get("pipeline_version") != "BOUNDED_DEVELOPMENT_V1":
+            return None
+        if payload["status"] == "RUNNING":
+            try:
+                payload = fail_development_run(
+                    self.config.database_path,
+                    campaign_id,
+                    "INTERRUPTED",
+                    "RESTART_INTERRUPTED",
+                )
+            except DevelopmentRunError:
+                self._state_unavailable.add(campaign_id)
+                return "UNKNOWN"
+        finished = _utc_now()
+        if payload["status"] in {"PENDING", "COMPLETED"}:
+            recovered = self._status_document(
+                campaign_id,
+                "SUCCEEDED",
+                action="DEVELOPMENT",
+                created_at=str(
+                    (current or {}).get("created_at_utc")
+                    or payload.get("created_at")
+                    or finished
+                ),
+                started_at=payload.get("started_at"),
+                finished_at=payload.get("finished_at") or finished,
+                return_code=0,
+                message="已按数据库 Development Gate 终态恢复；未重跑",
+            )
+            recovered["requires_confirmation"] = False
+            _atomic_write_json_at(campaign_fd, "status.json", recovered)
+            self._append_event_at(
+                campaign_fd,
+                campaign_id,
+                "RECOVERED_COMPLETED",
+                "SUCCEEDED",
+                "已按数据库终态恢复 Development；未重跑",
+            )
+            return "COMPLETED"
+        interrupted = self._status_document(
+            campaign_id,
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            action="DEVELOPMENT",
+            created_at=str(
+                (current or {}).get("created_at_utc")
+                or payload.get("created_at")
+                or finished
+            ),
+            started_at=payload.get("started_at"),
+            finished_at=payload.get("finished_at") or finished,
+            return_code=None,
+            message="Development 已按数据库记为中断；旧进程终态需确认",
+        )
+        interrupted["requires_confirmation"] = True
+        _atomic_write_json_at(campaign_fd, "status.json", interrupted)
+        self._append_event_at(
+            campaign_fd,
+            campaign_id,
+            "INTERRUPTED",
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            "Development 未自动恢复或重跑",
+        )
+        return "FAILED"
+
     def _recover_interrupted_campaigns(self) -> bool:
         confirmation_required = False
         try:
@@ -945,9 +1078,13 @@ class ResearchConsoleController:
             except (ControlRequestError, OSError, RecursionError, ValueError):
                 if campaign_fd is not None:
                     try:
-                        database_state = self._reconcile_codex_generation_at(
+                        database_state = self._reconcile_development_at(
                             campaign_fd, campaign_id, None
                         )
+                        if database_state is None:
+                            database_state = self._reconcile_codex_generation_at(
+                                campaign_fd, campaign_id, None
+                            )
                     except Exception:
                         self._state_unavailable.add(campaign_id)
                         database_state = "UNKNOWN"
@@ -961,9 +1098,13 @@ class ResearchConsoleController:
                     or current.get("campaign_id") != campaign_id
                 ):
                     try:
-                        database_state = self._reconcile_codex_generation_at(
+                        database_state = self._reconcile_development_at(
                             campaign_fd, campaign_id, current
                         )
+                        if database_state is None:
+                            database_state = self._reconcile_codex_generation_at(
+                                campaign_fd, campaign_id, current
+                            )
                     except Exception:
                         self._state_unavailable.add(campaign_id)
                         database_state = "UNKNOWN"
@@ -983,6 +1124,61 @@ class ResearchConsoleController:
                         database_state = "UNKNOWN"
                     if database_state in {"FAILED", "UNKNOWN", None}:
                         confirmation_required = True
+                    continue
+                if current.get("action") == "DEVELOPMENT" and (
+                    current.get("status") in NONTERMINAL_STATUSES
+                    or current.get("status") == "INTERRUPTED_NEEDS_CONFIRMATION"
+                ):
+                    finished = _utc_now()
+                    try:
+                        recovered = fail_development_run(
+                            self.config.database_path,
+                            campaign_id,
+                            "INTERRUPTED",
+                            "RESTART_INTERRUPTED",
+                        )
+                    except DevelopmentRunError:
+                        self._state_unavailable.add(campaign_id)
+                        confirmation_required = True
+                        continue
+                    if recovered["status"] in {"PENDING", "COMPLETED"}:
+                        current.update(
+                            {
+                                "status": "SUCCEEDED",
+                                "finished_at_utc": finished,
+                                "return_code": 0,
+                                "requires_confirmation": False,
+                                "message": (
+                                    "已按数据库中 SUCCEEDED execution 幂等完成 Development Gate；未重跑"
+                                ),
+                            }
+                        )
+                        self._append_event_at(
+                            campaign_fd,
+                            campaign_id,
+                            "RECOVERED_COMPLETED",
+                            "SUCCEEDED",
+                            "已按数据库终态恢复 Development；未重跑",
+                        )
+                    else:
+                        current.update(
+                            {
+                                "status": "INTERRUPTED_NEEDS_CONFIRMATION",
+                                "finished_at_utc": finished,
+                                "return_code": None,
+                                "requires_confirmation": True,
+                                "message": "服务重启，Development 已记为 INTERRUPTED；旧进程终态需确认",
+                            }
+                        )
+                        self._append_event_at(
+                            campaign_fd,
+                            campaign_id,
+                            "INTERRUPTED",
+                            "INTERRUPTED_NEEDS_CONFIRMATION",
+                            "Development 未自动恢复或重跑",
+                        )
+                        confirmation_required = True
+                    _atomic_write_json_at(campaign_fd, "status.json", current)
                     continue
                 if current.get("status") == "INTERRUPTED_NEEDS_CONFIRMATION":
                     if current.get("requires_confirmation") is False:
@@ -1291,6 +1487,10 @@ class ResearchConsoleController:
                 "outside_git": pilot_ok,
                 "message": "Git 外 Pilot 目录已冻结" if pilot_ok else "Pilot 目录身份已变化",
             },
+            "development_research": {
+                **self._development_capability.public(),
+                "message": self._development_capability.reason,
+            },
         }
         with self._lock:
             latest = self._latest_status()
@@ -1473,11 +1673,19 @@ class ResearchConsoleController:
                 raise ControlRequestError(
                     409, "active_campaign", "已有一个受控任务正在运行"
                 )
-            if not self._runtime_paths_unchanged() or not self._directory_unchanged(
+            if not self._runtime_paths_unchanged():
+                raise ControlRequestError(
+                    409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
+                )
+            if self.config.pilot_identity is None:
+                raise ControlRequestError(
+                    503, "pilot_unavailable", "Pilot root 在启动时不可用"
+                )
+            if not self._directory_unchanged(
                 self.config.pilot_root, self.config.pilot_identity
             ):
                 raise ControlRequestError(
-                    409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
+                    409, "frozen_path_changed", "启动时冻结的 Pilot 目录身份已变化"
                 )
             campaign_id = str(uuid4())
             campaign_dir = self._campaign_directory(campaign_id, must_exist=False)
@@ -2255,6 +2463,22 @@ class ResearchConsoleController:
                         else "Codex 生成输出未通过固定合同；私有日志不会显示在页面"
                     )
                     event_type = "FAILED"
+            elif job.action == "DEVELOPMENT" and return_code == 0:
+                try:
+                    finalized = finalize_development_gate(
+                        self.config.database_path, job.campaign_id
+                    )
+                    status_value = "SUCCEEDED"
+                    message = (
+                        "DEVELOPMENT Gate 通过；ResearchRun 以 PENDING 等待未来 Holdout 授权"
+                        if finalized["status"] == "PENDING"
+                        else "DEVELOPMENT Gate 未通过；ResearchRun 已 REJECTED"
+                    )
+                    event_type = "SUCCEEDED"
+                except DevelopmentRunError:
+                    status_value = "FAILED"
+                    message = "DEVELOPMENT 结果无法按固定 Gate 完成"
+                    event_type = "FAILED"
             elif job.action == "CHECK_DATA" and return_code == 0 and self._has_data_ready_output(campaign_dir):
                 status_value = "SUCCEEDED"
                 message = "CHECK_DATA 已完成；此状态不代表策略有效或盈利"
@@ -2267,6 +2491,39 @@ class ResearchConsoleController:
                     else f"{job.action} 执行失败；原始输出仅保存在 Git 外运行目录"
                 )
                 event_type = "FAILED"
+            if job.action == "DEVELOPMENT" and status_value != "SUCCEEDED":
+                development_terminal = (
+                    "INTERRUPTED"
+                    if status_value == "INTERRUPTED"
+                    else "CANCELLED"
+                    if status_value == "CANCELLED"
+                    else "TIMED_OUT"
+                    if status_value == "TIMED_OUT"
+                    else "FAILED"
+                )
+                failure_code = {
+                    "INTERRUPTED": "SERVER_INTERRUPTED",
+                    "CANCELLED": "CANCELLED",
+                    "TIMED_OUT": "TIMED_OUT",
+                    "FAILED": "DEVELOPMENT_NONZERO_OR_INVALID",
+                }[development_terminal]
+                try:
+                    authoritative = fail_development_run(
+                        self.config.database_path,
+                        job.campaign_id,
+                        development_terminal,
+                        failure_code,
+                    )
+                    if authoritative["status"] in {"PENDING", "COMPLETED"}:
+                        status_value = "SUCCEEDED"
+                        event_type = "SUCCEEDED"
+                        message = (
+                            "取消/终止与已导入结果并发；以数据库 Development Gate 终态为准"
+                        )
+                except DevelopmentRunError:
+                    with self._lock:
+                        self._state_unavailable.add(job.campaign_id)
+                        self._restart_confirmation_required = True
             if job.action == "CODEX_GENERATION" and status_value != "SUCCEEDED":
                 reason_codes = {
                     "INTERRUPTED": "SERVER_INTERRUPTED",
@@ -2312,6 +2569,16 @@ class ResearchConsoleController:
                     error_message="Generation controller failed",
                     finished_at=_utc_now(),
                 )
+            elif job.action == "DEVELOPMENT" and process_group_finalized:
+                try:
+                    fail_development_run(
+                        self.config.database_path,
+                        job.campaign_id,
+                        "INTERRUPTED",
+                        "CONTROLLER_FAILED",
+                    )
+                except DevelopmentRunError:
+                    pass
             if campaign_dir is not None:
                 with job.receipt_lock:
                     receipt = self._record_transition(
@@ -2358,6 +2625,274 @@ class ResearchConsoleController:
                 409, "campaign_state_unavailable", "Campaign 状态无法安全读取"
             )
         return _public_status(status_value)
+
+    @staticmethod
+    def _development_error(exc: DevelopmentRunError) -> ControlRequestError:
+        status = 503 if exc.code == "BLOCKED_DATA" else 409
+        return ControlRequestError(status, exc.code, exc.message)
+
+    def research_context(self) -> Dict[str, Any]:
+        return research_context(
+            self.config.database_path, self._development_capability
+        )
+
+    def get_research_run(self, research_run_id: str) -> Dict[str, Any]:
+        try:
+            return load_public_research_run(
+                self.config.database_path, research_run_id
+            )
+        except DevelopmentRunError as exc:
+            status = 404 if exc.code == "run_not_found" else 409
+            raise ControlRequestError(status, exc.code, exc.message) from exc
+
+    def create_research_run(self, candidate_id: str) -> Dict[str, Any]:
+        """Consume one approved Candidate and start one Development child."""
+        with self._lock:
+            if self._closed or self._shutting_down:
+                raise ControlRequestError(
+                    409, "console_shutting_down", "Research Console 正在关闭"
+                )
+            if self._restart_confirmation_required:
+                raise ControlRequestError(
+                    409,
+                    "restart_confirmation_required",
+                    "检测到崩溃前未闭合任务；请人工确认后换用新的运行目录",
+                )
+            if self._active is not None:
+                raise ControlRequestError(
+                    409, "active_campaign", "已有一个受控任务正在运行"
+                )
+            if not self._runtime_paths_unchanged():
+                raise ControlRequestError(
+                    409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
+                )
+            if not isinstance(candidate_id, str) or not candidate_id:
+                raise ControlRequestError(
+                    400, "invalid_candidate_id", "candidate_id 必须是非空字符串"
+                )
+            if self._development_capability.status != "READY":
+                raise ControlRequestError(
+                    503, "BLOCKED_DATA", self._development_capability.reason
+                )
+
+            run_id = str(uuid4())
+            campaign_dir = self._campaign_directory(run_id, must_exist=False)
+            try:
+                os.mkdir(run_id, 0o700, dir_fd=self._campaigns_fd)
+                prepared = prepare_development_run(
+                    self.config.database_path,
+                    campaign_dir,
+                    candidate_id,
+                    self._development_capability,
+                    research_run_id=run_id,
+                    now=_utc_now(),
+                )
+            except DevelopmentRunError as exc:
+                shutil.rmtree(campaign_dir, ignore_errors=True)
+                raise self._development_error(exc) from exc
+            except OSError as exc:
+                shutil.rmtree(campaign_dir, ignore_errors=True)
+                raise ControlRequestError(
+                    500, "research_run_create_failed", "ResearchRun 运行目录无法创建"
+                ) from exc
+
+            created = _utc_now()
+            starting = self._status_document(
+                run_id,
+                "STARTING",
+                action="DEVELOPMENT",
+                created_at=created,
+                started_at=None,
+                finished_at=None,
+                return_code=None,
+                message="正在启动唯一 DEVELOPMENT 回测",
+            )
+            stdout_handle = None
+            stderr_handle = None
+            campaign_fd: Optional[int] = None
+            try:
+                campaign_fd = self._open_campaign_fd(run_id)
+                _atomic_write_json_at(
+                    campaign_fd,
+                    "request.json",
+                    {
+                        "schema": REQUEST_SCHEMA,
+                        "campaign_id": run_id,
+                        "action": "DEVELOPMENT",
+                        "created_at_utc": created,
+                        "candidate_id": candidate_id,
+                    },
+                )
+                _atomic_write_json_at(campaign_fd, "status.json", starting)
+                self._append_event_at(
+                    campaign_fd,
+                    run_id,
+                    "CREATED",
+                    "STARTING",
+                    "已创建唯一 DEVELOPMENT 任务；Holdout/Stress 保持 SEALED_UNREAD",
+                )
+                stdout_handle = _open_private_output_at(campaign_fd, "stdout.log")
+                stderr_handle = _open_private_output_at(campaign_fd, "stderr.log")
+            except (OSError, ControlRequestError, ValueError) as exc:
+                fail_development_run(
+                    self.config.database_path,
+                    run_id,
+                    "FAILED",
+                    "OUTPUT_CREATE_FAILED",
+                )
+                raise ControlRequestError(
+                    500, "output_create_failed", "DEVELOPMENT 私有运行文件无法创建"
+                ) from exc
+            finally:
+                if campaign_fd is not None:
+                    os.close(campaign_fd)
+
+            try:
+                argv = development_worker_argv(
+                    self.config.database_path,
+                    prepared,
+                    self._development_capability,
+                    Path(sys.executable).resolve(strict=True),
+                )
+                process = subprocess.Popen(
+                    argv,
+                    cwd=str(PROJECT_ROOT),
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    env=_minimal_environment(),
+                    shell=False,
+                    start_new_session=True,
+                    close_fds=True,
+                    umask=0o077,
+                )
+            except OSError as exc:
+                if stdout_handle is not None:
+                    stdout_handle.close()
+                if stderr_handle is not None:
+                    stderr_handle.close()
+                fail_development_run(
+                    self.config.database_path, run_id, "FAILED", "START_FAILED"
+                )
+                self._record_transition(
+                    campaign_dir,
+                    "FAILED",
+                    "唯一 DEVELOPMENT 无法启动",
+                    "START_FAILED",
+                    finished_at_utc=_utc_now(),
+                    return_code=None,
+                )
+                raise ControlRequestError(
+                    500, "start_failed", "唯一 DEVELOPMENT 无法启动"
+                ) from exc
+
+            job = _ActiveJob(
+                campaign_id=run_id,
+                action="DEVELOPMENT",
+                process=process,
+                process_group_id=process.pid,
+                deadline=time.monotonic() + self.config.task_timeout_seconds,
+            )
+            self._active = job
+            try:
+                if stdout_handle is not None and not stdout_handle.closed:
+                    stdout_handle.close()
+                if stderr_handle is not None and not stderr_handle.closed:
+                    stderr_handle.close()
+                started = _utc_now()
+                campaign_fd = self._open_campaign_fd(run_id)
+                try:
+                    _atomic_write_json_at(
+                        campaign_fd,
+                        "owner.json",
+                        {
+                            "schema": OWNER_SCHEMA,
+                            "campaign_id": run_id,
+                            "server_pid": os.getpid(),
+                            "child_pid": process.pid,
+                            "process_group_id": job.process_group_id,
+                            "started_at_utc": started,
+                        },
+                    )
+                finally:
+                    os.close(campaign_fd)
+                self._write_status(
+                    campaign_dir,
+                    "RUNNING",
+                    "唯一 DEVELOPMENT 正在运行；Holdout/Stress 未打开",
+                    started_at_utc=started,
+                )
+                self._append_event(
+                    campaign_dir, "STARTED", "RUNNING", "唯一 DEVELOPMENT 已启动"
+                )
+                monitor = threading.Thread(
+                    target=self._monitor_job,
+                    args=(job,),
+                    name=f"research-console-development-{run_id[:8]}",
+                    daemon=True,
+                )
+                job.monitor = monitor
+                monitor.start()
+            except Exception as exc:
+                terminated = self._terminate_owned_job(job)
+                if terminated:
+                    try:
+                        fail_development_run(
+                            self.config.database_path,
+                            run_id,
+                            "FAILED",
+                            "START_RECEIPT_FAILED",
+                        )
+                    except DevelopmentRunError:
+                        terminated = False
+                receipt = self._record_transition(
+                    campaign_dir,
+                    "FAILED" if terminated else "INTERRUPTED_NEEDS_CONFIRMATION",
+                    (
+                        "DEVELOPMENT 启动收据失败，受控进程已终止"
+                        if terminated
+                        else "DEVELOPMENT 启动收据失败，无法确认进程终态"
+                    ),
+                    "START_RECEIPT_FAILED",
+                    finished_at_utc=_utc_now(),
+                    return_code=self._leader_return_code(job),
+                    requires_confirmation=not terminated,
+                )
+                if receipt is None or not terminated:
+                    self._restart_confirmation_required = True
+                if self._active is job:
+                    self._active = None
+                raise ControlRequestError(
+                    500,
+                    "start_receipt_failed",
+                    "唯一 DEVELOPMENT 无法安全完成启动",
+                ) from exc
+        return self.get_research_run(run_id)
+
+    def cancel_research_run(self, research_run_id: str) -> Dict[str, Any]:
+        with self._lock:
+            job = self._active
+            if (
+                job is not None
+                and job.campaign_id == research_run_id
+                and job.action == "DEVELOPMENT"
+            ):
+                self.cancel_campaign(
+                    research_run_id, expected_action="DEVELOPMENT"
+                )
+                return self.get_research_run(research_run_id)
+        current = self.get_research_run(research_run_id)
+        if current["status"] in {
+            "PENDING",
+            "COMPLETED",
+            "FAILED",
+            "INTERRUPTED",
+            "CANCELLED",
+        }:
+            return current
+        raise ControlRequestError(
+            409, "research_run_not_active", "ResearchRun 不由当前服务持有"
+        )
 
     def generation_context(self) -> Dict[str, Any]:
         try:
@@ -2629,6 +3164,12 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 <button id="generate">Codex 生成</button><button id="generation-cancel" class="secondary" disabled>取消生成</button><button id="approve" disabled>批准进入研究</button><button id="reject" class="danger" disabled>拒绝</button>
 <h3>规范化状态</h3><pre id="generation-status">尚未生成</pre><h3>源码预览</h3><pre id="candidate-code">暂无源码</pre>
 </section>
+<section><h2>Development 研究</h2><p class="note">仅允许已批准且通过窄安全门的 Candidate。每次只运行一个真实 DEVELOPMENT；浏览器不能提交路径、参数、场景或阈值。</p>
+<div class="field"><label for="research-candidate">APPROVED Candidate</label><select id="research-candidate"></select></div>
+<button id="research-run" disabled>运行唯一 DEVELOPMENT</button><button id="research-cancel" class="secondary" disabled>取消</button>
+<div class="grid"><div class="check"><div class="name">Holdout</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">Holdout Stress</div><div class="status">SEALED_UNREAD</div></div></div>
+<h3>规范化研究状态</h3><pre id="research-status">尚未运行</pre>
+</section>
 <section><h2>数据检查</h2><p class="note">只运行已冻结 Pilot 目录的 CHECK_DATA；成功不代表策略有效、盈利或可交易。</p>
 <button id="run">运行 CHECK_DATA</button><button id="cancel" class="secondary" disabled>取消当前任务</button><pre id="job">尚未启动</pre></section>
 <section><h2>CHECK_DATA 规范化事件</h2><ul id="events"><li>暂无事件</li></ul></section>
@@ -2650,11 +3191,17 @@ const approveButton = document.getElementById('approve');
 const rejectButton = document.getElementById('reject');
 const generationStatus = document.getElementById('generation-status');
 const candidateCode = document.getElementById('candidate-code');
+const researchCandidate = document.getElementById('research-candidate');
+const researchRunButton = document.getElementById('research-run');
+const researchCancelButton = document.getElementById('research-cancel');
+const researchStatus = document.getElementById('research-status');
 let campaignId = null;
 let timer = null;
 let generationId = null;
 let generationTimer = null;
 let generationContext = null;
+let researchRunId = null;
+let researchTimer = null;
 function showJob(value) { jobBox.textContent = JSON.stringify(value, null, 2); }
 function terminal(status) { return ['SUCCEEDED','FAILED','CANCELLED','TIMED_OUT','INTERRUPTED','INTERRUPTED_NEEDS_CONFIRMATION'].includes(status); }
 async function request(path, options = {}) {
@@ -2697,6 +3244,34 @@ async function loadGenerationContext() {
   refreshParents();
   if (generationContext.latest_generation_id) { generationId = generationContext.latest_generation_id; await pollGeneration(); }
 }
+function renderResearch(value) {
+  researchStatus.textContent = JSON.stringify(value, null, 2);
+  const active = value && value.status === 'RUNNING';
+  researchRunButton.disabled = active || ![...researchCandidate.options].some(option => option.dataset.ready === 'true');
+  researchCancelButton.disabled = !active;
+}
+async function loadResearchContext() {
+  const value = await request('/api/research/context'); researchCandidate.replaceChildren();
+  value.candidates.forEach(candidate => {
+    const option = document.createElement('option'); option.value = candidate.candidate_id;
+    option.dataset.ready = candidate.status === 'READY' ? 'true' : 'false';
+    option.disabled = candidate.status !== 'READY';
+    option.textContent = `${candidate.display_name} · ${candidate.status}`; researchCandidate.append(option);
+  });
+  const ready = [...researchCandidate.options].find(option => option.dataset.ready === 'true');
+  if (ready) researchCandidate.value = ready.value;
+  researchRunButton.disabled = !ready || value.capability.status !== 'READY';
+  if (!researchRunId && value.latest_research_run_id) { researchRunId = value.latest_research_run_id; await pollResearch(); }
+  else if (!ready && !researchRunId) researchStatus.textContent = JSON.stringify(value, null, 2);
+}
+async function pollResearch() {
+  if (!researchRunId) return;
+  try {
+    const value = await request(`/api/research-runs/${researchRunId}`); renderResearch(value);
+    if (value.status === 'RUNNING') { if (!researchTimer) researchTimer = setInterval(pollResearch, 750); }
+    else { clearInterval(researchTimer); researchTimer = null; await loadResearchContext(); }
+  } catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
+}
 async function loadPreflight() {
   try {
     const value = await request('/api/control/preflight');
@@ -2728,7 +3303,7 @@ async function generationAction(action) {
   if (!generationId) return;
   try {
     const value = await request(`/api/generations/${generationId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action})});
-    renderGeneration(value); if (action !== 'CANCEL') await loadGenerationContext();
+    renderGeneration(value); if (action !== 'CANCEL') { await loadGenerationContext(); await loadResearchContext(); }
   } catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
 }
 generateButton.addEventListener('click', async () => {
@@ -2743,6 +3318,21 @@ generationCancel.addEventListener('click', () => generationAction('CANCEL'));
 approveButton.addEventListener('click', () => generationAction('APPROVE'));
 rejectButton.addEventListener('click', () => generationAction('REJECT'));
 profileSelect.addEventListener('change', refreshParents);
+researchRunButton.addEventListener('click', async () => {
+  const selected = researchCandidate.selectedOptions[0];
+  if (!selected || selected.dataset.ready !== 'true') return;
+  researchRunButton.disabled = true;
+  try {
+    const value = await request('/api/research-runs', {method:'POST',headers:postHeaders,body:JSON.stringify({candidate_id:selected.value})});
+    researchRunId = value.research_run_id; renderResearch(value); await pollResearch();
+    if (!researchTimer) researchTimer = setInterval(pollResearch,750);
+  } catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await loadResearchContext(); }
+});
+researchCancelButton.addEventListener('click', async () => {
+  if (!researchRunId) return; researchCancelButton.disabled = true;
+  try { renderResearch(await request(`/api/research-runs/${researchRunId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})})); }
+  catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
+});
 async function poll() {
   if (!campaignId) return;
   try {
@@ -2761,7 +3351,7 @@ cancelButton.addEventListener('click', async () => {
   try { showJob(await request(`/api/campaigns/${campaignId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})})); }
   catch (error) { showJob({error:error.message}); }
 });
-Promise.all([loadPreflight(), loadGenerationContext()]).catch(error => { generationStatus.textContent = `ERROR: ${error.message}`; });
+Promise.all([loadPreflight(), loadGenerationContext(), loadResearchContext()]).catch(error => { generationStatus.textContent = `ERROR: ${error.message}`; });
 """
 
 
@@ -2876,8 +3466,12 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             "/api/campaigns",
             "/api/generation/context",
             "/api/generations",
+            "/api/research/context",
+            "/api/research-runs",
         ) or path.startswith("/api/campaigns/") or path.startswith(
             "/api/generations/"
+        ) or path.startswith(
+            "/api/research-runs/"
         )
         if not is_control:
             super()._dispatch(head_only=head_only)
@@ -2949,6 +3543,44 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                 if request.query:
                     raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
                 self._send_control_method_not_allowed(path, head_only=head_only)
+                return
+            if path == "/api/research/context":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.research_context()
+                self._send(
+                    200,
+                    json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
+                return
+            if path == "/api/research-runs":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                self._send_control_method_not_allowed(path, head_only=head_only)
+                return
+            research_match = re.fullmatch(r"/api/research-runs/([^/]+)", path)
+            if research_match is not None:
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.get_research_run(research_match.group(1))
+                self._send(
+                    200,
+                    json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
                 return
             generation_match = re.fullmatch(r"/api/generations/([^/]+)", path)
             if generation_match is not None:
@@ -3058,15 +3690,21 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             return
         create_route = request.path == "/api/campaigns"
         create_generation_route = request.path == "/api/generations"
+        create_research_route = request.path == "/api/research-runs"
         action_match = re.fullmatch(r"/api/campaigns/([^/]+)/actions", request.path)
         generation_action_match = re.fullmatch(
             r"/api/generations/([^/]+)/actions", request.path
         )
+        research_action_match = re.fullmatch(
+            r"/api/research-runs/([^/]+)/actions", request.path
+        )
         if (
             not create_route
             and not create_generation_route
+            and not create_research_route
             and action_match is None
             and generation_action_match is None
+            and research_action_match is None
         ):
             self._method_not_allowed()
             return
@@ -3106,6 +3744,17 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     ) from exc
                 payload = self.controller.create_generation(generation_request)
                 response_status = 202
+            elif create_research_route:
+                if set(body) != {"candidate_id"} or not isinstance(
+                    body.get("candidate_id"), str
+                ):
+                    raise ControlRequestError(
+                        400,
+                        "invalid_research_request",
+                        "只允许 exact candidate_id 请求",
+                    )
+                payload = self.controller.create_research_run(body["candidate_id"])
+                response_status = 202
             elif action_match is not None:
                 if body != {"action": "CANCEL"}:
                     raise ControlRequestError(
@@ -3113,7 +3762,7 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     )
                 payload = self.controller.cancel_campaign(action_match.group(1))
                 response_status = 202
-            else:
+            elif generation_action_match is not None:
                 if set(body) != {"action"} or body.get("action") not in {
                     "CANCEL",
                     "APPROVE",
@@ -3136,6 +3785,15 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                         "APPROVED" if selected_action == "APPROVE" else "REJECTED",
                     )
                     response_status = 200
+            else:
+                if body != {"action": "CANCEL"}:
+                    raise ControlRequestError(
+                        400, "invalid_action", "ResearchRun action 只允许 CANCEL"
+                    )
+                payload = self.controller.cancel_research_run(
+                    research_action_match.group(1)
+                )
+                response_status = 202
             self._send(
                 response_status,
                 json.dumps(
@@ -3158,7 +3816,7 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
     ) -> None:
         allow = (
             "POST"
-            if path in ("/api/campaigns", "/api/generations")
+            if path in ("/api/campaigns", "/api/generations", "/api/research-runs")
             or path.endswith("/actions")
             else "GET, HEAD"
         )
@@ -3186,11 +3844,14 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                 "/console.js",
                 "/api/control/preflight",
                 "/api/generation/context",
+                "/api/research/context",
             )
             or path == "/api/campaigns"
             or path.startswith("/api/campaigns/")
             or path == "/api/generations"
             or path.startswith("/api/generations/")
+            or path == "/api/research-runs"
+            or path.startswith("/api/research-runs/")
         ):
             if not self._has_expected_host():
                 self._control_error(
@@ -3237,6 +3898,8 @@ def create_research_console_server(
     codex_binary: Optional[PathLike] = None,
     codex_model: Optional[str] = None,
     check_data_python: PathLike = sys.executable,
+    freqtrade_python: Optional[PathLike] = None,
+    freqtrade_source: Optional[PathLike] = None,
     webserver_base_url: str = "http://127.0.0.1:8080",
     task_timeout_seconds: float = 300.0,
 ):
@@ -3260,6 +3923,8 @@ def create_research_console_server(
             codex_binary=codex_binary,
             codex_model=codex_model,
             check_data_python=check_data_python,
+            freqtrade_python=freqtrade_python,
+            freqtrade_source=freqtrade_source,
             webserver_base_url=webserver_base_url,
             task_timeout_seconds=task_timeout_seconds,
         )

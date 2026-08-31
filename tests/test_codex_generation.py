@@ -74,6 +74,35 @@ def _database_with_profile(tmp_path: Path) -> Path:
     return database
 
 
+def _approved_candidate(tmp_path: Path) -> tuple[Path, str, str]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    database = _database_with_profile(tmp_path)
+    generation_id = str(uuid4())
+    prepared = codex_generation.start_generation(
+        database,
+        generation_id,
+        codex_generation.validate_generation_request(VALID_REQUEST),
+        model="fixed-model",
+        started_at="2026-08-31T00:00:01.000Z",
+    )
+    output = _candidate_output()
+    candidate_id = codex_generation.complete_generation(
+        database,
+        prepared,
+        codex_generation.parse_candidate_output(output, timeframe="5m"),
+        raw_output=output,
+        jsonl_summary={"event_count": 4, "tool_event_count": 0},
+        finished_at="2026-08-31T00:00:02.000Z",
+    )
+    codex_generation.review_generation(
+        database,
+        generation_id,
+        "APPROVED",
+        decided_at="2026-08-31T00:00:03.000Z",
+    )
+    return database, generation_id, candidate_id
+
+
 def test_t0_generation_request_accepts_only_bounded_business_fields() -> None:
     parsed = codex_generation.validate_generation_request(VALID_REQUEST)
     assert parsed.profile_id == "profile-btc-5m"
@@ -349,6 +378,10 @@ def test_t0_prompt_serializes_only_bounded_allowlisted_context() -> None:
     assert b"secret_path" not in prompt
     assert b"must/not/leak" not in prompt
     assert b"credential" not in prompt
+    assert b"from freqtrade.strategy import IStrategy" in prompt
+    assert b"startup_candle_count=20" in prompt
+    assert b"IntParameter" in prompt
+    assert b"prompt is guidance and is not a security decision" in prompt
     assert len(prompt) <= codex_generation.MAX_PROMPT_BYTES
 
     parent["code_text"] = "x" * codex_generation.MAX_PROMPT_BYTES
@@ -385,6 +418,154 @@ def test_t0_review_transition_is_one_way_and_idempotent() -> None:
             "REJECTED",
             decided_at="2026-08-31T00:02:00.000Z",
         )
+
+
+def test_t0_approved_candidate_snapshot_rebinds_all_frozen_evidence(
+    tmp_path: Path,
+) -> None:
+    database, generation_id, candidate_id = _approved_candidate(tmp_path)
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        snapshot = codex_generation.load_approved_candidate_snapshot(
+            connection, candidate_id
+        )
+    assert snapshot.contract == (
+        codex_generation.APPROVED_CANDIDATE_BINDING_CONTRACT
+    )
+    assert snapshot.candidate_id == candidate_id
+    assert snapshot.generation_run_id == generation_id
+    assert snapshot.profile_id == VALID_REQUEST["profile_id"]
+    assert snapshot.class_name == "BoundedEmaPullback"
+    assert snapshot.timeframe == "5m"
+    assert snapshot.request == {
+        **VALID_REQUEST,
+        "parent_candidate_id": None,
+    }
+    assert snapshot.profile["pairs"] == ["BTC/USDT:USDT"]
+    assert snapshot.code_sha256 == hashlib.sha256(
+        snapshot.code_text.encode("utf-8")
+    ).hexdigest()
+
+
+def test_t0_approved_candidate_snapshot_requires_explicit_sqlite_snapshot(
+    tmp_path: Path,
+) -> None:
+    database, _generation_id, candidate_id = _approved_candidate(tmp_path)
+    with get_connection(database, read_only=True) as connection:
+        with pytest.raises(codex_generation.GenerationContractError) as exc_info:
+            codex_generation.load_approved_candidate_snapshot(
+                connection, candidate_id
+            )
+    assert exc_info.value.code == "approved_candidate_binding_invalid"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "candidate_code",
+        "candidate_idea",
+        "generation_response",
+        "generation_report",
+        "generation_source",
+        "profile",
+    ),
+)
+def test_t0_approved_candidate_snapshot_fails_closed_after_tampering(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    database, generation_id, candidate_id = _approved_candidate(
+        tmp_path / mutation
+    )
+    connection = sqlite3.connect(database)
+    try:
+        if mutation == "candidate_code":
+            connection.execute(
+                "UPDATE candidates SET code_text = code_text || ? WHERE id = ?",
+                ("\n# changed after approval\n", candidate_id),
+            )
+        elif mutation == "candidate_idea":
+            connection.execute(
+                "UPDATE candidates SET idea = ? WHERE id = ?",
+                ("changed after approval", candidate_id),
+            )
+        elif mutation == "generation_response":
+            response = json.loads(
+                connection.execute(
+                    "SELECT response_json FROM generation_runs WHERE id = ?",
+                    (generation_id,),
+                ).fetchone()[0]
+            )
+            response["display_name"] = "Changed after approval"
+            connection.execute(
+                "UPDATE generation_runs SET response_json = ? WHERE id = ?",
+                (json.dumps(response, separators=(",", ":")), generation_id),
+            )
+        elif mutation == "generation_report":
+            report = json.loads(
+                connection.execute(
+                    "SELECT parse_report_json FROM generation_runs WHERE id = ?",
+                    (generation_id,),
+                ).fetchone()[0]
+            )
+            report["code_sha256"] = "0" * 64
+            connection.execute(
+                "UPDATE generation_runs SET parse_report_json = ? WHERE id = ?",
+                (json.dumps(report, separators=(",", ":")), generation_id),
+            )
+        elif mutation == "generation_source":
+            connection.execute(
+                "UPDATE generation_runs SET source = 'MANUAL' WHERE id = ?",
+                (generation_id,),
+            )
+        else:
+            connection.execute(
+                "UPDATE research_profiles SET min_development_trades = 99 "
+                "WHERE id = ?",
+                (VALID_REQUEST["profile_id"],),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        with pytest.raises(codex_generation.GenerationContractError) as exc_info:
+            codex_generation.load_approved_candidate_snapshot(
+                connection, candidate_id
+            )
+    assert exc_info.value.code == "approved_candidate_binding_invalid"
+
+
+def test_t0_approved_candidate_snapshot_requires_terminal_approval(
+    tmp_path: Path,
+) -> None:
+    database, _generation_id, candidate_id = _approved_candidate(tmp_path)
+    connection = sqlite3.connect(database)
+    try:
+        metadata = json.loads(
+            connection.execute(
+                "SELECT metadata_json FROM candidates WHERE id = ?",
+                (candidate_id,),
+            ).fetchone()[0]
+        )
+        metadata["review"] = {
+            "status": "PENDING",
+            "created_at": metadata["review"]["created_at"],
+        }
+        connection.execute(
+            "UPDATE candidates SET metadata_json = ? WHERE id = ?",
+            (json.dumps(metadata, separators=(",", ":")), candidate_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        with pytest.raises(codex_generation.GenerationContractError) as exc_info:
+            codex_generation.load_approved_candidate_snapshot(
+                connection, candidate_id
+            )
+    assert exc_info.value.code == "approved_candidate_not_approved"
 
 
 def test_t0_public_generation_rejects_unknown_request_input_and_report_fields(
