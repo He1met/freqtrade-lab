@@ -792,7 +792,14 @@ def load_public_search_state(
         and status_receipt.get("status") in {"CANCELLED", "FAILED", "INTERRUPTED"}
         and int(status_receipt.get("round", 0)) == int(plan["round"])
         and (latest_receipt is None or int(status_receipt["round"]) >= int(latest_receipt.get("round", 0))))
-    if blocked_terminal:
+    database_safety_override = (
+        runtime_terminal
+        and status_receipt.get("status") == "FAILED"
+        and status_receipt.get("error_code") == "SEARCH_DATABASE_CHANGED"
+    )
+    if database_safety_override:
+        status_value = "FAILED"
+    elif blocked_terminal:
         status_value = "FAILED"
     elif terminal is not None:
         status_value = str(terminal["status"])
@@ -823,7 +830,7 @@ def load_public_search_state(
         if selected is not None:
             selected["profile_id"] = None
         state["selected_parent"] = selected
-    if terminal is not None and not blocked_terminal:
+    if terminal is not None and not blocked_terminal and not database_safety_override:
         state["search_finalist"] = _public_projection(terminal.get("search_finalist"), PUBLIC_IDENTITY_FIELDS)
     messages = {
         "RUNNING": "Search round is running",
@@ -915,7 +922,8 @@ def _materialize_strategy(
     round_number: int,
 ) -> str:
     assert capability.search_root is not None
-    name = f"round-{round_number}-{snapshot.candidate_id}.py"
+    strategy_file = _planned_strategy_file(snapshot, round_number)
+    name = Path(strategy_file).name
     strategies = capability.search_root / STRATEGIES
     try:
         strategies.mkdir(mode=0o700, exist_ok=True)
@@ -931,7 +939,13 @@ def _materialize_strategy(
             os.fchmod(handle.fileno(), 0o400)
     except (OSError, UnicodeEncodeError) as exc:
         raise SearchCampaignError("materialize_failed", "Candidate source could not be materialized", status=500) from exc
-    return f"{STRATEGIES}/{name}"
+    return strategy_file
+
+
+def _planned_strategy_file(
+    snapshot: ApprovedCandidateSnapshot, round_number: int
+) -> str:
+    return f"{STRATEGIES}/round-{round_number}-{snapshot.candidate_id}.py"
 
 
 def _candidate_plan(
@@ -979,6 +993,17 @@ def _write_plan(capability: FrozenSearchCapability, plan: Mapping[str, Any], rou
     if round_number == 1:
         _atomic_json_at(capability._directory_fd, ROUND_PLAN.format(round_number=1), plan, replace=False)
     _atomic_json_at(capability._directory_fd, pilot.SEARCH_CAMPAIGN, plan, replace=round_number == 2)
+
+
+def _validate_plan_before_materialization(plan: Mapping[str, Any]) -> None:
+    plan_bytes = pilot.canonical(plan)
+    document = json.loads(plan_bytes)
+    try:
+        pilot._load_search_campaign(document, plan_bytes)
+    except pilot.PilotError as exc:
+        raise SearchCampaignError(
+            "invalid_search_request", "Search campaign plan is invalid", status=400
+        ) from exc
 
 
 def _argv(capability: FrozenSearchCapability) -> Tuple[str, ...]:
@@ -1029,11 +1054,14 @@ def prepare_round_one(
                 or len(set(mechanisms)) != len(mechanisms)):
             raise SearchCampaignError("invalid_seed_set", "Round 1 seeds must share one Profile, have no parent, and use distinct safe mechanisms")
         candidates = [
-            _candidate_plan(snapshot, _materialize_strategy(capability, snapshot, 1),
-                            round_number=1, changed_factor=None, parent_sha256=None)
+            _candidate_plan(snapshot, _planned_strategy_file(snapshot, 1), round_number=1,
+                            changed_factor=None, parent_sha256=None)
             for snapshot in snapshots
         ]
         plan = _search_plan(capability, selected_campaign_id, 1, candidates)
+        _validate_plan_before_materialization(plan)
+        for snapshot in snapshots:
+            _materialize_strategy(capability, snapshot, 1)
         _write_plan(capability, plan, 1)
         after = _database_digest_connection(connection)
         total_changes = connection.total_changes
@@ -1090,7 +1118,7 @@ def prepare_round_two(
                or item.strategy_family != parent.strategy_family for item in snapshots):
             raise SearchCampaignError("invalid_child_set", "Round 2 children must bind the exact selected parent/Profile/mechanism")
         candidate_plans = [
-            _candidate_plan(snapshot, _materialize_strategy(capability, snapshot, 2), round_number=2,
+            _candidate_plan(snapshot, _planned_strategy_file(snapshot, 2), round_number=2,
                             changed_factor=changed_factor, parent_sha256=parent.code_sha256)
             for snapshot, changed_factor in zip(snapshots, changed_factors, strict=True)
         ]
@@ -1104,6 +1132,9 @@ def prepare_round_two(
             capability, campaign_id, 2, candidate_plans,
             receipt_sha256=_sha256(pilot.canonical(receipt)), parent=parent_identity,
         )
+        _validate_plan_before_materialization(plan)
+        for snapshot in snapshots:
+            _materialize_strategy(capability, snapshot, 2)
         _write_plan(capability, plan, 2)
         after = _database_digest_connection(connection)
         total_changes = connection.total_changes

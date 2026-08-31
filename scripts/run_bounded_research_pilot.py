@@ -539,6 +539,21 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
             or config_receipt.get("sha256") != digest(config_bytes)
         ):
             raise PilotError("Search config receipt mismatch")
+        instrument_id = source.get("instrument_id")
+        pair = source.get("pair")
+        market, _ = load_json(
+            safe_file(data_root, contract["market_snapshot"], "Search market snapshot"),
+            "Search market snapshot",
+        )
+        if (
+            not isinstance(instrument_id, str)
+            or not instrument_id
+            or not isinstance(pair, str)
+            or not pair
+            or market.get("id") != instrument_id
+            or market.get("symbol") != pair
+        ):
+            raise PilotError("Search market identity disagrees with its SHA-bound snapshot")
         return {
             "status": "DATA_READY",
             "source": {

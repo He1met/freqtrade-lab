@@ -581,6 +581,97 @@ def test_t1_round_two_exit_three_is_a_legal_no_finalist_terminal(
     assert _snapshot(environment.database) == before
 
 
+@pytest.mark.parametrize(
+    "changed_factor", ("holdout", "stress", "development-period", "validation")
+)
+def test_t1_reserved_changed_factor_fails_before_any_round_two_root_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    changed_factor: str,
+) -> None:
+    environment = _env(tmp_path, monkeypatch, "sleep", child=True)
+    assert environment.child is not None
+    campaign_id = _ready_round_one(environment, monkeypatch)
+    before_database = _snapshot(environment.database)
+    root_before = {
+        path.relative_to(environment.root).as_posix(): path.read_bytes()
+        for path in environment.root.rglob("*")
+        if path.is_file()
+    }
+
+    with _serve(environment) as server:
+        status, error, _ = _post(
+            server,
+            f"/api/search-campaigns/{campaign_id}/actions",
+            {"action": "START_ROUND_2", "candidates": [
+                {"candidate_id": environment.child, "changed_factor": changed_factor}
+            ]},
+        )
+        assert status == 400 and error["error"] == "invalid_search_request"
+
+    assert {
+        path.relative_to(environment.root).as_posix(): path.read_bytes()
+        for path in environment.root.rglob("*")
+        if path.is_file()
+    } == root_before
+    assert _snapshot(environment.database) == before_database
+
+
+def test_t2_database_change_after_engine_terminal_forces_failed_public_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    environment = _env(tmp_path, monkeypatch, "real", child=True)
+    assert environment.child is not None
+    campaign_id = _ready_round_one(environment, monkeypatch)
+    authoritative_digest = search_campaign.business_table_digest
+    changed = False
+
+    def change_database_before_terminal_audit(database: Path) -> str:
+        nonlocal changed
+        if not changed:
+            with get_connection(database) as connection:
+                connection.execute(
+                    "UPDATE candidates SET display_name=display_name || ' [T2 changed]' WHERE id=?",
+                    (environment.child,),
+                )
+            changed = True
+        return authoritative_digest(database)
+
+    monkeypatch.setattr(
+        research_console, "business_table_digest", change_database_before_terminal_audit
+    )
+    with _serve(environment) as server:
+        status, running, _ = _post(
+            server,
+            f"/api/search-campaigns/{campaign_id}/actions",
+            {"action": "START_ROUND_2", "candidates": [
+                {"candidate_id": environment.child, "changed_factor": "stoploss"}
+            ]},
+        )
+        assert status == 202 and running["status"] == "RUNNING"
+        _wait_file(environment.control / "started-2")
+        (environment.control / "release-2").write_text("release")
+        failed, raw = _wait_search(server, campaign_id, "FAILED")
+
+        engine_terminal = json.loads(
+            (environment.root / pilot.SEARCH_TERMINAL).read_bytes()
+        )
+        console_status = json.loads(
+            (environment.root / search_campaign.STATUS_FILE).read_bytes()
+        )
+        assert changed is True
+        assert engine_terminal["status"] == "SEARCH_FINALIST_FROZEN"
+        assert failed["status"] == "FAILED" and failed["search_finalist"] is None
+        assert console_status["error_code"] == "SEARCH_DATABASE_CHANGED"
+        _path_free(raw, tmp_path)
+
+        status, context, raw = _request(server, "/api/search/context")
+        assert status == 200
+        assert context["state"]["status"] == "FAILED"
+        assert context["state"]["search_finalist"] is None
+        _path_free(raw, tmp_path)
+
+
 def test_t2_real_screen_search_two_round_http_and_cross_process_zero_writes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

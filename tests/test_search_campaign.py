@@ -273,6 +273,42 @@ def test_t0_profile_and_safe_mechanism_are_server_bound(
         capability.close()
 
 
+def test_t0_full_round_one_plan_is_validated_before_root_materialization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    capability = _frozen_capability(tmp_path, monkeypatch)
+    try:
+        with get_connection(database, read_only=True) as connection:
+            connection.execute("BEGIN")
+            snapshot = search_campaign.load_approved_candidate_snapshot(
+                connection, candidate_id
+            )
+        reserved = replace(snapshot, strategy_family="holdout")
+        monkeypatch.setattr(
+            search_campaign,
+            "_bound_candidate",
+            lambda _connection, _candidate_id, _capability: reserved,
+        )
+        before = search_campaign.business_table_digest(database)
+
+        with pytest.raises(search_campaign.SearchCampaignError) as raised:
+            search_campaign.prepare_round_one(
+                database, capability, [candidate_id], campaign_id="reserved-plan"
+            )
+
+        assert raised.value.code == "invalid_search_request"
+        assert raised.value.status == 400
+        assert not (capability.search_root / search_campaign.STRATEGIES).exists()
+        assert not (capability.search_root / pilot.SEARCH_CAMPAIGN).exists()
+        assert not (
+            capability.search_root / search_campaign.ROUND_PLAN.format(round_number=1)
+        ).exists()
+        assert search_campaign.business_table_digest(database) == before
+    finally:
+        capability.close()
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
