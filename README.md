@@ -50,34 +50,64 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
-## Local Research Console: bounded Codex generation and one Development run
+## Local Research Console: bounded Codex, two-round Search, and Development
 
 The Research Console keeps the Strategy Library routes on the same loopback
-server and adds a small page at `http://127.0.0.1:8765/console`. The page can
-run one fixed `CHECK_DATA` child, one bounded Codex Candidate generation, or
-one approved Candidate's fixed `DEVELOPMENT` backtest in the same single slot.
-For generation, the browser may submit
+server and adds a small page at `http://127.0.0.1:8765/console`. One fixed
+`CHECK_DATA` child, one bounded Codex Candidate generation, either Search
+round, or one approved Candidate's fixed `DEVELOPMENT` backtest can occupy the
+same single slot; a concurrent start is rejected. For generation, the browser may submit
 only a Profile id, an optional same-Profile approved parent id, a bounded idea,
 an optional strategy family, and an optional expected failure mode. It cannot
 supply an executable, working directory, arguments, prompt template, model,
 environment, command, or output path.
 
 Prepare one private runtime directory outside this repository, then start the
-single service with an existing schema-v1 database and frozen Pilot root:
+single service with an existing schema-v1 database, frozen Pilot root, and an
+optional Search-only campaign root. Before the first Search action, the Search
+root must be outside Git, owned exclusively by this service, mode `0700`, and
+contain only its already-prepared `acquisition/` directory. The browser cannot
+submit, replace, or discover this path.
 
 ```bash
 mkdir -p /absolute/private/path/freqtrade-lab-console-runtime
 chmod 700 /absolute/private/path/freqtrade-lab-console-runtime
+test -d /absolute/private/path/search-campaign/acquisition
+chmod 700 /absolute/private/path/search-campaign
 
 python3 scripts/serve_research_console.py \
   --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
   --runtime-root /absolute/private/path/freqtrade-lab-console-runtime \
   --pilot-root /absolute/private/path/frozen-pilot \
+  --search-root /absolute/private/path/search-campaign \
   --freqtrade-python /absolute/private/path/freqtrade-2026.7-venv/bin/python \
   --freqtrade-source /absolute/private/path/clean-freqtrade-2026.7 \
   --artifact-root /absolute/private/path/freqtrade-lab-workspace/artifacts \
   --port 8765
 ```
+
+`--search-root` is optional. When it is absent, stale, invalid, or not an exact
+frozen 30-day `freqtrade-lab-retained-search-data-v2` input, only the Search
+card reports `BLOCKED_DATA`; the Console, Codex, and Development capabilities
+remain available according to their own preflight checks. A completed root
+stays read-only at its verified terminal state and cannot be rerun. A valid
+fresh root carries exactly one two-round campaign. Round 1 accepts
+one to three approved mechanism seeds and may select a negative-return parent.
+The page then locks that parent into the existing Codex card: the user generates
+one child at a time, reviews its source, and explicitly approves or rejects it.
+Round 2 accepts one to three approved single-factor children. Both rounds share
+one fixed budget of at most six attempts; there is no third round, automatic
+child loop, Hyperopt, or threshold rescue.
+
+Search completion freezes either a finalist or a no-finalist terminal result;
+neither result proves profitability, robustness, or tradability. Selecting a
+finalist for Development changes only the page selection. Development starts
+only after a separate user click, and Search never automatically opens
+Development, Holdout, Holdout Stress, Release, or trading. Every Search action
+is read-only across all six schema-v1 business tables and creates no
+`ResearchRun`, execution, or Release. The explicitly requested Codex generation
+between rounds retains its existing, separate `generation_runs`/`candidates`
+write contract.
 
 Preflight always probes the public numeric-loopback origin configured by
 `--webserver-base-url` (default `http://127.0.0.1:8080`). A stopped service is
@@ -146,12 +176,14 @@ Schema v1 contains exactly six business tables:
 
 The project intentionally starts without an ORM, migration framework, task queue, authentication, or multi-user platform layer.
 
-## Screen one Bounded Evolution V1 Search round
+## Low-level Bounded Evolution V1 Search engine
 
 `screen-search` is the Search-only Gate for a new V2 campaign. It accepts one
 30-day Search window and one to three SHA-bound Candidates, runs only the
 existing isolated Freqtrade screen, and emits no database row or later-phase
-authorization:
+authorization. The Console above is the user entrypoint for the two-round
+workflow; this command documents the reused low-level engine and requires an
+already frozen campaign contract:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \

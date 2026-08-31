@@ -40,6 +40,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--database", required=True, type=Path)
     parser.add_argument("--runtime-root", required=True, type=Path)
     parser.add_argument("--pilot-root", required=True, type=Path)
+    parser.add_argument(
+        "--search-root",
+        type=Path,
+        help="startup-frozen private Search-only campaign root outside Git",
+    )
     parser.add_argument("--artifact-root", type=Path)
     parser.add_argument("--frequi-base-url")
     parser.add_argument("--frequi-results-root", type=Path)
@@ -57,12 +62,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--freqtrade-python",
         type=Path,
-        help="startup-frozen Freqtrade 2026.7 Python for Development research",
+        help="startup-frozen Freqtrade 2026.7 Python for Search and Development",
     )
     parser.add_argument(
         "--freqtrade-source",
         type=Path,
-        help="startup-frozen clean Freqtrade 2026.7 source checkout",
+        help="startup-frozen clean Freqtrade 2026.7 source for Search and Development",
     )
     parser.add_argument(
         "--webserver-base-url",
@@ -81,6 +86,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.runtime_root,
         args.pilot_root,
         args.port,
+        search_root=args.search_root,
         artifact_root=args.artifact_root,
         frequi_base_url=args.frequi_base_url,
         frequi_results_root=args.frequi_results_root,

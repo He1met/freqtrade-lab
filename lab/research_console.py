@@ -26,7 +26,7 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, BinaryIO, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
@@ -69,6 +69,20 @@ from lab.development_run import (
     load_public_research_run,
     prepare_development_run,
     research_context,
+)
+from lab.search_campaign import (
+    FrozenSearchCapability,
+    PreparedSearchRound,
+    SearchCampaignError,
+    business_table_digest,
+    complete_search_round,
+    freeze_search_capability,
+    load_public_search_state,
+    load_search_context,
+    prepare_round_one,
+    prepare_round_two,
+    record_search_runtime_status,
+    recover_interrupted_search,
 )
 from lab.strategy_library import (
     DEFAULT_PORT,
@@ -190,6 +204,7 @@ class _ActiveJob:
     lifecycle_lock: threading.RLock = field(default_factory=threading.RLock)
     receipt_lock: threading.Lock = field(default_factory=threading.Lock)
     prepared_generation: Optional[PreparedGeneration] = None
+    prepared_search_round: Optional[PreparedSearchRound] = None
 
 
 def _utc_now() -> str:
@@ -614,6 +629,7 @@ class ResearchConsoleController:
         runtime_root: PathLike,
         pilot_root: PathLike,
         *,
+        search_root: Optional[PathLike] = None,
         codex_binary: Optional[PathLike] = None,
         codex_model: Optional[str] = None,
         check_data_python: PathLike = sys.executable,
@@ -653,6 +669,7 @@ class ResearchConsoleController:
         self._restart_confirmation_required = False
         self._shutting_down = False
         self._closed = False
+        self._search_capability: Optional[FrozenSearchCapability] = None
         try:
             campaigns = runtime / "campaigns"
             try:
@@ -716,10 +733,31 @@ class ResearchConsoleController:
                 freqtrade_python,
                 freqtrade_source,
             )
+            self._search_capability = freeze_search_capability(
+                search_root,
+                freqtrade_python,
+                freqtrade_source,
+            )
+            # Reconcile a complete Round 1 or terminal receipt and fail closed
+            # on an interrupted partial ledger. Search recovery never blocks
+            # the independent Console/Codex/Development capabilities.
+            try:
+                recover_interrupted_search(self._search_capability)
+            except SearchCampaignError:
+                # Search is optional and file-backed.  A damaged Search receipt
+                # blocks only that capability; it must not prevent Console,
+                # Codex generation, or Development from starting.
+                self._search_capability.close()
+                self._search_capability = FrozenSearchCapability(
+                    status="BLOCKED_DATA",
+                    reason="Search state is incomplete or invalid",
+                )
             self._restart_confirmation_required = (
                 self._recover_interrupted_campaigns()
             )
         except Exception:
+            if self._search_capability is not None:
+                self._search_capability.close()
             if self._campaigns_fd >= 0:
                 os.close(self._campaigns_fd)
                 self._campaigns_fd = -1
@@ -1492,12 +1530,22 @@ class ResearchConsoleController:
                 "message": self._development_capability.reason,
             },
         }
+        search_capability = self._search_capability
+        assert search_capability is not None
+        checks["search_research"] = {
+            **search_capability.public(),
+            "message": search_capability.reason,
+        }
         with self._lock:
             latest = self._latest_status()
         return {
             "overall_status": (
                 "READY"
-                if all(item.get("status") == "READY" for item in checks.values())
+                if all(
+                    item.get("status") == "READY"
+                    for name, item in checks.items()
+                    if name != "search_research"
+                )
                 else "NOT_READY"
             ),
             "checks": checks,
@@ -1898,6 +1946,27 @@ class ResearchConsoleController:
                 raise ControlRequestError(
                     409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
                 )
+            search_capability = self._search_capability
+            assert search_capability is not None
+            try:
+                parent_lock = load_search_context(
+                    self.config.database_path, search_capability
+                ).get("codex_parent_lock")
+            except SearchCampaignError:
+                # Only a valid completed Round 1 may lock generation fields.
+                # Search corruption is local and cannot block ordinary Codex.
+                parent_lock = None
+            if isinstance(parent_lock, Mapping) and (
+                request.parent_candidate_id
+                != parent_lock.get("parent_candidate_id")
+                or request.profile_id != parent_lock.get("profile_id")
+                or request.strategy_family != parent_lock.get("strategy_family")
+            ):
+                raise ControlRequestError(
+                    409,
+                    "search_parent_locked",
+                    "Search Round 1 已锁定 Codex parent、Profile 与 mechanism",
+                )
             binary = self.config.codex_binary
             if (
                 binary is None
@@ -2194,6 +2263,29 @@ class ResearchConsoleController:
                 job.termination_identity_verified = True
             return True
 
+    def _begin_cancel_locked(self, job: _ActiveJob) -> bool:
+        """Request SIGTERM under ``self._lock`` and leave receipt_lock owned."""
+        if job.shutdown_requested or job.timed_out:
+            raise ControlRequestError(
+                409, "termination_in_progress", "任务已进入不可覆盖的终止流程"
+            )
+        if job.cancel_requested:
+            return False
+        if not job.receipt_lock.acquire(blocking=False):
+            raise ControlRequestError(
+                409, "termination_in_progress", "任务状态正在完成，不接受新的取消转换"
+            )
+        if not self._signal_process_group(job, signal.SIGTERM):
+            job.receipt_lock.release()
+            raise ControlRequestError(
+                409,
+                "process_group_unconfirmed",
+                "无法安全确认受控 leader 身份；未发送取消信号",
+            )
+        job.cancel_requested = True
+        job.signal_sent_at = time.monotonic()
+        return True
+
     def _has_data_ready_output(self, campaign_dir: Path) -> bool:
         try:
             value = self._read_campaign_json(campaign_dir.name, "stdout.log")
@@ -2300,13 +2392,62 @@ class ResearchConsoleController:
             "SUCCEEDED",
         )
 
+    def _record_job_transition(
+        self,
+        job: _ActiveJob,
+        campaign_dir: Path,
+        status_value: str,
+        message: str,
+        event_type: str,
+        **updates: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """Persist lifecycle state at the job's one frozen state target."""
+        prepared_search = job.prepared_search_round
+        if prepared_search is None:
+            return self._record_transition(
+                campaign_dir,
+                status_value,
+                message,
+                event_type,
+                **updates,
+            )
+        public_status = {
+            "CANCELLED": "CANCELLED",
+            "INTERRUPTED": "INTERRUPTED",
+            "INTERRUPTED_NEEDS_CONFIRMATION": "INTERRUPTED",
+            "FAILED": "FAILED",
+            "TIMED_OUT": "FAILED",
+        }.get(status_value)
+        if public_status is None:
+            return {}
+        capability = self._search_capability
+        assert capability is not None
+        try:
+            return record_search_runtime_status(
+                capability,
+                job.campaign_id,
+                public_status,
+                prepared_search.round_number,
+                error_code=event_type,
+            )
+        except SearchCampaignError:
+            return None
+
     def _monitor_job(self, job: _ActiveJob) -> None:
         campaign_dir: Optional[Path] = None
         process_group_finalized = False
         try:
-            campaign_dir = self._campaign_directory(
-                job.campaign_id, must_exist=True
-            )
+            if job.prepared_search_round is None:
+                campaign_dir = self._campaign_directory(
+                    job.campaign_id, must_exist=True
+                )
+            else:
+                capability = self._search_capability
+                if capability is None or capability.search_root is None:
+                    raise SearchCampaignError(
+                        "BLOCKED_DATA", "Search root is unavailable", status=503
+                    )
+                campaign_dir = capability.search_root
             while True:
                 timeout_started = False
                 output_limit_started = False
@@ -2356,7 +2497,8 @@ class ResearchConsoleController:
                             if job.signal_sent_at is None:
                                 job.signal_sent_at = time.monotonic()
                     with job.receipt_lock:
-                        self._record_transition(
+                        self._record_job_transition(
+                            job,
                             campaign_dir,
                             "TIMEOUT_TERMINATING",
                             "任务超时，正在终止受控进程组",
@@ -2368,7 +2510,8 @@ class ResearchConsoleController:
                             if job.signal_sent_at is None:
                                 job.signal_sent_at = time.monotonic()
                     with job.receipt_lock:
-                        self._record_transition(
+                        self._record_job_transition(
+                            job,
                             campaign_dir,
                             "OUTPUT_LIMIT_TERMINATING",
                             "Codex 私有输出超过固定上限，正在终止受控进程组",
@@ -2402,7 +2545,8 @@ class ResearchConsoleController:
                         finished_at=_utc_now(),
                     )
                 with job.receipt_lock:
-                    receipt = self._record_transition(
+                    receipt = self._record_job_transition(
+                        job,
                         campaign_dir,
                         "INTERRUPTED_NEEDS_CONFIRMATION",
                         f"{job.action} 进程组仍存在或无法确认消失；未继续发送未经确认的信号",
@@ -2417,7 +2561,21 @@ class ResearchConsoleController:
                         self._state_unavailable.add(job.campaign_id)
                 return
             finished = _utc_now()
-            if job.shutdown_requested:
+            search_completion: Optional[Dict[str, Any]] = None
+            search_database_unchanged = True
+            if job.prepared_search_round is not None:
+                try:
+                    search_database_unchanged = (
+                        business_table_digest(self.config.database_path)
+                        == job.prepared_search_round.database_digest_before
+                    )
+                except SearchCampaignError:
+                    search_database_unchanged = False
+            if not search_database_unchanged:
+                status_value = "FAILED"
+                message = "Search 前后六表快照不一致或无法复核；结果已 fail closed"
+                event_type = "SEARCH_DATABASE_CHANGED"
+            elif job.shutdown_requested:
                 status_value = "INTERRUPTED"
                 message = "服务关闭，受控进程组已确认终止；未自动恢复或重跑"
                 event_type = "INTERRUPTED"
@@ -2433,6 +2591,28 @@ class ResearchConsoleController:
                 status_value = "FAILED"
                 message = "Codex 私有输出超过固定上限；未读取、展示或入库"
                 event_type = "FAILED"
+            elif job.prepared_search_round is not None:
+                if return_code in {0, 3}:
+                    capability = self._search_capability
+                    assert capability is not None
+                    try:
+                        search_completion = complete_search_round(
+                            capability, job.campaign_id, int(return_code)
+                        )
+                        status_value = str(search_completion["status"])
+                        message = str(
+                            search_completion.get("message")
+                            or "Search round 已按固定 receipt 完成"
+                        )
+                        event_type = "SEARCH_COMPLETED"
+                    except SearchCampaignError:
+                        status_value = "FAILED"
+                        message = "Search 输出无法按固定 ledger/receipt 合同完成"
+                        event_type = "SEARCH_OUTPUT_INVALID"
+                else:
+                    status_value = "FAILED"
+                    message = "Search 执行失败；私有输出不会返回页面"
+                    event_type = "SEARCH_NONZERO"
             elif job.action == "CODEX_GENERATION" and return_code == 0:
                 try:
                     status_value, message, event_type = (
@@ -2547,19 +2727,23 @@ class ResearchConsoleController:
                         "Generation terminal state could not be persisted",
                     )
             with job.receipt_lock:
-                receipt = self._record_transition(
-                    campaign_dir,
-                    status_value,
-                    message,
-                    event_type,
-                    finished_at_utc=finished,
-                    return_code=return_code,
-                    requires_confirmation=False,
-                )
+                receipt = search_completion
+                if receipt is None:
+                    receipt = self._record_job_transition(
+                        job,
+                        campaign_dir,
+                        status_value,
+                        message,
+                        event_type,
+                        finished_at_utc=finished,
+                        return_code=return_code,
+                        requires_confirmation=False,
+                    )
             if receipt is None:
                 with self._lock:
                     self._state_unavailable.add(job.campaign_id)
-                    self._restart_confirmation_required = True
+                    if job.prepared_search_round is None:
+                        self._restart_confirmation_required = True
         except Exception:
             process_group_finalized = self._terminate_owned_job(job)
             if job.action == "CODEX_GENERATION":
@@ -2581,7 +2765,8 @@ class ResearchConsoleController:
                     pass
             if campaign_dir is not None:
                 with job.receipt_lock:
-                    receipt = self._record_transition(
+                    receipt = self._record_job_transition(
+                        job,
                         campaign_dir,
                         "INTERRUPTED_NEEDS_CONFIRMATION",
                         "控制器内部故障；任务终态需要人工确认",
@@ -2594,7 +2779,8 @@ class ResearchConsoleController:
                     with self._lock:
                         self._state_unavailable.add(job.campaign_id)
             with self._lock:
-                self._restart_confirmation_required = True
+                if job.prepared_search_round is None or not process_group_finalized:
+                    self._restart_confirmation_required = True
         finally:
             if (
                 not process_group_finalized
@@ -2625,6 +2811,214 @@ class ResearchConsoleController:
                 409, "campaign_state_unavailable", "Campaign 状态无法安全读取"
             )
         return _public_status(status_value)
+
+    @staticmethod
+    def _search_error(exc: SearchCampaignError) -> ControlRequestError:
+        return ControlRequestError(exc.status, exc.code, exc.message)
+
+    def search_context(self) -> Dict[str, Any]:
+        capability = self._search_capability
+        assert capability is not None
+        with self._lock:
+            active = (
+                self._active is not None
+                and self._active.prepared_search_round is not None
+            )
+        try:
+            context = load_search_context(
+                self.config.database_path, capability, active=active
+            )
+        except SearchCampaignError as exc:
+            raise self._search_error(exc) from exc
+        campaign_id = context.get("state", {}).get("campaign_id")
+        with self._lock:
+            if campaign_id in self._state_unavailable:
+                raise ControlRequestError(409, "search_state_unavailable", "Search 终态无法安全确认")
+        return context
+
+    def get_search_campaign(self, campaign_id: str) -> Dict[str, Any]:
+        capability = self._search_capability
+        assert capability is not None
+        with self._lock:
+            active = (
+                self._active is not None
+                and self._active.prepared_search_round is not None
+                and self._active.campaign_id == campaign_id
+            )
+        try:
+            state = load_public_search_state(capability, active=active)
+        except SearchCampaignError as exc:
+            raise self._search_error(exc) from exc
+        if state.get("campaign_id") != campaign_id:
+            raise ControlRequestError(
+                404, "search_campaign_not_found", "Search campaign 不存在"
+            )
+        with self._lock:
+            if campaign_id in self._state_unavailable:
+                raise ControlRequestError(409, "search_state_unavailable", "Search 终态无法安全确认")
+        return state
+
+    def _start_prepared_search(
+        self, prepared: PreparedSearchRound
+    ) -> Dict[str, Any]:
+        capability = self._search_capability
+        assert capability is not None
+        stdout_handle: Optional[BinaryIO] = None
+        stderr_handle: Optional[BinaryIO] = None
+        process: Optional[subprocess.Popen[bytes]] = None
+        job: Optional[_ActiveJob] = None
+        try:
+            stdout_handle = capability.open_private_output(
+                f"round-{prepared.round_number}.stdout.log"
+            )
+            stderr_handle = capability.open_private_output(
+                f"round-{prepared.round_number}.stderr.log"
+            )
+            process = subprocess.Popen(
+                prepared.argv,
+                cwd=str(PROJECT_ROOT),
+                stdin=subprocess.DEVNULL,
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+                env=_minimal_environment(),
+                shell=False,
+                start_new_session=True,
+                close_fds=True,
+                umask=0o077,
+            )
+            job = _ActiveJob(
+                campaign_id=prepared.campaign_id,
+                action="SEARCH",
+                process=process,
+                process_group_id=process.pid,
+                deadline=time.monotonic() + self.config.task_timeout_seconds,
+                prepared_search_round=prepared,
+            )
+            self._active = job
+            running_state = load_public_search_state(capability, active=True)
+            monitor = threading.Thread(
+                target=self._monitor_job,
+                args=(job,),
+                name=f"research-console-search-{prepared.campaign_id[:8]}",
+                daemon=True,
+            )
+            job.monitor = monitor
+            monitor.start()
+            return running_state
+        except (SearchCampaignError, OSError, RuntimeError) as exc:
+            error_code = (
+                "START_RECEIPT_FAILED"
+                if isinstance(exc, SearchCampaignError)
+                else "START_FAILED"
+            )
+            terminated = True if job is None else self._terminate_owned_job(job)
+            if job is not None and self._active is job:
+                self._active = None
+            try:
+                record_search_runtime_status(
+                    capability,
+                    prepared.campaign_id,
+                    "FAILED" if terminated else "INTERRUPTED",
+                    prepared.round_number,
+                    error_code=error_code,
+                )
+            except SearchCampaignError:
+                pass
+            if not terminated:
+                self._restart_confirmation_required = True
+            if isinstance(exc, SearchCampaignError):
+                raise
+            raise ControlRequestError(
+                500, "start_failed", "Search 无法安全启动"
+            ) from exc
+        finally:
+            if stdout_handle is not None and not stdout_handle.closed:
+                stdout_handle.close()
+            if stderr_handle is not None and not stderr_handle.closed:
+                stderr_handle.close()
+
+    def _search_start_capability(self) -> FrozenSearchCapability:
+        if self._closed or self._shutting_down:
+            raise ControlRequestError(
+                409, "console_shutting_down", "Research Console 正在关闭"
+            )
+        if self._restart_confirmation_required:
+            raise ControlRequestError(
+                409,
+                "restart_confirmation_required",
+                "检测到未闭合进程组；请人工确认后换用新的运行目录",
+            )
+        if self._active is not None:
+            raise ControlRequestError(
+                409, "active_campaign", "已有一个受控任务正在运行"
+            )
+        assert self._search_capability is not None
+        return self._search_capability
+
+    def create_search_campaign(
+        self, candidate_ids: Sequence[str]
+    ) -> Dict[str, Any]:
+        with self._lock:
+            capability = self._search_start_capability()
+            try:
+                prepared = prepare_round_one(
+                    self.config.database_path, capability, candidate_ids
+                )
+                return self._start_prepared_search(prepared)
+            except SearchCampaignError as exc:
+                raise self._search_error(exc) from exc
+
+    def start_search_round_two(
+        self,
+        campaign_id: str,
+        candidates: Sequence[Mapping[str, Any]],
+    ) -> Dict[str, Any]:
+        with self._lock:
+            capability = self._search_start_capability()
+            try:
+                prepared = prepare_round_two(
+                    self.config.database_path,
+                    capability,
+                    campaign_id,
+                    candidates,
+                )
+                return self._start_prepared_search(prepared)
+            except SearchCampaignError as exc:
+                raise self._search_error(exc) from exc
+
+    def cancel_search_campaign(self, campaign_id: str) -> Dict[str, Any]:
+        with self._lock:
+            job = self._active
+            if (
+                job is None
+                or job.campaign_id != campaign_id
+                or job.prepared_search_round is None
+            ):
+                current = self.get_search_campaign(campaign_id)
+                if current.get("status") in {
+                    "SEARCH_FINALIST_FROZEN",
+                    "SEARCH_TERMINATED_NO_PARENT",
+                    "SEARCH_TERMINATED_NO_FINALIST",
+                    "CANCELLED",
+                    "FAILED",
+                    "INTERRUPTED",
+                }:
+                    return current
+                raise ControlRequestError(
+                    409, "search_campaign_not_active", "Search 当前没有运行任务"
+                )
+            if self._leader_return_code(job) is not None:
+                raise ControlRequestError(
+                    409,
+                    "process_group_unconfirmed",
+                    "Search leader 已结束；请轮询 receipt 终态",
+                )
+            if not self._begin_cancel_locked(job):
+                return self.get_search_campaign(campaign_id)
+        try:
+            return self.get_search_campaign(campaign_id)
+        finally:
+            job.receipt_lock.release()
 
     @staticmethod
     def _development_error(exc: DevelopmentRunError) -> ControlRequestError:
@@ -3021,32 +3415,11 @@ class ResearchConsoleController:
                     "process_group_unconfirmed",
                     "leader 已回收，不能向旧 PGID 发送信号；请轮询确认状态",
                 )
-            if job.shutdown_requested or job.timed_out:
-                raise ControlRequestError(
-                    409,
-                    "termination_in_progress",
-                    "任务已进入不可覆盖的终止流程",
-                )
-            if job.cancel_requested:
-                return self.get_status(campaign_id)
             campaign_dir = self._campaign_directory(
                 campaign_id, must_exist=True
             )
-            if not job.receipt_lock.acquire(blocking=False):
-                raise ControlRequestError(
-                    409,
-                    "termination_in_progress",
-                    "任务状态正在完成，不接受新的取消转换",
-                )
-            if not self._signal_process_group(job, signal.SIGTERM):
-                job.receipt_lock.release()
-                raise ControlRequestError(
-                    409,
-                    "process_group_unconfirmed",
-                    "无法安全确认受控 leader 身份；未发送取消信号",
-                )
-            job.cancel_requested = True
-            job.signal_sent_at = time.monotonic()
+            if not self._begin_cancel_locked(job):
+                return self.get_status(campaign_id)
         try:
             current = self._record_transition(
                 campaign_dir,
@@ -3078,12 +3451,18 @@ class ResearchConsoleController:
                 monitor = job.monitor
                 if self._leader_return_code(job) is None:
                     job.shutdown_requested = True
-                    try:
-                        campaign_dir = self._campaign_directory(
-                            job.campaign_id, must_exist=True
+                    if job.prepared_search_round is not None:
+                        capability = self._search_capability
+                        campaign_dir = (
+                            None if capability is None else capability.search_root
                         )
-                    except ControlRequestError:
-                        campaign_dir = None
+                    else:
+                        try:
+                            campaign_dir = self._campaign_directory(
+                                job.campaign_id, must_exist=True
+                            )
+                        except ControlRequestError:
+                            campaign_dir = None
                     if campaign_dir is not None:
                         shutdown_receipt_owned = job.receipt_lock.acquire(
                             blocking=False
@@ -3093,7 +3472,8 @@ class ResearchConsoleController:
                             job.signal_sent_at = time.monotonic()
         if shutdown_receipt_owned and campaign_dir is not None:
             try:
-                self._record_transition(
+                self._record_job_transition(
+                    job,
                     campaign_dir,
                     "INTERRUPTING",
                     "服务正在关闭受控进程组",
@@ -3110,7 +3490,7 @@ class ResearchConsoleController:
         with self._lock:
             if monitor is not None and monitor.is_alive():
                 raise ResearchConsoleError(
-                    "owned CHECK_DATA monitor did not finalize"
+                    "owned task monitor did not finalize"
                 )
             if (
                 job is not None
@@ -3118,7 +3498,7 @@ class ResearchConsoleController:
                 and not self._restart_confirmation_required
             ):
                 raise ResearchConsoleError(
-                    "owned CHECK_DATA process group did not finalize"
+                    "owned task process group did not finalize"
                 )
             if self._active is job:
                 self._active = None
@@ -3126,12 +3506,18 @@ class ResearchConsoleController:
             self._campaigns_fd = -1
             descriptor = self._runtime_lock_fd
             self._runtime_lock_fd = -1
+            search_capability = self._search_capability
+            self._search_capability = None
             self._closed = True
         try:
             os.close(campaigns_descriptor)
             fcntl.flock(descriptor, fcntl.LOCK_UN)
         finally:
-            os.close(descriptor)
+            try:
+                os.close(descriptor)
+            finally:
+                if search_capability is not None:
+                    search_capability.close()
 
 
 CONSOLE_HTML = """<!doctype html>
@@ -3147,12 +3533,22 @@ h1,h2,h3{{margin:0 0 10px}}a{{color:#3157d5}}section{{background:#fff;border:1px
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}}.field{{display:flex;flex-direction:column;gap:4px}}
 .wide{{grid-column:1/-1}}label,.name{{font-weight:650}}select,input,textarea{{font:inherit;border:1px solid #cbd2dd;border-radius:7px;padding:8px;background:#fff}}textarea{{min-height:86px;resize:vertical}}
 .check{{border:1px solid #e6e9ef;border-radius:8px;padding:10px}}.status{{font-family:ui-monospace,monospace}}
+.candidate-row{{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,.7fr);gap:8px;align-items:center;margin:6px 0}}.candidate-row label{{font-weight:500}}
 button{{border:1px solid #3157d5;border-radius:7px;background:#3157d5;color:#fff;padding:8px 12px;margin:8px 8px 0 0}}button.secondary{{background:#fff;color:#3157d5}}button.danger{{background:#fff;color:#a32929;border-color:#a32929}}button:disabled{{opacity:.45}}
 pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;border-radius:7px;min-height:42px;max-height:440px;overflow:auto}}
 .note{{color:#5d687a}}ul{{padding-left:20px}}
 </style><script src="/console.js" defer></script></head>
 <body><main><header><div><h1>Research Console</h1><div class="note">本地单进程 · 固定动作 · 无任意命令入口</div></div><a href="/">策略库</a></header>
 <section><h2>Preflight</h2><div id="overall" class="status">CHECKING</div><div id="checks" class="grid"></div></section>
+<section><h2>Search-only 两轮 Gate</h2><p class="note">Round 1 选择 1–3 个同 Profile 的 APPROVED mechanism seed；Round 2 只接受 selected parent 的 APPROVED child。两轮合计最多 6 次，不做自动子代、阈值救援或第三轮。Console、Codex、Search 与 Development 永久共用一个受控进程槽。</p>
+<div class="field"><label for="search-seeds">Round 1 seeds（多选，最多 3）</label><select id="search-seeds" multiple size="5"></select></div>
+<div id="search-seed-note" class="note">只能选择同 Profile、不同 mechanism 的 root Candidate</div>
+<button id="search-round-1" disabled>运行 Round 1</button><button id="search-cancel" class="secondary" disabled>取消当前 Search</button>
+<h3>Round 2 children 与 changed_factor</h3><div id="search-parent-lock" class="note">selected parent 由 Round 1 receipt 锁定</div><div id="search-children" class="check"><span class="note">等待 Round 1 selected parent</span></div>
+<button id="search-round-2" disabled>运行 Round 2</button><button id="search-handoff" class="secondary" disabled>带入 Development（不运行）</button>
+<h3>规范化 Search 状态</h3><pre id="search-status">正在读取 Search context</pre>
+<div class="grid"><div class="check"><div class="name">Holdout</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">Holdout Stress</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">数据库副作用</div><div class="status">Search 不创建 ResearchRun / Execution / Release</div></div></div>
+</section>
 <section><h2>Codex 生成 Candidate</h2><p class="note">每次只生成 1 个草稿。批准仅表示允许进入后续研究，不代表安全、有效、盈利或可交易。</p>
 <div class="grid">
 <div class="field"><label for="profile">ResearchProfile</label><select id="profile"></select></div>
@@ -3164,7 +3560,7 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 <button id="generate">Codex 生成</button><button id="generation-cancel" class="secondary" disabled>取消生成</button><button id="approve" disabled>批准进入研究</button><button id="reject" class="danger" disabled>拒绝</button>
 <h3>规范化状态</h3><pre id="generation-status">尚未生成</pre><h3>源码预览</h3><pre id="candidate-code">暂无源码</pre>
 </section>
-<section><h2>Development 研究</h2><p class="note">仅允许已批准且通过窄安全门的 Candidate。每次只运行一个真实 DEVELOPMENT；浏览器不能提交路径、参数、场景或阈值。</p>
+<section id="development-section"><h2>Development 研究</h2><p class="note">仅允许已批准且通过窄安全门的 Candidate。每次只运行一个真实 DEVELOPMENT；浏览器不能提交路径、参数、场景或阈值。</p>
 <div class="field"><label for="research-candidate">APPROVED Candidate</label><select id="research-candidate"></select></div>
 <button id="research-run" disabled>运行唯一 DEVELOPMENT</button><button id="research-cancel" class="secondary" disabled>取消</button>
 <div class="grid"><div class="check"><div class="name">Holdout</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">Holdout Stress</div><div class="status">SEALED_UNREAD</div></div></div>
@@ -3195,6 +3591,14 @@ const researchCandidate = document.getElementById('research-candidate');
 const researchRunButton = document.getElementById('research-run');
 const researchCancelButton = document.getElementById('research-cancel');
 const researchStatus = document.getElementById('research-status');
+const searchSeeds = document.getElementById('search-seeds');
+const searchChildren = document.getElementById('search-children');
+const searchParentLock = document.getElementById('search-parent-lock');
+const searchRoundOne = document.getElementById('search-round-1');
+const searchRoundTwo = document.getElementById('search-round-2');
+const searchCancel = document.getElementById('search-cancel');
+const searchHandoff = document.getElementById('search-handoff');
+const searchStatus = document.getElementById('search-status');
 let campaignId = null;
 let timer = null;
 let generationId = null;
@@ -3202,8 +3606,12 @@ let generationTimer = null;
 let generationContext = null;
 let researchRunId = null;
 let researchTimer = null;
+let searchContext = null;
+let searchTimer = null;
+let searchLoadPromise = null;
 function showJob(value) { jobBox.textContent = JSON.stringify(value, null, 2); }
 function terminal(status) { return ['SUCCEEDED','FAILED','CANCELLED','TIMED_OUT','INTERRUPTED','INTERRUPTED_NEEDS_CONFIRMATION'].includes(status); }
+function searchIsTerminal(status) { return ['SEARCH_FINALIST_FROZEN','SEARCH_TERMINATED_NO_PARENT','SEARCH_TERMINATED_NO_FINALIST','CANCELLED','FAILED','INTERRUPTED','BLOCKED_DATA'].includes(status); }
 async function request(path, options = {}) {
   const response = await fetch(path, options);
   const value = await response.json();
@@ -3227,13 +3635,23 @@ function renderGeneration(value) {
   rejectButton.disabled = !pending;
 }
 function refreshParents() {
-  const selected = parentSelect.value; parentSelect.replaceChildren();
+  const lock = searchContext && searchContext.codex_parent_lock;
+  const selected = lock ? lock.parent_candidate_id : parentSelect.value;
+  if (lock && [...profileSelect.options].some(option => option.value === lock.profile_id)) profileSelect.value = lock.profile_id;
+  parentSelect.replaceChildren();
   const empty = document.createElement('option'); empty.value = ''; empty.textContent = '无父 Candidate'; parentSelect.append(empty);
   if (!generationContext) return;
   generationContext.approved_parents.filter(item => item.profile_id === profileSelect.value).forEach(item => {
     const option = document.createElement('option'); option.value = item.id; option.textContent = `${item.display_name} · ${item.class_name}`; parentSelect.append(option);
   });
+  if (lock && ![...parentSelect.options].some(option => option.value === selected)) {
+    const option = document.createElement('option'); option.value = selected; option.textContent = `Search selected parent · ${selected}`; parentSelect.append(option);
+  }
   if ([...parentSelect.options].some(option => option.value === selected)) parentSelect.value = selected;
+  if (lock) document.getElementById('family').value = lock.strategy_family || '';
+  profileSelect.disabled = Boolean(lock);
+  parentSelect.disabled = Boolean(lock);
+  document.getElementById('family').disabled = Boolean(lock);
 }
 async function loadGenerationContext() {
   generationContext = await request('/api/generation/context'); profileSelect.replaceChildren();
@@ -3263,7 +3681,100 @@ async function loadResearchContext() {
   researchRunButton.disabled = !ready || value.capability.status !== 'READY';
   if (!researchRunId && value.latest_research_run_id) { researchRunId = value.latest_research_run_id; await pollResearch(); }
   else if (!ready && !researchRunId) researchStatus.textContent = JSON.stringify(value, null, 2);
+  updateSearchControls();
 }
+function selectedSearchSeeds() { return [...searchSeeds.selectedOptions]; }
+function validRoundOneSelection() {
+  const selected = selectedSearchSeeds();
+  return selected.length >= 1 && selected.length <= 3
+    && new Set(selected.map(option => option.dataset.profileId)).size === 1
+    && new Set(selected.map(option => option.dataset.family)).size === selected.length;
+}
+function selectedRoundTwoCandidates() {
+  return [...searchChildren.querySelectorAll('input[data-candidate-id][type="checkbox"]:checked')].map(checkbox => {
+    const factor = searchChildren.querySelector(`input[data-factor-for="${checkbox.dataset.candidateId}"]`);
+    return {candidate_id:checkbox.dataset.candidateId,changed_factor:factor ? factor.value.trim() : ''};
+  });
+}
+function validRoundTwoSelection() {
+  const selected = selectedRoundTwoCandidates();
+  const factors = selected.map(item => item.changed_factor);
+  return selected.length >= 1 && selected.length <= 3
+    && factors.every(value => /^[a-z][a-z0-9_.-]{0,62}$/.test(value))
+    && new Set(factors).size === factors.length;
+}
+function searchFinalistId() {
+  const finalist = searchContext && searchContext.state && searchContext.state.search_finalist;
+  return finalist && typeof finalist.candidate_id === 'string' ? finalist.candidate_id : null;
+}
+function updateSearchControls() {
+  const state = searchContext && searchContext.state;
+  const status = state ? state.status : 'BLOCKED_DATA';
+  const capabilityReady = Boolean(searchContext && searchContext.capability && searchContext.capability.status === 'READY');
+  searchSeeds.disabled = status !== 'SEARCH_READY';
+  searchChildren.querySelectorAll('input').forEach(input => {
+    if (input.type === 'checkbox') input.disabled = status !== 'SEARCH_ROUND_READY_FOR_CHILDREN';
+    else if (status !== 'SEARCH_ROUND_READY_FOR_CHILDREN') input.disabled = true;
+  });
+  searchRoundOne.disabled = !capabilityReady || status !== 'SEARCH_READY' || !validRoundOneSelection();
+  searchRoundTwo.disabled = !capabilityReady || status !== 'SEARCH_ROUND_READY_FOR_CHILDREN' || !validRoundTwoSelection();
+  searchCancel.disabled = status !== 'RUNNING' || !state.campaign_id;
+  const finalistId = searchFinalistId();
+  const developmentOption = finalistId ? [...researchCandidate.options].find(option => option.value === finalistId && option.dataset.ready === 'true') : null;
+  searchHandoff.disabled = !developmentOption;
+}
+function renderSearchSeeds(context) {
+  const selected = new Set(selectedSearchSeeds().map(option => option.value));
+  searchSeeds.replaceChildren();
+  if (!context || context.state.status !== 'SEARCH_READY') {
+    const option = document.createElement('option'); option.disabled = true; option.textContent = '当前状态不接受 Round 1 seeds'; searchSeeds.append(option); return;
+  }
+  context.candidates.filter(candidate => candidate.role === 'MECHANISM_SEED' && candidate.status === 'READY').forEach(candidate => {
+    const option = document.createElement('option'); option.value = candidate.candidate_id;
+    option.dataset.profileId = candidate.profile_id; option.dataset.family = candidate.strategy_family || '';
+    option.textContent = `${candidate.display_name} · ${candidate.strategy_family || 'UNKNOWN'} · ${candidate.class_name}`;
+    option.selected = selected.has(option.value); searchSeeds.append(option);
+  });
+}
+function renderSearchChildren(context) {
+  searchChildren.replaceChildren();
+  const state = context && context.state;
+  const selectedParent = state && state.selected_parent;
+  if (!state || state.status !== 'SEARCH_ROUND_READY_FOR_CHILDREN' || !selectedParent) {
+    searchParentLock.textContent = 'selected parent 由 Round 1 receipt 锁定';
+    const note = document.createElement('span'); note.className = 'note';
+    note.textContent = searchIsTerminal(state && state.status) ? 'Search 已终止，不再接受 Round 2' : '等待 Round 1 selected parent';
+    searchChildren.append(note); return;
+  }
+  searchParentLock.textContent = `唯一 selected parent（receipt 锁定）: ${selectedParent.display_name || selectedParent.candidate_id} · ${selectedParent.mechanism || 'UNKNOWN'}`;
+  const children = context.candidates.filter(candidate => candidate.role === 'SINGLE_FACTOR_CHILD' && candidate.status === 'READY');
+  if (!children.length) {
+    const note = document.createElement('span'); note.className = 'note'; note.textContent = '暂无符合 parent/Profile/mechanism 绑定的 APPROVED child；可在下方 Codex 表单生成并人工批准。'; searchChildren.append(note); return;
+  }
+  children.forEach(candidate => {
+    const row = document.createElement('div'); row.className = 'candidate-row';
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.candidateId = candidate.candidate_id;
+    label.append(checkbox, document.createTextNode(` ${candidate.display_name} · ${candidate.class_name}`));
+    const factor = document.createElement('input'); factor.placeholder = 'changed_factor slug'; factor.maxLength = 63; factor.disabled = true; factor.dataset.factorFor = candidate.candidate_id;
+    checkbox.addEventListener('change', () => { factor.disabled = !checkbox.checked; if (!checkbox.checked) factor.value = ''; updateSearchControls(); });
+    factor.addEventListener('input', updateSearchControls); row.append(label, factor); searchChildren.append(row);
+  });
+}
+async function loadSearchContext() {
+  if (searchLoadPromise) return searchLoadPromise;
+  searchLoadPromise = (async () => { try {
+      searchContext = await request('/api/search/context');
+      renderSearchSeeds(searchContext); renderSearchChildren(searchContext); refreshParents();
+      searchStatus.textContent = JSON.stringify(searchContext.state, null, 2); updateSearchControls();
+      if (searchContext.state.status === 'RUNNING' && !searchTimer) searchTimer = setTimeout(pollSearch, 750);
+      if (searchContext.state.status !== 'RUNNING' && searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
+    } catch (error) { searchContext = null;
+      if (searchTimer) clearTimeout(searchTimer); searchTimer = null; searchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); searchRoundOne.disabled = true; searchRoundTwo.disabled = true; searchCancel.disabled = true; searchHandoff.disabled = true;
+    } })();
+  try { return await searchLoadPromise; } finally { searchLoadPromise = null; } }
+async function refreshSearchContext() { if (searchLoadPromise) await searchLoadPromise; return loadSearchContext(); }
+async function pollSearch() { searchTimer = null; await loadSearchContext(); }
 async function pollResearch() {
   if (!researchRunId) return;
   try {
@@ -3303,13 +3814,22 @@ async function generationAction(action) {
   if (!generationId) return;
   try {
     const value = await request(`/api/generations/${generationId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action})});
-    renderGeneration(value); if (action !== 'CANCEL') { await loadGenerationContext(); await loadResearchContext(); }
+    renderGeneration(value); if (action !== 'CANCEL') { await loadGenerationContext(); await loadResearchContext(); await refreshSearchContext(); }
   } catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
 }
 generateButton.addEventListener('click', async () => {
   const payload = {profile_id:profileSelect.value,idea:document.getElementById('idea').value};
   const parent = parentSelect.value, family = document.getElementById('family').value.trim(), failure = document.getElementById('failure').value.trim();
-  if (parent) payload.parent_candidate_id = parent; if (family) payload.strategy_family = family; if (failure) payload.expected_failure_mode = failure;
+  const lock = searchContext && searchContext.codex_parent_lock;
+  if (lock) {
+    payload.profile_id = lock.profile_id;
+    payload.parent_candidate_id = lock.parent_candidate_id;
+    payload.strategy_family = lock.strategy_family;
+  } else {
+    if (parent) payload.parent_candidate_id = parent;
+    if (family) payload.strategy_family = family;
+  }
+  if (failure) payload.expected_failure_mode = failure;
   generateButton.disabled = true;
   try { const value = await request('/api/generations', {method:'POST',headers:postHeaders,body:JSON.stringify(payload)}); generationId = value.id; renderGeneration(value); await pollGeneration(); }
   catch (error) { generationStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); generateButton.disabled = false; }
@@ -3318,6 +3838,40 @@ generationCancel.addEventListener('click', () => generationAction('CANCEL'));
 approveButton.addEventListener('click', () => generationAction('APPROVE'));
 rejectButton.addEventListener('click', () => generationAction('REJECT'));
 profileSelect.addEventListener('change', refreshParents);
+searchSeeds.addEventListener('change', updateSearchControls);
+searchRoundOne.addEventListener('click', async () => {
+  if (!validRoundOneSelection()) return;
+  searchRoundOne.disabled = true;
+  try {
+    await request('/api/search-campaigns', {method:'POST',headers:postHeaders,body:JSON.stringify({candidate_ids:selectedSearchSeeds().map(option => option.value)})});
+    await refreshSearchContext();
+  } catch (error) { searchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await refreshSearchContext(); }
+});
+searchRoundTwo.addEventListener('click', async () => {
+  const campaignId = searchContext && searchContext.state.campaign_id;
+  if (!campaignId || !validRoundTwoSelection()) return;
+  searchRoundTwo.disabled = true;
+  try {
+    await request(`/api/search-campaigns/${encodeURIComponent(campaignId)}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'START_ROUND_2',candidates:selectedRoundTwoCandidates()})});
+    await refreshSearchContext();
+  } catch (error) { searchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await refreshSearchContext(); }
+});
+searchCancel.addEventListener('click', async () => {
+  const campaignId = searchContext && searchContext.state.campaign_id;
+  if (!campaignId) return; searchCancel.disabled = true;
+  try {
+    await request(`/api/search-campaigns/${encodeURIComponent(campaignId)}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})});
+    await refreshSearchContext();
+  } catch (error) { searchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await refreshSearchContext(); }
+});
+searchHandoff.addEventListener('click', () => {
+  const finalistId = searchFinalistId();
+  const option = finalistId ? [...researchCandidate.options].find(item => item.value === finalistId && item.dataset.ready === 'true') : null;
+  if (!option) return;
+  researchCandidate.value = option.value;
+  researchCandidate.focus();
+  document.getElementById('development-section').scrollIntoView({behavior:'smooth',block:'start'});
+});
 researchRunButton.addEventListener('click', async () => {
   const selected = researchCandidate.selectedOptions[0];
   if (!selected || selected.dataset.ready !== 'true') return;
@@ -3351,7 +3905,7 @@ cancelButton.addEventListener('click', async () => {
   try { showJob(await request(`/api/campaigns/${campaignId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})})); }
   catch (error) { showJob({error:error.message}); }
 });
-Promise.all([loadPreflight(), loadGenerationContext(), loadResearchContext()]).catch(error => { generationStatus.textContent = `ERROR: ${error.message}`; });
+Promise.all([loadPreflight(), loadGenerationContext(), loadResearchContext(), loadSearchContext()]).catch(error => { generationStatus.textContent = `ERROR: ${error.message}`; });
 """
 
 
@@ -3468,10 +4022,14 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             "/api/generations",
             "/api/research/context",
             "/api/research-runs",
+            "/api/search/context",
+            "/api/search-campaigns",
         ) or path.startswith("/api/campaigns/") or path.startswith(
             "/api/generations/"
         ) or path.startswith(
             "/api/research-runs/"
+        ) or path.startswith(
+            "/api/search-campaigns/"
         )
         if not is_control:
             super()._dispatch(head_only=head_only)
@@ -3560,6 +4118,22 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     head_only=head_only,
                 )
                 return
+            if path == "/api/search/context":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.search_context()
+                self._send(
+                    200,
+                    json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
+                return
             if path == "/api/research-runs":
                 if request.query:
                     raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
@@ -3610,6 +4184,28 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     "application/json; charset=utf-8",
                     head_only=head_only,
                 )
+                return
+            search_match = re.fullmatch(r"/api/search-campaigns/([^/]+)", path)
+            if search_match is not None:
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                payload = self.controller.get_search_campaign(search_match.group(1))
+                self._send(
+                    200,
+                    json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    head_only=head_only,
+                )
+                return
+            if path == "/api/search-campaigns":
+                if request.query:
+                    raise ControlRequestError(400, "bad_request", "API 不接受查询参数")
+                self._send_control_method_not_allowed(path, head_only=head_only)
                 return
             if path == "/api/campaigns":
                 if request.query:
@@ -3691,6 +4287,7 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
         create_route = request.path == "/api/campaigns"
         create_generation_route = request.path == "/api/generations"
         create_research_route = request.path == "/api/research-runs"
+        create_search_route = request.path == "/api/search-campaigns"
         action_match = re.fullmatch(r"/api/campaigns/([^/]+)/actions", request.path)
         generation_action_match = re.fullmatch(
             r"/api/generations/([^/]+)/actions", request.path
@@ -3698,13 +4295,18 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
         research_action_match = re.fullmatch(
             r"/api/research-runs/([^/]+)/actions", request.path
         )
+        search_action_match = re.fullmatch(
+            r"/api/search-campaigns/([^/]+)/actions", request.path
+        )
         if (
             not create_route
             and not create_generation_route
             and not create_research_route
+            and not create_search_route
             and action_match is None
             and generation_action_match is None
             and research_action_match is None
+            and search_action_match is None
         ):
             self._method_not_allowed()
             return
@@ -3755,6 +4357,19 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     )
                 payload = self.controller.create_research_run(body["candidate_id"])
                 response_status = 202
+            elif create_search_route:
+                candidate_ids = body.get("candidate_ids")
+                if (
+                    set(body) != {"candidate_ids"}
+                    or not isinstance(candidate_ids, list)
+                ):
+                    raise ControlRequestError(
+                        400,
+                        "invalid_search_request",
+                        "Round 1 只接受一至三个唯一 candidate_id",
+                    )
+                payload = self.controller.create_search_campaign(candidate_ids)
+                response_status = 202
             elif action_match is not None:
                 if body != {"action": "CANCEL"}:
                     raise ControlRequestError(
@@ -3785,7 +4400,7 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                         "APPROVED" if selected_action == "APPROVE" else "REJECTED",
                     )
                     response_status = 200
-            else:
+            elif research_action_match is not None:
                 if body != {"action": "CANCEL"}:
                     raise ControlRequestError(
                         400, "invalid_action", "ResearchRun action 只允许 CANCEL"
@@ -3794,6 +4409,31 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     research_action_match.group(1)
                 )
                 response_status = 202
+            else:
+                campaign_id = search_action_match.group(1)
+                if body == {"action": "CANCEL"}:
+                    payload = self.controller.cancel_search_campaign(campaign_id)
+                    response_status = 202
+                elif set(body) == {"action", "candidates"} and body.get(
+                    "action"
+                ) == "START_ROUND_2":
+                    candidates = body.get("candidates")
+                    if not isinstance(candidates, list):
+                        raise ControlRequestError(
+                            400,
+                            "invalid_search_request",
+                            "Round 2 只接受一至三个 candidate_id 与 changed_factor",
+                        )
+                    payload = self.controller.start_search_round_two(
+                        campaign_id, candidates
+                    )
+                    response_status = 202
+                else:
+                    raise ControlRequestError(
+                        400,
+                        "invalid_action",
+                        "Search action 只允许 CANCEL 或 START_ROUND_2",
+                    )
             self._send(
                 response_status,
                 json.dumps(
@@ -3816,7 +4456,12 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
     ) -> None:
         allow = (
             "POST"
-            if path in ("/api/campaigns", "/api/generations", "/api/research-runs")
+            if path in (
+                "/api/campaigns",
+                "/api/generations",
+                "/api/research-runs",
+                "/api/search-campaigns",
+            )
             or path.endswith("/actions")
             else "GET, HEAD"
         )
@@ -3845,6 +4490,7 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                 "/api/control/preflight",
                 "/api/generation/context",
                 "/api/research/context",
+                "/api/search/context",
             )
             or path == "/api/campaigns"
             or path.startswith("/api/campaigns/")
@@ -3852,6 +4498,8 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
             or path.startswith("/api/generations/")
             or path == "/api/research-runs"
             or path.startswith("/api/research-runs/")
+            or path == "/api/search-campaigns"
+            or path.startswith("/api/search-campaigns/")
         ):
             if not self._has_expected_host():
                 self._control_error(
@@ -3893,6 +4541,7 @@ def create_research_console_server(
     port: int = DEFAULT_PORT,
     artifact_root: Optional[PathLike] = None,
     *,
+    search_root: Optional[PathLike] = None,
     frequi_base_url: Optional[str] = None,
     frequi_results_root: Optional[PathLike] = None,
     codex_binary: Optional[PathLike] = None,
@@ -3920,6 +4569,7 @@ def create_research_console_server(
             handler.database_path,
             runtime_root,
             pilot_root,
+            search_root=search_root,
             codex_binary=codex_binary,
             codex_model=codex_model,
             check_data_python=check_data_python,
