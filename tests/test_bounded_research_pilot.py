@@ -262,14 +262,6 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
     _write_json(
         root / "acquisition" / "isolated_tiers_snapshot.json", {"frozen": True}
     )
-    retrieval = {
-        "series": {
-            "futures_5m": {"rows": 8640},
-            "mark_1h": {"rows": 720},
-            "funding_history": {"rows": 90},
-        }
-    }
-    _write_json(root / "acquisition" / "retrieval.json", retrieval)
     config = (root / "acquisition" / "config.json").read_bytes()
     market = (root / "acquisition" / "market_snapshot.json").read_bytes()
     tiers = (root / "acquisition" / "isolated_tiers_snapshot.json").read_bytes()
@@ -279,7 +271,6 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
             "host": "www.okx.com",
             "authentication": "none",
             "pair": "TEST/USDT:USDT",
-            "retrieval_receipt": "retrieval.json",
         },
         "freqtrade": {
             "version": "2026.7",
@@ -1042,7 +1033,7 @@ def test_t0_search_batch_is_reserved_before_candidate_processing(
 
     records = _search_records(root)
     assert [item["record_type"] for item in records] == ["ROUND_STARTED"]
-    assert [item["attempt_number"] for item in records[0]["attempts"]] == [1, 2, 3]
+    assert records[0]["attempt_numbers"] == [1, 2, 3]
     with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
         pilot.screen_search(root, plan, Path(sys.executable), source)
 
@@ -1223,7 +1214,7 @@ def test_t0_search_config_toctou_fails_before_candidate_screen(
     ) -> dict[str, object]:
         config = campaign_root / pilot.ACQUISITION / "config.json"
         config.write_bytes(config.read_bytes() + b"changed")
-        isolation_root = campaign_root / str(kwargs["directory_name"])
+        isolation_root = campaign_root / f"search-isolation-round-{plan['round']}"
         isolation_root.mkdir()
         return {
             "receipt": {},
@@ -1263,7 +1254,7 @@ def test_t0_search_runtime_inputs_are_cleaned_after_screen_failure(
         plan: dict[str, object],
         **kwargs: object,
     ) -> dict[str, object]:
-        isolation_root = campaign_root / str(kwargs["directory_name"])
+        isolation_root = campaign_root / f"search-isolation-round-{plan['round']}"
         isolation_root.mkdir()
         return {
             "receipt": {},
@@ -1337,7 +1328,7 @@ def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects
             market_snapshot=first_input / "market_snapshot.json",
             leverage_tiers=first_input / "isolated_tiers_snapshot.json",
         )
-        (campaign_root / kwargs["directory_name"]).mkdir()
+        (campaign_root / f"search-results-round-{plan['round']}").mkdir()
         return [
             {
                 "candidate_id": candidate["candidate_id"],
@@ -1404,7 +1395,7 @@ def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects
     records = _search_records(root)
     assert len([item for item in records if item["record_type"] == "TRIAL"]) == 6
     assert sum(
-        len(item["attempts"])
+        len(item["attempt_numbers"])
         for item in records
         if item["record_type"] == "ROUND_STARTED"
     ) == 6
