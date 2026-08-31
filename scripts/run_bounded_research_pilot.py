@@ -64,6 +64,13 @@ RANKING = (
     "profit_factor_desc",
     "candidate_id_asc",
 )
+TECHNICAL_ECONOMIC_GATE = "NONE_TECHNICAL_PILOT"
+POSITIVE_ECONOMIC_GATE = "POSITIVE_DEVELOPMENT_V1"
+POSITIVE_GATE_THRESHOLDS = (
+    "minimum_profit_pct",
+    "minimum_profit_factor",
+    "maximum_drawdown_pct",
+)
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 LOOPBACK_URL = re.compile(r"^http://127\.0\.0\.1:([1-9][0-9]{0,4})$")
@@ -399,7 +406,7 @@ def load_plan(root: Path) -> dict[str, Any]:
     if multiplier <= 1:
         raise PilotError("stress multiplier must exceed 1")
     selection = plan["selection"]
-    if not isinstance(selection, dict) or set(selection) != {
+    selection_keys = {
         "minimum_trades",
         "ranking",
         "economic_gate",
@@ -408,14 +415,23 @@ def load_plan(root: Path) -> dict[str, Any]:
         "missing_metric_policy",
         "visibility",
         "candidate_execution_failure",
-    }:
+    }
+    if not isinstance(selection, dict):
+        raise PilotError("selection rule shape is invalid")
+    gate = selection.get("economic_gate")
+    if gate == TECHNICAL_ECONOMIC_GATE:
+        expected_selection_keys = selection_keys
+    elif gate == POSITIVE_ECONOMIC_GATE:
+        expected_selection_keys = selection_keys | set(POSITIVE_GATE_THRESHOLDS)
+    else:
+        raise PilotError("selection rule shape is invalid")
+    if set(selection) != expected_selection_keys:
         raise PilotError("selection rule shape is invalid")
     if (
         isinstance(selection["minimum_trades"], bool)
         or not isinstance(selection["minimum_trades"], int)
         or selection["minimum_trades"] < 1
         or tuple(selection["ranking"]) != RANKING
-        or selection["economic_gate"] != "NONE_TECHNICAL_PILOT"
         or selection["max_selected"] != 1
         or selection["no_eligible"] != "STOP"
         or selection["missing_metric_policy"] != "STOP"
@@ -423,6 +439,16 @@ def load_plan(root: Path) -> dict[str, Any]:
         or selection["candidate_execution_failure"] != "STOP"
     ):
         raise PilotError("selection rule is not the fixed technical Pilot rule")
+    if gate == POSITIVE_ECONOMIC_GATE:
+        if finite(selection["minimum_profit_pct"], "minimum_profit_pct") <= 0:
+            raise PilotError("minimum_profit_pct must exceed 0")
+        if finite(selection["minimum_profit_factor"], "minimum_profit_factor") <= 1:
+            raise PilotError("minimum_profit_factor must exceed 1")
+        maximum_drawdown = finite(
+            selection["maximum_drawdown_pct"], "maximum_drawdown_pct", 0
+        )
+        if maximum_drawdown > 100:
+            raise PilotError("maximum_drawdown_pct must not exceed 100")
     if plan["holdout_policy"] != {
         "max_open_count": 1,
         "retry_after_open": False,
@@ -863,8 +889,39 @@ def select(
     results: Sequence[Mapping[str, Any]],
     isolation_receipt: Optional[Mapping[str, Any]] = None,
 ) -> Optional[str]:
-    minimum = plan["selection"]["minimum_trades"]
-    eligible = [item for item in results if item["total_trades"] >= minimum]
+    selection = plan["selection"]
+    minimum = selection["minimum_trades"]
+    gate = selection["economic_gate"]
+    if gate == TECHNICAL_ECONOMIC_GATE:
+        eligible = [item for item in results if item["total_trades"] >= minimum]
+    elif gate == POSITIVE_ECONOMIC_GATE:
+        eligible = []
+        for item in results:
+            total_trades = item["total_trades"]
+            if (
+                isinstance(total_trades, bool)
+                or not isinstance(total_trades, int)
+                or total_trades < 0
+            ):
+                raise PilotError("Development trade count is invalid")
+            profit_pct = finite(item["profit_pct"], "Development profit_pct")
+            profit_factor = finite(
+                item["profit_factor"], "Development profit_factor", 0
+            )
+            max_drawdown_pct = finite(
+                item["max_drawdown_pct"], "Development max_drawdown_pct", 0
+            )
+            if max_drawdown_pct > 100:
+                raise PilotError("Development max_drawdown_pct must not exceed 100")
+            if (
+                total_trades >= minimum
+                and profit_pct >= selection["minimum_profit_pct"]
+                and profit_factor >= selection["minimum_profit_factor"]
+                and max_drawdown_pct <= selection["maximum_drawdown_pct"]
+            ):
+                eligible.append(item)
+    else:
+        raise PilotError("selection economic gate is not supported")
     ranked = sorted(
         eligible,
         key=lambda item: (
@@ -875,24 +932,24 @@ def select(
         ),
     )
     chosen = None if not ranked else ranked[0]["candidate_id"]
-    write_once(
-        root / SELECTION,
-        {
-            "schema": SCHEMA,
-            "pilot_id": plan["pilot_id"],
-            "plan_sha256": plan["_sha256"],
-            "development_timerange": plan["development_timerange"],
-            "minimum_trades": minimum,
-            "ranking": list(RANKING),
-            "economic_gate": "NONE_TECHNICAL_PILOT",
-            "candidate_results": list(results),
-            "eligible_candidate_ids": [item["candidate_id"] for item in ranked],
-            "selected_candidate_id": chosen,
-            "holdout_read": False,
-            "development_isolation": isolation_receipt,
-            "created_at_utc": now(),
-        },
-    )
+    receipt = {
+        "schema": SCHEMA,
+        "pilot_id": plan["pilot_id"],
+        "plan_sha256": plan["_sha256"],
+        "development_timerange": plan["development_timerange"],
+        "minimum_trades": minimum,
+        "ranking": list(RANKING),
+        "economic_gate": gate,
+        "candidate_results": list(results),
+        "eligible_candidate_ids": [item["candidate_id"] for item in ranked],
+        "selected_candidate_id": chosen,
+        "holdout_read": False,
+        "development_isolation": isolation_receipt,
+        "created_at_utc": now(),
+    }
+    if gate == POSITIVE_ECONOMIC_GATE:
+        receipt.update({key: selection[key] for key in POSITIVE_GATE_THRESHOLDS})
+    write_once(root / SELECTION, receipt)
     return chosen
 
 
