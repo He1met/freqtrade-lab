@@ -45,6 +45,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--frequi-results-root", type=Path)
     parser.add_argument("--codex-binary", type=Path)
     parser.add_argument(
+        "--codex-model",
+        help="trusted startup-frozen Codex model; never accepted from the browser",
+    )
+    parser.add_argument(
         "--check-data-python",
         type=Path,
         default=Path(sys.executable),
@@ -71,6 +75,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         frequi_base_url=args.frequi_base_url,
         frequi_results_root=args.frequi_results_root,
         codex_binary=args.codex_binary,
+        codex_model=args.codex_model,
         check_data_python=args.check_data_python,
         webserver_base_url=args.webserver_base_url,
         task_timeout_seconds=args.task_timeout_seconds,

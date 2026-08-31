@@ -1,6 +1,7 @@
 """SQLite connection and schema initialization helpers."""
 
 import sqlite3
+import stat
 from contextlib import closing
 from pathlib import Path
 from typing import Union
@@ -18,6 +19,7 @@ def get_connection(
     db_path: PathLike = DEFAULT_DB_PATH,
     *,
     read_only: bool = False,
+    must_exist: bool = False,
 ) -> sqlite3.Connection:
     """Return a configured SQLite connection for ``db_path``.
 
@@ -25,9 +27,14 @@ def get_connection(
     creating a missing database or changing its journal mode.
     """
     path = Path(db_path).expanduser()
-    if read_only:
+    if read_only or must_exist:
+        if path.is_symlink():
+            raise FileNotFoundError("database path must not be a symlink")
         path = path.resolve(strict=True)
-        connection = sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise FileNotFoundError("database path must be a regular file")
+        mode = "ro" if read_only else "rw"
+        connection = sqlite3.connect(f"{path.as_uri()}?mode={mode}", uri=True)
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(str(path))
