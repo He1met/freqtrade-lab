@@ -41,7 +41,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = PROJECT_ROOT / "tests" / "fixtures" / "freqtrade_2026_7"
 MANIFEST_NAME = "research-bundle-v1.json"
 CLI = PROJECT_ROOT / "scripts" / "serve_strategy_library.py"
-NOW = "2026-09-01T00:00:00.000Z"
+# Must remain later than the dynamic import timestamp used by this fixture.
+NOW = "2099-01-01T00:00:00.000Z"
 BUSINESS_TABLES = (
     "research_profiles",
     "generation_runs",

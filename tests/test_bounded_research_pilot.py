@@ -258,9 +258,22 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
     market_file = data_root / "market.feather"
     market_file.write_bytes(market_data)
     _write_json(root / "acquisition" / "config.json", {"fee": 0.001})
-    _write_json(root / "acquisition" / "market_snapshot.json", {"frozen": True})
     _write_json(
-        root / "acquisition" / "isolated_tiers_snapshot.json", {"frozen": True}
+        root / "acquisition" / "market_snapshot.json",
+        {
+            "id": "TEST-USDT-SWAP",
+            "symbol": "TEST/USDT:USDT",
+            "active": True,
+            "contract": True,
+            "swap": True,
+            "linear": True,
+            "inverse": False,
+            "type": "swap",
+        },
+    )
+    _write_json(
+        root / "acquisition" / "isolated_tiers_snapshot.json",
+        [{"symbol": "TEST/USDT:USDT"}],
     )
     config = (root / "acquisition" / "config.json").read_bytes()
     market = (root / "acquisition" / "market_snapshot.json").read_bytes()
@@ -271,6 +284,7 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
             "host": "www.okx.com",
             "authentication": "none",
             "pair": "TEST/USDT:USDT",
+            "instrument_id": "TEST-USDT-SWAP",
         },
         "freqtrade": {
             "version": "2026.7",
@@ -1236,6 +1250,110 @@ def test_t0_search_runner_inputs_are_sha_bound_before_screen(
             Path(sys.executable),
             source,
         )
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    (
+        "missing-instrument",
+        "empty-instrument",
+        "missing-pair",
+        "empty-pair",
+        "market-id",
+        "market-symbol",
+    ),
+)
+def test_t0_search_market_identity_fails_before_attempt_reservation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+) -> None:
+    root, source = _search_root(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    market_path = root / pilot.ACQUISITION / "market_snapshot.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    market = json.loads(market_path.read_bytes())
+    if mismatch == "missing-instrument":
+        provenance["source"].pop("instrument_id")
+    elif mismatch == "empty-instrument":
+        provenance["source"]["instrument_id"] = ""
+    elif mismatch == "missing-pair":
+        provenance["source"].pop("pair")
+    elif mismatch == "empty-pair":
+        provenance["source"]["pair"] = ""
+    else:
+        market["id" if mismatch == "market-id" else "symbol"] = "MISMATCH"
+        _write_json(market_path, market)
+        market_bytes = market_path.read_bytes()
+        provenance["local_only_files"]["market_snapshot.json"] = {
+            "bytes": len(market_bytes),
+            "sha256": pilot.digest(market_bytes),
+        }
+    _write_json(provenance_path, provenance)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("invalid market identity must fail before screening")
+
+    monkeypatch.setattr(pilot, "materialize_screening_isolation", forbidden)
+    with pytest.raises(pilot.PilotError, match="market identity"):
+        pilot.screen_search(
+            root,
+            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+            Path(sys.executable),
+            source,
+        )
+    assert not (root / pilot.SEARCH_TRIALS).exists()
+    assert not (root / "search-isolation-round-1").exists()
+
+
+def test_t0_search_isolation_preserves_sha_bound_instrument_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, _ = _search_root(tmp_path)
+    _write_search_campaign(
+        root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
+    )
+
+    def create_view(
+        source_root: Path,
+        destination_root: Path,
+        timerange: str,
+        expected: dict[str, str],
+    ) -> dict[str, object]:
+        destination = destination_root / "market.feather"
+        shutil.copyfile(source_root / "market.feather", destination)
+        return {
+            "exclusive_stop_utc": "2026-01-31T00:00:00Z",
+            "files": {
+                "market.feather": {
+                    "rows": 1,
+                    "sha256": expected["market.feather"],
+                }
+            },
+        }
+
+    monkeypatch.setattr(pilot, "_create_scenario_data_view", create_view)
+    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 1)
+    isolation = pilot.materialize_screening_isolation(
+        root, pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
+    )
+    converted = json.loads(Path(isolation["provenance"]).read_bytes())
+    market = json.loads((root / pilot.ACQUISITION / "market_snapshot.json").read_bytes())
+    tiers = json.loads(
+        (root / pilot.ACQUISITION / "isolated_tiers_snapshot.json").read_bytes()
+    )
+
+    assert converted["schema"] == offline_runner.RETAINED_DATA_SCHEMA
+    assert converted["source"]["instrument_id"] == "TEST-USDT-SWAP"
+    assert converted["source"]["pair"] == "TEST/USDT:USDT"
+    assert converted["contract"]["development_timerange"] == "20260101-20260131"
+    assert "search_timerange" not in converted["contract"]
+    offline_runner._verify_market_inputs(
+        market, tiers, pair="TEST/USDT:USDT", provenance=converted
+    )
 
 
 def test_t0_search_batch_is_reserved_before_candidate_processing(
