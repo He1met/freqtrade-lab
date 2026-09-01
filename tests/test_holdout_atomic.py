@@ -27,6 +27,7 @@ from lab import (
 )
 from lab.database import get_connection
 from lab.research_candidate import SCENARIO_TIMEOUT_SECONDS
+from scripts import run_freqtrade_backtest as runner_module
 from tests.test_development_console_http import _post, _request
 from tests.test_development_run import NOW
 from tests.test_holdout_run import (
@@ -317,7 +318,7 @@ def _upgrade_pilot_contract(
     plan_path.write_bytes(_canonical(plan))
 
     acquisition = pilot / "acquisition"
-    data = acquisition / "data" / "okx" / "futures" / "ADA-5m.feather"
+    data = acquisition / "data" / "okx" / "futures" / "XRP-5m.feather"
     market = acquisition / "market_snapshot.json"
     tiers = acquisition / "isolated_tiers_snapshot.json"
     config = acquisition / "config.json"
@@ -327,8 +328,8 @@ def _upgrade_pilot_contract(
         "source": {
             "host": "www.okx.com",
             "authentication": "none",
-            "pair": "ADA/USDT:USDT",
-            "instrument_id": "ADA-USDT-SWAP",
+            "pair": "XRP/USDT:USDT",
+            "instrument_id": "XRP-USDT-SWAP",
         },
         "contract": {
             "config": "config.json",
@@ -342,7 +343,7 @@ def _upgrade_pilot_contract(
             "isolated_tiers_snapshot.json": _file_receipt(
                 tiers, "leverage_tiers"
             ),
-            "data/okx/futures/ADA-5m.feather": _file_receipt(data, "ohlcv"),
+            "data/okx/futures/XRP-5m.feather": _file_receipt(data, "ohlcv"),
         },
     }
     provenance_bytes = _canonical(provenance)
@@ -787,6 +788,34 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
     ]
     assert rows[0]["result_archive_path"] == str(development.archive_path)
     assert [row["scenario_passed"] for row in rows] == [1, None, None]
+    holdout_provenance = json.loads(
+        (run_dir / "holdout-input" / "retained-data-provenance.json").read_text()
+    )
+    holdout_market = json.loads(
+        (run_dir / "holdout-input" / "market_snapshot.json").read_text()
+    )
+    assert holdout_provenance["source"] == {
+        "host": "www.okx.com",
+        "authentication": "none",
+        "pair": "XRP/USDT:USDT",
+        "instrument_id": "XRP-USDT-SWAP",
+    }
+    assert holdout_market["id"] == holdout_provenance["source"]["instrument_id"]
+    assert holdout_market["symbol"] == holdout_provenance["source"]["pair"]
+    verified_market, verified_tiers = runner_module._verify_market_inputs(
+        holdout_market,
+        json.loads(
+            (
+                run_dir
+                / "holdout-input"
+                / "isolated_tiers_snapshot.json"
+            ).read_text()
+        ),
+        pair="XRP/USDT:USDT",
+        provenance=holdout_provenance,
+    )
+    assert verified_market["id"] == "XRP-USDT-SWAP"
+    assert verified_tiers[0]["symbol"] == "XRP/USDT:USDT"
     with get_connection(database, read_only=True) as connection:
         run = connection.execute(
             "SELECT status,stage,verdict,checks_json FROM research_runs WHERE id=?",

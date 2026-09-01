@@ -103,6 +103,7 @@ class FrozenDevelopmentCapability:
     runner_sha256: Optional[str] = None
     development_timerange: Optional[str] = None
     pair: Optional[str] = None
+    instrument_id: Optional[str] = None
     data_receipts: Tuple[Tuple[str, int, str], ...] = ()
     market_receipt: Optional[Tuple[int, str]] = None
     tiers_receipt: Optional[Tuple[int, str]] = None
@@ -276,6 +277,34 @@ def _check_receipt(path: Path, record: Tuple[int, str], label: str) -> bytes:
     return data
 
 
+def _verified_market_identity(
+    source: Any,
+    market_bytes: bytes,
+    expected_pair: Any,
+) -> Tuple[str, str]:
+    """Bind the SHA-verified source identity to its market snapshot."""
+    if not isinstance(source, dict):
+        raise DevelopmentRunError("BLOCKED_DATA", "source market identity is invalid")
+    pair = source.get("pair")
+    instrument_id = source.get("instrument_id")
+    market = _json_bytes(market_bytes, "market snapshot")
+    if (
+        source.get("host") != "www.okx.com"
+        or source.get("authentication") != "none"
+        or not isinstance(pair, str)
+        or not pair
+        or pair != expected_pair
+        or not isinstance(instrument_id, str)
+        or not instrument_id
+        or market.get("symbol") != pair
+        or market.get("id") != instrument_id
+    ):
+        raise DevelopmentRunError(
+            "BLOCKED_DATA", "source market identity disagrees with its snapshot"
+        )
+    return pair, instrument_id
+
+
 def freeze_development_capability(
     pilot_root: Optional[PathLike],
     freqtrade_python: Optional[PathLike],
@@ -353,11 +382,13 @@ def freeze_development_capability(
         )
         acquisition_contract = acquisition_provenance_value.get("contract")
         acquisition_files = acquisition_provenance_value.get("files")
+        acquisition_source = acquisition_provenance_value.get("source")
         if (
             not isinstance(acquisition_contract, dict)
             or acquisition_contract.get("config") != "config.json"
             or not isinstance(acquisition_files, dict)
             or "config.json" not in acquisition_files
+            or not isinstance(acquisition_source, dict)
         ):
             raise DevelopmentRunError(
                 "BLOCKED_DATA", "Pilot config provenance receipt is missing"
@@ -393,6 +424,7 @@ def freeze_development_capability(
 
         data_records: list[Tuple[str, int, str]] = []
         market_record: Optional[Tuple[int, str]] = None
+        market_bytes: Optional[bytes] = None
         tiers_record: Optional[Tuple[int, str]] = None
         for name, raw_record in local.items():
             if not isinstance(name, str):
@@ -402,7 +434,9 @@ def freeze_development_capability(
             safe_name = _safe_relative(name, "Development provenance input")
             record = _receipt(raw_record, "Development input")
             if name == contract.get("market_snapshot"):
-                _check_receipt(acquisition / safe_name, record, "market snapshot")
+                market_bytes = _check_receipt(
+                    acquisition / safe_name, record, "market snapshot"
+                )
                 market_record = record
             elif name == contract.get("leverage_tiers"):
                 _check_receipt(acquisition / safe_name, record, "leverage tiers")
@@ -418,8 +452,25 @@ def freeze_development_capability(
                 data_records.append((relative, record[0], record[1]))
             else:
                 raise DevelopmentRunError("BLOCKED_DATA", "Development provenance has extra input")
-        if not data_records or market_record is None or tiers_record is None:
+        if (
+            not data_records
+            or market_record is None
+            or market_bytes is None
+            or tiers_record is None
+        ):
             raise DevelopmentRunError("BLOCKED_DATA", "Development input set is incomplete")
+        pair, instrument_id = _verified_market_identity(
+            acquisition_source,
+            market_bytes,
+            source_value.get("pair"),
+        )
+        if (
+            source_value.get("pair") != pair
+            or source_value.get("instrument_id") != instrument_id
+        ):
+            raise DevelopmentRunError(
+                "BLOCKED_DATA", "Development source market identity mismatch"
+            )
 
         runner_data = _read_bytes(DEFAULT_RUNNER, "backtest runner", 2 * 1024 * 1024)
         pilot_info = os.stat(pilot)
@@ -439,7 +490,8 @@ def freeze_development_capability(
             config_sha256=_sha256(config_data),
             runner_sha256=_sha256(runner_data),
             development_timerange=str(plan["development_timerange"]),
-            pair=str(source_value["pair"]),
+            pair=pair,
+            instrument_id=instrument_id,
             data_receipts=tuple(sorted(data_records)),
             market_receipt=market_record,
             tiers_receipt=tiers_record,
@@ -473,6 +525,8 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.data_receipts,
         capability.market_receipt,
         capability.tiers_receipt,
+        capability.pair,
+        capability.instrument_id,
     )
     current = (
         refreshed.pilot_identity,
@@ -486,6 +540,8 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.data_receipts,
         refreshed.market_receipt,
         refreshed.tiers_receipt,
+        refreshed.pair,
+        refreshed.instrument_id,
     )
     if refreshed.status != "READY" or current != frozen:
         raise DevelopmentRunError("BLOCKED_DATA", "startup-frozen Development inputs changed")
@@ -534,6 +590,13 @@ def _bound_candidate(connection: sqlite3.Connection, candidate_id: str) -> sqlit
 
 
 def _profile_gate(row: sqlite3.Row, capability: FrozenDevelopmentCapability) -> None:
+    if (
+        not isinstance(capability.pair, str)
+        or not capability.pair
+    ):
+        raise DevelopmentRunError(
+            "BLOCKED_DATA", "Development market pair is unavailable"
+        )
     try:
         pairs = json.loads(row["pairs_json"])
     except (TypeError, json.JSONDecodeError) as exc:
@@ -543,7 +606,7 @@ def _profile_gate(row: sqlite3.Row, capability: FrozenDevelopmentCapability) -> 
         and row["exchange"] == "okx"
         and row["trading_mode"] == "futures"
         and row["margin_mode"] == "isolated"
-        and pairs == [capability.pair or "ADA/USDT:USDT"]
+        and pairs == [capability.pair]
         and row["timeframe"] == "5m"
         and row["profile_timeframe"] == "5m"
         and row["detail_timeframe"] is None
@@ -717,7 +780,7 @@ def _materialize_inputs(
             "host": "www.okx.com",
             "authentication": "none",
             "pair": capability.pair,
-            "instrument_id": "ADA-USDT-SWAP",
+            "instrument_id": capability.instrument_id,
         },
         "freqtrade": {
             "version": SUPPORTED_FREQTRADE_VERSION,
@@ -1899,6 +1962,8 @@ def research_context(
             try:
                 row = _bound_candidate(connection, candidate_id)
                 display_name = row["display_name"]
+                if not isinstance(capability.pair, str) or not capability.pair:
+                    _require_ready(capability)
                 _profile_gate(row, capability)
                 _require_ready(capability)
                 _prior_state(connection, candidate_id, _snapshot(capability, row))
