@@ -62,12 +62,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--freqtrade-python",
         type=Path,
-        help="startup-frozen Freqtrade 2026.7 Python for Search and Development",
+        help=(
+            "startup-frozen Freqtrade 2026.7 Python for Search, "
+            "Development, and Holdout"
+        ),
     )
     parser.add_argument(
         "--freqtrade-source",
         type=Path,
-        help="startup-frozen clean Freqtrade 2026.7 source for Search and Development",
+        help=(
+            "startup-frozen clean Freqtrade 2026.7 source for Search, "
+            "Development, and Holdout"
+        ),
     )
     parser.add_argument(
         "--webserver-base-url",

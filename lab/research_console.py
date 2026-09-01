@@ -1,8 +1,8 @@
 """Single-process local Research Console for fixed, bounded actions.
 
 The console deliberately exposes no generic command runner.  It can only run
-the existing ``check-data`` command or one bounded Codex generation with all
-runtime inputs frozen at startup.
+the existing fixed actions, including one one-shot Holdout continuation whose
+runtime inputs are frozen at startup.
 """
 
 from __future__ import annotations
@@ -66,9 +66,18 @@ from lab.development_run import (
     fail_development_run,
     finalize_development_gate,
     freeze_development_capability,
-    load_public_research_run,
     prepare_development_run,
     research_context,
+)
+from lab.holdout_run import (
+    HoldoutRunError,
+    copy_frequi_results,
+    fail_holdout_continuation,
+    finalize_holdout_continuation,
+    freeze_holdout_capability,
+    holdout_worker_argv,
+    load_public_research_run,
+    prepare_holdout_continuation,
 )
 from lab.search_campaign import (
     FrozenSearchCapability,
@@ -205,6 +214,7 @@ class _ActiveJob:
     receipt_lock: threading.Lock = field(default_factory=threading.Lock)
     prepared_generation: Optional[PreparedGeneration] = None
     prepared_search_round: Optional[PreparedSearchRound] = None
+    status_filename: str = "status.json"
 
 
 def _utc_now() -> str:
@@ -636,6 +646,8 @@ class ResearchConsoleController:
         freqtrade_python: Optional[PathLike] = None,
         freqtrade_source: Optional[PathLike] = None,
         webserver_base_url: str = "http://127.0.0.1:8080",
+        artifact_root: Optional[PathLike] = None,
+        frequi_config: Optional[FreqUIConfig] = None,
         task_timeout_seconds: float = 300.0,
     ) -> None:
         if (
@@ -725,10 +737,19 @@ class ResearchConsoleController:
             self.webserver_probe_config = FreqUIConfig(
                 normalized_webserver, None, None
             )
+            self._artifact_root = (
+                None if artifact_root is None else Path(artifact_root)
+            )
+            self._frequi_config = frequi_config or FreqUIConfig(None, None, None)
             self.campaigns_root = campaigns
             self.check_data_argv = build_check_data_argv(pilot, resolved_python)
             self._frozen_codex_capability = self._codex_preflight()
             self._development_capability = freeze_development_capability(
+                pilot,
+                freqtrade_python,
+                freqtrade_source,
+            )
+            self._holdout_capability = freeze_holdout_capability(
                 pilot,
                 freqtrade_python,
                 freqtrade_source,
@@ -1029,7 +1050,7 @@ class ResearchConsoleController:
             payload = load_public_research_run(
                 self.config.database_path, campaign_id
             )
-        except DevelopmentRunError as exc:
+        except (DevelopmentRunError, HoldoutRunError) as exc:
             if exc.code == "run_not_found":
                 return None
             self._state_unavailable.add(campaign_id)
@@ -1098,6 +1119,160 @@ class ResearchConsoleController:
         )
         return "FAILED"
 
+    def _reconcile_holdout_at(
+        self,
+        campaign_fd: int,
+        campaign_id: str,
+        current: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Reconcile an authorized Holdout continuation without rerunning it."""
+        try:
+            payload = load_public_research_run(
+                self.config.database_path, campaign_id
+            )
+        except HoldoutRunError as exc:
+            if exc.code == "run_not_found":
+                return None
+            self._state_unavailable.add(campaign_id)
+            return "UNKNOWN"
+        if payload.get("pipeline_version") != "BOUNDED_DEVELOPMENT_V1":
+            return None
+        executions = payload.get("executions")
+        authorization = payload.get("authorization")
+        file_database_gap = (
+            isinstance(authorization, dict)
+            and authorization.get("status") == "CONSUMED_OR_INTERRUPTED"
+        )
+        continuation_in_database = (
+            (isinstance(executions, list) and len(executions) == 3)
+            or payload.get("status") == "RUNNING"
+            or file_database_gap
+        )
+        continuation_in_receipt = (
+            isinstance(current, dict)
+            and current.get("action") == "HOLDOUT_CONTINUATION"
+        )
+        database_terminal = payload.get("status") in {
+            "FAILED",
+            "CANCELLED",
+            "INTERRUPTED",
+        }
+        if not continuation_in_database and not continuation_in_receipt:
+            return None
+        finished = _utc_now()
+        if payload.get("status") == "COMPLETED":
+            self._copy_frequi_best_effort(campaign_id)
+            recovered = self._status_document(
+                campaign_id,
+                "SUCCEEDED",
+                action="HOLDOUT_CONTINUATION",
+                created_at=str(
+                    (current or {}).get("created_at_utc")
+                    or payload.get("created_at")
+                    or finished
+                ),
+                started_at=payload.get("started_at"),
+                finished_at=payload.get("finished_at") or finished,
+                return_code=0,
+                message="已按数据库原子终态恢复 Holdout/Stress；未重跑",
+            )
+            recovered["requires_confirmation"] = False
+            _atomic_write_json_at(
+                campaign_fd, "holdout-status.json", recovered
+            )
+            self._append_event_at(
+                campaign_fd,
+                campaign_id,
+                "RECOVERED_COMPLETED",
+                "SUCCEEDED",
+                "已按同一 ResearchRun 的三场景终态恢复；未重跑",
+            )
+            return "COMPLETED"
+        if database_terminal:
+            terminal_status = str(payload["status"])
+            recovered = self._status_document(
+                campaign_id,
+                terminal_status,
+                action="HOLDOUT_CONTINUATION",
+                created_at=str(
+                    (current or {}).get("created_at_utc")
+                    or payload.get("created_at")
+                    or finished
+                ),
+                started_at=payload.get("started_at"),
+                finished_at=payload.get("finished_at") or finished,
+                return_code=None,
+                message=(
+                    "已按数据库权威失败终态恢复 Holdout/Stress；"
+                    "未补写 Artifact、未恢复或重跑"
+                ),
+            )
+            recovered["requires_confirmation"] = False
+            _atomic_write_json_at(
+                campaign_fd, "holdout-status.json", recovered
+            )
+            self._append_event_at(
+                campaign_fd,
+                campaign_id,
+                "RECOVERED_TERMINAL",
+                terminal_status,
+                "已按数据库权威终态恢复；未重跑",
+            )
+            return "UNCHANGED"
+        if (
+            continuation_in_receipt
+            and current.get("status") in TERMINAL_STATUSES
+            and payload.get("status") != "RUNNING"
+        ):
+            return (
+                "FAILED"
+                if current.get("status") == "INTERRUPTED_NEEDS_CONFIRMATION"
+                or current.get("requires_confirmation") is True
+                else "UNCHANGED"
+            )
+        if payload.get("status") == "RUNNING" or (
+            not file_database_gap
+            and continuation_in_receipt
+            and current.get("status") in NONTERMINAL_STATUSES
+        ):
+            try:
+                payload = fail_holdout_continuation(
+                    self.config.database_path,
+                    self.campaigns_root / campaign_id,
+                    campaign_id,
+                    "INTERRUPTED",
+                    "RESTART_INTERRUPTED",
+                )
+            except HoldoutRunError:
+                self._state_unavailable.add(campaign_id)
+                return "UNKNOWN"
+        interrupted = self._status_document(
+            campaign_id,
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            action="HOLDOUT_CONTINUATION",
+            created_at=str(
+                (current or {}).get("created_at_utc")
+                or payload.get("created_at")
+                or finished
+            ),
+            started_at=payload.get("started_at"),
+            finished_at=payload.get("finished_at") or finished,
+            return_code=None,
+            message="Holdout continuation 已按数据库记为中断；不会重跑或重试",
+        )
+        interrupted["requires_confirmation"] = True
+        _atomic_write_json_at(
+            campaign_fd, "holdout-status.json", interrupted
+        )
+        self._append_event_at(
+            campaign_fd,
+            campaign_id,
+            "INTERRUPTED",
+            "INTERRUPTED_NEEDS_CONFIRMATION",
+            "Holdout continuation 已关闭且不会重跑",
+        )
+        return "FAILED"
+
     def _recover_interrupted_campaigns(self) -> bool:
         confirmation_required = False
         try:
@@ -1112,13 +1287,32 @@ class ResearchConsoleController:
             campaign_fd: Optional[int] = None
             try:
                 campaign_fd = self._open_campaign_fd(campaign_id)
+                try:
+                    holdout_current = _read_json_object_at(
+                        campaign_fd, "holdout-status.json"
+                    )
+                except (FileNotFoundError, OSError, RecursionError, ValueError):
+                    holdout_current = None
+                holdout_state = self._reconcile_holdout_at(
+                    campaign_fd, campaign_id, holdout_current
+                )
+                if holdout_state is not None:
+                    if holdout_state in {"FAILED", "UNKNOWN"}:
+                        confirmation_required = True
+                    os.close(campaign_fd)
+                    campaign_fd = None
+                    continue
                 current = _read_json_object_at(campaign_fd, "status.json")
             except (ControlRequestError, OSError, RecursionError, ValueError):
                 if campaign_fd is not None:
                     try:
-                        database_state = self._reconcile_development_at(
+                        database_state = self._reconcile_holdout_at(
                             campaign_fd, campaign_id, None
                         )
+                        if database_state is None:
+                            database_state = self._reconcile_development_at(
+                                campaign_fd, campaign_id, None
+                            )
                         if database_state is None:
                             database_state = self._reconcile_codex_generation_at(
                                 campaign_fd, campaign_id, None
@@ -1136,9 +1330,13 @@ class ResearchConsoleController:
                     or current.get("campaign_id") != campaign_id
                 ):
                     try:
-                        database_state = self._reconcile_development_at(
+                        database_state = self._reconcile_holdout_at(
                             campaign_fd, campaign_id, current
                         )
+                        if database_state is None:
+                            database_state = self._reconcile_development_at(
+                                campaign_fd, campaign_id, current
+                            )
                         if database_state is None:
                             database_state = self._reconcile_codex_generation_at(
                                 campaign_fd, campaign_id, current
@@ -1529,6 +1727,10 @@ class ResearchConsoleController:
                 **self._development_capability.public(),
                 "message": self._development_capability.reason,
             },
+            "holdout_continuation": {
+                **self._holdout_capability.public(),
+                "message": self._holdout_capability.reason,
+            },
         }
         search_capability = self._search_capability
         assert search_capability is not None
@@ -1582,14 +1784,16 @@ class ResearchConsoleController:
         campaign_fd: int,
         status_value: str,
         message: str,
+        *,
+        status_filename: str = "status.json",
         **updates: Any,
     ) -> Dict[str, Any]:
         try:
-            current = _read_json_object_at(campaign_fd, "status.json")
+            current = _read_json_object_at(campaign_fd, status_filename)
         except FileNotFoundError:
             current = {}
         current.update({"status": status_value, "message": message, **updates})
-        _atomic_write_json_at(campaign_fd, "status.json", current)
+        _atomic_write_json_at(campaign_fd, status_filename, current)
         return current
 
     def _write_status(
@@ -1597,13 +1801,19 @@ class ResearchConsoleController:
         campaign_dir: Path,
         status_value: str,
         message: str,
+        *,
+        status_filename: str = "status.json",
         **updates: Any,
     ) -> Dict[str, Any]:
         descriptor: Optional[int] = None
         try:
             descriptor = self._open_campaign_fd(campaign_dir.name)
             return self._write_status_at(
-                descriptor, status_value, message, **updates
+                descriptor,
+                status_value,
+                message,
+                status_filename=status_filename,
+                **updates,
             )
         finally:
             if descriptor is not None:
@@ -1615,6 +1825,8 @@ class ResearchConsoleController:
         status_value: str,
         message: str,
         event_type: str,
+        *,
+        status_filename: str = "status.json",
         **updates: Any,
     ) -> Optional[Dict[str, Any]]:
         """Best-effort receipts must never control process termination."""
@@ -1626,7 +1838,11 @@ class ResearchConsoleController:
             return None
         try:
             current = self._write_status_at(
-                descriptor, status_value, message, **updates
+                descriptor,
+                status_value,
+                message,
+                status_filename=status_filename,
+                **updates,
             )
         except Exception:
             pass
@@ -2409,6 +2625,7 @@ class ResearchConsoleController:
                 status_value,
                 message,
                 event_type,
+                status_filename=job.status_filename,
                 **updates,
             )
         public_status = {
@@ -2544,6 +2761,18 @@ class ResearchConsoleController:
                         error_message="Codex process group could not be confirmed gone",
                         finished_at=_utc_now(),
                     )
+                elif job.action == "HOLDOUT_CONTINUATION":
+                    try:
+                        fail_holdout_continuation(
+                            self.config.database_path,
+                            campaign_dir,
+                            job.campaign_id,
+                            "INTERRUPTED",
+                            "PROCESS_GROUP_UNCONFIRMED",
+                        )
+                    except HoldoutRunError:
+                        with self._lock:
+                            self._state_unavailable.add(job.campaign_id)
                 with job.receipt_lock:
                     receipt = self._record_job_transition(
                         job,
@@ -2659,6 +2888,30 @@ class ResearchConsoleController:
                     status_value = "FAILED"
                     message = "DEVELOPMENT 结果无法按固定 Gate 完成"
                     event_type = "FAILED"
+            elif job.action == "HOLDOUT_CONTINUATION" and return_code == 0:
+                try:
+                    finalized = finalize_holdout_continuation(
+                        self.config.database_path,
+                        campaign_dir,
+                        job.campaign_id,
+                    )
+                    if finalized.get("status") != "COMPLETED":
+                        raise HoldoutRunError(
+                            "run_state_conflict",
+                            "Holdout continuation did not reach COMPLETED",
+                        )
+                    status_value = "SUCCEEDED"
+                    message = (
+                        "同一 ResearchRun 的 DEVELOPMENT、HOLDOUT、"
+                        "HOLDOUT_STRESS 已原子完成；verdict 仍为未评审"
+                    )
+                    event_type = "SUCCEEDED"
+                    if not self._copy_frequi_best_effort(job.campaign_id):
+                        message += "；可选 FreqUI copy 不可用，数据库终态不回滚"
+                except HoldoutRunError:
+                    status_value = "FAILED"
+                    message = "Holdout/Stress 无法按同一 ResearchRun 原子完成"
+                    event_type = "FAILED"
             elif job.action == "CHECK_DATA" and return_code == 0 and self._has_data_ready_output(campaign_dir):
                 status_value = "SUCCEEDED"
                 message = "CHECK_DATA 已完成；此状态不代表策略有效或盈利"
@@ -2701,6 +2954,45 @@ class ResearchConsoleController:
                             "取消/终止与已导入结果并发；以数据库 Development Gate 终态为准"
                         )
                 except DevelopmentRunError:
+                    with self._lock:
+                        self._state_unavailable.add(job.campaign_id)
+                        self._restart_confirmation_required = True
+            if (
+                job.action == "HOLDOUT_CONTINUATION"
+                and status_value != "SUCCEEDED"
+            ):
+                holdout_terminal = (
+                    "INTERRUPTED"
+                    if status_value == "INTERRUPTED"
+                    else "CANCELLED"
+                    if status_value == "CANCELLED"
+                    else "TIMED_OUT"
+                    if status_value == "TIMED_OUT"
+                    else "FAILED"
+                )
+                failure_code = {
+                    "INTERRUPTED": "SERVER_INTERRUPTED",
+                    "CANCELLED": "CANCELLED",
+                    "TIMED_OUT": "TIMED_OUT",
+                    "FAILED": "HOLDOUT_NONZERO_OR_INVALID",
+                }[holdout_terminal]
+                try:
+                    authoritative = fail_holdout_continuation(
+                        self.config.database_path,
+                        campaign_dir,
+                        job.campaign_id,
+                        holdout_terminal,
+                        failure_code,
+                    )
+                    if authoritative.get("status") == "COMPLETED":
+                        status_value = "SUCCEEDED"
+                        event_type = "SUCCEEDED"
+                        message = (
+                            "取消/终止与原子提交并发；以数据库三场景 COMPLETED 终态为准"
+                        )
+                        if not self._copy_frequi_best_effort(job.campaign_id):
+                            message += "；可选 FreqUI copy 不可用"
+                except HoldoutRunError:
                     with self._lock:
                         self._state_unavailable.add(job.campaign_id)
                         self._restart_confirmation_required = True
@@ -2762,6 +3054,17 @@ class ResearchConsoleController:
                         "CONTROLLER_FAILED",
                     )
                 except DevelopmentRunError:
+                    pass
+            elif job.action == "HOLDOUT_CONTINUATION" and process_group_finalized:
+                try:
+                    fail_holdout_continuation(
+                        self.config.database_path,
+                        campaign_dir,
+                        job.campaign_id,
+                        "INTERRUPTED",
+                        "CONTROLLER_FAILED",
+                    )
+                except HoldoutRunError:
                     pass
             if campaign_dir is not None:
                 with job.receipt_lock:
@@ -3025,19 +3328,90 @@ class ResearchConsoleController:
         status = 503 if exc.code == "BLOCKED_DATA" else 409
         return ControlRequestError(status, exc.code, exc.message)
 
+    @staticmethod
+    def _holdout_error(exc: HoldoutRunError) -> ControlRequestError:
+        status = getattr(exc, "status", None)
+        if not isinstance(status, int):
+            status = (
+                404
+                if exc.code == "run_not_found"
+                else 503
+                if exc.code == "BLOCKED_DATA"
+                else 409
+            )
+        return ControlRequestError(status, exc.code, exc.message)
+
+    def _decorate_research_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Combine DB eligibility with the controller's one live process slot."""
+        authorization = payload.get("authorization")
+        normalized = dict(authorization) if isinstance(authorization, dict) else {}
+        database_allows = normalized.get("can_authorize") is True
+        run_id = payload.get("research_run_id")
+        campaign_available = False
+        if isinstance(run_id, str):
+            try:
+                self._campaign_directory(run_id, must_exist=True)
+                campaign_available = True
+            except ControlRequestError:
+                pass
+        with self._lock:
+            capability_ready = self._holdout_capability.status == "READY"
+            slot_available = self._active is None
+            restart_clear = not self._restart_confirmation_required
+            controller_allows = (
+                capability_ready
+                and slot_available
+                and restart_clear
+                and not self._closed
+                and not self._shutting_down
+                and self._runtime_paths_unchanged()
+                and campaign_available
+            )
+        normalized["can_authorize"] = database_allows and controller_allows
+        if database_allows and not controller_allows:
+            if not capability_ready:
+                normalized["reason"] = self._holdout_capability.reason
+            elif not restart_clear:
+                normalized["reason"] = "存在需要人工确认的重启中断任务"
+            elif not slot_available:
+                normalized["reason"] = "唯一受控任务槽当前被占用"
+            elif not campaign_available:
+                normalized["reason"] = "ResearchRun 不属于当前冻结的运行目录"
+            else:
+                normalized["reason"] = "Research Console 当前不可授权"
+        result = dict(payload)
+        result["authorization"] = normalized
+        return result
+
+    def _copy_frequi_best_effort(self, research_run_id: str) -> bool:
+        """Keep optional disposable FreqUI publication outside DB success."""
+        try:
+            result = copy_frequi_results(
+                self.config.database_path,
+                research_run_id,
+                self._artifact_root,
+                self._frequi_config,
+            )
+            return result.get("status") == "COPIED"
+        except Exception:
+            return False
+
     def research_context(self) -> Dict[str, Any]:
-        return research_context(
+        payload = research_context(
             self.config.database_path, self._development_capability
         )
+        payload["holdout_capability"] = self._holdout_capability.public()
+        return payload
 
     def get_research_run(self, research_run_id: str) -> Dict[str, Any]:
         try:
-            return load_public_research_run(
-                self.config.database_path, research_run_id
+            return self._decorate_research_run(
+                load_public_research_run(
+                    self.config.database_path, research_run_id
+                )
             )
-        except DevelopmentRunError as exc:
-            status = 404 if exc.code == "run_not_found" else 409
-            raise ControlRequestError(status, exc.code, exc.message) from exc
+        except HoldoutRunError as exc:
+            raise self._holdout_error(exc) from exc
 
     def create_research_run(self, candidate_id: str) -> Dict[str, Any]:
         """Consume one approved Candidate and start one Development child."""
@@ -3263,25 +3637,279 @@ class ResearchConsoleController:
                 ) from exc
         return self.get_research_run(run_id)
 
+    def authorize_holdout(self, research_run_id: str) -> Dict[str, Any]:
+        """Consume the one-shot authorization and start the fixed continuation."""
+        with self._lock:
+            if self._closed or self._shutting_down:
+                raise ControlRequestError(
+                    409, "console_shutting_down", "Research Console 正在关闭"
+                )
+            if self._restart_confirmation_required:
+                raise ControlRequestError(
+                    409,
+                    "restart_confirmation_required",
+                    "检测到崩溃前未闭合任务；Holdout 不会自动重试",
+                )
+            if self._active is not None:
+                raise ControlRequestError(
+                    409, "active_campaign", "已有一个受控任务正在运行"
+                )
+            if not self._runtime_paths_unchanged():
+                raise ControlRequestError(
+                    409, "frozen_path_changed", "启动时冻结的运行目录身份已变化"
+                )
+            if self._holdout_capability.status != "READY":
+                raise ControlRequestError(
+                    503, "BLOCKED_DATA", self._holdout_capability.reason
+                )
+            campaign_dir = self._campaign_directory(
+                research_run_id, must_exist=True
+            )
+            try:
+                prepared = prepare_holdout_continuation(
+                    self.config.database_path,
+                    campaign_dir,
+                    research_run_id,
+                    self._holdout_capability,
+                    now=_utc_now(),
+                )
+            except HoldoutRunError as exc:
+                raise self._holdout_error(exc) from exc
+
+            created = _utc_now()
+            starting = self._status_document(
+                research_run_id,
+                "STARTING",
+                action="HOLDOUT_CONTINUATION",
+                created_at=created,
+                started_at=None,
+                finished_at=None,
+                return_code=None,
+                message="正在启动一次性 HOLDOUT / HOLDOUT_STRESS continuation",
+            )
+            stdout_handle: Optional[BinaryIO] = None
+            stderr_handle: Optional[BinaryIO] = None
+            campaign_fd: Optional[int] = None
+            try:
+                campaign_fd = self._open_campaign_fd(research_run_id)
+                request_body = (
+                    json.dumps(
+                        {
+                            "schema": REQUEST_SCHEMA,
+                            "campaign_id": research_run_id,
+                            "action": "AUTHORIZE_HOLDOUT",
+                            "created_at_utc": created,
+                        },
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                _atomic_publish_bytes_at(
+                    campaign_fd, "holdout-request.json", request_body
+                )
+                _atomic_write_json_at(
+                    campaign_fd, "holdout-status.json", starting
+                )
+                self._append_event_at(
+                    campaign_fd,
+                    research_run_id,
+                    "HOLDOUT_AUTHORIZED",
+                    "STARTING",
+                    "一次性 Holdout 授权已消费；不会自动重试",
+                )
+                stdout_handle = _open_private_output_at(
+                    campaign_fd, "holdout.stdout.log"
+                )
+                stderr_handle = _open_private_output_at(
+                    campaign_fd, "holdout.stderr.log"
+                )
+            except (OSError, ControlRequestError, ValueError) as exc:
+                if stdout_handle is not None:
+                    stdout_handle.close()
+                if stderr_handle is not None:
+                    stderr_handle.close()
+                try:
+                    fail_holdout_continuation(
+                        self.config.database_path,
+                        campaign_dir,
+                        research_run_id,
+                        "FAILED",
+                        "OUTPUT_CREATE_FAILED",
+                    )
+                except HoldoutRunError:
+                    self._state_unavailable.add(research_run_id)
+                    self._restart_confirmation_required = True
+                raise ControlRequestError(
+                    500,
+                    "output_create_failed",
+                    "Holdout continuation 私有运行文件无法创建",
+                ) from exc
+            finally:
+                if campaign_fd is not None:
+                    os.close(campaign_fd)
+
+            try:
+                argv = holdout_worker_argv(
+                    self.config.database_path,
+                    prepared,
+                    self._holdout_capability,
+                    Path(sys.executable).resolve(strict=True),
+                )
+                process = subprocess.Popen(
+                    argv,
+                    cwd=str(PROJECT_ROOT),
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    env=_minimal_environment(),
+                    shell=False,
+                    start_new_session=True,
+                    close_fds=True,
+                    umask=0o077,
+                )
+            except (OSError, HoldoutRunError) as exc:
+                if stdout_handle is not None:
+                    stdout_handle.close()
+                if stderr_handle is not None:
+                    stderr_handle.close()
+                try:
+                    fail_holdout_continuation(
+                        self.config.database_path,
+                        campaign_dir,
+                        research_run_id,
+                        "FAILED",
+                        "START_FAILED",
+                    )
+                except HoldoutRunError:
+                    self._state_unavailable.add(research_run_id)
+                    self._restart_confirmation_required = True
+                self._record_transition(
+                    campaign_dir,
+                    "FAILED",
+                    "Holdout continuation 无法启动",
+                    "START_FAILED",
+                    status_filename="holdout-status.json",
+                    finished_at_utc=_utc_now(),
+                    return_code=None,
+                )
+                raise ControlRequestError(
+                    500, "start_failed", "Holdout continuation 无法启动"
+                ) from exc
+
+            job = _ActiveJob(
+                campaign_id=research_run_id,
+                action="HOLDOUT_CONTINUATION",
+                process=process,
+                process_group_id=process.pid,
+                deadline=time.monotonic() + self.config.task_timeout_seconds,
+                status_filename="holdout-status.json",
+            )
+            self._active = job
+            try:
+                if stdout_handle is not None and not stdout_handle.closed:
+                    stdout_handle.close()
+                if stderr_handle is not None and not stderr_handle.closed:
+                    stderr_handle.close()
+                started = _utc_now()
+                campaign_fd = self._open_campaign_fd(research_run_id)
+                try:
+                    _atomic_write_json_at(
+                        campaign_fd,
+                        "holdout-owner.json",
+                        {
+                            "schema": OWNER_SCHEMA,
+                            "campaign_id": research_run_id,
+                            "action": "HOLDOUT_CONTINUATION",
+                            "server_pid": os.getpid(),
+                            "child_pid": process.pid,
+                            "process_group_id": job.process_group_id,
+                            "started_at_utc": started,
+                        },
+                    )
+                finally:
+                    os.close(campaign_fd)
+                self._write_status(
+                    campaign_dir,
+                    "RUNNING",
+                    "正在依次运行 HOLDOUT 与 HOLDOUT_STRESS；Development 不会重跑",
+                    status_filename="holdout-status.json",
+                    started_at_utc=started,
+                )
+                self._append_event(
+                    campaign_dir,
+                    "STARTED",
+                    "RUNNING",
+                    "Holdout continuation 已启动",
+                )
+                monitor = threading.Thread(
+                    target=self._monitor_job,
+                    args=(job,),
+                    name=f"research-console-holdout-{research_run_id[:8]}",
+                    daemon=True,
+                )
+                job.monitor = monitor
+                monitor.start()
+            except Exception as exc:
+                terminated = self._terminate_owned_job(job)
+                if terminated:
+                    try:
+                        fail_holdout_continuation(
+                            self.config.database_path,
+                            campaign_dir,
+                            research_run_id,
+                            "FAILED",
+                            "START_RECEIPT_FAILED",
+                        )
+                    except HoldoutRunError:
+                        terminated = False
+                receipt = self._record_transition(
+                    campaign_dir,
+                    "FAILED" if terminated else "INTERRUPTED_NEEDS_CONFIRMATION",
+                    (
+                        "Holdout 启动收据失败，受控进程已终止"
+                        if terminated
+                        else "Holdout 启动收据失败，无法确认进程终态"
+                    ),
+                    "START_RECEIPT_FAILED",
+                    status_filename="holdout-status.json",
+                    finished_at_utc=_utc_now(),
+                    return_code=self._leader_return_code(job),
+                    requires_confirmation=not terminated,
+                )
+                if receipt is None or not terminated:
+                    self._restart_confirmation_required = True
+                if self._active is job:
+                    self._active = None
+                raise ControlRequestError(
+                    500,
+                    "start_receipt_failed",
+                    "Holdout continuation 无法安全完成启动",
+                ) from exc
+        return self.get_research_run(research_run_id)
+
     def cancel_research_run(self, research_run_id: str) -> Dict[str, Any]:
         with self._lock:
             job = self._active
             if (
                 job is not None
                 and job.campaign_id == research_run_id
-                and job.action == "DEVELOPMENT"
+                and job.action in {"DEVELOPMENT", "HOLDOUT_CONTINUATION"}
             ):
                 self.cancel_campaign(
-                    research_run_id, expected_action="DEVELOPMENT"
+                    research_run_id, expected_action=job.action
                 )
                 return self.get_research_run(research_run_id)
         current = self.get_research_run(research_run_id)
         if current["status"] in {
             "PENDING",
             "COMPLETED",
+            "REJECTED",
             "FAILED",
             "INTERRUPTED",
             "CANCELLED",
+            "TIMED_OUT",
         }:
             return current
         raise ControlRequestError(
@@ -3407,7 +4035,11 @@ class ResearchConsoleController:
                     409, "campaign_not_active", "Campaign 不由当前服务持有"
                 )
             if self._leader_return_code(job) is not None:
-                current = self.get_status(campaign_id)
+                current = _public_status(
+                    self._read_campaign_json(
+                        campaign_id, job.status_filename
+                    )
+                )
                 if current["status"] in TERMINAL_STATUSES:
                     return current
                 raise ControlRequestError(
@@ -3419,13 +4051,18 @@ class ResearchConsoleController:
                 campaign_id, must_exist=True
             )
             if not self._begin_cancel_locked(job):
-                return self.get_status(campaign_id)
+                return _public_status(
+                    self._read_campaign_json(
+                        campaign_id, job.status_filename
+                    )
+                )
         try:
             current = self._record_transition(
                 campaign_dir,
                 "CANCEL_REQUESTED",
                 "已请求取消受控进程组",
                 "CANCEL_REQUESTED",
+                status_filename=job.status_filename,
             )
         finally:
             job.receipt_lock.release()
@@ -3563,7 +4200,10 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 <section id="development-section"><h2>Development 研究</h2><p class="note">仅允许已批准且通过窄安全门的 Candidate。每次只运行一个真实 DEVELOPMENT；浏览器不能提交路径、参数、场景或阈值。</p>
 <div class="field"><label for="research-candidate">APPROVED Candidate</label><select id="research-candidate"></select></div>
 <button id="research-run" disabled>运行唯一 DEVELOPMENT</button><button id="research-cancel" class="secondary" disabled>取消</button>
-<div class="grid"><div class="check"><div class="name">Holdout</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">Holdout Stress</div><div class="status">SEALED_UNREAD</div></div></div>
+<button id="research-holdout" class="danger" disabled>授权并运行 Holdout / Stress</button>
+<p class="note">永久警告：授权只执行一次，不能撤销、重试或重跑 Development；完成也不代表策略盈利、安全或可交易。</p>
+<div id="research-scenarios" class="grid"><div class="check"><div class="name">DEVELOPMENT</div><div class="status">暂无数据</div></div><div class="check"><div class="name">HOLDOUT</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">HOLDOUT_STRESS</div><div class="status">SEALED_UNREAD</div></div></div>
+<p><span class="name">Verdict：</span><span id="research-verdict">未评审</span> · <a id="research-detail" hidden>打开同一 ResearchRun 的 Strategy Library 明细</a></p>
 <h3>规范化研究状态</h3><pre id="research-status">尚未运行</pre>
 </section>
 <section><h2>数据检查</h2><p class="note">只运行已冻结 Pilot 目录的 CHECK_DATA；成功不代表策略有效、盈利或可交易。</p>
@@ -3590,7 +4230,11 @@ const candidateCode = document.getElementById('candidate-code');
 const researchCandidate = document.getElementById('research-candidate');
 const researchRunButton = document.getElementById('research-run');
 const researchCancelButton = document.getElementById('research-cancel');
+const researchHoldoutButton = document.getElementById('research-holdout');
 const researchStatus = document.getElementById('research-status');
+const researchScenarios = document.getElementById('research-scenarios');
+const researchVerdict = document.getElementById('research-verdict');
+const researchDetail = document.getElementById('research-detail');
 const searchSeeds = document.getElementById('search-seeds');
 const searchChildren = document.getElementById('search-children');
 const searchParentLock = document.getElementById('search-parent-lock');
@@ -3667,6 +4311,25 @@ function renderResearch(value) {
   const active = value && value.status === 'RUNNING';
   researchRunButton.disabled = active || ![...researchCandidate.options].some(option => option.dataset.ready === 'true');
   researchCancelButton.disabled = !active;
+  researchHoldoutButton.disabled = !(value && value.authorization && value.authorization.can_authorize === true);
+  researchVerdict.textContent = value && value.verdict !== null && value.verdict !== undefined ? String(value.verdict) : '未评审';
+  researchDetail.hidden = !(value && typeof value.strategy_detail_url === 'string');
+  if (!researchDetail.hidden) researchDetail.href = value.strategy_detail_url;
+  researchScenarios.replaceChildren();
+  const executions = value && Array.isArray(value.executions) ? value.executions : [];
+  ['DEVELOPMENT','HOLDOUT','HOLDOUT_STRESS'].forEach(scenario => {
+    const execution = executions.find(item => item && item.scenario === scenario);
+    const box = document.createElement('div'); box.className = 'check';
+    const title = document.createElement('div'); title.className = 'name'; title.textContent = scenario;
+    const status = document.createElement('div'); status.className = 'status'; status.textContent = execution ? execution.status : 'SEALED_UNREAD';
+    const opened = document.createElement('div'); opened.className = 'note';
+    const openedValue = execution ? execution.scenario_opened : null;
+    opened.textContent = `scenario_opened: ${openedValue === true ? 'OPENED' : openedValue === false ? 'NOT_OPENED' : openedValue || 'NOT_OPENED'}`;
+    const metrics = document.createElement('div'); metrics.className = 'note';
+    const metricKeys = ['total_trades','profit_pct','profit_factor','max_drawdown_pct'];
+    metrics.textContent = execution ? metricKeys.filter(key => execution[key] !== null && execution[key] !== undefined).map(key => `${key}: ${execution[key]}`).join(' · ') || 'metrics: UNKNOWN' : 'metrics: UNKNOWN';
+    box.append(title, status, opened, metrics); researchScenarios.append(box);
+  });
 }
 async function loadResearchContext() {
   const value = await request('/api/research/context'); researchCandidate.replaceChildren();
@@ -3886,6 +4549,15 @@ researchCancelButton.addEventListener('click', async () => {
   if (!researchRunId) return; researchCancelButton.disabled = true;
   try { renderResearch(await request(`/api/research-runs/${researchRunId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'CANCEL'})})); }
   catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); }
+});
+researchHoldoutButton.addEventListener('click', async () => {
+  if (!researchRunId || researchHoldoutButton.disabled) return;
+  researchHoldoutButton.disabled = true;
+  try {
+    const value = await request(`/api/research-runs/${researchRunId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action:'AUTHORIZE_HOLDOUT'})});
+    renderResearch(value); await pollResearch();
+    if (!researchTimer) researchTimer = setInterval(pollResearch,750);
+  } catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await loadResearchContext(); }
 });
 async function poll() {
   if (!campaignId) return;
@@ -4401,14 +5073,22 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                     )
                     response_status = 200
             elif research_action_match is not None:
-                if body != {"action": "CANCEL"}:
-                    raise ControlRequestError(
-                        400, "invalid_action", "ResearchRun action 只允许 CANCEL"
+                if body == {"action": "CANCEL"}:
+                    payload = self.controller.cancel_research_run(
+                        research_action_match.group(1)
                     )
-                payload = self.controller.cancel_research_run(
-                    research_action_match.group(1)
-                )
-                response_status = 202
+                    response_status = 202
+                elif body == {"action": "AUTHORIZE_HOLDOUT"}:
+                    payload = self.controller.authorize_holdout(
+                        research_action_match.group(1)
+                    )
+                    response_status = 202
+                else:
+                    raise ControlRequestError(
+                        400,
+                        "invalid_action",
+                        "ResearchRun action 只允许 CANCEL 或 AUTHORIZE_HOLDOUT",
+                    )
             else:
                 campaign_id = search_action_match.group(1)
                 if body == {"action": "CANCEL"}:
@@ -4576,6 +5256,8 @@ def create_research_console_server(
             freqtrade_python=freqtrade_python,
             freqtrade_source=freqtrade_source,
             webserver_base_url=webserver_base_url,
+            artifact_root=handler.artifact_root,
+            frequi_config=handler.frequi_config,
             task_timeout_seconds=task_timeout_seconds,
         )
         setattr(server, "research_console_controller", controller)

@@ -50,13 +50,14 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
-## Local Research Console: bounded Codex, two-round Search, and Development
+## Local Research Console: bounded Codex, Search, Development, and one-shot Holdout
 
 The Research Console keeps the Strategy Library routes on the same loopback
 server and adds a small page at `http://127.0.0.1:8765/console`. One fixed
 `CHECK_DATA` child, one bounded Codex Candidate generation, either Search
-round, or one approved Candidate's fixed `DEVELOPMENT` backtest can occupy the
-same single slot; a concurrent start is rejected. For generation, the browser may submit
+round, one approved Candidate's fixed `DEVELOPMENT` backtest, or its explicitly
+authorized Holdout continuation can occupy the same single slot; a concurrent
+start is rejected. For generation, the browser may submit
 only a Profile id, an optional same-Profile approved parent id, a bounded idea,
 an optional strategy family, and an optional expected failure mode. It cannot
 supply an executable, working directory, arguments, prompt template, model,
@@ -140,6 +141,24 @@ and max drawdown <= 5%. Failure produces `COMPLETED / REJECTED`; success leaves
 `SEALED_UNREAD`, with no later-phase execution rows. A missing or changed Pilot
 root, exact Freqtrade Python, or clean source checkout is reported as
 `BLOCKED_DATA`; the Console and Codex generation remain available.
+
+Only that exact `PENDING / PENDING` Run exposes `AUTHORIZE_HOLDOUT`. The POST
+body is exactly `{ "action": "AUTHORIZE_HOLDOUT" }`; browser-supplied paths,
+timeranges, fees, scenarios, thresholds, commands, or output locations are
+rejected. Authorization is consumed once and starts one private child that
+runs `HOLDOUT` and then `HOLDOUT_STRESS` without rerunning Development. The two
+later executions and final Run state are attached in one `BEGIN IMMEDIATE` only
+after both artifacts and the three-scenario contract validate. Success keeps
+`verdict = NULL` for human review and creates no Release. Cancellation,
+timeout, nonzero exit, or restart never retries and never leaves partial
+later-phase metrics or result paths. The page links to the Strategy Library
+detail using the exact Profile, Candidate, and ResearchRun ids.
+
+If a startup-safe `--artifact-root`, `--frequi-base-url`, and a separate
+disposable `--frequi-results-root` are all configured, completed artifacts are
+copied there best-effort with create-exclusive semantics. A missing destination
+or any pre-existing entry makes presentation unavailable; it does not overwrite
+files and does not roll back the completed ResearchRun.
 
 Normalized state/events and private raw child logs
 stay under `--runtime-root`; the page never returns raw output or local paths.
