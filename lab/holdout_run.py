@@ -327,7 +327,10 @@ def freeze_holdout_capability(
             or not isinstance(source, dict)
             or source.get("host") != "www.okx.com"
             or source.get("authentication") != "none"
-            or not isinstance(source.get("pair"), str)
+            or source.get("pair") != development.pair
+            or source.get("instrument_id") != development.instrument_id
+            or not isinstance(source.get("instrument_id"), str)
+            or not source.get("instrument_id")
             or not isinstance(local, dict)
             or not local
         ):
@@ -637,6 +640,7 @@ def _materialize_holdout_inputs(
                 "host": "www.okx.com",
                 "authentication": "none",
                 "pair": capability.pair,
+                "instrument_id": capability.development.instrument_id,
             },
             "freqtrade": {
                 "version": SUPPORTED_FREQTRADE_VERSION,
@@ -983,6 +987,8 @@ def prepare_holdout_continuation(
         or capability.pilot_root is None
         or capability.holdout_timerange is None
         or capability.stress_fee_multiplier is None
+        or capability.development.instrument_id is None
+        or capability.development.pair != capability.pair
     ):
         raise HoldoutRunError("BLOCKED_DATA", capability.reason)
     try:

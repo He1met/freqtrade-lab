@@ -13,6 +13,7 @@ import pytest
 
 from lab import codex_generation, development_run
 from lab.database import get_connection, init_database
+from scripts import run_freqtrade_backtest as runner_module
 
 
 NOW = "2026-01-01T00:00:00.000Z"
@@ -178,6 +179,7 @@ def _approved_candidate_database(
     tmp_path: Path,
     *,
     min_development_trades: int = 30,
+    pair: str = "ADA/USDT:USDT",
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
     init_database(database)
@@ -194,13 +196,14 @@ def _approved_candidate_database(
                 max_drawdown_pct, min_development_trades, min_holdout_trades,
                 min_profit_factor, created_at, updated_at
             ) VALUES (?, ?, 'OKX_CRYPTO_PERP', 'okx', 'futures', 'isolated',
-                      '["ADA/USDT:USDT"]', '5m', NULL, '2026-01-01',
+                      ?, '5m', NULL, '2026-01-01',
                       7, 30, 1000.0, 100.0, 1, 0.0005, 2.0,
                       5.0, ?, 30, 1.1, ?, ?)
             """,
             (
                 profile_id,
                 f"approved-profile-{profile_id}",
+                json.dumps([pair], separators=(",", ":")),
                 min_development_trades,
                 NOW,
                 NOW,
@@ -252,12 +255,17 @@ def _canonical(value: object) -> bytes:
 
 
 def _frozen_capability_fixture(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    pair: str = "ADA/USDT:USDT",
+    instrument_id: str = "ADA-USDT-SWAP",
 ) -> tuple[Path, Path, Path]:
     pilot = tmp_path / "pilot"
     acquisition = pilot / "acquisition"
     isolation = pilot / "development-isolation"
-    data_file = isolation / "data" / "okx" / "futures" / "ADA-5m.feather"
+    data_stem = pair.split("/", 1)[0]
+    data_file = isolation / "data" / "okx" / "futures" / f"{data_stem}-5m.feather"
     source = tmp_path / "freqtrade-source"
     python = tmp_path / "freqtrade-python"
     acquisition.mkdir(parents=True)
@@ -310,7 +318,7 @@ def _frozen_capability_fixture(
         "exchange": {
             "name": "okx",
             "enable_ws": False,
-            "pair_whitelist": ["ADA/USDT:USDT"],
+            "pair_whitelist": [pair],
             "pair_blacklist": [],
         },
         "pairlists": [{"method": "StaticPairList"}],
@@ -321,13 +329,30 @@ def _frozen_capability_fixture(
     }
     config_bytes = _canonical(config)
     (acquisition / "config.json").write_bytes(config_bytes)
-    market = b"market\n"
-    tiers = b"tiers\n"
+    market = _canonical(
+        {
+            "id": instrument_id,
+            "symbol": pair,
+            "active": True,
+            "contract": True,
+            "swap": True,
+            "linear": True,
+            "inverse": False,
+            "type": "swap",
+        }
+    )
+    tiers = _canonical([{"symbol": pair}])
     candles = b"development-only\n"
     (acquisition / "market_snapshot.json").write_bytes(market)
     (acquisition / "isolated_tiers_snapshot.json").write_bytes(tiers)
     data_file.write_bytes(candles)
     source_provenance = {
+        "source": {
+            "host": "www.okx.com",
+            "authentication": "none",
+            "pair": pair,
+            "instrument_id": instrument_id,
+        },
         "contract": {"config": "config.json"},
         "files": {
             "config.json": {
@@ -351,7 +376,8 @@ def _frozen_capability_fixture(
         "source": {
             "host": "www.okx.com",
             "authentication": "none",
-            "pair": "ADA/USDT:USDT",
+            "pair": pair,
+            "instrument_id": instrument_id,
         },
         "freqtrade": {
             "version": development_run.SUPPORTED_FREQTRADE_VERSION,
@@ -367,7 +393,7 @@ def _frozen_capability_fixture(
                 "bytes": len(tiers),
                 "sha256": hashlib.sha256(tiers).hexdigest(),
             },
-            "data/okx/futures/ADA-5m.feather": {
+            f"data/okx/futures/{data_stem}-5m.feather": {
                 "bytes": len(candles),
                 "sha256": hashlib.sha256(candles).hexdigest(),
             },
@@ -451,6 +477,90 @@ def test_t0_freeze_binds_pilot_config_to_acquisition_receipt(
     assert capability.config_sha256 == hashlib.sha256(
         (pilot / "acquisition" / "config.json").read_bytes()
     ).hexdigest()
+    assert capability.pair == "ADA/USDT:USDT"
+    assert capability.instrument_id == "ADA-USDT-SWAP"
+
+
+def test_t0_verified_xrp_market_identity_is_bound() -> None:
+    pair, instrument_id = development_run._verified_market_identity(
+        {
+            "host": "www.okx.com",
+            "authentication": "none",
+            "pair": "XRP/USDT:USDT",
+            "instrument_id": "XRP-USDT-SWAP",
+        },
+        _canonical(
+            {
+                "symbol": "XRP/USDT:USDT",
+                "id": "XRP-USDT-SWAP",
+            }
+        ),
+        "XRP/USDT:USDT",
+    )
+
+    assert pair == "XRP/USDT:USDT"
+    assert instrument_id == "XRP-USDT-SWAP"
+
+
+@pytest.mark.parametrize(
+    "drift",
+    (
+        "source_host",
+        "source_authentication",
+        "missing_source_id",
+        "isolation_id",
+        "market_id",
+        "market_symbol",
+    ),
+)
+def test_t0_freeze_rejects_instrument_identity_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    drift: str,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(tmp_path, monkeypatch)
+    acquisition_provenance_path = (
+        pilot / "acquisition" / "retained-data-provenance.json"
+    )
+    acquisition_provenance = json.loads(acquisition_provenance_path.read_text())
+    if drift == "source_host":
+        acquisition_provenance["source"]["host"] = "attacker.invalid"
+        _rewrite_source_provenance(pilot, acquisition_provenance)
+    elif drift == "source_authentication":
+        acquisition_provenance["source"]["authentication"] = "credentialed"
+        _rewrite_source_provenance(pilot, acquisition_provenance)
+    elif drift == "missing_source_id":
+        acquisition_provenance["source"].pop("instrument_id")
+        _rewrite_source_provenance(pilot, acquisition_provenance)
+    elif drift == "isolation_id":
+        isolation_path = (
+            pilot / "development-isolation" / "retained-data-provenance.json"
+        )
+        isolation = json.loads(isolation_path.read_text())
+        isolation["source"]["instrument_id"] = "XRP-USDT-SWAP"
+        isolation_path.write_bytes(_canonical(isolation))
+    else:
+        market_path = pilot / "acquisition" / "market_snapshot.json"
+        market = json.loads(market_path.read_text())
+        market["id" if drift == "market_id" else "symbol"] = (
+            "XRP-USDT-SWAP" if drift == "market_id" else "XRP/USDT:USDT"
+        )
+        market_bytes = _canonical(market)
+        market_path.write_bytes(market_bytes)
+        isolation_path = (
+            pilot / "development-isolation" / "retained-data-provenance.json"
+        )
+        isolation = json.loads(isolation_path.read_text())
+        isolation["local_only_files"]["market_snapshot.json"] = {
+            "bytes": len(market_bytes),
+            "sha256": hashlib.sha256(market_bytes).hexdigest(),
+        }
+        isolation_path.write_bytes(_canonical(isolation))
+
+    capability = development_run.freeze_development_capability(pilot, python, source)
+
+    assert capability.status == "BLOCKED_DATA"
+    assert "identity" in capability.reason
 
 
 @pytest.mark.parametrize(
@@ -724,7 +834,11 @@ def test_t0_context_offers_one_retry_for_same_frozen_contract(
 def test_t1_prepare_creates_one_development_and_child_has_no_pilot_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    database, candidate_id = _approved_candidate_database(tmp_path / "database")
+    pair = "XRP/USDT:USDT"
+    instrument_id = "XRP-USDT-SWAP"
+    database, candidate_id = _approved_candidate_database(
+        tmp_path / "database", pair=pair
+    )
     pilot = tmp_path / "pilot"
     acquisition = pilot / "acquisition"
     data_root = pilot / "development-isolation" / "data" / "okx"
@@ -734,11 +848,24 @@ def test_t1_prepare_creates_one_development_and_child_has_no_pilot_path(
     config_bytes = (
         json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode()
-    market, tiers, candles = b"{}\n", b"{}\n", b"fake-development-only-bytes"
+    market = _canonical(
+        {
+            "id": instrument_id,
+            "symbol": pair,
+            "active": True,
+            "contract": True,
+            "swap": True,
+            "linear": True,
+            "inverse": False,
+            "type": "swap",
+        }
+    )
+    tiers = _canonical([{"symbol": pair}])
+    candles = b"fake-development-only-bytes"
     (acquisition / "config.json").write_bytes(config_bytes)
     (acquisition / "market_snapshot.json").write_bytes(market)
     (acquisition / "isolated_tiers_snapshot.json").write_bytes(tiers)
-    relative = "futures/ADA_USDT_USDT-5m-futures.feather"
+    relative = "futures/XRP_USDT_USDT-5m-futures.feather"
     (data_root / "futures").mkdir()
     (data_root / relative).write_bytes(candles)
     capability = development_run.FrozenDevelopmentCapability(
@@ -755,7 +882,8 @@ def test_t1_prepare_creates_one_development_and_child_has_no_pilot_path(
             development_run.DEFAULT_RUNNER.read_bytes()
         ).hexdigest(),
         development_timerange="20260601-20260731",
-        pair="ADA/USDT:USDT",
+        pair=pair,
+        instrument_id=instrument_id,
         data_receipts=(
             (relative, len(candles), hashlib.sha256(candles).hexdigest()),
         ),
@@ -797,6 +925,23 @@ def test_t1_prepare_creates_one_development_and_child_has_no_pilot_path(
         (run_dir / "development-input" / "retained-data-provenance.json").read_text()
     )
     assert "holdout_timerange" not in provenance["contract"]
+    assert provenance["source"]["instrument_id"] == instrument_id
+    verified_market, verified_tiers = runner_module._verify_market_inputs(
+        json.loads(
+            (run_dir / "development-input" / "market_snapshot.json").read_text()
+        ),
+        json.loads(
+            (
+                run_dir
+                / "development-input"
+                / "isolated_tiers_snapshot.json"
+            ).read_text()
+        ),
+        pair=pair,
+        provenance=provenance,
+    )
+    assert verified_market["id"] == instrument_id
+    assert verified_tiers[0]["symbol"] == pair
     argv = development_run.development_worker_argv(
         database, prepared, capability, Path(sys.executable)
     )

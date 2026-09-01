@@ -67,9 +67,16 @@ def _eligible_run(
     TEST_ONLY_SYNTHETIC and is never presented as economic evidence.
     """
 
-    database, candidate_id = _approved_candidate_database(tmp_path / "database")
+    pair = "XRP/USDT:USDT"
+    instrument_id = "XRP-USDT-SWAP"
+    database, candidate_id = _approved_candidate_database(
+        tmp_path / "database", pair=pair
+    )
     pilot_root, freqtrade_python, freqtrade_source = _frozen_capability_fixture(
-        tmp_path / "capability", monkeypatch
+        tmp_path / "capability",
+        monkeypatch,
+        pair=pair,
+        instrument_id=instrument_id,
     )
     development_capability = development_run.freeze_development_capability(
         pilot_root, freqtrade_python, freqtrade_source
@@ -115,7 +122,7 @@ def _eligible_run(
         strategy_member="development-01_BoundedCandidate.py",
         strategy_source=BOUNDED_SOURCE,
         strategy_sha256=source_sha256,
-        pairs=("ADA/USDT:USDT",),
+        pairs=(pair,),
         backtest_start="2026-06-01T00:00:00Z",
         backtest_end="2026-07-30T23:55:00Z",
         configured_fee=0.0005,
@@ -156,9 +163,9 @@ def _eligible_run(
         / "data"
         / "okx"
         / "futures"
-        / "ADA-5m.feather"
+        / "XRP-5m.feather"
     )
-    full_data = acquisition / "data" / "okx" / "futures" / "ADA-5m.feather"
+    full_data = acquisition / "data" / "okx" / "futures" / "XRP-5m.feather"
     full_data.parent.mkdir(parents=True)
     full_data.write_bytes(development_data.read_bytes() + b"holdout-only\n")
     local_paths = (
@@ -190,7 +197,7 @@ def _eligible_run(
         development_timerange="20260601-20260731",
         holdout_timerange="20260731-20260830",
         stress_fee_multiplier=2.0,
-        pair="ADA/USDT:USDT",
+        pair=pair,
         local_receipts=local_receipts,
     )
     return database, research_run_id, run_dir, capability, parsed
@@ -366,6 +373,10 @@ def test_t0_prepare_uses_same_run_seq_2_3_and_consumes_authorization_once(
         for key in development_before
     } == development_before
     assert release_count == 0
+    provenance = json.loads(
+        (run_dir / "holdout-input" / "retained-data-provenance.json").read_text()
+    )
+    assert provenance["source"]["instrument_id"] == "XRP-USDT-SWAP"
 
     second_dir = tmp_path / "second-attempt"
     second_dir.mkdir()
