@@ -91,6 +91,16 @@ FROZEN_SEARCH_ROWS = {
     "mark_1h": 722,
     "funding_history": 90,
 }
+SEARCH_SERIES_STEPS = {
+    "futures_5m": timedelta(minutes=5),
+    "mark_1h": timedelta(hours=1),
+    "funding_history": timedelta(hours=8),
+}
+SEARCH_SERIES_SUFFIXES = {
+    "futures_5m": "-5m-futures.feather",
+    "mark_1h": "-1h-mark.feather",
+    "funding_history": "-1h-funding_rate.feather",
+}
 SEARCH_GATE = "POSITIVE_SEARCH_FINALIST_V2"
 SEARCH_MAX_ATTEMPTS = 6
 SEARCH_MAX_ROUNDS = 2
@@ -534,6 +544,260 @@ def load_plan(root: Path, name: str = PLAN) -> dict[str, Any]:
     return plan
 
 
+def _search_window_contract(value: Any) -> dict[str, Any]:
+    search_start, search_stop = timerange(value, "Search")
+    if search_stop - search_start != timedelta(days=30):
+        raise PilotError("Search window must span exactly 30 days")
+    starts = {
+        "futures_5m": search_start - timedelta(hours=2),
+        "mark_1h": search_start - timedelta(hours=2),
+        "funding_history": search_start,
+    }
+    rows: dict[str, int] = {}
+    for series, step in SEARCH_SERIES_STEPS.items():
+        duration = search_stop - starts[series]
+        if duration % step:
+            raise PilotError(f"Search-only {series} boundaries do not align")
+        rows[series] = duration // step
+    return {
+        "startup_start": starts["futures_5m"],
+        "search_start": search_start,
+        "search_stop": search_stop,
+        "starts": starts,
+        "rows": rows,
+    }
+
+
+def _search_sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+        raise PilotError(f"{label} must be a lowercase SHA-256")
+    return value
+
+
+def _verify_search_receipt(
+    data_root: Path,
+    name: str,
+    value: Any,
+    label: str,
+    *,
+    expected_rows: Optional[int] = None,
+) -> Path:
+    expected_fields = {"bytes", "sha256"}
+    if expected_rows is not None:
+        expected_fields.add("rows")
+    if not isinstance(value, dict) or set(value) != expected_fields:
+        raise PilotError(f"{label} shape is invalid")
+    size = value.get("bytes")
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise PilotError(f"{label} bytes is invalid")
+    expected_sha = _search_sha256(value.get("sha256"), f"{label} sha256")
+    if expected_rows is not None:
+        rows = value.get("rows")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows != expected_rows:
+            raise PilotError(f"{label} rows disagree with the Search window")
+    path = safe_file(data_root, name, label)
+    data = path.read_bytes()
+    if len(data) != size or digest(data) != expected_sha:
+        raise PilotError(f"{label} receipt mismatch")
+    return path
+
+
+def _search_data_names(pair: Any) -> dict[str, str]:
+    if not isinstance(pair, str):
+        raise PilotError("Search source pair is invalid")
+    match = re.fullmatch(
+        r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):([A-Za-z0-9-]+)", pair
+    )
+    if match is None or match.group(2) != match.group(3):
+        raise PilotError("Search source pair is invalid")
+    stem = "_".join(match.groups())
+    return {
+        series: f"futures/{stem}{suffix}"
+        for series, suffix in SEARCH_SERIES_SUFFIXES.items()
+    }
+
+
+def _verify_search_data(
+    data_root: Path,
+    provenance: Mapping[str, Any],
+    provenance_bytes: bytes,
+    plan: Mapping[str, Any],
+) -> dict[str, Any]:
+    _reject_later_phase_references(provenance, "Search data provenance")
+    source = provenance.get("source")
+    freqtrade = provenance.get("freqtrade")
+    contract = provenance.get("contract")
+    if not isinstance(source, dict) or not isinstance(freqtrade, dict) or not isinstance(contract, dict):
+        raise PilotError("Search data provenance is incomplete")
+    expected_contract = {
+        "data_dir": "data/okx",
+        "market_snapshot": "market_snapshot.json",
+        "leverage_tiers": "isolated_tiers_snapshot.json",
+        "config": "config.json",
+        "search_timerange": plan["search_timerange"],
+        "timeframe": "5m",
+    }
+    if (
+        digest(provenance_bytes) != plan["data_provenance_sha256"]
+        or provenance.get("schema") != SEARCH_DATA_SCHEMA
+        or source.get("host") != "www.okx.com"
+        or source.get("authentication") != "none"
+        or freqtrade.get("version") != "2026.7"
+        or freqtrade.get("tag") != "2026.7"
+        or freqtrade.get("commit") != "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5"
+        or freqtrade.get("dependencies") != RUNNER_DEPENDENCIES
+        or contract != expected_contract
+    ):
+        raise PilotError("data provenance disagrees with the Search-only contract")
+
+    window = _search_window_contract(plan["search_timerange"])
+    expected_rows = window["rows"]
+    pair = source.get("pair")
+    instrument_id = source.get("instrument_id")
+    if not isinstance(instrument_id, str) or not instrument_id:
+        raise PilotError("Search source instrument identity is invalid")
+    data_names = _search_data_names(pair)
+
+    source_acquisition = provenance.get("source_acquisition")
+    if not isinstance(source_acquisition, dict) or set(source_acquisition) != {
+        "provenance_sha256",
+        "retrieval_receipt_sha256",
+        "data_sha256",
+    }:
+        raise PilotError("Search source_acquisition shape is invalid")
+    _search_sha256(
+        source_acquisition.get("provenance_sha256"),
+        "Search source provenance_sha256",
+    )
+    _search_sha256(
+        source_acquisition.get("retrieval_receipt_sha256"),
+        "Search source retrieval_receipt_sha256",
+    )
+    source_data_sha256 = source_acquisition.get("data_sha256")
+    if not isinstance(source_data_sha256, dict) or set(source_data_sha256) != set(
+        data_names.values()
+    ):
+        raise PilotError("Search source data_sha256 must bind exactly three series")
+    for name, value in source_data_sha256.items():
+        _search_sha256(value, f"Search source data_sha256 {name!r}")
+
+    retention = provenance.get("search_retention")
+    if not isinstance(retention, dict) or set(retention) != {
+        "startup_start_utc",
+        "search_start_utc",
+        "end_exclusive_utc",
+        "later_rows_exposed_to_search",
+        "rows",
+    }:
+        raise PilotError("Search retention shape is invalid")
+    retention_rows = retention.get("rows")
+    if (
+        retention.get("startup_start_utc")
+        != window["startup_start"].isoformat().replace("+00:00", "Z")
+        or retention.get("search_start_utc")
+        != window["search_start"].isoformat().replace("+00:00", "Z")
+        or retention.get("end_exclusive_utc")
+        != window["search_stop"].isoformat().replace("+00:00", "Z")
+        or retention.get("later_rows_exposed_to_search") is not False
+        or not isinstance(retention_rows, dict)
+        or set(retention_rows) != set(expected_rows)
+        or any(
+            isinstance(retention_rows.get(series), bool)
+            or not isinstance(retention_rows.get(series), int)
+            or retention_rows[series] != rows
+            for series, rows in expected_rows.items()
+        )
+    ):
+        raise PilotError("Search retention disagrees with the Search window")
+
+    local = provenance.get("local_only_files")
+    expected_local_names = {
+        *(f"data/okx/{name}" for name in data_names.values()),
+        contract["market_snapshot"],
+        contract["leverage_tiers"],
+    }
+    if not isinstance(local, dict) or set(local) != expected_local_names:
+        raise PilotError("Search local_only_files must bind exact data and controls")
+    for series, name in data_names.items():
+        _verify_search_receipt(
+            data_root,
+            f"data/okx/{name}",
+            local[f"data/okx/{name}"],
+            f"Search {series} data",
+            expected_rows=expected_rows[series],
+        )
+    for name in (contract["market_snapshot"], contract["leverage_tiers"]):
+        _verify_search_receipt(
+            data_root, name, local[name], f"Search control {name!r}"
+        )
+
+    market_data_root = data_root / contract["data_dir"]
+    if market_data_root.is_symlink() or not market_data_root.is_dir():
+        raise PilotError("Search market data directory is unsafe")
+    actual_data_names: set[str] = set()
+    try:
+        for path in market_data_root.rglob("*"):
+            if path.is_symlink():
+                raise PilotError("Search market data directory contains a symlink")
+            if path.is_file():
+                actual_data_names.add(path.relative_to(market_data_root).as_posix())
+    except OSError as exc:
+        raise PilotError("Search market data directory cannot be inspected") from exc
+    if actual_data_names != set(data_names.values()):
+        raise PilotError("Search market data file set is not exact")
+
+    tracked = provenance.get("files")
+    if not isinstance(tracked, dict) or set(tracked) != {contract["config"]}:
+        raise PilotError("Search provenance must bind only its config file")
+    config_path = _verify_search_receipt(
+        data_root,
+        contract["config"],
+        tracked[contract["config"]],
+        "Search config",
+    )
+    config, _ = load_json(config_path, "Search config")
+    configured_strategy = config.get("strategy")
+    if configured_strategy is not None and (
+        not isinstance(configured_strategy, str)
+        or CLASS.fullmatch(configured_strategy) is None
+    ):
+        raise PilotError("Search config strategy is invalid")
+    try:
+        fee, pairs = _validate_config(
+            config, configured_strategy or "SearchCandidate"
+        )
+    except ResearchCandidateError as exc:
+        raise PilotError(str(exc)) from exc
+    if pairs != (pair,) or config.get("timeframe") != contract["timeframe"]:
+        raise PilotError("Search config/profile contract mismatch")
+
+    market, _ = load_json(
+        data_root / contract["market_snapshot"], "Search market snapshot"
+    )
+    if market.get("id") != instrument_id or market.get("symbol") != pair:
+        raise PilotError("Search market identity disagrees with its SHA-bound snapshot")
+
+    actual_rows = _verify_search_output_dates(
+        market_data_root, data_names, plan["search_timerange"]
+    )
+    if actual_rows != expected_rows:
+        raise PilotError("Search market data rows disagree with provenance")
+    return {
+        "status": "DATA_READY",
+        "source": {
+            "host": source["host"],
+            "authentication": "none",
+            "pair": pair,
+        },
+        "rows": expected_rows,
+        "provenance_sha256": digest(provenance_bytes),
+        "local_files": len(local),
+        "search_timerange": plan["search_timerange"],
+        "timeframe": contract["timeframe"],
+        "base_fee": fee,
+    }
+
+
 def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
     data_root = root / ACQUISITION
     provenance, provenance_bytes = load_json(
@@ -544,21 +808,7 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
     contract = provenance.get("contract", {})
     search_only = plan.get("schema") == SEARCH_SCHEMA
     if search_only:
-        _reject_later_phase_references(provenance, "Search data provenance")
-        if (
-            digest(provenance_bytes) != plan["data_provenance_sha256"]
-            or provenance.get("schema") != "freqtrade-lab-retained-search-data-v2"
-            or source.get("host") != "www.okx.com"
-            or source.get("authentication") != "none"
-            or ft.get("version") != "2026.7"
-            or ft.get("tag") != "2026.7"
-            or ft.get("commit") != "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5"
-            or ft.get("dependencies") != RUNNER_DEPENDENCIES
-            or contract.get("timeframe") != "5m"
-            or contract.get("data_dir") != "data/okx"
-            or contract.get("search_timerange") != plan["search_timerange"]
-        ):
-            raise PilotError("data provenance disagrees with the Search-only contract")
+        return _verify_search_data(data_root, provenance, provenance_bytes, plan)
     elif (
         provenance.get("schema") != "freqtrade-lab-retained-okx-data-v1"
         or source.get("host") != "www.okx.com"
@@ -578,66 +828,6 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
         data = path.read_bytes()
         if not isinstance(receipt, dict) or receipt.get("bytes") != len(data) or receipt.get("sha256") != digest(data):
             raise PilotError(f"local data receipt mismatch: {name}")
-        if (
-            search_only
-            and isinstance(name, str)
-            and name.startswith("data/okx/")
-            and (
-                isinstance(receipt.get("rows"), bool)
-                or not isinstance(receipt.get("rows"), int)
-                or receipt["rows"] <= 0
-            )
-        ):
-            raise PilotError(f"Search data receipt has no frozen row count: {name}")
-    if search_only:
-        tracked = provenance.get("files")
-        config_receipt = tracked.get("config.json") if isinstance(tracked, dict) else None
-        required_local = {
-            contract.get("market_snapshot"),
-            contract.get("leverage_tiers"),
-        }
-        if (
-            not isinstance(config_receipt, dict)
-            or not required_local.issubset(local)
-            or not any(
-                isinstance(name, str) and name.startswith("data/okx/")
-                for name in local
-            )
-        ):
-            raise PilotError("Search provenance does not bind every runner input")
-        config_path = safe_file(data_root, "config.json", "Search config")
-        config_bytes = config_path.read_bytes()
-        if (
-            config_receipt.get("bytes") != len(config_bytes)
-            or config_receipt.get("sha256") != digest(config_bytes)
-        ):
-            raise PilotError("Search config receipt mismatch")
-        instrument_id = source.get("instrument_id")
-        pair = source.get("pair")
-        market, _ = load_json(
-            safe_file(data_root, contract["market_snapshot"], "Search market snapshot"),
-            "Search market snapshot",
-        )
-        if (
-            not isinstance(instrument_id, str)
-            or not instrument_id
-            or not isinstance(pair, str)
-            or not pair
-            or market.get("id") != instrument_id
-            or market.get("symbol") != pair
-        ):
-            raise PilotError("Search market identity disagrees with its SHA-bound snapshot")
-        return {
-            "status": "DATA_READY",
-            "source": {
-                "host": source["host"],
-                "authentication": "none",
-                "pair": source.get("pair"),
-            },
-            "provenance_sha256": digest(provenance_bytes),
-            "local_files": len(local),
-            "search_timerange": plan["search_timerange"],
-        }
     receipt_name = source.get("retrieval_receipt")
     receipt, receipt_bytes = load_json(
         safe_file(data_root, receipt_name, "retrieval receipt"), "retrieval receipt"
@@ -825,36 +1015,75 @@ def _load_search_source(
     }
 
 
-def _verify_search_output_dates(data_root: Path, data_names: Mapping[str, str]) -> None:
+def _verify_search_output_dates(
+    data_root: Path,
+    data_names: Mapping[str, str],
+    search_timerange: str,
+) -> dict[str, int]:
     try:
         import pyarrow
+        import pyarrow.compute as pc
         import pyarrow.feather as feather
     except (ImportError, ModuleNotFoundError) as exc:
         raise PilotError("exact PyArrow 25.0.0 is required") from exc
     if pyarrow.__version__ != RUNNER_DEPENDENCIES["pyarrow"]:
         raise PilotError("exact PyArrow 25.0.0 is required")
-    bounds = {
-        "futures_5m": (FROZEN_SEARCH_STARTUP, timedelta(minutes=5)),
-        "mark_1h": (FROZEN_SEARCH_STARTUP, timedelta(hours=1)),
-        "funding_history": (FROZEN_SEARCH_START, timedelta(hours=8)),
-    }
+    if set(data_names) != set(SEARCH_SERIES_STEPS) or len(set(data_names.values())) != 3:
+        raise PilotError("Search-only output must contain exactly three series")
+    window = _search_window_contract(search_timerange)
+    expected_columns = ("date", "open", "high", "low", "close", "volume")
     for series, relative_name in data_names.items():
-        table = feather.read_table(data_root / relative_name, columns=["date"])
-        raw_values = table.column("date").to_pylist()
+        try:
+            table = feather.read_table(data_root / relative_name)
+            if tuple(table.column_names) != expected_columns:
+                raise PilotError(
+                    f"Search-only {series} does not have the exact Freqtrade OHLCV schema"
+                )
+            dates = table.column("date")
+            if dates.null_count:
+                raise PilotError(f"Search-only {series} timestamps contain nulls")
+            for column_name in expected_columns[1:]:
+                column = table.column(column_name)
+                if not pyarrow.types.is_floating(column.type):
+                    raise PilotError(
+                        f"Search-only {series} {column_name} values are invalid"
+                    )
+                if series == "mark_1h" and column_name == "volume":
+                    valid_values = pc.fill_null(pc.is_finite(column), True)
+                elif column.null_count:
+                    raise PilotError(
+                        f"Search-only {series} {column_name} values are invalid"
+                    )
+                else:
+                    valid_values = pc.is_finite(column)
+                if not pc.all(valid_values).as_py():
+                    raise PilotError(
+                        f"Search-only {series} {column_name} values are invalid"
+                    )
+            raw_values = dates.to_pylist()
+        except PilotError:
+            raise
+        except Exception as exc:
+            raise PilotError(f"Search-only {series} is not a readable Feather series") from exc
         if any(
             not isinstance(item, datetime) or item.utcoffset() != timedelta(0)
             for item in raw_values
         ):
             raise PilotError(f"Search-only {series} timestamps are not UTC")
         values = [item.astimezone(timezone.utc) for item in raw_values]
-        start, step = bounds[series]
+        start = window["starts"][series]
+        stop = window["search_stop"]
+        step = SEARCH_SERIES_STEPS[series]
         if (
-            len(values) != FROZEN_SEARCH_ROWS[series]
+            len(values) != window["rows"][series]
+            or not values
             or values[0] != start
-            or values[-1] + step != FROZEN_SEARCH_STOP
+            or values[-1] + step != stop
+            or any(item >= stop for item in values)
             or any(right - left != step for left, right in zip(values, values[1:]))
         ):
             raise PilotError(f"Search-only {series} output is not contiguous")
+    return dict(window["rows"])
 
 
 def prepare_search_data(
@@ -910,7 +1139,9 @@ def prepare_search_data(
             FROZEN_SEARCH_TIMERANGE,
             expected,
         )
-        _verify_search_output_dates(data_root, frozen["data_names"])
+        _verify_search_output_dates(
+            data_root, frozen["data_names"], FROZEN_SEARCH_TIMERANGE
+        )
         for data_path in data_root.rglob("*.feather"):
             data_path.chmod(0o400)
         for name, data in frozen["controls"].items():

@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from lab import search_campaign
 from scripts import run_freqtrade_backtest as offline_runner
 
 
@@ -286,12 +287,38 @@ def _main_args(root: Path, source: Path) -> list[str]:
 
 def _search_root(tmp_path: Path) -> tuple[Path, Path]:
     root = tmp_path / "search-campaign"
-    data_root = root / "acquisition" / "data" / "okx"
+    data_root = root / "acquisition" / "data" / "okx" / "futures"
     data_root.mkdir(parents=True)
-    market_data = b"sanitized-search-data\n"
-    market_file = data_root / "market.feather"
-    market_file.write_bytes(market_data)
-    _write_json(root / "acquisition" / "config.json", {"fee": 0.001})
+    data_names = {
+        "futures_5m": "TEST_USDT_USDT-5m-futures.feather",
+        "mark_1h": "TEST_USDT_USDT-1h-mark.feather",
+        "funding_history": "TEST_USDT_USDT-1h-funding_rate.feather",
+    }
+    rows = dict(pilot.FROZEN_SEARCH_ROWS)
+    local: dict[str, object] = {}
+    source_data_sha256: dict[str, str] = {}
+    for series, name in data_names.items():
+        data = f"unit-only-{series}\n".encode()
+        path = data_root / name
+        path.write_bytes(data)
+        relative = f"futures/{name}"
+        source_data_sha256[relative] = pilot.digest(data)
+        local[f"data/okx/{relative}"] = {
+            "bytes": len(data),
+            "sha256": pilot.digest(data),
+            "rows": rows[series],
+        }
+    config = json.loads(
+        (
+            Path(__file__).parent
+            / "fixtures"
+            / "freqtrade_2026_7"
+            / "producer"
+            / "config.json"
+        ).read_bytes()
+    )
+    config["exchange"]["pair_whitelist"] = ["TEST/USDT:USDT"]
+    _write_json(root / "acquisition" / "config.json", config)
     _write_json(
         root / "acquisition" / "market_snapshot.json",
         {
@@ -312,6 +339,18 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
     config = (root / "acquisition" / "config.json").read_bytes()
     market = (root / "acquisition" / "market_snapshot.json").read_bytes()
     tiers = (root / "acquisition" / "isolated_tiers_snapshot.json").read_bytes()
+    local.update(
+        {
+            "market_snapshot.json": {
+                "bytes": len(market),
+                "sha256": pilot.digest(market),
+            },
+            "isolated_tiers_snapshot.json": {
+                "bytes": len(tiers),
+                "sha256": pilot.digest(tiers),
+            },
+        }
+    )
     provenance = {
         "schema": "freqtrade-lab-retained-search-data-v2",
         "source": {
@@ -332,22 +371,21 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
             "data_dir": "data/okx",
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
+            "config": "config.json",
         },
-        "local_only_files": {
-            "data/okx/market.feather": {
-                "bytes": len(market_data),
-                "sha256": pilot.digest(market_data),
-                "rows": 1,
-            },
-            "market_snapshot.json": {
-                "bytes": len(market),
-                "sha256": pilot.digest(market),
-            },
-            "isolated_tiers_snapshot.json": {
-                "bytes": len(tiers),
-                "sha256": pilot.digest(tiers),
-            },
+        "source_acquisition": {
+            "provenance_sha256": "a" * 64,
+            "retrieval_receipt_sha256": "b" * 64,
+            "data_sha256": source_data_sha256,
         },
+        "search_retention": {
+            "startup_start_utc": "2025-12-31T22:00:00Z",
+            "search_start_utc": "2026-01-01T00:00:00Z",
+            "end_exclusive_utc": "2026-01-31T00:00:00Z",
+            "later_rows_exposed_to_search": False,
+            "rows": rows,
+        },
+        "local_only_files": local,
         "files": {
             "config.json": {
                 "bytes": len(config),
@@ -359,6 +397,40 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
     source = tmp_path / "freqtrade-source"
     source.mkdir()
     return root, source
+
+
+def _unit_search_rows(path: Path | str) -> int:
+    name = str(path)
+    return next(
+        pilot.FROZEN_SEARCH_ROWS[series]
+        for series, suffix in pilot.SEARCH_SERIES_SUFFIXES.items()
+        if name.endswith(suffix)
+    )
+
+
+def test_t0_search_capability_requires_exact_pyarrow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, _ = _search_root(tmp_path)
+    root.chmod(0o700)
+    provenance = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    plan = {
+        "schema": pilot.SEARCH_SCHEMA,
+        "search_timerange": "20260101-20260131",
+        "data_provenance_sha256": pilot.digest(provenance.read_bytes()),
+    }
+    monkeypatch.setitem(sys.modules, "pyarrow", None)
+    monkeypatch.setitem(sys.modules, "pyarrow.feather", None)
+
+    with pytest.raises(pilot.PilotError, match="exact PyArrow 25.0.0"):
+        pilot.verify_data(root, plan)
+    capability = search_campaign.freeze_search_capability(root, None, None)
+    try:
+        assert capability.status == "BLOCKED_DATA"
+        assert not (root / pilot.SEARCH_CAMPAIGN).exists()
+        assert not (root / pilot.SEARCH_TRIALS).exists()
+    finally:
+        capability.close()
 
 
 def _search_candidate(
@@ -1301,7 +1373,9 @@ def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
         "config.json",
         "market_snapshot.json",
         "isolated_tiers_snapshot.json",
-        "data/okx/market.feather",
+        "data/okx/futures/TEST_USDT_USDT-5m-futures.feather",
+        "data/okx/futures/TEST_USDT_USDT-1h-mark.feather",
+        "data/okx/futures/TEST_USDT_USDT-1h-funding_rate.feather",
     ),
 )
 def test_t0_search_runner_inputs_are_sha_bound_before_screen(
@@ -1375,7 +1449,7 @@ def test_t0_search_market_identity_fails_before_attempt_reservation(
         raise AssertionError("invalid market identity must fail before screening")
 
     monkeypatch.setattr(pilot, "materialize_screening_isolation", forbidden)
-    with pytest.raises(pilot.PilotError, match="market identity"):
+    with pytest.raises(pilot.PilotError, match="identity|source pair"):
         pilot.screen_search(
             root,
             pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
@@ -1400,20 +1474,22 @@ def test_t0_search_isolation_preserves_sha_bound_instrument_identity(
         timerange: str,
         expected: dict[str, str],
     ) -> dict[str, object]:
-        destination = destination_root / "market.feather"
-        shutil.copyfile(source_root / "market.feather", destination)
+        files = {}
+        for relative, sha256 in expected.items():
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_root / relative, destination)
+            files[relative] = {
+                "rows": _unit_search_rows(relative),
+                "sha256": sha256,
+            }
         return {
             "exclusive_stop_utc": "2026-01-31T00:00:00Z",
-            "files": {
-                "market.feather": {
-                    "rows": 1,
-                    "sha256": expected["market.feather"],
-                }
-            },
+            "files": files,
         }
 
     monkeypatch.setattr(pilot, "_create_scenario_data_view", create_view)
-    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 1)
+    monkeypatch.setattr(pilot, "_search_feather_rows", _unit_search_rows)
     isolation = pilot.materialize_screening_isolation(
         root, pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
     )
@@ -1559,7 +1635,8 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
     root, source = _search_root(tmp_path)
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
-    provenance["local_only_files"]["data/okx/market.feather"]["rows"] = 2
+    changed_name = "data/okx/futures/TEST_USDT_USDT-5m-futures.feather"
+    provenance["local_only_files"][changed_name]["rows"] += 1
     _write_json(provenance_path, provenance)
     _write_search_campaign(
         root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
@@ -1571,23 +1648,32 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
         timerange: str,
         expected: dict[str, str],
     ) -> dict[str, object]:
-        destination = destination_root / "market.feather"
-        shutil.copyfile(source_root / "market.feather", destination)
+        files = {}
+        for relative, sha256 in expected.items():
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_root / relative, destination)
+            source_rows = _unit_search_rows(relative)
+            files[relative] = {
+                "rows": source_rows - 1 if relative.endswith("-5m-futures.feather") else source_rows,
+                "sha256": sha256,
+            }
         return {
             "exclusive_stop_utc": "2026-01-31T00:00:00Z",
-            "files": {
-                "market.feather": {
-                    "rows": 1,
-                    "sha256": expected["market.feather"],
-                }
-            },
+            "files": files,
         }
 
     def forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("post-window data must fail before Candidate screening")
 
+    monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
     monkeypatch.setattr(pilot, "_create_scenario_data_view", filtered_view)
-    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 2)
+    monkeypatch.setattr(
+        pilot,
+        "_search_feather_rows",
+        lambda path: _unit_search_rows(path)
+        + (1 if str(path).endswith("-5m-futures.feather") else 0),
+    )
     monkeypatch.setattr(pilot, "screen", forbidden)
     with pytest.raises(pilot.PilotError, match="post-window data"):
         pilot.screen_search(
@@ -1649,6 +1735,11 @@ def test_t0_search_config_toctou_fails_before_candidate_screen(
 
     monkeypatch.setattr(
         pilot, "materialize_screening_isolation", mutate_after_preflight
+    )
+    monkeypatch.setattr(
+        pilot,
+        "_verify_search_output_dates",
+        lambda *args: dict(pilot.FROZEN_SEARCH_ROWS),
     )
     monkeypatch.setattr(pilot, "screen", forbidden)
     with pytest.raises(pilot.PilotError, match="config changed after preflight"):
@@ -1724,7 +1815,10 @@ def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects
             destination = destination_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_root / relative, destination)
-            files[relative] = {"sha256": sha256, "rows": 1}
+            files[relative] = {
+                "sha256": sha256,
+                "rows": _unit_search_rows(relative),
+            }
         return {"exclusive_stop_utc": "2026-01-31T00:00:00Z", "files": files}
 
     def isolated_screen(
@@ -1767,7 +1861,12 @@ def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects
         ]
 
     monkeypatch.setattr(pilot, "_create_scenario_data_view", create_view)
-    monkeypatch.setattr(pilot, "_search_feather_rows", lambda path: 1)
+    monkeypatch.setattr(pilot, "_search_feather_rows", _unit_search_rows)
+    monkeypatch.setattr(
+        pilot,
+        "_verify_search_output_dates",
+        lambda *args: dict(pilot.FROZEN_SEARCH_ROWS),
+    )
     monkeypatch.setattr(pilot, "screen", isolated_screen)
     seeds = [
         _search_candidate(root, "seed-a", "SeedA", "ema"),
