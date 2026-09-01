@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -275,6 +277,29 @@ def test_t0_schema_blob_and_six_business_tables_remain_exact(
         "backtest_executions",
         "releases",
     }
+
+
+def test_t0_one_shot_receipt_fsyncs_file_and_parent_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed_modes: list[int] = []
+    real_fsync = holdout_run.os.fsync
+
+    def recording_fsync(descriptor: int) -> None:
+        observed_modes.append(os.fstat(descriptor).st_mode)
+        real_fsync(descriptor)
+
+    monkeypatch.setattr(holdout_run.os, "fsync", recording_fsync)
+
+    holdout_run._write_exclusive(
+        tmp_path / holdout_run.HOLDOUT_ATTEMPT_NAME,
+        b"{}\n",
+        sync_parent=True,
+    )
+
+    assert any(stat.S_ISREG(mode) for mode in observed_modes)
+    assert stat.S_ISDIR(observed_modes[-1])
 
 
 def test_t0_prepare_uses_same_run_seq_2_3_and_consumes_authorization_once(
@@ -575,6 +600,47 @@ def test_t0_db_authorization_failure_preserves_one_shot_attempt_evidence(
             now=NOW,
         )
     assert repeated.value.code == "already_authorized"
+
+
+def test_t0_profile_drift_before_authorization_write_lock_creates_no_later_rows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, run_dir, capability, parsed = _eligible_run(
+        tmp_path, monkeypatch
+    )
+    real_authorize = holdout_run._authorize_holdout_run
+
+    def drift_then_authorize(*args: Any, **kwargs: Any):
+        with get_connection(database) as connection:
+            connection.execute(
+                "UPDATE research_profiles SET starting_balance=starting_balance+1 "
+                "WHERE id=(SELECT research_profile_id FROM research_runs WHERE id=?)",
+                (research_run_id,),
+            )
+            connection.commit()
+        return real_authorize(*args, **kwargs)
+
+    monkeypatch.setattr(
+        holdout_run,
+        "_authorize_holdout_run",
+        drift_then_authorize,
+    )
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        _prepare_continuation(
+            database,
+            research_run_id,
+            run_dir,
+            capability,
+            parsed,
+            monkeypatch,
+        )
+
+    assert raised.value.code == "BLOCKED_DATA"
+    assert (run_dir / holdout_run.HOLDOUT_ATTEMPT_NAME).is_file()
+    assert (run_dir / "holdout-input" / "authorization.json").is_file()
+    _assert_no_later_rows(database, research_run_id)
 
 
 @pytest.mark.parametrize(
@@ -1352,6 +1418,47 @@ def test_t1_authorization_snapshot_drift_before_write_lock_keeps_results_pending
 
     assert raised.value.code == "run_state_conflict"
     assert calls == 2
+    rows = _execution_rows(database, research_run_id)
+    assert [row["status"] for row in rows] == ["SUCCEEDED", "PENDING", "PENDING"]
+    for row in rows[1:]:
+        _assert_empty_result(row)
+
+
+def test_t1_profile_drift_before_finalize_keeps_both_results_pending(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, run_dir, capability, development = _eligible_run(
+        tmp_path, monkeypatch
+    )
+    _prepare_continuation(
+        database,
+        research_run_id,
+        run_dir,
+        capability,
+        development,
+        monkeypatch,
+    )
+    _stub_finalizer_artifacts(
+        database, research_run_id, run_dir, development, monkeypatch
+    )
+    with get_connection(database) as connection:
+        connection.execute(
+            "UPDATE research_profiles SET max_open_trades=max_open_trades+1 "
+            "WHERE id=(SELECT research_profile_id FROM research_runs WHERE id=?)",
+            (research_run_id,),
+        )
+        connection.commit()
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        holdout_run.finalize_holdout_continuation(
+            database,
+            run_dir,
+            research_run_id,
+            now="2026-01-01T00:01:00.000Z",
+        )
+
+    assert raised.value.code == "run_state_conflict"
     rows = _execution_rows(database, research_run_id)
     assert [row["status"] for row in rows] == ["SUCCEEDED", "PENDING", "PENDING"]
     for row in rows[1:]:

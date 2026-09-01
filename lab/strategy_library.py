@@ -719,6 +719,7 @@ def _scenario_model(
     frequi_config: FreqUIConfig,
     frequi_probe: Mapping[str, Any],
     candidate_class_name: str,
+    research_run_id: str,
 ) -> Dict[str, Any]:
     if row is None:
         return {
@@ -821,6 +822,7 @@ def _scenario_model(
         "frequi": scenario_frequi_status(
             frequi_config,
             frequi_probe,
+            research_run_id=research_run_id,
             raw_archive_path=row["result_archive_path"],
             raw_metrics=row["metrics_json"],
             candidate_class_name=candidate_class_name,
@@ -946,6 +948,7 @@ def load_research_run_detail(
                     selected_frequi_config,
                     selected_frequi_probe,
                     selected["class_name"],
+                    selected["research_run_id"],
                 )
                 for scenario in REQUIRED_SCENARIOS
             ]

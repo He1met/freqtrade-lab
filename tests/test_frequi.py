@@ -21,7 +21,9 @@ import pytest
 
 from lab.database import get_connection, init_database
 from lab.frequi import (
+    FREQUI_COMPLETION_RECEIPT_NAME,
     FreqUIConfigurationError,
+    build_frequi_completion_receipt,
     configure_frequi,
     probe_frequi,
 )
@@ -139,6 +141,29 @@ def _copy_result_pair(archive: Path, results_root: Path) -> Tuple[Path, Path]:
     shutil.copy2(archive, archive_copy)
     shutil.copy2(metadata, metadata_copy)
     return archive_copy, metadata_copy
+
+
+def _write_completion_receipt(
+    results_root: Path,
+    research_run_id: str,
+    archives: Mapping[str, Path],
+) -> None:
+    scenarios = []
+    for scenario in ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS"):
+        archive = archives[scenario]
+        metadata = archive.with_suffix(".meta.json")
+        scenarios.append(
+            {
+                "scenario": scenario,
+                "archive": archive.name,
+                "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                "metadata": metadata.name,
+                "metadata_sha256": hashlib.sha256(metadata.read_bytes()).hexdigest(),
+            }
+        )
+    (results_root / FREQUI_COMPLETION_RECEIPT_NAME).write_bytes(
+        build_frequi_completion_receipt(research_run_id, scenarios)
+    )
 
 
 def _detail_paths(base: str, imported: Any) -> Tuple[str, str]:
@@ -438,6 +463,7 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
     results_root.mkdir()
     for archive in archives.values():
         _copy_result_pair(archive, results_root)
+    _write_completion_receipt(results_root, imported.research_run_id, archives)
 
     with _stub_frequi(SUCCESS_RESPONSES) as (origin, requested):
         with _serve_library(database, artifact_root, origin, results_root) as base:
@@ -495,6 +521,32 @@ def test_real_bundle_detail_exposes_only_generic_manual_frequi_entry(
         "/ui_version",
         "/backtest",
     ]
+
+
+def test_detail_rejects_completion_receipt_bound_to_another_run(
+    tmp_path: Path,
+) -> None:
+    database, artifact_root, imported, archives = _import_frozen_bundle(tmp_path)
+    results_root = tmp_path / "frequi-results"
+    results_root.mkdir()
+    for archive in archives.values():
+        _copy_result_pair(archive, results_root)
+    _write_completion_receipt(results_root, "different-research-run", archives)
+
+    with _stub_frequi(SUCCESS_RESPONSES) as (origin, _):
+        with _serve_library(database, artifact_root, origin, results_root) as base:
+            api_url, _ = _detail_paths(base, imported)
+            with urlopen(api_url, timeout=5) as response:
+                payload = json.load(response)
+
+    assert imported.research_run_id != "different-research-run"
+    assert all(
+        scenario["frequi"]["available"] is False
+        and scenario["frequi"]["local_copy_ready"] is False
+        and scenario["frequi"]["reason"] == "RESULT_SET_INVALID"
+        and scenario["frequi"]["url"] is None
+        for scenario in payload["scenarios"]
+    )
 
 
 @pytest.mark.parametrize(

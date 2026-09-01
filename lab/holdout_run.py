@@ -49,7 +49,11 @@ from lab.development_run import (
     freeze_development_capability,
     load_public_research_run as load_development_public_research_run,
 )
-from lab.frequi import FreqUIConfig
+from lab.frequi import (
+    FREQUI_COMPLETION_RECEIPT_NAME,
+    FreqUIConfig,
+    build_frequi_completion_receipt,
+)
 from lab.research_candidate import (
     DEFAULT_RUNNER,
     DEFAULT_SANDBOX_EXEC,
@@ -110,6 +114,32 @@ _BUSINESS_TABLES = frozenset(
         "backtest_executions",
         "releases",
     }
+)
+_PROFILE_BINDING_FIELDS = (
+    "id",
+    "name",
+    "domain",
+    "exchange",
+    "trading_mode",
+    "margin_mode",
+    "pairs_json",
+    "timeframe",
+    "detail_timeframe",
+    "history_start_date",
+    "smoke_days",
+    "holdout_days",
+    "starting_balance",
+    "stake_amount",
+    "max_open_trades",
+    "taker_fee_rate",
+    "stress_fee_multiplier",
+    "max_drawdown_pct",
+    "min_development_trades",
+    "min_holdout_trades",
+    "min_profit_factor",
+    "is_default",
+    "created_at",
+    "updated_at",
 )
 _ORIGINAL_CHECKS = {
     "candidate_binding": "PASSED",
@@ -418,7 +448,13 @@ def _schema_v1(connection: sqlite3.Connection) -> None:
         )
 
 
-def _write_exclusive(path: Path, data: bytes, mode: int = 0o400) -> None:
+def _write_exclusive(
+    path: Path,
+    data: bytes,
+    mode: int = 0o400,
+    *,
+    sync_parent: bool = False,
+) -> None:
     descriptor = os.open(
         path,
         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
@@ -431,6 +467,29 @@ def _write_exclusive(path: Path, data: bytes, mode: int = 0o400) -> None:
             os.fsync(handle.fileno())
     finally:
         os.close(descriptor)
+    if sync_parent:
+        directory = os.open(
+            path.parent,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+        )
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+
+
+def _profile_binding_sha256(
+    connection: sqlite3.Connection,
+    profile_id: str,
+) -> str:
+    row = connection.execute(
+        "SELECT * FROM research_profiles WHERE id=?",
+        (profile_id,),
+    ).fetchone()
+    if row is None:
+        raise HoldoutRunError("run_state_conflict", "Research Profile is unavailable")
+    binding = {name: row[name] for name in _PROFILE_BINDING_FIELDS}
+    return hashlib.sha256(_canonical_bytes(binding)).hexdigest()
 
 
 def _copy_frozen_input(source: Path, destination: Path, size: int, digest: str) -> None:
@@ -481,6 +540,7 @@ def _materialize_holdout_inputs(
     capability: FrozenHoldoutCapability,
     row: sqlite3.Row,
     development: ParsedBacktestArtifact,
+    profile_binding_sha256: str,
 ) -> Tuple[Path, dict[str, Any]]:
     """Create a SHA-bound full acquisition view after the one explicit action."""
     assert capability.pilot_root is not None
@@ -641,6 +701,7 @@ def _materialize_holdout_inputs(
             "class_name": row["class_name"],
             "code_sha256": row["code_sha256"],
             "research_profile_id": row["research_profile_id"],
+            "profile_binding_sha256": profile_binding_sha256,
             "development_timerange": capability.development_timerange,
             "holdout_timerange": capability.holdout_timerange,
             "stress_fee_multiplier": capability.stress_fee_multiplier,
@@ -699,6 +760,7 @@ def _authorization_receipt(
     snapshot: Mapping[str, Any],
     profile_id: str,
     candidate_sha256: str,
+    profile_binding_sha256: str,
     stress_multiplier: float,
     holdout_days: int,
 ) -> dict[str, Any]:
@@ -708,6 +770,7 @@ def _authorization_receipt(
         "authorized_at",
         "candidate_code_sha256",
         "research_profile_id",
+        "profile_binding_sha256",
         "pilot_spec_sha256",
         "data_provenance_sha256",
         "freqtrade_source_tree",
@@ -721,6 +784,7 @@ def _authorization_receipt(
         raise HoldoutRunError("BLOCKED_DATA", "Holdout authorization receipt is invalid")
     for name in (
         "candidate_code_sha256",
+        "profile_binding_sha256",
         "pilot_spec_sha256",
         "data_provenance_sha256",
         "runner_sha256",
@@ -750,6 +814,7 @@ def _authorization_receipt(
         and raw["action"] == "AUTHORIZE_HOLDOUT"
         and raw["candidate_code_sha256"] == candidate_sha256
         and raw["research_profile_id"] == profile_id
+        and raw["profile_binding_sha256"] == profile_binding_sha256
         and raw["pilot_spec_sha256"] == snapshot.get("pilot_spec_sha256")
         and raw["data_provenance_sha256"] == snapshot.get("source_provenance_sha256")
         and raw["freqtrade_source_tree"] == snapshot.get("freqtrade_source_tree")
@@ -940,6 +1005,9 @@ def prepare_holdout_continuation(
         materialization_row = _candidate_profile_row(
             connection, str(row["candidate_id"]), capability
         )
+        profile_binding_sha256 = _profile_binding_sha256(
+            connection, str(row["research_profile_id"])
+        )
         holdout_start, holdout_stop = _timerange(capability.holdout_timerange)
         expected_python_identity = list(
             capability.development.python_identity
@@ -996,6 +1064,7 @@ def prepare_holdout_continuation(
                     "authorized_at": timestamp,
                 }
             ),
+            sync_parent=True,
         )
     except FileExistsError as exc:
         raise HoldoutRunError(
@@ -1008,7 +1077,12 @@ def prepare_holdout_continuation(
     # This marker is deliberately retained if materialization fails.  The user
     # action is one-shot even when no later DB rows can be created.
     _input_root, materialized = _materialize_holdout_inputs(
-        directory, research_run_id, capability, materialization_row, parsed
+        directory,
+        research_run_id,
+        capability,
+        materialization_row,
+        parsed,
+        profile_binding_sha256,
     )
     manifest_sha256 = str(materialized["manifest_sha256"])
     receipt = {
@@ -1017,6 +1091,7 @@ def prepare_holdout_continuation(
         "authorized_at": timestamp,
         "candidate_code_sha256": row["code_sha256"],
         "research_profile_id": row["research_profile_id"],
+        "profile_binding_sha256": profile_binding_sha256,
         "pilot_spec_sha256": capability.plan_sha256,
         "data_provenance_sha256": capability.acquisition_provenance_sha256,
         "freqtrade_source_tree": snapshot.get("freqtrade_source_tree"),
@@ -1062,11 +1137,15 @@ def _authorize_holdout_run(
             row, _, snapshot = _eligible_row(
                 connection, research_run_id, parse_artifact=True
             )
+            current_profile_binding_sha256 = _profile_binding_sha256(
+                connection, str(row["research_profile_id"])
+            )
             authorization = _authorization_receipt(
                 receipt,
                 snapshot=snapshot,
                 profile_id=str(row["research_profile_id"]),
                 candidate_sha256=str(row["code_sha256"]),
+                profile_binding_sha256=current_profile_binding_sha256,
                 stress_multiplier=float(row["stress_fee_multiplier"]),
                 holdout_days=int(row["holdout_days"]),
             )
@@ -1264,6 +1343,8 @@ def _authorized_state(
         or run["finished_at"] is not None
         or checks != expected_checks
         or not isinstance(authorization, dict)
+        or authorization.get("profile_binding_sha256")
+        != _profile_binding_sha256(connection, str(run["research_profile_id"]))
         or len(executions) != 3
         or [row["scenario"] for row in executions] != list(BUNDLE_SCENARIOS)
         or [row["sequence"] for row in executions] != [1, 2, 3]
@@ -1323,6 +1404,7 @@ def _load_holdout_input(
         "class_name",
         "code_sha256",
         "research_profile_id",
+        "profile_binding_sha256",
         "development_timerange",
         "holdout_timerange",
         "stress_fee_multiplier",
@@ -1435,6 +1517,8 @@ def execute_holdout_continuation(
             or manifest.get("class_name") != run["class_name"]
             or manifest.get("code_sha256") != run["code_sha256"]
             or manifest.get("research_profile_id") != run["research_profile_id"]
+            or manifest.get("profile_binding_sha256")
+            != authorization.get("profile_binding_sha256")
             or manifest.get("development_artifact")
             != {
                 "archive_sha256": development.archive_sha256,
@@ -2773,22 +2857,15 @@ def _write_exclusive_at(
     os.fsync(directory_fd)
 
 
-def _exclusive_verified_copy_at(
+def _validated_source_bytes_at(
     source_fd: int,
     source_relative: Path,
-    destination_fd: int,
-    destination_name: str,
     expected_sha: str,
-) -> None:
+) -> bytes:
     data = _read_regular_relative_at(source_fd, source_relative, "FreqUI source")
     if hashlib.sha256(data).hexdigest() != expected_sha:
         raise HoldoutRunError("presentation_unavailable", "FreqUI source receipt drifted")
-    _write_exclusive_at(destination_fd, destination_name, data, 0o400)
-    copied = _read_regular_relative_at(
-        destination_fd, Path(destination_name), "FreqUI copy"
-    )
-    if hashlib.sha256(copied).hexdigest() != expected_sha:
-        raise HoldoutRunError("presentation_unavailable", "FreqUI copy verification failed")
+    return data
 
 
 def copy_frequi_results(
@@ -2885,13 +2962,45 @@ def copy_frequi_results(
         with closing(
             get_connection(database_path, read_only=True, must_exist=True)
         ) as connection:
+            connection.execute("BEGIN")
+            run_state = connection.execute(
+                "SELECT status,stage,verdict FROM research_runs WHERE id=?",
+                (research_run_id,),
+            ).fetchone()
             rows = connection.execute(
-                "SELECT scenario,result_archive_path,metrics_json "
+                "SELECT scenario,status,sequence,result_archive_path,metrics_json "
                 "FROM backtest_executions WHERE research_run_id=? "
                 "ORDER BY sequence,id",
                 (research_run_id,),
             ).fetchall()
+            release_count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM releases WHERE research_run_id=?",
+                    (research_run_id,),
+                ).fetchone()[0]
+            )
+            connection.rollback()
+        if (
+            run_state is None
+            or tuple(run_state) != ("COMPLETED", "COMPLETED", None)
+            or [
+                (row["scenario"], row["status"], row["sequence"])
+                for row in rows
+            ]
+            != [
+                ("DEVELOPMENT", "SUCCEEDED", 1),
+                ("HOLDOUT", "SUCCEEDED", 2),
+                ("HOLDOUT_STRESS", "SUCCEEDED", 3),
+            ]
+            or release_count != 0
+        ):
+            raise HoldoutRunError(
+                "presentation_unavailable",
+                "FreqUI copy requires the exact three-scenario execution set",
+            )
         copied: list[dict[str, Any]] = []
+        completion_scenarios: list[dict[str, str]] = []
+        validated_files: list[tuple[str, bytes, str]] = []
         expected_names: set[str] = set()
         for row in rows:
             metrics = _json_object(row["metrics_json"], "FreqUI execution metrics")
@@ -2922,19 +3031,17 @@ def copy_frequi_results(
                     "presentation_unavailable", "FreqUI flat filenames conflict"
                 )
             expected_names.update((archive_name, metadata_name))
-            _exclusive_verified_copy_at(
-                source_fd,
-                archive,
-                destination_fd,
-                archive_name,
-                archive_sha,
+            archive_bytes = _validated_source_bytes_at(
+                source_fd, archive, archive_sha
             )
-            _exclusive_verified_copy_at(
-                source_fd,
-                metadata,
-                destination_fd,
-                metadata_name,
-                metadata_sha,
+            metadata_bytes = _validated_source_bytes_at(
+                source_fd, metadata, metadata_sha
+            )
+            validated_files.extend(
+                (
+                    (archive_name, archive_bytes, archive_sha),
+                    (metadata_name, metadata_bytes, metadata_sha),
+                )
             )
             copied.append(
                 {
@@ -2943,7 +3050,72 @@ def copy_frequi_results(
                     "metadata": metadata_name,
                 }
             )
-        if set(os.listdir(destination_fd)) != expected_names:
+            completion_scenarios.append(
+                {
+                    "scenario": str(row["scenario"]),
+                    "archive": archive_name,
+                    "archive_sha256": archive_sha,
+                    "metadata": metadata_name,
+                    "metadata_sha256": metadata_sha,
+                }
+            )
+        if len(validated_files) != 6 or len(expected_names) != 6:
+            raise HoldoutRunError(
+                "presentation_unavailable",
+                "FreqUI copy requires exactly three ZIP/metadata pairs",
+            )
+        try:
+            completion_receipt = build_frequi_completion_receipt(
+                research_run_id, completion_scenarios
+            )
+        except (TypeError, ValueError) as exc:
+            raise HoldoutRunError(
+                "presentation_unavailable",
+                "FreqUI completion receipt is invalid",
+            ) from exc
+        if os.listdir(destination_fd):
+            raise HoldoutRunError(
+                "presentation_unavailable",
+                "FreqUI disposable results root changed during validation",
+            )
+        try:
+            for name, data, _digest in validated_files:
+                _write_exclusive_at(destination_fd, name, data, 0o400)
+            for name, _data, digest in validated_files:
+                published = _read_regular_relative_at(
+                    destination_fd, Path(name), "FreqUI copy"
+                )
+                if hashlib.sha256(published).hexdigest() != digest:
+                    raise HoldoutRunError(
+                        "presentation_unavailable",
+                        "FreqUI copy verification failed",
+                    )
+            _write_exclusive_at(
+                destination_fd,
+                FREQUI_COMPLETION_RECEIPT_NAME,
+                completion_receipt,
+                0o400,
+            )
+            published_receipt = _read_regular_relative_at(
+                destination_fd,
+                Path(FREQUI_COMPLETION_RECEIPT_NAME),
+                "FreqUI completion receipt",
+            )
+            if published_receipt != completion_receipt:
+                raise HoldoutRunError(
+                    "presentation_unavailable",
+                    "FreqUI completion receipt verification failed",
+                )
+        except HoldoutRunError:
+            raise
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            raise HoldoutRunError(
+                "presentation_unavailable",
+                "FreqUI publication failed before it could be declared available",
+            ) from exc
+        if set(os.listdir(destination_fd)) != expected_names | {
+            FREQUI_COMPLETION_RECEIPT_NAME
+        }:
             raise HoldoutRunError(
                 "presentation_unavailable",
                 "FreqUI disposable results root changed during copy",

@@ -1123,6 +1123,17 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
         raise OfflineBacktestError("timerange must use YYYYMMDD-YYYYMMDD")
     if isinstance(args.fee, bool) or not math.isfinite(args.fee) or args.fee <= 0.0:
         raise OfflineBacktestError("fee must be a positive finite number")
+    if args.scenario == "DEVELOPMENT" and args.scenario_open_receipt is not None:
+        raise OfflineBacktestError(
+            "scenario open receipts are limited to Holdout and Holdout Stress"
+        )
+    if (
+        args.scenario in {"HOLDOUT", "HOLDOUT_STRESS"}
+        and args.scenario_open_receipt is None
+    ):
+        raise OfflineBacktestError(
+            "Holdout and Holdout Stress require a scenario open receipt"
+        )
 
     source_root = _resolve_directory(args.freqtrade_source, "Freqtrade source")
     config_path, config_bytes = _resolve_file(args.config, "Freqtrade config")
@@ -1142,10 +1153,6 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     )
     scenario_open_receipt = None
     if args.scenario_open_receipt is not None:
-        if args.scenario == "DEVELOPMENT":
-            raise OfflineBacktestError(
-                "scenario open receipts are limited to Holdout and Holdout Stress"
-            )
         scenario_open_receipt = _resolve_new_receipt(
             args.scenario_open_receipt, "scenario open receipt"
         )

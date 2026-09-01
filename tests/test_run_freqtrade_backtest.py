@@ -70,6 +70,23 @@ def test_allow_zero_trades_cli_is_explicit_and_defaults_false() -> None:
     assert _parse_args([*_runner_argv(), "--allow-zero-trades"]).allow_zero_trades is True
 
 
+@pytest.mark.parametrize("scenario", ("HOLDOUT", "HOLDOUT_STRESS"))
+def test_later_scenarios_fail_before_input_access_without_open_receipt(
+    scenario: str,
+) -> None:
+    argv = _runner_argv()
+    argv[argv.index("--runner-sha256") + 1] = hashlib.sha256(
+        Path(runner_module.__file__).read_bytes()
+    ).hexdigest()
+    argv[argv.index("--scenario") + 1] = scenario
+
+    with pytest.raises(
+        OfflineBacktestError,
+        match="require a scenario open receipt",
+    ):
+        runner_module._execute(_parse_args(argv))
+
+
 def test_scenario_open_receipt_is_exclusive_and_persisted(tmp_path: Path) -> None:
     path = _resolve_new_receipt(tmp_path / "HOLDOUT.json", "scenario receipt")
     value = {"schema": "test", "scenario": "HOLDOUT"}

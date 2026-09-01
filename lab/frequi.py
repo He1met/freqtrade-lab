@@ -15,7 +15,7 @@ import re
 import stat
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 
 
@@ -23,9 +23,14 @@ PathLike = Union[str, Path]
 MAX_PROBE_BYTES = 256 * 1024
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
 MAX_META_BYTES = 1024 * 1024
+MAX_COMPLETION_RECEIPT_BYTES = 16 * 1024
 SUPPORTED_FREQUI_VERSION = "3.1.1"
+FREQUI_COMPLETION_RECEIPT_NAME = ".freqtrade-lab-frequi-complete.json"
+FREQUI_COMPLETION_RECEIPT_SCHEMA = "freqtrade-lab-frequi-completion-v1"
+FREQUI_COMPLETION_SCENARIOS = ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
 _ARCHIVE_NAME = re.compile(r"^backtest-result-.+-[0-9][0-9].*\.zip$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
 class FreqUIConfigurationError(ValueError):
@@ -459,10 +464,127 @@ def _read_regular_at(
         os.close(descriptor)
 
 
+def _validate_completion_receipt(
+    receipt: Mapping[str, Any],
+) -> Dict[str, Tuple[str, str, str, str]]:
+    if (
+        set(receipt) != {"schema", "research_run_id", "scenarios"}
+        or receipt.get("schema") != FREQUI_COMPLETION_RECEIPT_SCHEMA
+        or not isinstance(receipt.get("research_run_id"), str)
+        or _SAFE_RUN_ID.fullmatch(str(receipt.get("research_run_id"))) is None
+    ):
+        raise ValueError("completion receipt identity is invalid")
+    raw_scenarios = receipt.get("scenarios")
+    if not isinstance(raw_scenarios, list) or len(raw_scenarios) != 3:
+        raise ValueError("completion receipt scenario set is invalid")
+    validated: Dict[str, Tuple[str, str, str, str]] = {}
+    filenames: set[str] = set()
+    for expected_scenario, raw in zip(FREQUI_COMPLETION_SCENARIOS, raw_scenarios):
+        if (
+            not isinstance(raw, dict)
+            or set(raw)
+            != {
+                "scenario",
+                "archive",
+                "archive_sha256",
+                "metadata",
+                "metadata_sha256",
+            }
+            or raw.get("scenario") != expected_scenario
+        ):
+            raise ValueError("completion receipt scenario binding is invalid")
+        archive = raw.get("archive")
+        metadata = raw.get("metadata")
+        archive_sha256 = raw.get("archive_sha256")
+        metadata_sha256 = raw.get("metadata_sha256")
+        if (
+            not isinstance(archive, str)
+            or Path(archive).name != archive
+            or _ARCHIVE_NAME.fullmatch(archive) is None
+            or not isinstance(metadata, str)
+            or Path(metadata).name != metadata
+            or metadata != Path(archive).with_suffix(".meta.json").name
+            or not isinstance(archive_sha256, str)
+            or _SHA256.fullmatch(archive_sha256) is None
+            or not isinstance(metadata_sha256, str)
+            or _SHA256.fullmatch(metadata_sha256) is None
+            or archive in filenames
+            or metadata in filenames
+        ):
+            raise ValueError("completion receipt file binding is invalid")
+        filenames.update((archive, metadata))
+        validated[expected_scenario] = (
+            archive,
+            archive_sha256,
+            metadata,
+            metadata_sha256,
+        )
+    if len(validated) != 3 or len(filenames) != 6:
+        raise ValueError("completion receipt is incomplete")
+    return validated
+
+
+def build_frequi_completion_receipt(
+    research_run_id: str,
+    scenarios: Sequence[Mapping[str, Any]],
+) -> bytes:
+    """Build the final one-shot visibility receipt for one exact three-scenario set."""
+    receipt = {
+        "schema": FREQUI_COMPLETION_RECEIPT_SCHEMA,
+        "research_run_id": research_run_id,
+        "scenarios": [dict(item) for item in scenarios],
+    }
+    _validate_completion_receipt(receipt)
+    return (
+        json.dumps(receipt, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+        + "\n"
+    ).encode("ascii")
+
+
+def _validate_completed_result_set(
+    root_fd: int,
+    research_run_id: str,
+    expected: Tuple[str, str, str, str],
+) -> None:
+    receipt_bytes, _ = _read_regular_at(
+        root_fd,
+        FREQUI_COMPLETION_RECEIPT_NAME,
+        maximum=MAX_COMPLETION_RECEIPT_BYTES,
+    )
+    receipt = _strict_object(receipt_bytes)
+    scenarios = _validate_completion_receipt(receipt)
+    if receipt["research_run_id"] != research_run_id:
+        raise ValueError("completion receipt belongs to a different ResearchRun")
+    expected_names = {FREQUI_COMPLETION_RECEIPT_NAME}
+    matched = False
+    for archive, archive_sha256, metadata, metadata_sha256 in scenarios.values():
+        expected_names.update((archive, metadata))
+        archive_bytes, _ = _read_regular_at(
+            root_fd, archive, maximum=MAX_ARCHIVE_BYTES
+        )
+        metadata_bytes, _ = _read_regular_at(
+            root_fd, metadata, maximum=MAX_META_BYTES
+        )
+        if (
+            hashlib.sha256(archive_bytes).hexdigest() != archive_sha256
+            or hashlib.sha256(metadata_bytes).hexdigest() != metadata_sha256
+        ):
+            raise ValueError("completion receipt file hash drifted")
+        matched = matched or expected == (
+            archive,
+            archive_sha256,
+            metadata,
+            metadata_sha256,
+        )
+    if not matched or set(os.listdir(root_fd)) != expected_names:
+        raise ValueError("completion receipt does not bind the visible result set")
+
+
 def scenario_frequi_status(
     config: FreqUIConfig,
     probe: Mapping[str, Any],
     *,
+    research_run_id: str,
     raw_archive_path: Any,
     raw_metrics: Any,
     candidate_class_name: str,
@@ -590,6 +712,43 @@ def scenario_frequi_status(
         return _scenario_failure(
             "METADATA_INVALID",
             "FreqUI metadata 中找不到该 strategy 的有效历史条目",
+            artifact_filename=archive_name,
+            strategy=strategy,
+            version=safe_version,
+        )
+    try:
+        root_fd = _open_results_root(config)
+        try:
+            _validate_completed_result_set(
+                root_fd,
+                research_run_id,
+                (
+                    archive_name,
+                    expected_archive_hash,
+                    metadata_name,
+                    expected_metadata_hash,
+                ),
+            )
+        finally:
+            os.close(root_fd)
+    except FileNotFoundError:
+        return _scenario_failure(
+            "RESULT_SET_INCOMPLETE",
+            "FreqUI 三场景副本尚未完整发布",
+            artifact_filename=archive_name,
+            strategy=strategy,
+            version=safe_version,
+        )
+    except (
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        RecursionError,
+        ValueError,
+    ):
+        return _scenario_failure(
+            "RESULT_SET_INVALID",
+            "FreqUI 三场景副本未通过 completion receipt 校验",
             artifact_filename=archive_name,
             strategy=strategy,
             version=safe_version,

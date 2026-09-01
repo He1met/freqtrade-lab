@@ -14,11 +14,23 @@ import pytest
 
 from lab import holdout_run
 from lab.database import get_connection, init_database
-from lab.frequi import configure_frequi, unconfigured_frequi
+from lab.frequi import (
+    FREQUI_COMPLETION_RECEIPT_NAME,
+    configure_frequi,
+    scenario_frequi_status,
+    unconfigured_frequi,
+)
 
 
 NOW = "2026-01-01T00:00:00.000Z"
 SCENARIOS = ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
+AVAILABLE_PROBE = {
+    "available": True,
+    "reason": None,
+    "message": "TEST_ONLY available",
+    "version": "3.1.1",
+    "url": "http://127.0.0.1:18080/backtest",
+}
 
 
 def _sha256(data: bytes) -> str:
@@ -50,7 +62,12 @@ def _completed_run(
         archive.write_bytes(f"TEST_ONLY {scenario} archive\n".encode("ascii"))
         metadata.write_bytes(
             json.dumps(
-                {"scenario": scenario, "test_only_synthetic": True},
+                {
+                    "TestOnlyCandidate": {
+                        "backtest_start_time": sequence,
+                        "run_id": f"test-only-{scenario.lower()}",
+                    }
+                },
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("ascii")
@@ -119,6 +136,8 @@ def _completed_run(
                 "artifact": {
                     "archive_sha256": _sha256(archive.read_bytes()),
                     "metadata_sha256": _sha256(metadata.read_bytes()),
+                    "report_member": archive.with_suffix(".json").name,
+                    "strategy": "TestOnlyCandidate",
                 }
             }
             connection.execute(
@@ -191,6 +210,34 @@ def _database_snapshot(database: Path, research_run_id: str) -> dict[str, Any]:
     return {"run": run, "executions": executions}
 
 
+def _scenario_statuses(
+    database: Path,
+    research_run_id: str,
+    config: Any,
+) -> dict[str, dict[str, Any]]:
+    with get_connection(database, read_only=True) as connection:
+        rows = connection.execute(
+            """
+            SELECT scenario,result_archive_path,metrics_json
+            FROM backtest_executions
+            WHERE research_run_id=? ORDER BY sequence
+            """,
+            (research_run_id,),
+        ).fetchall()
+    return {
+        str(row["scenario"]): scenario_frequi_status(
+            config,
+            AVAILABLE_PROBE,
+            research_run_id=research_run_id,
+            raw_archive_path=row["result_archive_path"],
+            raw_metrics=row["metrics_json"],
+            candidate_class_name="TestOnlyCandidate",
+            canonical_artifact_available=True,
+        )
+        for row in rows
+    }
+
+
 def test_unconfigured_frequi_returns_unavailable_without_copying(
     tmp_path: Path,
 ) -> None:
@@ -232,6 +279,16 @@ def test_copy_uses_distinct_regular_o_excl_files_with_single_links(
     assert result["status"] == "COPIED"
     assert result["research_run_id"] == research_run_id
     assert [item["scenario"] for item in result["files"]] == list(SCENARIOS)
+    completion = results_root / FREQUI_COMPLETION_RECEIPT_NAME
+    completion_info = os.lstat(completion)
+    assert stat.S_ISREG(completion_info.st_mode)
+    assert completion_info.st_nlink == 1
+    assert all(
+        status["available"] is True
+        for status in _scenario_statuses(
+            database, research_run_id, config
+        ).values()
+    )
     for archive, metadata in artifacts.values():
         for source in (archive, metadata):
             destination = results_root / source.name
@@ -245,6 +302,81 @@ def test_copy_uses_distinct_regular_o_excl_files_with_single_links(
                 destination_info.st_ino,
             )
             assert destination.read_bytes() == source.read_bytes()
+
+
+def test_all_six_sources_are_validated_before_any_destination_is_published(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, artifact_root, results_root, artifacts = _completed_run(
+        tmp_path
+    )
+    config = configure_frequi(
+        "http://127.0.0.1:18080",
+        results_root,
+        artifact_root=artifact_root,
+    )
+    monkeypatch.setattr(holdout_run, "load_public_research_run", _public_completed)
+    artifacts["HOLDOUT_STRESS"][1].write_bytes(b"TEST_ONLY drifted metadata\n")
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        holdout_run.copy_frequi_results(
+            database, research_run_id, artifact_root, config
+        )
+
+    assert raised.value.code == "presentation_unavailable"
+    assert list(results_root.iterdir()) == []
+
+
+def test_mid_publish_failure_never_returns_a_copied_declaration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, artifact_root, results_root, _ = _completed_run(
+        tmp_path
+    )
+    config = configure_frequi(
+        "http://127.0.0.1:18080",
+        results_root,
+        artifact_root=artifact_root,
+    )
+    monkeypatch.setattr(holdout_run, "load_public_research_run", _public_completed)
+    real_write = holdout_run._write_exclusive_at
+    calls = 0
+
+    def fail_third_publish(
+        directory_fd: int,
+        name: str,
+        data: bytes,
+        mode: int = 0o400,
+    ) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise OSError("TEST_ONLY injected publication failure")
+        real_write(directory_fd, name, data, mode)
+
+    monkeypatch.setattr(holdout_run, "_write_exclusive_at", fail_third_publish)
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        holdout_run.copy_frequi_results(
+            database, research_run_id, artifact_root, config
+        )
+
+    assert raised.value.code == "presentation_unavailable"
+    assert len(list(results_root.iterdir())) == 2
+    assert not (results_root / FREQUI_COMPLETION_RECEIPT_NAME).exists()
+    assert all(
+        status["available"] is False
+        for status in _scenario_statuses(
+            database, research_run_id, config
+        ).values()
+    )
+    with pytest.raises(holdout_run.HoldoutRunError) as repeated:
+        holdout_run.copy_frequi_results(
+            database, research_run_id, artifact_root, config
+        )
+    assert repeated.value.code == "presentation_unavailable"
 
 
 def test_second_copy_conflict_never_overwrites_and_failure_keeps_completed_db(
@@ -356,4 +488,4 @@ def test_destination_replacement_after_open_cannot_redirect_copies(
     assert raised.value.code == "presentation_unavailable"
     assert swapped is True
     assert list(replacement.iterdir()) == []
-    assert len(list(original_results.iterdir())) == 6
+    assert len(list(original_results.iterdir())) == 7
