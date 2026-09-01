@@ -23,7 +23,11 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from lab.database import get_connection
-from lab.manual_release import ManualReleaseError, stored_manual_review
+from lab.manual_release import (
+    FrozenReleaseRoot,
+    ManualReleaseError,
+    stored_manual_review,
+)
 from lab.frequi import (
     FreqUIConfig,
     FreqUIConfigurationError,
@@ -872,6 +876,7 @@ def load_research_run_detail(
     *,
     artifact_root: Optional[Path] = None,
     artifact_root_fd: Optional[int] = None,
+    release_root: Optional[FrozenReleaseRoot] = None,
     frequi_config: Optional[FreqUIConfig] = None,
     frequi_probe: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -975,7 +980,11 @@ def load_research_run_detail(
                 """,
                 (candidate_id, profile_id),
             ).fetchall()
-            stored_review = stored_manual_review(connection, research_run_id)
+            stored_review = stored_manual_review(
+                connection,
+                research_run_id,
+                release_root=release_root,
+            )
             connection.rollback()
         except (sqlite3.Error, StrategyLibraryError, ManualReleaseError) as exc:
             if connection.in_transaction:
@@ -1007,7 +1016,9 @@ def load_research_run_detail(
         if stored_review is not None
         else {
             "status": (
-                "PENDING"
+                "UNAVAILABLE"
+                if selected_run["verdict"] is not None
+                else "PENDING"
                 if selected_run["status"] == "COMPLETED"
                 and selected_run["succeeded_count"] == len(REQUIRED_SCENARIOS)
                 else "UNAVAILABLE"
@@ -1015,7 +1026,9 @@ def load_research_run_detail(
             "can_reject": False,
             "can_pass_and_create_release": False,
             "reason": (
-                "请在 Research Console 复验资格并执行一次人工终态"
+                "既有非人工终态不可再次人工评审"
+                if selected_run["verdict"] is not None
+                else "请在 Research Console 复验资格并执行一次人工终态"
                 if selected_run["status"] == "COMPLETED"
                 and selected_run["succeeded_count"] == len(REQUIRED_SCENARIOS)
                 else "ResearchRun 尚未形成三场景人工评审资格"
@@ -1811,6 +1824,7 @@ class StrategyLibraryRequestHandler(BaseHTTPRequestHandler):
                     identifiers["research_run_id"],
                     artifact_root=self.artifact_root,
                     artifact_root_fd=getattr(self.server, "artifact_root_fd", None),
+                    release_root=getattr(self.server, "manual_release_root", None),
                     frequi_config=self.frequi_config,
                     frequi_probe=frequi_probe,
                 )
@@ -1912,6 +1926,7 @@ class StrategyLibraryHTTPServer(HTTPServer):
     """HTTPServer that owns the configured artifact-root descriptor."""
 
     artifact_root_fd: Optional[int] = None
+    manual_release_root: Optional[FrozenReleaseRoot] = None
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         """Keep handler failures from printing request data or tracebacks."""

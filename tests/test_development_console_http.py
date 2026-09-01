@@ -517,7 +517,7 @@ def test_t2_http_real_prepare_import_and_gate_on_tracked_fixture(
     assert detail["manual_review"]["release"] is None
     detail_page = render_research_run_detail_page(detail).decode("utf-8")
     assert "已完成 · 拒绝" in detail_page
-    assert "ResearchRun 尚未形成三场景人工评审资格" in detail_page
+    assert "既有非人工终态不可再次人工评审" in detail_page
 
 
 def test_t1_get_context_and_public_run_routes_do_not_expose_private_paths(

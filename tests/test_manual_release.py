@@ -192,6 +192,11 @@ def test_t1_reject_is_one_transaction_and_creates_no_release(
     assert json.loads(run["rejection_reasons_json"])[0]["reason"] == "人工决定终止该假设"
     assert count == 0
     assert list(frozen_root.path.iterdir()) == []
+    (frozen_root.path / "unknown-orphan").mkdir(mode=0o700)
+    unknown = manual_release.inspect_manual_review(database, frozen_root, RUN_ID)
+    assert unknown["status"] == "UNKNOWN"
+    assert unknown["release"] is None
+    assert "command" not in json.dumps(unknown)
     with pytest.raises(manual_release.ManualReleaseError):
         manual_release.reject_research_run(
             database, frozen_root, RUN_ID, "重复请求", now=NOW
@@ -225,16 +230,57 @@ def test_t1_pass_publishes_hash_bound_package_then_commits_sqlite(
             "SELECT verdict,checks_json FROM research_runs WHERE id=?", (RUN_ID,)
         ).fetchone()
         release = connection.execute("SELECT * FROM releases").fetchone()
-        stored = manual_release.stored_manual_review(connection, RUN_ID)
+        unverified = manual_release.stored_manual_review(connection, RUN_ID)
+        stored = manual_release.stored_manual_review(
+            connection,
+            RUN_ID,
+            release_root=frozen_root,
+        )
     assert run["verdict"] == "PASSED"
     assert json.loads(run["checks_json"])["judge"] == "HUMAN"
     assert release["manifest_sha256"] == package["manifest_sha256"]
+    assert unverified["status"] == "UNAVAILABLE"
+    assert "dry_run_handoff" not in unverified["release"]
     assert stored["release"]["dry_run_handoff"]["status"] == "NOT_EXECUTED"
     with pytest.raises(manual_release.ManualReleaseError):
         manual_release.pass_and_create_release(
             database, frozen_root, RUN_ID, "重复请求", now=NOW
         )
     assert [path.name for path in frozen_root.path.iterdir()] == [release_dir.name]
+    (frozen_root.path / "unknown-orphan").mkdir(mode=0o700)
+    unknown = manual_release.inspect_manual_review(database, frozen_root, RUN_ID)
+    assert unknown["status"] == "UNKNOWN"
+    assert "command" not in json.dumps(unknown)
+
+
+@pytest.mark.parametrize("drift", ["delete_manifest", "tamper_strategy"])
+def test_t1_stored_pass_file_drift_is_unknown_and_hides_handoff(
+    tmp_path: Path,
+    frozen_root: manual_release.FrozenReleaseRoot,
+    monkeypatch: pytest.MonkeyPatch,
+    drift: str,
+) -> None:
+    database = _seed_database(tmp_path)
+    monkeypatch.setattr(manual_release, "_eligible_manual_review", _fake_eligibility)
+    package = manual_release.pass_and_create_release(
+        database, frozen_root, RUN_ID, "人工经济复核通过", now=NOW
+    )
+    release_dir = Path(package["release_dir"])
+    if drift == "delete_manifest":
+        release_dir.chmod(0o700)
+        (release_dir / "manifest.json").unlink()
+        release_dir.chmod(0o500)
+    else:
+        strategies = release_dir / "strategies"
+        strategy = strategies / "ManualCandidate.py"
+        strategy.chmod(0o600)
+        strategy.write_text(SOURCE + "# drift\n")
+        strategy.chmod(0o400)
+
+    public = manual_release.inspect_manual_review(database, frozen_root, RUN_ID)
+    assert public["status"] == "UNKNOWN"
+    assert public["release"] is None
+    assert "command" not in json.dumps(public)
 
 
 def test_t1_database_drift_after_publish_is_unknown_and_not_retried(

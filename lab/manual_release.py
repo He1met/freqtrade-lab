@@ -53,6 +53,7 @@ from lab.research_bundle import ResearchBundleImportError, _validate_cross_scena
 PathLike = Union[str, Path]
 MANUAL_RELEASE_SCHEMA = "freqtrade-lab-manual-release-v1"
 MAX_REASON_CHARS = 1000
+MAX_RELEASE_FILE_BYTES = 2_000_000
 MANUAL_ACTIONS = frozenset({"REJECT", "PASS_AND_CREATE_RELEASE"})
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -538,6 +539,116 @@ def _release_root_state(
             )
 
 
+def _read_release_file(directory_fd: int, name: str) -> bytes:
+    try:
+        descriptor = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=directory_fd,
+        )
+        try:
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o400
+                or info.st_size > MAX_RELEASE_FILE_BYTES
+            ):
+                raise OSError("Release file contract drifted")
+            chunks: list[bytes] = []
+            remaining = info.st_size
+            while remaining:
+                chunk = os.read(descriptor, min(remaining, 64 * 1024))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            data = b"".join(chunks)
+            if remaining or len(data) != info.st_size:
+                raise OSError("Release file size drifted")
+            return data
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        raise ManualReleaseError(
+            "release_state_unknown", "Release package file state is UNKNOWN"
+        ) from exc
+
+
+def _verify_release_package(
+    root: FrozenReleaseRoot,
+    release: sqlite3.Row,
+    manifest: Mapping[str, Any],
+) -> None:
+    release_path = Path(str(release["release_dir"]))
+    candidate = manifest.get("candidate")
+    files = manifest.get("files")
+    class_name = candidate.get("class_name") if isinstance(candidate, dict) else None
+    strategy_name = f"{class_name}.py"
+    strategy_relative = f"strategies/{strategy_name}"
+    if (
+        release_path.parent != root.path
+        or _FINAL_DIRECTORY.fullmatch(release_path.name) is None
+        or not isinstance(files, dict)
+        or set(files) != {strategy_relative, "config-dry-run.json", "README.md"}
+    ):
+        raise ManualReleaseError(
+            "release_state_unknown", "Release package binding is UNKNOWN"
+        )
+    release_fd = -1
+    strategies_fd = -1
+    try:
+        release_fd = os.open(
+            release_path.name,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=root.descriptor,
+        )
+        release_info = os.fstat(release_fd)
+        if (
+            release_info.st_uid != os.getuid()
+            or stat.S_IMODE(release_info.st_mode) != 0o500
+            or set(os.listdir(release_fd))
+            != {"README.md", "config-dry-run.json", "manifest.json", "strategies"}
+        ):
+            raise OSError("Release directory contract drifted")
+        strategies_fd = os.open(
+            "strategies",
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=release_fd,
+        )
+        strategies_info = os.fstat(strategies_fd)
+        if (
+            strategies_info.st_uid != os.getuid()
+            or stat.S_IMODE(strategies_info.st_mode) != 0o500
+            or set(os.listdir(strategies_fd)) != {strategy_name}
+        ):
+            raise OSError("Release strategy directory contract drifted")
+        manifest_bytes = _read_release_file(release_fd, "manifest.json")
+        config_bytes = _read_release_file(release_fd, "config-dry-run.json")
+        readme_bytes = _read_release_file(release_fd, "README.md")
+        strategy_bytes = _read_release_file(strategies_fd, strategy_name)
+    except (OSError, TypeError, ValueError) as exc:
+        raise ManualReleaseError(
+            "release_state_unknown", "Release package state is UNKNOWN"
+        ) from exc
+    finally:
+        if strategies_fd >= 0:
+            os.close(strategies_fd)
+        if release_fd >= 0:
+            os.close(release_fd)
+    expected_manifest = _canonical_bytes(manifest)
+    if (
+        manifest_bytes != expected_manifest
+        or _sha256(manifest_bytes) != release["manifest_sha256"]
+        or _sha256(strategy_bytes) != files[strategy_relative]
+        or _sha256(config_bytes) != files["config-dry-run.json"]
+        or _sha256(readme_bytes) != files["README.md"]
+    ):
+        raise ManualReleaseError(
+            "release_state_unknown", "Release package hashes are UNKNOWN"
+        )
+
+
 def _dry_run_config(evidence: EligibleManualReview) -> Mapping[str, Any]:
     profile = evidence.profile
     pairs = profile.get("pairs")
@@ -953,6 +1064,8 @@ def pass_and_create_release(
 def stored_manual_review(
     connection: sqlite3.Connection,
     research_run_id: str,
+    *,
+    release_root: Optional[FrozenReleaseRoot] = None,
 ) -> Optional[Mapping[str, Any]]:
     """Return the stored final human verdict and Release identity, if any."""
     run = connection.execute(
@@ -992,6 +1105,21 @@ def stored_manual_review(
             raise ManualReleaseError(
                 "run_state_conflict", "stored REJECT review is invalid"
             )
+        if release_root is not None:
+            try:
+                _release_root_state(connection, release_root)
+            except ManualReleaseError as exc:
+                if exc.code != "release_state_unknown":
+                    raise
+                return {
+                    "status": "UNKNOWN",
+                    "can_reject": False,
+                    "can_pass_and_create_release": False,
+                    "reason": exc.message,
+                    "release": None,
+                    "profitability_claim": "NOT_ESTABLISHED",
+                    "tradability_claim": "NOT_ESTABLISHED",
+                }
     elif run["verdict"] == "PASSED":
         if (
             checks.get("next_phase") != "MANUAL_DRY_RUN_HANDOFF"
@@ -1028,6 +1156,22 @@ def stored_manual_review(
             raise ManualReleaseError(
                 "run_state_conflict", "stored Release manifest is invalid"
             )
+        if release_root is not None:
+            try:
+                _release_root_state(connection, release_root)
+                _verify_release_package(release_root, release, manifest)
+            except ManualReleaseError as exc:
+                if exc.code != "release_state_unknown":
+                    raise
+                return {
+                    "status": "UNKNOWN",
+                    "can_reject": False,
+                    "can_pass_and_create_release": False,
+                    "reason": exc.message,
+                    "release": None,
+                    "profitability_claim": "NOT_ESTABLISHED",
+                    "tradability_claim": "NOT_ESTABLISHED",
+                }
         release_public = {
             "id": release["id"],
             "display_name": release["display_name"],
@@ -1036,20 +1180,26 @@ def stored_manual_review(
             "config_sha256": release["config_sha256"],
             "freqtrade_version": release["freqtrade_version"],
             "created_at": release["created_at"],
-            "dry_run_handoff": {
+        }
+        if release_root is not None:
+            release_public["dry_run_handoff"] = {
                 "status": "NOT_EXECUTED",
                 "command": handoff["command"],
-            },
-        }
+            }
     else:
         raise ManualReleaseError(
             "run_state_conflict", "stored manual verdict is invalid"
         )
+    verified_status = run["verdict"]
+    verified_reason = review["reason"]
+    if run["verdict"] == "PASSED" and release_root is None:
+        verified_status = "UNAVAILABLE"
+        verified_reason = "Release handoff 未经启动时冻结的 Release root 复验"
     return {
-        "status": run["verdict"],
+        "status": verified_status,
         "can_reject": False,
         "can_pass_and_create_release": False,
-        "reason": review["reason"],
+        "reason": verified_reason,
         "source": review["source"],
         "decided_at": review.get("decided_at"),
         "release": release_public,
@@ -1066,7 +1216,11 @@ def inspect_manual_review(
     """Return current manual Judge availability without changing state."""
     with closing(get_connection(database, read_only=True, must_exist=True)) as connection:
         connection.execute("BEGIN")
-        stored = stored_manual_review(connection, research_run_id)
+        stored = stored_manual_review(
+            connection,
+            research_run_id,
+            release_root=release_root,
+        )
         if stored is not None:
             connection.rollback()
             return stored

@@ -5401,6 +5401,7 @@ def create_research_console_server(
             task_timeout_seconds=task_timeout_seconds,
         )
         setattr(server, "research_console_controller", controller)
+        setattr(server, "manual_release_root", controller._release_root)
         setattr(server, "research_console_csrf_token", secrets.token_urlsafe(32))
         return server
     except Exception:
