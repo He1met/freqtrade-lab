@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -717,6 +718,54 @@ def test_t0_require_ready_rejects_post_start_pilot_config_change(
 
     assert raised.value.code == "BLOCKED_DATA"
     assert raised.value.message == "startup-frozen Development inputs changed"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "profile_pair"),
+    (
+        ("pair", "XRP/USDT:USDT", "XRP/USDT:USDT"),
+        ("instrument_id", "XRP-USDT-SWAP", "ADA/USDT:USDT"),
+    ),
+)
+def test_t0_require_ready_rejects_market_identity_drift_before_database_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str,
+    profile_pair: str,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(tmp_path, monkeypatch)
+    capability = development_run.freeze_development_capability(pilot, python, source)
+    assert capability.status == "READY"
+    drifted = replace(capability, **{field: value})
+    database, candidate_id = _approved_candidate_database(
+        tmp_path / "database", pair=profile_pair
+    )
+    run_id = str(uuid4())
+    run_dir = tmp_path / "runtime" / run_id
+    run_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        development_run,
+        "get_connection",
+        lambda *_args, **_kwargs: pytest.fail("database opened before identity gate"),
+    )
+    with pytest.raises(development_run.DevelopmentRunError) as raised:
+        development_run.prepare_development_run(
+            database,
+            run_dir,
+            candidate_id,
+            drifted,
+            research_run_id=run_id,
+            now=NOW,
+        )
+
+    assert raised.value.code == "BLOCKED_DATA"
+    assert raised.value.message == "startup-frozen Development inputs changed"
+    with get_connection(database, read_only=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM research_runs").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM backtest_executions").fetchone()[0] == 0
+    assert not (run_dir / "development-input").exists()
 
 
 def test_t0_context_prioritizes_security_profile_then_runtime_blockers(

@@ -525,6 +525,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.data_receipts,
         capability.market_receipt,
         capability.tiers_receipt,
+        capability.pair,
         capability.instrument_id,
     )
     current = (
@@ -539,6 +540,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.data_receipts,
         refreshed.market_receipt,
         refreshed.tiers_receipt,
+        refreshed.pair,
         refreshed.instrument_id,
     )
     if refreshed.status != "READY" or current != frozen:
