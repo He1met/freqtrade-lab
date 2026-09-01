@@ -964,10 +964,11 @@ def stored_manual_review(
     if run["verdict"] is None:
         return None
     checks = _json_object(run["checks_json"], "manual review checks")
+    if checks.get("judge") != "HUMAN":
+        return None
     review = checks.get("human_review")
     if (
-        checks.get("judge") != "HUMAN"
-        or not isinstance(review, dict)
+        not isinstance(review, dict)
         or review.get("source") != "RESEARCH_CONSOLE"
         or not isinstance(review.get("reason"), str)
         or not review["reason"]
