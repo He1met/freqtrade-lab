@@ -1,0 +1,36 @@
+{
+  "schema": "freqtrade-lab-subjective-grid-ticket-v0",
+  "pair": "SYNTH/USDT",
+  "market": "SPOT",
+  "direction": "LONG_ONLY",
+  "leverage": 1,
+  "decision_time": "2026-01-01T00:00:00Z",
+  "evaluation_window": {
+    "start": "2026-01-02T00:00:00Z",
+    "end": "2026-01-02T01:00:00Z",
+    "candle_interval_seconds": 3600
+  },
+  "grid": {
+    "type": "ARITHMETIC",
+    "lower": "90",
+    "upper": "110",
+    "count": 4,
+    "spacing": "5"
+  },
+  "capital": {
+    "starting_quote": "1000",
+    "per_grid_quote": "100",
+    "max_inventory_base": "2.2"
+  },
+  "costs": {
+    "fee_rate": "0.001",
+    "slippage_rate": "0.0005"
+  },
+  "out_of_range": {
+    "rule": "HOLD",
+    "stop_price": null
+  },
+  "no_recenter": true,
+  "ohlcv_sha256": "c3050ccdd73dee1b7d671a6fa8eb53bf673964931822c5a3151b774ac48bd32f",
+  "evidence_status": "SAMPLE_ONLY"
+}

@@ -195,6 +195,69 @@ Schema v1 contains exactly six business tables:
 
 The project intentionally starts without an ORM, migration framework, task queue, authentication, or multi-user platform layer.
 
+## Subjective Grid Feasibility Gate v0
+
+This separate, synchronous CLI tests one pre-declared spot grid mechanism. It
+does not use SQLite, Freqtrade, the Research Console, FreqUI, credentials,
+network access, or real funds:
+
+```bash
+python3 scripts/evaluate_subjective_grid.py \
+  --ticket tests/fixtures/subjective_grid_v0/decision-ticket.json \
+  --data tests/fixtures/subjective_grid_v0/ohlcv.csv \
+  --output-dir /absolute/path/to/new-grid-evaluation
+```
+
+The output directory must not exist. The command stages and fsyncs
+`result.json` and `summary.md`, then publishes the directory atomically without
+replacing a concurrent target. Both files are deterministic for the same input
+bytes; they contain no wall-clock generation time or input host paths.
+
+The exact v0 decision ticket freezes `pair`, `decision_time`, the half-open
+evaluation window and candle interval, an arithmetic lower/upper range, grid
+interval count (1 through 100) and spacing, starting quote capital, per-grid
+quote size, fee,
+slippage, maximum base inventory, the out-of-range rule,
+`no_recenter=true`, evidence status, and the exact OHLCV SHA-256. Prices,
+amounts, and rates are plain decimal strings with at most 18 integer and 18
+fractional digits. The only supported market
+contract is `SPOT / LONG_ONLY / 1x`; it starts with cash and zero inventory,
+uses at most one unmatched lot per grid cell, never partially fills, shorts,
+adds capital, martingales, recenters, or changes the ticket while running.
+An empty cell is armed only after price is observed strictly above its buy
+level and fills on a later downward crossing.
+
+The complete window is evaluated under both deterministic per-candle paths
+`O-H-L-C` and `O-L-H-C`, including each close-to-next-open gap. Fee and
+slippage are separate costs on trigger notional. Terminal return is
+mark-to-market total equity, reconciled as gross
+completed grid profit plus unmatched inventory PnL minus fees and slippage.
+The result also shows turnover, maximum inventory, total-equity drawdown,
+terminal inventory, and cash/no-trade and cost-adjusted buy-and-hold baselines.
+Drawdown is sampled at the initial price, close-to-open gaps, path vertices,
+and immediately before and after each fill.
+One path passes only when it completes at least one grid cycle, ends above both
+baselines, and has no OHLC range touch outside the frozen grid; v0 invents no
+drawdown or return threshold.
+If the two paths change the Gate conclusion, the only aggregate verdict is
+`INTRABAR_PATH_SENSITIVE`; the command never selects the better path.
+
+OHLCV cannot reveal exact time spent outside the range. The result therefore
+reports touched candles and close-sampled seconds while keeping exact intrabar
+out-of-range time explicitly `UNKNOWN_FROM_OHLCV`. A declared
+`decision_time` before the window proves only that the JSON contract is
+causally shaped, not that an independent timestamp service observed the file
+then.
+
+The tracked fixture is handcrafted synthetic data with reviewed hashes and is
+strictly `SAMPLE_ONLY`; see
+[`tests/fixtures/subjective_grid_v0/PROVENANCE.md`](tests/fixtures/subjective_grid_v0/PROVENANCE.md).
+Its path-sensitive result is a parser, accounting, and CLI smoke test, not
+market evidence. Until a future input is legally sourced and independently
+frozen before evaluation, real economic evidence remains `UNKNOWN` or
+`BLOCKED_DATA`. A passing mechanism Gate never proves positive expectancy,
+robustness, execution feasibility, trading suitability, or fund safety.
+
 ## Low-level Bounded Evolution V1 Search engine
 
 `screen-search` is the Search-only Gate for a new V2 campaign. It accepts one
