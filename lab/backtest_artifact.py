@@ -48,6 +48,8 @@ MAX_REPORT_BYTES = 2 * 1024 * 1024
 MAX_CONFIG_BYTES = 128 * 1024
 MAX_STRATEGY_BYTES = 256 * 1024
 MAX_COMPRESSION_RATIO = 100
+MAX_JSON_DEPTH = 128
+MAX_JSON_NODES = 100_000
 SQLITE_INTEGER_MAX = 2**63 - 1
 FEE_TOLERANCE = 1e-15
 VALUE_TOLERANCE = 1e-12
@@ -178,11 +180,50 @@ def _strict_json(data: bytes, label: str) -> Any:
 
     try:
         text = data.decode("utf-8", "strict")
-        return json.loads(
+        depth = 0
+        in_string = False
+        escaped = False
+        for character in text:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    in_string = False
+                continue
+            if character == '"':
+                in_string = True
+            elif character in "[{":
+                depth += 1
+                if depth > MAX_JSON_DEPTH:
+                    raise ArtifactImportError(
+                        f"{label}: invalid UTF-8 JSON: maximum nesting depth "
+                        f"of {MAX_JSON_DEPTH} exceeded"
+                    )
+            elif character in "]}":
+                depth -= 1
+
+        value = json.loads(
             text,
             object_pairs_hook=no_duplicate_keys,
             parse_constant=reject_constant,
         )
+        nodes = 0
+        pending = [value]
+        while pending:
+            item = pending.pop()
+            nodes += 1
+            if nodes > MAX_JSON_NODES:
+                raise ArtifactImportError(
+                    f"{label}: invalid UTF-8 JSON: maximum node count "
+                    f"of {MAX_JSON_NODES} exceeded"
+                )
+            if isinstance(item, dict):
+                pending.extend(item.values())
+            elif isinstance(item, list):
+                pending.extend(item)
+        return value
     except ArtifactImportError:
         raise
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
