@@ -24,6 +24,7 @@ from lab.frequi import (
     FreqUIConfigurationError,
     configure_frequi,
     probe_frequi,
+    scenario_frequi_status,
 )
 from lab.research_bundle import import_research_bundle
 from lab.strategy_library import create_strategy_library_server
@@ -150,6 +151,45 @@ def _detail_paths(base: str, imported: Any) -> Tuple[str, str]:
         }
     )
     return base + "/api/strategy?" + query, base + "/strategy?" + query
+
+
+def test_legacy_producer_name_remains_fail_closed_before_copy_checks(
+    tmp_path: Path,
+) -> None:
+    artifact_root, results_root = _roots(tmp_path)
+    archive = artifact_root / "backtest-result-development.zip"
+    status = scenario_frequi_status(
+        configure_frequi(
+            "http://127.0.0.1:18080",
+            results_root,
+            artifact_root=artifact_root,
+        ),
+        {
+            "available": True,
+            "version": "3.1.1",
+            "url": "http://127.0.0.1:18080/backtest",
+        },
+        raw_archive_path=str(archive),
+        raw_metrics=json.dumps(
+            {
+                "artifact": {
+                    "strategy": "StrategyTestV3Futures",
+                    "archive_sha256": "0" * 64,
+                    "metadata_sha256": "1" * 64,
+                    "report_member": "backtest-result-development.json",
+                }
+            }
+        ),
+        candidate_class_name="StrategyTestV3Futures",
+        canonical_artifact_available=True,
+    )
+
+    assert status["available"] is False
+    assert status["local_copy_ready"] is False
+    assert status["history_visibility"] is None
+    assert status["reason"] == "INVALID_ARTIFACT_IDENTITY"
+    assert status["artifact_filename"] is None
+    assert status["url"] is None
 
 
 @pytest.mark.parametrize(
