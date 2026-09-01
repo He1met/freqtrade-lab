@@ -63,6 +63,35 @@ an optional strategy family, and an optional expected failure mode. It cannot
 supply an executable, working directory, arguments, prompt template, model,
 environment, command, or output path.
 
+Before enabling Search, derive one fresh Search-only root from one complete,
+locally reviewed acquisition. The two SHA-256 values are explicit trust inputs:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 /absolute/private/path/freqtrade-2026.7-venv/bin/python \
+  scripts/run_bounded_research_pilot.py prepare-search-data \
+  --source-root /absolute/private/path/complete-source-acquisition \
+  --source-provenance-sha256 <64-lowercase-hex> \
+  --source-receipt-sha256 <64-lowercase-hex> \
+  --output-root /absolute/private/path/search-campaign
+```
+
+The source must be one fully closed, singular retrieval whose complete runner
+input set matches its reviewed provenance and receipt hashes. The output parent must
+already exist, but `--output-root` itself must not exist. This one-shot producer
+is the only Search preparation step allowed to inspect the complete source; it
+publishes a mode-`0700` root containing only `acquisition/`, the frozen
+`20260601-20260701` Search window, and its two-hour startup data. The Console and
+`screen-search` receive only that new root, never the source or later rows.
+Candidate generation and explicit `APPROVE` remain governed by their own
+preflights and do not consume Search data; Search requires this prepared root.
+The producer/consumer contract suite intentionally requires the same exact
+PyArrow build as the frozen runner:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 uv run --with pytest --with pyarrow==25.0.0 \
+  python -m pytest -q -p no:cacheprovider tests/test_search_data_producer.py
+```
+
 Prepare one private runtime directory outside this repository, then start the
 single service with an existing schema-v1 database, frozen Pilot root, and an
 optional Search-only campaign root. Before the first Search action, the Search
@@ -141,6 +170,13 @@ and max drawdown <= 5%. Failure produces `COMPLETED / REJECTED`; success leaves
 `SEALED_UNREAD`, with no later-phase execution rows. A missing or changed Pilot
 root, exact Freqtrade Python, or clean source checkout is reported as
 `BLOCKED_DATA`; the Console and Codex generation remain available.
+
+Here `SEALED_UNREAD` is a market-value I/O boundary, not the absence of all
+metadata. Startup may bind the plan, provenance, config, receipts, and regular
+file metadata, but it does not open or hash later-phase market bytes. The
+Development child receives only its copied physical Development view; the full
+acquisition is opened, hash-checked, and materialized only after explicit
+`AUTHORIZE_HOLDOUT`.
 
 Only that exact `PENDING / PENDING` Run exposes `AUTHORIZE_HOLDOUT`. The POST
 body is exactly `{ "action": "AUTHORIZE_HOLDOUT" }`; browser-supplied paths,
@@ -390,6 +426,43 @@ before using the root above. Future public responses may differ from the Issue
 #9 verification hashes; the output remains local-only and must not be committed.
 Exact reviewed evidence is documented in
 [`tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md`](tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md).
+
+#### Rolling 60/30 Pilot window (v2)
+
+The command above without `--window-spec` preserves the short legacy fixture
+workflow; it is not a rolling Console Pilot. For the rolling cohort, save this
+exact `window-spec.json` outside Git:
+
+```json
+{
+  "schema": "freqtrade-lab-okx-window-v2",
+  "data_start_utc": "2026-06-30T22:00:00Z",
+  "development_start_utc": "2026-07-01T00:00:00Z",
+  "holdout_start_utc": "2026-08-30T00:00:00Z",
+  "end_exclusive_utc": "2026-09-29T00:00:00Z"
+}
+```
+
+Run the network acquisition strictly after `2026-09-29T00:00:00Z` (after
+08:00:00 in Asia/Shanghai). The Pilot parent directory must already exist and
+the `acquisition/` output itself must not exist:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 /absolute/private/path/freqtrade-2026.7-venv/bin/python \
+  tests/fixtures/freqtrade_2026_7/producer/fetch_okx_public_data.py \
+  --output-root /absolute/private/path/frozen-pilot/acquisition \
+  --strategy-file /absolute/private/path/SearchFinalist.py \
+  --research-spec /absolute/private/path/SearchFinalist-spec.json \
+  --window-spec /absolute/private/path/frozen-pilot/window-spec.json
+```
+
+The matching `pilot-spec.json` must bind
+`development_timerange=20260701-20260830` and
+`holdout_timerange=20260830-20260929`. The v2 acquisition is still only frozen
+technical input: it does not select a Candidate, pass Development, authorize
+Holdout, establish a verdict, or prove profitability or tradability. Legacy
+v1/default fixtures remain available for their existing fixture and importer
+uses; they are not evidence of rolling 60/30 Console compatibility.
 
 ## Import one verified backtest artifact
 

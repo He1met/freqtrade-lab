@@ -142,6 +142,40 @@ def _enable_positive_development_gate(
     _write_json(root / pilot.PLAN, plan)
 
 
+def _rewrite_rolling_window(
+    root: Path,
+    *,
+    development: str = "20260701-20260830",
+    holdout: str = "20260830-20260929",
+    schema: str = pilot.STRICT_WINDOW_SCHEMA,
+) -> None:
+    development_start, _ = pilot.timerange(development, "Development")
+    holdout_start, holdout_stop = pilot.timerange(holdout, "Holdout")
+    _write_json(
+        root / pilot.WINDOW,
+        {
+            "schema": schema,
+            "data_start_utc": "2026-06-30T22:00:00Z",
+            "development_start_utc": development_start.isoformat().replace(
+                "+00:00", "Z"
+            ),
+            "holdout_start_utc": holdout_start.isoformat().replace("+00:00", "Z"),
+            "end_exclusive_utc": holdout_stop.isoformat().replace("+00:00", "Z"),
+        },
+    )
+    plan = json.loads((root / pilot.PLAN).read_bytes())
+    plan["development_timerange"] = development
+    plan["holdout_timerange"] = holdout
+    plan["window_spec_sha256"] = pilot.digest((root / pilot.WINDOW).read_bytes())
+    spec_path = root / plan["candidates"][0]["research_spec_file"]
+    spec = json.loads(spec_path.read_bytes())
+    spec["profile"]["history_start_date"] = development_start.strftime("%Y-%m-%d")
+    spec["profile"]["holdout_days"] = (holdout_stop - holdout_start).days
+    _write_json(spec_path, spec)
+    plan["candidates"][0]["research_spec_sha256"] = pilot.digest(spec_path.read_bytes())
+    _write_json(root / pilot.PLAN, plan)
+
+
 def _development_result(
     candidate_id: str,
     **overrides: object,
@@ -448,6 +482,49 @@ def test_t0_plan_freezes_candidate_hash_and_codex_lineage(tmp_path: Path) -> Non
     (root / "candidates" / "CandidateOne.py").write_text("changed\n")
     with pytest.raises(pilot.PilotError, match="hash mismatch"):
         pilot.load_plan(root)
+
+
+def test_t0_strict_window_v2_accepts_exact_rolling_60_30(tmp_path: Path) -> None:
+    root = _plan_root(tmp_path)
+    _rewrite_rolling_window(root)
+
+    plan = pilot.load_plan(root)
+
+    assert plan["development_timerange"] == "20260701-20260830"
+    assert plan["holdout_timerange"] == "20260830-20260929"
+
+
+@pytest.mark.parametrize(
+    ("development", "holdout"),
+    (
+        ("20260701-20260829", "20260829-20260928"),
+        ("20260701-20260831", "20260831-20260930"),
+        ("20260701-20260830", "20260830-20260928"),
+        ("20260701-20260830", "20260830-20260930"),
+        ("20260701-20260830", "20260831-20260930"),
+        ("20260701-20260830", "20260829-20260928"),
+    ),
+)
+def test_t0_strict_window_v2_rejects_duration_and_adjacency_drift(
+    tmp_path: Path, development: str, holdout: str
+) -> None:
+    root = _plan_root(tmp_path)
+    _rewrite_rolling_window(root, development=development, holdout=holdout)
+
+    with pytest.raises(pilot.PilotError, match="strict window"):
+        pilot.load_plan(root)
+
+
+def test_t0_window_schema_is_explicit_and_legacy_v1_still_loads(
+    tmp_path: Path,
+) -> None:
+    legacy = _plan_root(tmp_path / "legacy")
+    assert pilot.load_plan(legacy)["development_timerange"] == "20260601-20260731"
+
+    unknown = _plan_root(tmp_path / "unknown")
+    _rewrite_rolling_window(unknown, schema="freqtrade-lab-okx-window-v3")
+    with pytest.raises(pilot.PilotError, match="shape/version"):
+        pilot.load_plan(unknown)
 
 
 def test_t0_positive_development_gate_thresholds_are_frozen(

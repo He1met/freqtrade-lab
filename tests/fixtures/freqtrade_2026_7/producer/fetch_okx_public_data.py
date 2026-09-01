@@ -53,6 +53,8 @@ EXPECTED_VERSIONS = {
 EXPECTED_FREQTRADE_COMMIT = "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5"
 GIT_EXECUTABLE = Path("/Library/Developer/CommandLineTools/usr/bin/git")
 WINDOW_SPEC_SCHEMA = "freqtrade-lab-okx-window-v1"
+STRICT_WINDOW_SPEC_SCHEMA = "freqtrade-lab-okx-window-v2"
+WINDOW_SCHEMA_USED: str | None = None
 WINDOW_SPEC_FIELDS = (
     "data_start_utc",
     "development_start_utc",
@@ -131,7 +133,9 @@ def _utc_z_datetime(value: object, label: str) -> datetime:
     return parsed
 
 
-def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime]:
+def load_window_spec(
+    path: Path,
+) -> tuple[str, datetime, datetime, datetime, datetime]:
     value = _strict_json_object(path, "window spec")
     expected = {"schema", *WINDOW_SPEC_FIELDS}
     missing = sorted(expected - set(value))
@@ -140,7 +144,8 @@ def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime
         raise RuntimeError(f"window spec is missing fields: {', '.join(missing)}")
     if unknown:
         raise RuntimeError(f"window spec contains unknown fields: {', '.join(unknown)}")
-    if value["schema"] != WINDOW_SPEC_SCHEMA:
+    schema = value["schema"]
+    if schema not in {WINDOW_SPEC_SCHEMA, STRICT_WINDOW_SPEC_SCHEMA}:
         raise RuntimeError("window spec schema is not supported")
 
     data_start, development_start, holdout_start, end_exclusive = (
@@ -168,8 +173,14 @@ def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime
     holdout_seconds = int((end_exclusive - holdout_start).total_seconds())
     if development_seconds % day_seconds or holdout_seconds % day_seconds:
         raise RuntimeError("window spec Development and Holdout must be whole days")
-    research_days = (development_seconds + holdout_seconds) // day_seconds
-    if not 60 <= research_days <= 90:
+    development_days = development_seconds // day_seconds
+    holdout_days = holdout_seconds // day_seconds
+    if schema == STRICT_WINDOW_SPEC_SCHEMA:
+        if development_days != 60 or holdout_days != 30:
+            raise RuntimeError(
+                "window spec v2 requires exactly 60 Development days and 30 Holdout days"
+            )
+    elif not 60 <= development_days + holdout_days <= 90:
         raise RuntimeError("window spec research window must be from 60 to 90 whole days")
 
     warmup_seconds = int((development_start - data_start).total_seconds())
@@ -177,7 +188,7 @@ def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime
         raise RuntimeError("window spec warmup must be greater than zero and at most one day")
     if end_exclusive >= datetime.now(UTC):
         raise RuntimeError("window spec end_exclusive_utc must be fully closed")
-    return data_start, development_start, holdout_start, end_exclusive
+    return schema, data_start, development_start, holdout_start, end_exclusive
 
 
 def configure_window(path: Path | None) -> None:
@@ -186,7 +197,14 @@ def configure_window(path: Path | None) -> None:
         return
     global DATA_START, DEVELOPMENT_START, HOLDOUT_START, DATA_END
     global DATA_START_MS, DATA_END_MS
-    DATA_START, DEVELOPMENT_START, HOLDOUT_START, DATA_END = load_window_spec(path)
+    global WINDOW_SCHEMA_USED
+    (
+        WINDOW_SCHEMA_USED,
+        DATA_START,
+        DEVELOPMENT_START,
+        HOLDOUT_START,
+        DATA_END,
+    ) = load_window_spec(path)
     DATA_START_MS = int(DATA_START.timestamp() * 1000)
     DATA_END_MS = int(DATA_END.timestamp() * 1000)
 
@@ -691,6 +709,8 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         "started_at_utc": started.isoformat(),
         "finished_at_utc": datetime.now(UTC).isoformat(),
     }
+    if WINDOW_SCHEMA_USED == STRICT_WINDOW_SPEC_SCHEMA:
+        receipt["data_window"]["schema"] = STRICT_WINDOW_SPEC_SCHEMA
     receipt_path = root / "retrieval_receipt.json"
     receipt_path.write_bytes(canonical_bytes(receipt))
     return receipt_path
@@ -858,7 +878,8 @@ def parse_args() -> argparse.Namespace:
         "--window-spec",
         type=Path,
         help=(
-            "optional strict freqtrade-lab-okx-window-v1 JSON; keeps XRP/5m/OKX fixed"
+            "optional freqtrade-lab-okx-window-v1/v2 JSON; v2 freezes exact "
+            "60-day Development and 30-day Holdout while XRP/5m/OKX stay fixed"
         ),
     )
     args = parser.parse_args()

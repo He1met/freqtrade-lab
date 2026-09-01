@@ -202,6 +202,57 @@ def test_window_spec_is_strict_and_updates_the_frozen_contract(
     assert contract["timeframe"] == "5m"
 
 
+def test_window_spec_v2_freezes_exact_rolling_60_30_contract(
+    acquisition_module, tmp_path: Path
+) -> None:
+    spec_path = _write_window_spec(
+        tmp_path,
+        schema="freqtrade-lab-okx-window-v2",
+        data_start_utc="2026-04-30T22:00:00Z",
+        development_start_utc="2026-05-01T00:00:00Z",
+        holdout_start_utc="2026-06-30T00:00:00Z",
+        end_exclusive_utc="2026-07-30T00:00:00Z",
+    )
+
+    acquisition_module.configure_window(spec_path)
+
+    assert acquisition_module.WINDOW_SCHEMA_USED == "freqtrade-lab-okx-window-v2"
+    assert acquisition_module.scenario_timerange(
+        acquisition_module.DEVELOPMENT_START, acquisition_module.HOLDOUT_START
+    ) == "20260501-20260630"
+    assert acquisition_module.scenario_timerange(
+        acquisition_module.HOLDOUT_START, acquisition_module.DATA_END
+    ) == "20260630-20260730"
+
+
+@pytest.mark.parametrize(
+    ("holdout_start", "end_exclusive"),
+    (
+        ("2026-06-29T00:00:00Z", "2026-07-29T00:00:00Z"),
+        ("2026-07-01T00:00:00Z", "2026-07-31T00:00:00Z"),
+        ("2026-06-30T00:00:00Z", "2026-07-29T00:00:00Z"),
+        ("2026-06-30T00:00:00Z", "2026-07-31T00:00:00Z"),
+    ),
+)
+def test_window_spec_v2_rejects_non_exact_development_or_holdout(
+    acquisition_module,
+    tmp_path: Path,
+    holdout_start: str,
+    end_exclusive: str,
+) -> None:
+    spec_path = _write_window_spec(
+        tmp_path,
+        schema="freqtrade-lab-okx-window-v2",
+        data_start_utc="2026-04-30T22:00:00Z",
+        development_start_utc="2026-05-01T00:00:00Z",
+        holdout_start_utc=holdout_start,
+        end_exclusive_utc=end_exclusive,
+    )
+
+    with pytest.raises(RuntimeError, match="exactly 60 Development days and 30 Holdout"):
+        acquisition_module.load_window_spec(spec_path)
+
+
 def test_window_spec_rejects_duplicate_unknown_and_out_of_bounds_fields(
     acquisition_module, tmp_path: Path
 ) -> None:

@@ -75,6 +75,10 @@ _BUSINESS_TABLES = (
     "releases",
 )
 _SHA256 = __import__("re").compile(r"^[0-9a-f]{64}$")
+_TIMERANGE = __import__("re").compile(r"^\d{8}-\d{8}$")
+_LEGACY_DEVELOPMENT_TIMERANGE = "20260601-20260731"
+_LEGACY_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v1"
+_STRICT_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v2"
 
 
 class DevelopmentRunError(ValueError):
@@ -101,6 +105,7 @@ class FrozenDevelopmentCapability:
     development_provenance_sha256: Optional[str] = None
     config_sha256: Optional[str] = None
     runner_sha256: Optional[str] = None
+    window_schema: Optional[str] = None
     development_timerange: Optional[str] = None
     pair: Optional[str] = None
     instrument_id: Optional[str] = None
@@ -305,6 +310,108 @@ def _verified_market_identity(
     return pair, instrument_id
 
 
+def _timerange_dates(value: Any, label: str) -> Tuple[datetime, datetime]:
+    if not isinstance(value, str) or _TIMERANGE.fullmatch(value) is None:
+        raise DevelopmentRunError(
+            "BLOCKED_DATA", f"Pilot {label} timerange must use YYYYMMDD-YYYYMMDD"
+        )
+    try:
+        start = datetime.strptime(value[:8], "%Y%m%d").replace(tzinfo=timezone.utc)
+        stop = datetime.strptime(value[9:], "%Y%m%d").replace(tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise DevelopmentRunError(
+            "BLOCKED_DATA", f"Pilot {label} timerange has an invalid date"
+        ) from exc
+    return start, stop
+
+
+def _development_window(value: Any) -> Tuple[datetime, datetime, str]:
+    """Parse the frozen Pilot Development window and derive its exclusive stop."""
+    start, stop = _timerange_dates(value, "Development")
+    if stop - start != timedelta(days=60):
+        raise DevelopmentRunError(
+            "BLOCKED_DATA", "Pilot Development timerange must span exactly 60 days"
+        )
+    return start, stop, stop.isoformat().replace("+00:00", "Z")
+
+
+def _strict_rolling_window(
+    pilot: Path,
+    plan: Mapping[str, Any],
+    development_start: datetime,
+    development_stop: datetime,
+) -> str:
+    """Bind the one legacy baseline or an explicit rolling-v2 receipt."""
+    window_bytes = _read_bytes(pilot / "window-spec.json", "window spec", 1024 * 1024)
+    if (
+        not isinstance(plan.get("window_spec_sha256"), str)
+        or _SHA256.fullmatch(plan["window_spec_sha256"]) is None
+        or _sha256(window_bytes) != plan["window_spec_sha256"]
+    ):
+        raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt mismatch")
+    window = _json_bytes(window_bytes, "window spec")
+    required = {
+        "schema",
+        "data_start_utc",
+        "development_start_utc",
+        "holdout_start_utc",
+        "end_exclusive_utc",
+    }
+    schema = window.get("schema")
+    if set(window) != required or not (
+        schema == _STRICT_WINDOW_SCHEMA
+        or (
+            schema == _LEGACY_WINDOW_SCHEMA
+            and plan.get("development_timerange")
+            == _LEGACY_DEVELOPMENT_TIMERANGE
+        )
+    ):
+        raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt is invalid")
+    try:
+        timestamps = {
+            key: datetime.strptime(window[key], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc
+            )
+            for key in (
+                "data_start_utc",
+                "development_start_utc",
+                "holdout_start_utc",
+                "end_exclusive_utc",
+            )
+        }
+        holdout_start, holdout_stop = _timerange_dates(
+            plan.get("holdout_timerange"), "Holdout"
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt is invalid") from exc
+    holdout_duration = holdout_stop - holdout_start
+    if (
+        (
+            timestamps["development_start_utc"],
+            timestamps["holdout_start_utc"],
+            timestamps["end_exclusive_utc"],
+        )
+        != (development_start, development_stop, holdout_stop)
+        or holdout_start != development_stop
+        or holdout_duration <= timedelta(0)
+        or (
+            schema == _STRICT_WINDOW_SCHEMA
+            and holdout_duration != timedelta(days=30)
+        )
+        or not timestamps["data_start_utc"] < development_start
+        or development_start - timestamps["data_start_utc"] > timedelta(days=1)
+        or any(
+            (
+                timestamps["data_start_utc"].minute,
+                timestamps["data_start_utc"].second,
+                timestamps["data_start_utc"].microsecond,
+            )
+        )
+    ):
+        raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt is invalid")
+    return str(schema)
+
+
 def freeze_development_capability(
     pilot_root: Optional[PathLike],
     freqtrade_python: Optional[PathLike],
@@ -327,10 +434,15 @@ def freeze_development_capability(
 
         plan_bytes = _read_bytes(pilot / "pilot-spec.json", "Pilot spec", 1024 * 1024)
         plan = _json_bytes(plan_bytes, "Pilot spec")
+        development_start, development_stop, development_stop_utc = _development_window(
+            plan.get("development_timerange")
+        )
+        window_schema = _strict_rolling_window(
+            pilot, plan, development_start, development_stop
+        )
         selection = plan.get("selection")
         if (
             plan.get("freqtrade_version") != SUPPORTED_FREQTRADE_VERSION
-            or plan.get("development_timerange") != "20260601-20260731"
             or not isinstance(selection, dict)
             or selection.get("economic_gate") != DEVELOPMENT_GATE_VERSION
             or any(selection.get(key) != value for key, value in EXPECTED_GATE.items())
@@ -367,7 +479,7 @@ def freeze_development_capability(
             or not isinstance(isolated, dict)
             or isolated.get("holdout_values_present") is not False
             or isolated.get("timerange") != plan["development_timerange"]
-            or isolated.get("exclusive_stop_utc") != "2026-07-31T00:00:00Z"
+            or isolated.get("exclusive_stop_utc") != development_stop_utc
         ):
             raise DevelopmentRunError("BLOCKED_DATA", "Development isolation contract mismatch")
 
@@ -489,6 +601,7 @@ def freeze_development_capability(
             development_provenance_sha256=_sha256(provenance_bytes),
             config_sha256=_sha256(config_data),
             runner_sha256=_sha256(runner_data),
+            window_schema=window_schema,
             development_timerange=str(plan["development_timerange"]),
             pair=pair,
             instrument_id=instrument_id,
@@ -525,6 +638,8 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.data_receipts,
         capability.market_receipt,
         capability.tiers_receipt,
+        capability.window_schema,
+        capability.development_timerange,
         capability.pair,
         capability.instrument_id,
     )
@@ -540,6 +655,8 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.data_receipts,
         refreshed.market_receipt,
         refreshed.tiers_receipt,
+        refreshed.window_schema,
+        refreshed.development_timerange,
         refreshed.pair,
         refreshed.instrument_id,
     )
@@ -633,6 +750,7 @@ def _profile_gate(row: sqlite3.Row, capability: FrozenDevelopmentCapability) -> 
 
 
 def _snapshot(capability: FrozenDevelopmentCapability, row: sqlite3.Row) -> dict[str, Any]:
+    _, _, exclusive_stop_utc = _development_window(capability.development_timerange)
     return {
         "schema": DEVELOPMENT_CONTRACT_SCHEMA,
         "pipeline_version": DEVELOPMENT_PIPELINE_VERSION,
@@ -653,7 +771,7 @@ def _snapshot(capability: FrozenDevelopmentCapability, row: sqlite3.Row) -> dict
         "scenario": "DEVELOPMENT",
         "timeframe": "5m",
         "timerange": capability.development_timerange,
-        "exclusive_stop_utc": "2026-07-31T00:00:00Z",
+        "exclusive_stop_utc": exclusive_stop_utc,
         "gate": {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE},
         "holdout": "SEALED_UNREAD",
         "holdout_stress": "SEALED_UNREAD",
@@ -717,6 +835,7 @@ def _materialize_inputs(
     snapshot: Mapping[str, Any],
 ) -> Mapping[str, Any]:
     assert capability.pilot_root is not None
+    _, _, exclusive_stop_utc = _development_window(capability.development_timerange)
     input_root = run_dir / "development-input"
     strategies = input_root / "strategies"
     data_root = input_root / "data" / "okx"
@@ -807,7 +926,7 @@ def _materialize_inputs(
         "development_isolation": {
             "kind": "PHYSICAL_EXCLUSIVE_STOP_VIEW",
             "timerange": capability.development_timerange,
-            "exclusive_stop_utc": "2026-07-31T00:00:00Z",
+            "exclusive_stop_utc": exclusive_stop_utc,
             "holdout_values_present": False,
         },
     }

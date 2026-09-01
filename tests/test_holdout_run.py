@@ -7,6 +7,7 @@ import json
 import os
 import stat
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -18,8 +19,13 @@ from lab.database import get_connection
 from tests.test_development_run import (
     BOUNDED_SOURCE,
     NOW,
+    ROLLING_DEVELOPMENT_TIMERANGE,
+    ROLLING_HOLDOUT_TIMERANGE,
     _approved_candidate_database,
+    _configure_legacy_window_fixture,
+    _configure_rolling_window_fixture,
     _frozen_capability_fixture,
+    _timerange_datetimes,
 )
 
 
@@ -52,6 +58,10 @@ def _sha256(data: bytes) -> str:
 def _eligible_run(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    development_timerange: str = "20260601-20260731",
+    holdout_timerange: str = "20260731-20260830",
+    window_schema: str | None = None,
 ) -> tuple[
     Path,
     str,
@@ -69,8 +79,11 @@ def _eligible_run(
 
     pair = "XRP/USDT:USDT"
     instrument_id = "XRP-USDT-SWAP"
+    holdout_start, holdout_stop = _timerange_datetimes(holdout_timerange)
     database, candidate_id = _approved_candidate_database(
-        tmp_path / "database", pair=pair
+        tmp_path / "database",
+        pair=pair,
+        holdout_days=(holdout_stop - holdout_start).days,
     )
     pilot_root, freqtrade_python, freqtrade_source = _frozen_capability_fixture(
         tmp_path / "capability",
@@ -78,10 +91,34 @@ def _eligible_run(
         pair=pair,
         instrument_id=instrument_id,
     )
+    rolling = (
+        development_timerange != "20260601-20260731"
+        or holdout_timerange != "20260731-20260830"
+    )
+    if window_schema == "v1":
+        _configure_legacy_window_fixture(
+            pilot_root,
+            holdout_timerange=holdout_timerange,
+        )
+    elif rolling:
+        _configure_rolling_window_fixture(
+            pilot_root,
+            development_timerange=development_timerange,
+            holdout_timerange=holdout_timerange,
+        )
     development_capability = development_run.freeze_development_capability(
         pilot_root, freqtrade_python, freqtrade_source
     )
     assert development_capability.status == "READY"
+    frozen_holdout_capability = (
+        holdout_run.freeze_holdout_capability(
+            pilot_root, freqtrade_python, freqtrade_source
+        )
+        if rolling
+        else None
+    )
+    if frozen_holdout_capability is not None:
+        assert frozen_holdout_capability.status == "READY"
 
     research_run_id = str(uuid4())
     run_dir = tmp_path / "runtime" / research_run_id
@@ -112,6 +149,9 @@ def _eligible_run(
     provenance.write_bytes(b'{"test_only_synthetic":true}\n')
     metadata.write_bytes(b'{"test_only_synthetic":true}\n')
     source_sha256 = _sha256(BOUNDED_SOURCE.encode("utf-8"))
+    development_start, development_stop = _timerange_datetimes(
+        development_timerange
+    )
     parsed = replace(
         tracked,
         archive_path=archive,
@@ -123,8 +163,10 @@ def _eligible_run(
         strategy_source=BOUNDED_SOURCE,
         strategy_sha256=source_sha256,
         pairs=(pair,),
-        backtest_start="2026-06-01T00:00:00Z",
-        backtest_end="2026-07-30T23:55:00Z",
+        backtest_start=development_start.isoformat().replace("+00:00", "Z"),
+        backtest_end=(development_stop - timedelta(minutes=5))
+        .isoformat()
+        .replace("+00:00", "Z"),
         configured_fee=0.0005,
         total_trades=30,
         profit_pct=0.5,
@@ -166,7 +208,7 @@ def _eligible_run(
         / "XRP-5m.feather"
     )
     full_data = acquisition / "data" / "okx" / "futures" / "XRP-5m.feather"
-    full_data.parent.mkdir(parents=True)
+    full_data.parent.mkdir(parents=True, exist_ok=True)
     full_data.write_bytes(development_data.read_bytes() + b"holdout-only\n")
     local_paths = (
         acquisition / "market_snapshot.json",
@@ -183,7 +225,7 @@ def _eligible_run(
         for path in local_paths
     )
     acquisition_provenance = acquisition / "retained-data-provenance.json"
-    capability = holdout_run.FrozenHoldoutCapability(
+    capability = frozen_holdout_capability or holdout_run.FrozenHoldoutCapability(
         status="READY",
         reason="TEST_ONLY_SYNTHETIC ready capability",
         development=development_capability,
@@ -194,8 +236,8 @@ def _eligible_run(
         acquisition_provenance_sha256=_sha256(acquisition_provenance.read_bytes()),
         config_sha256=_sha256((acquisition / "config.json").read_bytes()),
         runner_sha256=_sha256(holdout_run.DEFAULT_RUNNER.read_bytes()),
-        development_timerange="20260601-20260731",
-        holdout_timerange="20260731-20260830",
+        development_timerange=development_timerange,
+        holdout_timerange=holdout_timerange,
         stress_fee_multiplier=2.0,
         pair=pair,
         local_receipts=local_receipts,
@@ -307,6 +349,209 @@ def test_t0_one_shot_receipt_fsyncs_file_and_parent_directory(
 
     assert any(stat.S_ISREG(mode) for mode in observed_modes)
     assert stat.S_ISDIR(observed_modes[-1])
+
+
+def test_t1_rolling_v2_60_30_prepares_contiguous_holdout_rows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, run_dir, capability, parsed = _eligible_run(
+        tmp_path,
+        monkeypatch,
+        development_timerange=ROLLING_DEVELOPMENT_TIMERANGE,
+        holdout_timerange=ROLLING_HOLDOUT_TIMERANGE,
+    )
+
+    assert capability.status == "READY"
+    assert capability.development_timerange == ROLLING_DEVELOPMENT_TIMERANGE
+    assert capability.holdout_timerange == ROLLING_HOLDOUT_TIMERANGE
+    _prepare_continuation(
+        database,
+        research_run_id,
+        run_dir,
+        capability,
+        parsed,
+        monkeypatch,
+    )
+
+    rows = _execution_rows(database, research_run_id)
+    assert [
+        (
+            row["scenario"],
+            row["timerange_start"],
+            row["timerange_end"],
+        )
+        for row in rows
+    ] == [
+        (
+            "DEVELOPMENT",
+            "2026-04-01T00:00:00Z",
+            "2026-05-30T23:55:00Z",
+        ),
+        (
+            "HOLDOUT",
+            "2026-05-31T00:00:00Z",
+            "2026-06-29T23:55:00Z",
+        ),
+        (
+            "HOLDOUT_STRESS",
+            "2026-05-31T00:00:00Z",
+            "2026-06-29T23:55:00Z",
+        ),
+    ]
+    authorization = json.loads(
+        (run_dir / "holdout-input" / "authorization.json").read_text()
+    )
+    assert authorization["holdout_timerange"] == ROLLING_HOLDOUT_TIMERANGE
+    provenance = json.loads(
+        (
+            run_dir / "holdout-input" / "retained-data-provenance.json"
+        ).read_text()
+    )
+    assert provenance["contract"]["development_timerange"] == (
+        ROLLING_DEVELOPMENT_TIMERANGE
+    )
+    assert provenance["contract"]["holdout_timerange"] == (
+        ROLLING_HOLDOUT_TIMERANGE
+    )
+
+
+def test_t1_legacy_v1_short_holdout_remains_authorizable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    holdout_timerange = "20260731-20260807"
+    database, research_run_id, run_dir, capability, parsed = _eligible_run(
+        tmp_path,
+        monkeypatch,
+        holdout_timerange=holdout_timerange,
+        window_schema="v1",
+    )
+
+    assert capability.status == "READY"
+    assert capability.development is not None
+    assert capability.development.window_schema == "freqtrade-lab-okx-window-v1"
+    _prepare_continuation(
+        database,
+        research_run_id,
+        run_dir,
+        capability,
+        parsed,
+        monkeypatch,
+    )
+
+    rows = _execution_rows(database, research_run_id)
+    assert [row["scenario"] for row in rows] == [
+        "DEVELOPMENT",
+        "HOLDOUT",
+        "HOLDOUT_STRESS",
+    ]
+    assert rows[1]["timerange_start"] == "2026-07-31T00:00:00Z"
+    assert rows[1]["timerange_end"] == "2026-08-06T23:55:00Z"
+    assert rows[2]["timerange_start"] == "2026-07-31T00:00:00Z"
+    assert rows[2]["timerange_end"] == "2026-08-06T23:55:00Z"
+
+
+@pytest.mark.parametrize(
+    "holdout_timerange",
+    (
+        pytest.param("20260731-20260829", id="29-days"),
+        pytest.param("20260731-20260831", id="31-days"),
+        pytest.param("20260801-20260831", id="gap"),
+        pytest.param("20260730-20260829", id="overlap"),
+    ),
+)
+def test_t0_holdout_window_drift_fails_before_attempt_or_database_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    holdout_timerange: str,
+) -> None:
+    database, research_run_id, run_dir, capability, parsed = _eligible_run(
+        tmp_path, monkeypatch
+    )
+    drifted = replace(capability, holdout_timerange=holdout_timerange)
+    monkeypatch.setattr(
+        holdout_run,
+        "parse_backtest_artifact",
+        lambda *_args, **_kwargs: parsed,
+    )
+    monkeypatch.setattr(
+        holdout_run,
+        "_require_ready",
+        lambda _capability: pytest.fail(
+            "invalid window must fail before retained inputs are opened"
+        ),
+    )
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        holdout_run.prepare_holdout_continuation(
+            database,
+            run_dir,
+            research_run_id,
+            drifted,
+            now=NOW,
+        )
+
+    assert (raised.value.code, raised.value.status) == ("run_not_eligible", 409)
+    _assert_no_later_rows(database, research_run_id)
+    assert not (run_dir / holdout_run.HOLDOUT_ATTEMPT_NAME).exists()
+    assert not (run_dir / "holdout-input").exists()
+    with get_connection(database, read_only=True) as connection:
+        run = connection.execute(
+            "SELECT status,stage,verdict FROM research_runs WHERE id=?",
+            (research_run_id,),
+        ).fetchone()
+    assert tuple(run) == ("PENDING", "PENDING", None)
+
+
+def test_t0_shifted_30_day_authorization_receipt_fails_before_database_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, research_run_id, run_dir, capability, parsed = _eligible_run(
+        tmp_path, monkeypatch
+    )
+    real_authorize = holdout_run._authorize_holdout_run
+    captured: dict[str, Any] = {}
+
+    def capture_receipt(
+        _database: Path,
+        _research_run_id: str,
+        receipt: dict[str, Any],
+        **_kwargs: Any,
+    ) -> None:
+        captured.update(receipt)
+
+    monkeypatch.setattr(holdout_run, "_authorize_holdout_run", capture_receipt)
+    _prepare_continuation(
+        database,
+        research_run_id,
+        run_dir,
+        capability,
+        parsed,
+        monkeypatch,
+    )
+    forged = dict(captured)
+    forged["holdout_timerange"] = "20260801-20260831"
+    monkeypatch.setattr(holdout_run, "_authorize_holdout_run", real_authorize)
+
+    with pytest.raises(holdout_run.HoldoutRunError) as raised:
+        holdout_run._authorize_holdout_run(
+            database,
+            research_run_id,
+            forged,
+            now=NOW,
+        )
+
+    assert (raised.value.code, raised.value.status) == ("BLOCKED_DATA", 503)
+    assert raised.value.message == "Holdout authorization receipt drifted"
+    _assert_no_later_rows(database, research_run_id)
+    with get_connection(database, read_only=True) as connection:
+        run = connection.execute(
+            "SELECT status,stage,verdict FROM research_runs WHERE id=?",
+            (research_run_id,),
+        ).fetchone()
+    assert tuple(run) == ("PENDING", "PENDING", None)
 
 
 def test_t0_prepare_uses_same_run_seq_2_3_and_consumes_authorization_once(
