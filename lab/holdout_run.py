@@ -45,6 +45,7 @@ from lab.development_run import (
     _require_ready as _require_development_ready,
     _resolve_directory,
     _resolve_executable,
+    _STRICT_WINDOW_SCHEMA,
     _verify_python,
     freeze_development_capability,
     load_public_research_run as load_development_public_research_run,
@@ -296,12 +297,17 @@ def freeze_holdout_capability(
         development_timerange = plan.get("development_timerange")
         _, development_stop = _timerange(development_timerange)
         multiplier = float(plan.get("stress_fee_multiplier"))
+        holdout_duration = stop - start
         if (
             development_timerange != development.development_timerange
             or development_stop != start
             or not math.isfinite(multiplier)
             or multiplier <= 1.0
-            or (stop - start).days <= 0
+            or holdout_duration <= timedelta(0)
+            or (
+                development.window_schema == _STRICT_WINDOW_SCHEMA
+                and holdout_duration != timedelta(days=30)
+            )
             or plan.get("holdout_policy")
             != {
                 "max_open_count": 1,
@@ -378,6 +384,7 @@ def _require_ready(capability: FrozenHoldoutCapability) -> None:
         capability.status != "READY"
         or capability.development is None
         or capability.pilot_root is None
+        or capability.development_timerange is None
         or capability.holdout_timerange is None
         or capability.stress_fee_multiplier is None
     ):
@@ -826,7 +833,10 @@ def _authorization_receipt(
         and raw["runner_sha256"] == snapshot.get("runner_sha256")
         and math.isfinite(multiplier)
         and math.isclose(multiplier, stress_multiplier, rel_tol=0.0, abs_tol=1e-15)
+        and start.isoformat().replace("+00:00", "Z")
+        == snapshot.get("exclusive_stop_utc")
         and (stop - start).days == holdout_days
+        and holdout_days > 0
     )
     _timestamp(raw["authorized_at"] if isinstance(raw["authorized_at"], str) else None)
     if not expected:
@@ -985,6 +995,7 @@ def prepare_holdout_continuation(
         capability.status != "READY"
         or capability.development is None
         or capability.pilot_root is None
+        or capability.development_timerange is None
         or capability.holdout_timerange is None
         or capability.stress_fee_multiplier is None
         or capability.development.instrument_id is None
@@ -1015,6 +1026,9 @@ def prepare_holdout_continuation(
             connection, str(row["research_profile_id"])
         )
         holdout_start, holdout_stop = _timerange(capability.holdout_timerange)
+        _, development_stop = _timerange(capability.development_timerange)
+        holdout_duration = holdout_stop - holdout_start
+        exclusive_stop_utc = development_stop.isoformat().replace("+00:00", "Z")
         expected_python_identity = list(
             capability.development.python_identity
             if capability.development is not None
@@ -1028,11 +1042,18 @@ def prepare_holdout_continuation(
             or snapshot.get("config_sha256") != capability.config_sha256
             or snapshot.get("runner_sha256") != capability.runner_sha256
             or snapshot.get("timerange") != capability.development_timerange
+            or snapshot.get("exclusive_stop_utc") != exclusive_stop_utc
+            or development_stop != holdout_start
+            or holdout_duration <= timedelta(0)
+            or (
+                capability.development.window_schema == _STRICT_WINDOW_SCHEMA
+                and holdout_duration != timedelta(days=30)
+            )
             or snapshot.get("freqtrade_source_tree") != SUPPORTED_FREQTRADE_TREE
             or snapshot.get("freqtrade_python_identity")
             != expected_python_identity
             or int(materialization_row["holdout_days"])
-            != (holdout_stop - holdout_start).days
+            != holdout_duration.days
             or not math.isclose(
                 float(materialization_row["stress_fee_multiplier"]),
                 float(capability.stress_fee_multiplier),

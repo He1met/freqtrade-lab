@@ -25,7 +25,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
@@ -43,9 +43,11 @@ from lab.research_candidate import (
     DEFAULT_RUNNER,
     DEFAULT_SANDBOX_EXEC,
     ResearchCandidateError,
+    _publish_directory_exclusive,
     _prepare_freqtrade_source_snapshot,
     _run_scenario,
     _runtime_config,
+    _validate_config,
     run_research_candidate,
 )
 from lab.strategy_library import (
@@ -54,14 +56,19 @@ from lab.strategy_library import (
     validate_strategy_library_database,
 )
 from scripts.run_freqtrade_backtest import (
+    OfflineBacktestError,
     SUPPORTED_DEPENDENCIES as RUNNER_DEPENDENCIES,
     _create_scenario_data_view,
+    _verify_data_provenance,
+    _verify_dependency_versions,
 )
 
 
 SCHEMA = "freqtrade-lab-bounded-pilot-v1"
 PLAN = "pilot-spec.json"
 WINDOW = "window-spec.json"
+LEGACY_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v1"
+STRICT_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v2"
 ACQUISITION = "acquisition"
 SELECTION = "development-selection.json"
 HOLDOUT_AUTHORIZATION = "holdout-authorized.json"
@@ -74,6 +81,16 @@ SEARCH_TRIALS = "trials.jsonl"
 SEARCH_TERMINAL = "search-terminal.json"
 SEARCH_TRIAL_SCHEMA = "freqtrade-lab-search-trial-v2"
 SEARCH_TERMINAL_SCHEMA = "freqtrade-lab-search-terminal-v2"
+SEARCH_DATA_SCHEMA = "freqtrade-lab-retained-search-data-v2"
+FROZEN_SEARCH_TIMERANGE = "20260601-20260701"
+FROZEN_SEARCH_STARTUP = datetime(2026, 5, 31, 22, tzinfo=timezone.utc)
+FROZEN_SEARCH_START = datetime(2026, 6, 1, tzinfo=timezone.utc)
+FROZEN_SEARCH_STOP = datetime(2026, 7, 1, tzinfo=timezone.utc)
+FROZEN_SEARCH_ROWS = {
+    "futures_5m": 8664,
+    "mark_1h": 722,
+    "funding_history": 90,
+}
 SEARCH_GATE = "POSITIVE_SEARCH_FINALIST_V2"
 SEARCH_MAX_ATTEMPTS = 6
 SEARCH_MAX_ROUNDS = 2
@@ -169,6 +186,54 @@ def timerange(value: Any, label: str) -> tuple[datetime, datetime]:
     if end <= start:
         raise PilotError(f"{label} must have positive duration")
     return start, end
+
+
+def _utc_boundary(value: Any, label: str) -> datetime:
+    if not isinstance(value, str) or len(value) != 20 or not value.endswith("Z"):
+        raise PilotError(f"{label} must use YYYY-MM-DDTHH:MM:SSZ")
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise PilotError(f"{label} must use YYYY-MM-DDTHH:MM:SSZ") from exc
+    return parsed
+
+
+def _validate_strict_window(
+    value: Mapping[str, Any],
+    dev_start: datetime,
+    dev_end: datetime,
+    hold_start: datetime,
+    hold_end: datetime,
+) -> None:
+    required = {
+        "schema",
+        "data_start_utc",
+        "development_start_utc",
+        "holdout_start_utc",
+        "end_exclusive_utc",
+    }
+    if set(value) != required or value.get("schema") != STRICT_WINDOW_SCHEMA:
+        raise PilotError("strict window spec shape/version is not supported")
+    data_start = _utc_boundary(value["data_start_utc"], "window data start")
+    boundaries = (
+        _utc_boundary(value["development_start_utc"], "window Development start"),
+        _utc_boundary(value["holdout_start_utc"], "window Holdout start"),
+        _utc_boundary(value["end_exclusive_utc"], "window exclusive stop"),
+    )
+    if (
+        boundaries != (dev_start, hold_start, hold_end)
+        or dev_end != hold_start
+        or dev_end - dev_start != timedelta(days=60)
+        or hold_end - hold_start != timedelta(days=30)
+        or not data_start < dev_start
+        or dev_start - data_start > timedelta(days=1)
+        or any((data_start.minute, data_start.second, data_start.microsecond))
+    ):
+        raise PilotError(
+            "strict window must bind contiguous 60-day Development and 30-day Holdout"
+        )
 
 
 def safe_file(root: Path, value: Any, label: str) -> Path:
@@ -344,12 +409,20 @@ def load_plan(root: Path, name: str = PLAN) -> dict[str, Any]:
         raise PilotError("pilot spec shape/version is not supported")
     if not isinstance(plan["pilot_id"], str) or SAFE_ID.fullmatch(plan["pilot_id"]) is None:
         raise PilotError("pilot_id is unsafe")
-    if plan["window_spec_sha256"] != digest((root / WINDOW).read_bytes()):
+    window, window_bytes = load_json(root / WINDOW, "window spec")
+    if plan["window_spec_sha256"] != digest(window_bytes):
         raise PilotError("window spec hash mismatch")
     dev_start, dev_end = timerange(plan["development_timerange"], "Development")
     hold_start, hold_end = timerange(plan["holdout_timerange"], "Holdout")
-    if dev_end != hold_start or not 60 <= (hold_end - dev_start).days <= 90:
-        raise PilotError("Development/Holdout must be contiguous and span 60 to 90 days")
+    if window.get("schema") == STRICT_WINDOW_SCHEMA:
+        _validate_strict_window(window, dev_start, dev_end, hold_start, hold_end)
+    elif window.get("schema") == LEGACY_WINDOW_SCHEMA:
+        if dev_end != hold_start or not 60 <= (hold_end - dev_start).days <= 90:
+            raise PilotError(
+                "Development/Holdout must be contiguous and span 60 to 90 days"
+            )
+    else:
+        raise PilotError("window spec shape/version is not supported")
     multiplier = finite(plan["stress_fee_multiplier"], "stress multiplier", 1.0)
     if multiplier <= 1:
         raise PilotError("stress multiplier must exceed 1")
@@ -588,6 +661,330 @@ def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
         plan["holdout_timerange"],
     ]
     return result
+
+
+def _source_timestamp(value: Any, label: str) -> datetime:
+    if not isinstance(value, str):
+        raise PilotError(f"{label} is invalid")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise PilotError(f"{label} is invalid") from exc
+    if parsed.utcoffset() != timedelta(0):
+        raise PilotError(f"{label} must be UTC")
+    return parsed.astimezone(timezone.utc)
+
+
+def _load_search_source(
+    source_root: Path,
+    trusted_provenance_sha256: str,
+    trusted_receipt_sha256: str,
+) -> dict[str, Any]:
+    """Adapt one runner-verified acquisition into the fixed Search slice."""
+    if any(
+        re.fullmatch(r"[0-9a-f]{64}", value) is None
+        for value in (trusted_provenance_sha256, trusted_receipt_sha256)
+    ):
+        raise PilotError("trusted source SHA-256 values are invalid")
+    provenance, provenance_bytes = load_json(
+        source_root / "retained-data-provenance.json", "source provenance"
+    )
+    if digest(provenance_bytes) != trusted_provenance_sha256:
+        raise PilotError("source provenance trusted SHA mismatch")
+    source = provenance.get("source", {})
+    contract = provenance.get("contract", {})
+    files = provenance.get("files", {})
+    if (
+        not isinstance(source, dict)
+        or not isinstance(contract, dict)
+        or not isinstance(files, dict)
+        or "retrievals" in source
+        or source.get("retrieval_receipt") != "retrieval_receipt.json"
+        or source.get("pair") != "XRP/USDT:USDT"
+        or source.get("instrument_id") != "XRP-USDT-SWAP"
+        or contract.get("data_dir") != "data/okx"
+        or contract.get("market_snapshot") != "market_snapshot.json"
+        or contract.get("leverage_tiers") != "isolated_tiers_snapshot.json"
+        or contract.get("config") != "config.json"
+    ):
+        raise PilotError("source must be one complete singular XRP acquisition")
+    timerange(contract.get("development_timerange"), "source Development")
+    receipt_name = source["retrieval_receipt"]
+    data_dir = source_root / "data" / "okx"
+    if (
+        (source_root / "data").is_symlink()
+        or data_dir.is_symlink()
+        or not data_dir.is_dir()
+    ):
+        raise PilotError("source data directory must stay inside the acquisition")
+    receipt_path = safe_file(source_root, receipt_name, "source retrieval receipt")
+    receipt, receipt_bytes = load_json(receipt_path, "source retrieval receipt")
+    config_path = safe_file(source_root, contract.get("config"), "source config")
+    tracked_bytes = {
+        receipt_name: receipt_bytes,
+        contract["config"]: config_path.read_bytes(),
+    }
+    for name, expected_sha in (
+        (receipt_name, trusted_receipt_sha256),
+        (contract["config"], None),
+    ):
+        record = files.get(name)
+        data = tracked_bytes[name]
+        if (
+            not isinstance(record, dict)
+            or record.get("bytes") != len(data)
+            or record.get("sha256") != digest(data)
+            or (expected_sha is not None and digest(data) != expected_sha)
+        ):
+            raise PilotError(f"source tracked receipt mismatch: {name}")
+    try:
+        config = json.loads(tracked_bytes[contract["config"]])
+        if not isinstance(config, dict):
+            raise ResearchCandidateError("Freqtrade config must be a JSON object")
+        configured_strategy = config.get("strategy")
+        if configured_strategy is not None and (
+            not isinstance(configured_strategy, str)
+            or CLASS.fullmatch(configured_strategy) is None
+        ):
+            raise ResearchCandidateError("config strategy is invalid")
+        _, pairs = _validate_config(
+            config, configured_strategy or "SearchCandidate"
+        )
+        if pairs != ("XRP/USDT:USDT",):
+            raise ResearchCandidateError("config must bind the frozen XRP pair")
+    except (UnicodeError, json.JSONDecodeError, ResearchCandidateError) as exc:
+        raise PilotError(str(exc)) from exc
+    try:
+        _verify_dependency_versions(provenance, RUNNER_DEPENDENCIES)
+        verified = _verify_data_provenance(
+            provenance,
+            scenario="DEVELOPMENT",
+            timerange=contract["development_timerange"],
+            pair="XRP/USDT:USDT",
+            data_dir=data_dir,
+            market_snapshot=source_root / contract["market_snapshot"],
+            leverage_tiers=source_root / contract["leverage_tiers"],
+        )
+    except OfflineBacktestError as exc:
+        raise PilotError(str(exc)) from exc
+    control_bytes = {"config.json": tracked_bytes[contract["config"]]}
+    for name, receipt_key in (
+        ("market_snapshot.json", "market_snapshot_sha256"),
+        ("isolated_tiers_snapshot.json", "leverage_tiers_sha256"),
+    ):
+        data = (source_root / name).read_bytes()
+        if digest(data) != verified[receipt_key]:
+            raise PilotError(f"source {name} changed after provenance validation")
+        control_bytes[name] = data
+    suffixes = {
+        "futures_5m": "-5m-futures.feather",
+        "mark_1h": "-1h-mark.feather",
+        "funding_history": "-1h-funding_rate.feather",
+    }
+    data_names = {
+        series: next(
+            (name for name in verified["data_sha256"] if name.endswith(suffix)), ""
+        )
+        for series, suffix in suffixes.items()
+    }
+    if (
+        any(not name for name in data_names.values())
+        or set(verified["data_sha256"]) != set(data_names.values())
+    ):
+        raise PilotError("source acquisition must contain exact 5m/mark/funding data")
+    window = receipt.get("data_window")
+    if (
+        not isinstance(window, dict)
+        or window.get("fully_closed_at_fetch") is not True
+        or receipt.get("host") != "www.okx.com"
+        or receipt.get("authentication") != "none"
+        or receipt.get("pair") != "XRP/USDT:USDT"
+        or receipt.get("instrument_id") != "XRP-USDT-SWAP"
+    ):
+        raise PilotError("source retrieval identity/completeness receipt mismatch")
+    source_start = _source_timestamp(window.get("start_utc"), "source start")
+    source_stop = _source_timestamp(window.get("end_exclusive_utc"), "source stop")
+    if source_start > FROZEN_SEARCH_STARTUP or source_stop < FROZEN_SEARCH_STOP:
+        raise PilotError("source acquisition does not cover frozen Search")
+    return {
+        "provenance_sha256": trusted_provenance_sha256,
+        "receipt_sha256": trusted_receipt_sha256,
+        "source": {
+            key: source.get(key)
+            for key in ("host", "authentication", "pair", "instrument_id", "pair_family")
+        },
+        "freqtrade": {
+            "version": provenance["freqtrade"]["version"],
+            "tag": provenance["freqtrade"]["tag"],
+            "commit": provenance["freqtrade"]["commit"],
+            "dependencies": dict(RUNNER_DEPENDENCIES),
+        },
+        "data_names": data_names,
+        "data_sha256": verified["data_sha256"],
+        "controls": control_bytes,
+    }
+
+
+def _verify_search_output_dates(data_root: Path, data_names: Mapping[str, str]) -> None:
+    try:
+        import pyarrow
+        import pyarrow.feather as feather
+    except (ImportError, ModuleNotFoundError) as exc:
+        raise PilotError("exact PyArrow 25.0.0 is required") from exc
+    if pyarrow.__version__ != RUNNER_DEPENDENCIES["pyarrow"]:
+        raise PilotError("exact PyArrow 25.0.0 is required")
+    bounds = {
+        "futures_5m": (FROZEN_SEARCH_STARTUP, timedelta(minutes=5)),
+        "mark_1h": (FROZEN_SEARCH_STARTUP, timedelta(hours=1)),
+        "funding_history": (FROZEN_SEARCH_START, timedelta(hours=8)),
+    }
+    for series, relative_name in data_names.items():
+        table = feather.read_table(data_root / relative_name, columns=["date"])
+        raw_values = table.column("date").to_pylist()
+        if any(
+            not isinstance(item, datetime) or item.utcoffset() != timedelta(0)
+            for item in raw_values
+        ):
+            raise PilotError(f"Search-only {series} timestamps are not UTC")
+        values = [item.astimezone(timezone.utc) for item in raw_values]
+        start, step = bounds[series]
+        if (
+            len(values) != FROZEN_SEARCH_ROWS[series]
+            or values[0] != start
+            or values[-1] + step != FROZEN_SEARCH_STOP
+            or any(right - left != step for left, right in zip(values, values[1:]))
+        ):
+            raise PilotError(f"Search-only {series} output is not contiguous")
+
+
+def prepare_search_data(
+    source_root: Path,
+    output_root: Path,
+    trusted_provenance_sha256: str,
+    trusted_receipt_sha256: str,
+) -> dict[str, Any]:
+    """Publish a fresh root containing only one verified Search acquisition."""
+    raw_source = source_root.expanduser()
+    if raw_source.is_symlink():
+        raise PilotError("source acquisition root must not be a symlink")
+    source = raw_source.resolve(strict=True)
+    expanded_output = output_root.expanduser()
+    if expanded_output.name in {"", ".", ".."}:
+        raise PilotError("Search output root must name one new directory")
+    output_parent = expanded_output.parent.resolve(strict=True)
+    output = output_parent / expanded_output.name
+    try:
+        output.relative_to(ROOT.resolve(strict=True))
+    except ValueError:
+        pass
+    else:
+        raise PilotError("Search output root must stay outside Git")
+    current = output_parent
+    while True:
+        if (current / ".git").exists() or (current / ".git").is_symlink():
+            raise PilotError("Search output root must stay outside every Git worktree")
+        if current.parent == current:
+            break
+        current = current.parent
+    if output.exists() or output.is_symlink():
+        raise PilotError("Search output root already exists; replay is forbidden")
+    if source == output_parent or source in output.parents or output in source.parents:
+        raise PilotError("source and Search output roots must be independent")
+    frozen = _load_search_source(
+        source, trusted_provenance_sha256, trusted_receipt_sha256
+    )
+    staging = Path(tempfile.mkdtemp(prefix=".search-data-", dir=output_parent))
+    staging.chmod(0o700)
+    published = False
+    try:
+        acquisition = staging / ACQUISITION
+        data_root = acquisition / "data" / "okx"
+        data_root.mkdir(parents=True)
+        expected = {
+            name: frozen["data_sha256"][name]
+            for name in frozen["data_names"].values()
+        }
+        view = _create_scenario_data_view(
+            source / "data" / "okx",
+            data_root,
+            FROZEN_SEARCH_TIMERANGE,
+            expected,
+        )
+        _verify_search_output_dates(data_root, frozen["data_names"])
+        for data_path in data_root.rglob("*.feather"):
+            data_path.chmod(0o400)
+        for name, data in frozen["controls"].items():
+            (acquisition / name).write_bytes(data)
+        local_files = {
+            f"data/okx/{name}": {
+                "bytes": (data_root / name).stat().st_size,
+                "sha256": view["files"][name]["sha256"],
+                "rows": FROZEN_SEARCH_ROWS[series],
+            }
+            for series, name in frozen["data_names"].items()
+        }
+        for name in ("market_snapshot.json", "isolated_tiers_snapshot.json"):
+            data = frozen["controls"][name]
+            local_files[name] = {"bytes": len(data), "sha256": digest(data)}
+        provenance = {
+            "schema": SEARCH_DATA_SCHEMA,
+            "portable_retained_fixture": False,
+            "source": frozen["source"],
+            "freqtrade": frozen["freqtrade"],
+            "contract": {
+                "data_dir": "data/okx",
+                "market_snapshot": "market_snapshot.json",
+                "leverage_tiers": "isolated_tiers_snapshot.json",
+                "config": "config.json",
+                "search_timerange": FROZEN_SEARCH_TIMERANGE,
+                "timeframe": "5m",
+            },
+            "source_acquisition": {
+                "provenance_sha256": frozen["provenance_sha256"],
+                "retrieval_receipt_sha256": frozen["receipt_sha256"],
+                "data_sha256": frozen["data_sha256"],
+            },
+            "search_retention": {
+                "startup_start_utc": FROZEN_SEARCH_STARTUP.isoformat().replace("+00:00", "Z"),
+                "search_start_utc": FROZEN_SEARCH_START.isoformat().replace("+00:00", "Z"),
+                "end_exclusive_utc": FROZEN_SEARCH_STOP.isoformat().replace("+00:00", "Z"),
+                "later_rows_exposed_to_search": False,
+                "rows": FROZEN_SEARCH_ROWS,
+            },
+            "files": {
+                "config.json": {
+                    "bytes": len(frozen["controls"]["config.json"]),
+                    "sha256": digest(frozen["controls"]["config.json"]),
+                }
+            },
+            "local_only_files": local_files,
+        }
+        (acquisition / "retained-data-provenance.json").write_bytes(canonical(provenance))
+        provenance_bytes = (acquisition / "retained-data-provenance.json").read_bytes()
+        verify_data(
+            staging,
+            {
+                "schema": SEARCH_SCHEMA,
+                "search_timerange": FROZEN_SEARCH_TIMERANGE,
+                "data_provenance_sha256": digest(provenance_bytes),
+            },
+        )
+        if output.exists() or output.is_symlink():
+            raise PilotError("Search output root already exists; replay is forbidden")
+        try:
+            _publish_directory_exclusive(staging, output)
+        except ResearchCandidateError as exc:
+            raise PilotError(str(exc)) from exc
+        published = True
+        return {
+            "status": "SEARCH_DATA_READY",
+            "search_timerange": FROZEN_SEARCH_TIMERANGE,
+            "provenance_sha256": digest(provenance_bytes),
+            "rows": FROZEN_SEARCH_ROWS,
+        }
+    finally:
+        if not published:
+            shutil.rmtree(staging, ignore_errors=True)
 
 
 def _search_feather_rows(path: Path) -> int:
@@ -2183,11 +2580,33 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     search.add_argument("--campaign-root", required=True, type=Path)
     search.add_argument("--freqtrade-python", required=True, type=Path)
     search.add_argument("--freqtrade-source", required=True, type=Path)
+    prepare = commands.add_parser(
+        "prepare-search-data",
+        help="slice the one frozen XRP Search window from one complete acquisition",
+    )
+    prepare.add_argument("--source-root", required=True, type=Path)
+    prepare.add_argument("--source-provenance-sha256", required=True)
+    prepare.add_argument("--source-receipt-sha256", required=True)
+    prepare.add_argument("--output-root", required=True, type=Path)
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
+    if args.command == "prepare-search-data":
+        try:
+            result = prepare_search_data(
+                args.source_root,
+                args.output_root,
+                args.source_provenance_sha256,
+                args.source_receipt_sha256,
+            )
+        except PilotError:
+            raise
+        except Exception as exc:
+            raise PilotError(" ".join(str(exc).split()) or type(exc).__name__) from exc
+        print(json.dumps(result, ensure_ascii=True, separators=(",", ":"), sort_keys=True))
+        return 0
     root_argument = (
         args.campaign_root if args.command == "screen-search" else args.pilot_root
     )

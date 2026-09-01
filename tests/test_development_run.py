@@ -6,6 +6,7 @@ import hashlib
 import json
 import sys
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -18,6 +19,8 @@ from scripts import run_freqtrade_backtest as runner_module
 
 
 NOW = "2026-01-01T00:00:00.000Z"
+ROLLING_DEVELOPMENT_TIMERANGE = "20260401-20260531"
+ROLLING_HOLDOUT_TIMERANGE = "20260531-20260630"
 
 BOUNDED_SOURCE = """import talib.abstract as ta
 from pandas import DataFrame
@@ -180,6 +183,7 @@ def _approved_candidate_database(
     tmp_path: Path,
     *,
     min_development_trades: int = 30,
+    holdout_days: int = 30,
     pair: str = "ADA/USDT:USDT",
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
@@ -198,13 +202,14 @@ def _approved_candidate_database(
                 min_profit_factor, created_at, updated_at
             ) VALUES (?, ?, 'OKX_CRYPTO_PERP', 'okx', 'futures', 'isolated',
                       ?, '5m', NULL, '2026-01-01',
-                      7, 30, 1000.0, 100.0, 1, 0.0005, 2.0,
+                      7, ?, 1000.0, 100.0, 1, 0.0005, 2.0,
                       5.0, ?, 30, 1.1, ?, ?)
             """,
             (
                 profile_id,
                 f"approved-profile-{profile_id}",
                 json.dumps([pair], separators=(",", ":")),
+                holdout_days,
                 min_development_trades,
                 NOW,
                 NOW,
@@ -255,6 +260,14 @@ def _canonical(value: object) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
+def _timerange_datetimes(value: str) -> tuple[datetime, datetime]:
+    start, stop = (
+        datetime.strptime(part, "%Y%m%d").replace(tzinfo=timezone.utc)
+        for part in value.split("-", 1)
+    )
+    return start, stop
+
+
 def _frozen_capability_fixture(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -275,9 +288,21 @@ def _frozen_capability_fixture(
     python.write_text("#!/bin/sh\nexit 0\n")
     python.chmod(0o700)
 
+    window_bytes = _canonical(
+        {
+            "schema": "freqtrade-lab-okx-window-v1",
+            "data_start_utc": "2026-05-31T22:00:00Z",
+            "development_start_utc": "2026-06-01T00:00:00Z",
+            "holdout_start_utc": "2026-07-31T00:00:00Z",
+            "end_exclusive_utc": "2026-08-30T00:00:00Z",
+        }
+    )
+    (pilot / "window-spec.json").write_bytes(window_bytes)
     plan = {
         "freqtrade_version": development_run.SUPPORTED_FREQTRADE_VERSION,
+        "window_spec_sha256": hashlib.sha256(window_bytes).hexdigest(),
         "development_timerange": "20260601-20260731",
+        "holdout_timerange": "20260731-20260830",
         "selection": {
             "economic_gate": development_run.DEVELOPMENT_GATE_VERSION,
             **development_run.EXPECTED_GATE,
@@ -444,6 +469,122 @@ def _rewrite_source_provenance(
     isolation_path.write_bytes(_canonical(isolation))
 
 
+def _configure_rolling_window_fixture(
+    pilot: Path,
+    *,
+    development_timerange: str = ROLLING_DEVELOPMENT_TIMERANGE,
+    holdout_timerange: str = ROLLING_HOLDOUT_TIMERANGE,
+) -> None:
+    """Upgrade the compact legacy fixture to one fully bound rolling v2 window."""
+    development_start, development_stop = _timerange_datetimes(
+        development_timerange
+    )
+    holdout_start, holdout_stop = _timerange_datetimes(holdout_timerange)
+    window = {
+        "schema": "freqtrade-lab-okx-window-v2",
+        "data_start_utc": (
+            development_start - timedelta(hours=2)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "development_start_utc": development_start.strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
+        "holdout_start_utc": holdout_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end_exclusive_utc": holdout_stop.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    window_bytes = _canonical(window)
+    (pilot / "window-spec.json").write_bytes(window_bytes)
+
+    plan_path = pilot / "pilot-spec.json"
+    plan = json.loads(plan_path.read_text())
+    plan.update(
+        {
+            "development_timerange": development_timerange,
+            "holdout_timerange": holdout_timerange,
+            "window_spec_sha256": hashlib.sha256(window_bytes).hexdigest(),
+            "stress_fee_multiplier": 2.0,
+            "holdout_policy": {
+                "max_open_count": 1,
+                "retry_after_open": False,
+                "tune_after_result": False,
+            },
+        }
+    )
+    plan_path.write_bytes(_canonical(plan))
+
+    isolation_path = (
+        pilot / "development-isolation" / "retained-data-provenance.json"
+    )
+    isolation = json.loads(isolation_path.read_text())
+    isolation["contract"]["development_timerange"] = development_timerange
+    isolation["development_isolation"].update(
+        {
+            "timerange": development_timerange,
+            "exclusive_stop_utc": development_stop.isoformat().replace(
+                "+00:00", "Z"
+            ),
+        }
+    )
+    isolation_path.write_bytes(_canonical(isolation))
+
+    acquisition = pilot / "acquisition"
+    isolated_data = next(
+        (pilot / "development-isolation" / "data" / "okx").rglob("*.feather")
+    )
+    full_data = acquisition / "data" / "okx" / isolated_data.relative_to(
+        pilot / "development-isolation" / "data" / "okx"
+    )
+    full_data.parent.mkdir(parents=True, exist_ok=True)
+    full_data.write_bytes(isolated_data.read_bytes() + b"holdout-only\n")
+
+    source_path = acquisition / "retained-data-provenance.json"
+    source = json.loads(source_path.read_text())
+    source["contract"].update(
+        {
+            "data_dir": "data/okx",
+            "market_snapshot": "market_snapshot.json",
+            "leverage_tiers": "isolated_tiers_snapshot.json",
+            "development_timerange": development_timerange,
+            "holdout_timerange": holdout_timerange,
+            "timeframe": "5m",
+        }
+    )
+    local_paths = (
+        acquisition / "market_snapshot.json",
+        acquisition / "isolated_tiers_snapshot.json",
+        full_data,
+    )
+    source["local_only_files"] = {
+        path.relative_to(acquisition).as_posix(): {
+            "bytes": len(path.read_bytes()),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        for path in local_paths
+    }
+    _rewrite_source_provenance(pilot, source)
+
+
+def _configure_legacy_window_fixture(
+    pilot: Path,
+    *,
+    holdout_timerange: str,
+) -> None:
+    """Bind a non-default legacy v1 Holdout span without upgrading to v2."""
+    _configure_rolling_window_fixture(
+        pilot,
+        development_timerange="20260601-20260731",
+        holdout_timerange=holdout_timerange,
+    )
+    window_path = pilot / "window-spec.json"
+    window = json.loads(window_path.read_text())
+    window["schema"] = "freqtrade-lab-okx-window-v1"
+    window_bytes = _canonical(window)
+    window_path.write_bytes(window_bytes)
+    plan_path = pilot / "pilot-spec.json"
+    plan = json.loads(plan_path.read_text())
+    plan["window_spec_sha256"] = hashlib.sha256(window_bytes).hexdigest()
+    plan_path.write_bytes(_canonical(plan))
+
+
 def _rewrite_pilot_config(pilot: Path, config: dict[str, object]) -> None:
     config_bytes = _canonical(config)
     (pilot / "acquisition" / "config.json").write_bytes(config_bytes)
@@ -480,6 +621,156 @@ def test_t0_freeze_binds_pilot_config_to_acquisition_receipt(
     ).hexdigest()
     assert capability.pair == "ADA/USDT:USDT"
     assert capability.instrument_id == "ADA-USDT-SWAP"
+
+
+def test_t1_rolling_v2_freeze_and_prepare_derive_60_30_boundaries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(
+        tmp_path / "capability", monkeypatch
+    )
+    _configure_rolling_window_fixture(pilot)
+
+    capability = development_run.freeze_development_capability(
+        pilot, python, source
+    )
+
+    assert capability.status == "READY"
+    assert capability.development_timerange == ROLLING_DEVELOPMENT_TIMERANGE
+    database, candidate_id = _approved_candidate_database(tmp_path / "database")
+    research_run_id = str(uuid4())
+    run_dir = tmp_path / "runtime" / research_run_id
+    run_dir.mkdir(parents=True)
+    development_run.prepare_development_run(
+        database,
+        run_dir,
+        candidate_id,
+        capability,
+        research_run_id=research_run_id,
+        now=NOW,
+    )
+
+    with get_connection(database, read_only=True) as connection:
+        run = connection.execute(
+            "SELECT input_snapshot_json FROM research_runs WHERE id=?",
+            (research_run_id,),
+        ).fetchone()
+        execution = connection.execute(
+            "SELECT timerange_start,timerange_end FROM backtest_executions "
+            "WHERE research_run_id=? AND scenario='DEVELOPMENT'",
+            (research_run_id,),
+        ).fetchone()
+    snapshot = json.loads(run["input_snapshot_json"])
+    assert snapshot["timerange"] == ROLLING_DEVELOPMENT_TIMERANGE
+    assert snapshot["exclusive_stop_utc"] == "2026-05-31T00:00:00Z"
+    assert tuple(execution) == (
+        "2026-04-01T00:00:00Z",
+        "2026-05-30T23:55:00Z",
+    )
+    provenance = json.loads(
+        (
+            run_dir / "development-input" / "retained-data-provenance.json"
+        ).read_text()
+    )
+    assert provenance["contract"]["development_timerange"] == (
+        ROLLING_DEVELOPMENT_TIMERANGE
+    )
+    assert provenance["development_isolation"]["exclusive_stop_utc"] == (
+        "2026-05-31T00:00:00Z"
+    )
+    assert "holdout_timerange" not in provenance["contract"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "missing_window",
+        "missing_hash",
+        "wrong_hash",
+        "legacy_schema",
+        "boundary_drift",
+    ),
+)
+def test_t0_rolling_v2_receipt_drift_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(tmp_path, monkeypatch)
+    _configure_rolling_window_fixture(pilot)
+    plan_path = pilot / "pilot-spec.json"
+    window_path = pilot / "window-spec.json"
+    plan = json.loads(plan_path.read_text())
+    window = json.loads(window_path.read_text())
+
+    if mutation == "missing_window":
+        window_path.unlink()
+    elif mutation == "missing_hash":
+        plan.pop("window_spec_sha256")
+        plan_path.write_bytes(_canonical(plan))
+    elif mutation == "wrong_hash":
+        plan["window_spec_sha256"] = "0" * 64
+        plan_path.write_bytes(_canonical(plan))
+    else:
+        if mutation == "legacy_schema":
+            window["schema"] = "freqtrade-lab-okx-window-v1"
+        else:
+            window["holdout_start_utc"] = "2026-06-01T00:00:00Z"
+        window_bytes = _canonical(window)
+        window_path.write_bytes(window_bytes)
+        plan["window_spec_sha256"] = hashlib.sha256(window_bytes).hexdigest()
+        plan_path.write_bytes(_canonical(plan))
+
+    capability = development_run.freeze_development_capability(
+        pilot, python, source
+    )
+
+    assert capability.status == "BLOCKED_DATA"
+    assert capability.development_timerange is None
+
+
+def test_t0_legacy_dates_do_not_bypass_the_window_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(tmp_path, monkeypatch)
+    plan_path = pilot / "pilot-spec.json"
+    plan = json.loads(plan_path.read_text())
+    plan["window_spec_sha256"] = "0" * 64
+    plan_path.write_bytes(_canonical(plan))
+
+    capability = development_run.freeze_development_capability(
+        pilot, python, source
+    )
+
+    assert capability.status == "BLOCKED_DATA"
+    assert capability.development_timerange is None
+
+
+@pytest.mark.parametrize(
+    "development_timerange",
+    ("20260101-20260301", "20260101-20260303"),
+)
+def test_t0_development_rejects_59_or_61_day_window(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    development_timerange: str,
+) -> None:
+    pilot, python, source = _frozen_capability_fixture(tmp_path, monkeypatch)
+    plan_path = pilot / "pilot-spec.json"
+    plan = json.loads(plan_path.read_text())
+    plan["development_timerange"] = development_timerange
+    plan_path.write_bytes(_canonical(plan))
+
+    capability = development_run.freeze_development_capability(
+        pilot, python, source
+    )
+
+    assert capability.status == "BLOCKED_DATA"
+    assert capability.reason == (
+        "Pilot Development timerange must span exactly 60 days"
+    )
 
 
 def test_t0_verified_xrp_market_identity_is_bound() -> None:
