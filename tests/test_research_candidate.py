@@ -16,7 +16,11 @@ import lab.research_candidate as research_candidate_module
 import scripts.run_research_candidate as candidate_entry
 from lab.backtest_artifact import SUPPORTED_FREQTRADE_COMMIT
 from lab.database import get_connection, get_schema_version, init_database
-from lab.frequi import configure_frequi
+from lab.frequi import (
+    FREQUI_COMPLETION_RECEIPT_NAME,
+    build_frequi_completion_receipt,
+    configure_frequi,
+)
 from lab.research_candidate import (
     SUPPORTED_OFFICIAL_CORE,
     ResearchCandidateError,
@@ -472,6 +476,25 @@ def test_t0_t1_fake_producer_reaches_existing_read_only_consumers(
             result.bundle_root / f"{stem}.meta.json",
             results_root / f"{stem}.meta.json",
         )
+    completion_scenarios = []
+    for scenario, stem in EXPECTED_OUTPUT_STEMS.items():
+        archive = results_root / f"{stem}.zip"
+        metadata = results_root / f"{stem}.meta.json"
+        completion_scenarios.append(
+            {
+                "scenario": scenario,
+                "archive": archive.name,
+                "archive_sha256": _sha256(archive.read_bytes()),
+                "metadata": metadata.name,
+                "metadata_sha256": _sha256(metadata.read_bytes()),
+            }
+        )
+    (results_root / FREQUI_COMPLETION_RECEIPT_NAME).write_bytes(
+        build_frequi_completion_receipt(
+            result.imported.research_run_id,
+            completion_scenarios,
+        )
+    )
     frequi_config = configure_frequi(
         "http://127.0.0.1:8080",
         results_root,

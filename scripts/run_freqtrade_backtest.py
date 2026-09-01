@@ -207,6 +207,24 @@ def _resolve_file(value: Path, label: str, limit: int = MAX_JSON_BYTES) -> tuple
     return path, _read_regular_file(path, label, limit)
 
 
+def _resolve_regular_path(
+    value: Path, label: str, limit: int = MAX_JSON_BYTES
+) -> Path:
+    """Inspect a retained file without opening its contents."""
+    if value.is_symlink():
+        raise OfflineBacktestError(f"{label} must not be a symlink")
+    try:
+        path = value.resolve(strict=True)
+        info = path.stat(follow_symlinks=False)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise OfflineBacktestError(f"{label} cannot be resolved: {exc}") from exc
+    if not stat.S_ISREG(info.st_mode):
+        raise OfflineBacktestError(f"{label} must be a regular non-symlink file")
+    if info.st_size > limit:
+        raise OfflineBacktestError(f"{label} exceeds the {limit}-byte limit")
+    return path
+
+
 def _resolve_directory(value: Path, label: str) -> Path:
     if value.is_symlink():
         raise OfflineBacktestError(f"{label} must not be a symlink")
@@ -1105,6 +1123,17 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
         raise OfflineBacktestError("timerange must use YYYYMMDD-YYYYMMDD")
     if isinstance(args.fee, bool) or not math.isfinite(args.fee) or args.fee <= 0.0:
         raise OfflineBacktestError("fee must be a positive finite number")
+    if args.scenario == "DEVELOPMENT" and args.scenario_open_receipt is not None:
+        raise OfflineBacktestError(
+            "scenario open receipts are limited to Holdout and Holdout Stress"
+        )
+    if (
+        args.scenario in {"HOLDOUT", "HOLDOUT_STRESS"}
+        and args.scenario_open_receipt is None
+    ):
+        raise OfflineBacktestError(
+            "Holdout and Holdout Stress require a scenario open receipt"
+        )
 
     source_root = _resolve_directory(args.freqtrade_source, "Freqtrade source")
     config_path, config_bytes = _resolve_file(args.config, "Freqtrade config")
@@ -1115,17 +1144,15 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     strategy_path = _resolve_directory(args.strategy_path, "strategy path")
     strategy_file, _ = _resolve_file(args.strategy_file, "strategy file", 256 * 1024)
     export_dir = _resolve_directory(args.export_dir, "export directory")
-    market_path, market_bytes = _resolve_file(args.market_snapshot, "market snapshot")
-    tiers_path, tiers_bytes = _resolve_file(args.leverage_tiers, "leverage tiers snapshot")
+    market_path = _resolve_regular_path(args.market_snapshot, "market snapshot")
+    tiers_path = _resolve_regular_path(
+        args.leverage_tiers, "leverage tiers snapshot"
+    )
     _, provenance_bytes = _resolve_file(
         args.data_provenance, "data provenance"
     )
     scenario_open_receipt = None
     if args.scenario_open_receipt is not None:
-        if args.scenario == "DEVELOPMENT":
-            raise OfflineBacktestError(
-                "scenario open receipts are limited to Holdout and Holdout Stress"
-            )
         scenario_open_receipt = _resolve_new_receipt(
             args.scenario_open_receipt, "scenario open receipt"
         )
@@ -1146,6 +1173,33 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
         provenance,
     )
     _verify_source_snapshot(source_root, args.source_tree_sha256)
+
+    # Provenance is a control receipt and is needed to bind the one-shot open
+    # receipt.  Retained market, leverage, and candle bytes remain unopened
+    # until after this O_EXCL write succeeds.
+    if scenario_open_receipt is not None:
+        stop = datetime.strptime(
+            args.timerange.split("-", 1)[1], "%Y%m%d"
+        ).replace(tzinfo=timezone.utc)
+        _write_scenario_open_receipt(
+            scenario_open_receipt,
+            {
+                "schema": "freqtrade-lab-scenario-open-v1",
+                "scenario": args.scenario,
+                "timerange": args.timerange,
+                "strategy": args.strategy,
+                "strategy_sha256": args.strategy_sha256,
+                "data_provenance_sha256": _sha256(provenance_bytes),
+                "exclusive_stop_utc": stop.isoformat().replace("+00:00", "Z"),
+                "meaning": (
+                    "one-shot scenario execution budget was consumed before retained "
+                    "market data validation began"
+                ),
+                "opened_at_utc": datetime.now(timezone.utc)
+                .isoformat(timespec="milliseconds")
+                .replace("+00:00", "Z"),
+            },
+        )
 
     cleanup_enabled = True
     try:
@@ -1179,30 +1233,6 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             export_dir=export_dir,
         )
 
-        if scenario_open_receipt is not None:
-            stop = datetime.strptime(
-                args.timerange.split("-", 1)[1], "%Y%m%d"
-            ).replace(tzinfo=timezone.utc)
-            _write_scenario_open_receipt(
-                scenario_open_receipt,
-                {
-                    "schema": "freqtrade-lab-scenario-open-v1",
-                    "scenario": args.scenario,
-                    "timerange": args.timerange,
-                    "strategy": args.strategy,
-                    "strategy_sha256": args.strategy_sha256,
-                    "data_provenance_sha256": _sha256(provenance_bytes),
-                    "exclusive_stop_utc": stop.isoformat().replace("+00:00", "Z"),
-                    "meaning": (
-                        "one-shot scenario execution budget was consumed before retained "
-                        "market data validation began"
-                    ),
-                    "opened_at_utc": datetime.now(timezone.utc)
-                    .isoformat(timespec="milliseconds")
-                    .replace("+00:00", "Z"),
-                },
-            )
-
         receipt_summary = _verify_data_provenance(
             provenance,
             scenario=args.scenario,
@@ -1211,6 +1241,12 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             data_dir=data_dir,
             market_snapshot=market_path,
             leverage_tiers=tiers_path,
+        )
+        market_bytes = _read_regular_file(
+            market_path, "market snapshot", MAX_JSON_BYTES
+        )
+        tiers_bytes = _read_regular_file(
+            tiers_path, "leverage tiers snapshot", MAX_JSON_BYTES
         )
         market, tiers = _verify_market_inputs(
             _strict_json(market_bytes, "market snapshot"),
