@@ -98,6 +98,8 @@ optional Search-only campaign root. Before the first Search action, the Search
 root must be outside Git, owned exclusively by this service, mode `0700`, and
 contain only its already-prepared `acquisition/` directory. The browser cannot
 submit, replace, or discover this path.
+With `--search-root`, run the Console under the frozen Freqtrade 2026.7 venv
+containing exact `pyarrow==25.0.0`; otherwise Search reports `BLOCKED_DATA`.
 
 ```bash
 mkdir -p /absolute/private/path/freqtrade-lab-console-runtime

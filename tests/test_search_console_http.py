@@ -80,6 +80,7 @@ plan = pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
 (control / ("started-" + str(plan["round"]))).write_text("started")
 release = control / ("release-" + str(plan["round"]))
 while not release.exists(): time.sleep(0.01)
+pilot.verify_data = lambda *_a, **_k: {"status": "DATA_READY"}
 pilot.materialize_screening_isolation = lambda *_a, **_k: {
     "receipt": {}, "provenance": Path("unused"), "data_dir": Path("unused")}
 pilot.materialize_inputs = lambda campaign_root, current, **_k: {
@@ -343,6 +344,9 @@ def _path_free(raw: bytes, tmp_path: Path) -> None:
 
 
 def _patch_outer_screen(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        pilot, "verify_data", lambda *_a, **_k: {"status": "DATA_READY"}
+    )
     monkeypatch.setattr(
         pilot,
         "materialize_screening_isolation",

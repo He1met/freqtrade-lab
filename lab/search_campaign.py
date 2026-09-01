@@ -222,40 +222,18 @@ def _acquisition_snapshot(root: Path) -> dict[str, Any]:
     synthetic_plan = {"schema": pilot.SEARCH_SCHEMA, "search_timerange": timerange,
                       "data_provenance_sha256": _sha256(provenance_bytes)}
     try:
-        pilot.verify_data(root, synthetic_plan)
+        verified = pilot.verify_data(root, synthetic_plan)
+        return {
+            "search_timerange": timerange,
+            "data_provenance_sha256": _sha256(provenance_bytes),
+            "pair": verified["source"]["pair"],
+            "timeframe": verified["timeframe"],
+            "base_fee": verified["base_fee"],
+        }
     except (pilot.PilotError, OSError, KeyError, TypeError, ValueError) as exc:
         raise SearchCampaignError(
             "BLOCKED_DATA", "Search-only data contract could not be verified", status=503
         ) from exc
-    config = _strict_json(_read_regular(acquisition / "config.json", "Search config"), "Search config")
-    exchange = config.get("exchange")
-    pair = source.get("pair")
-    timeframe = contract.get("timeframe")
-    fee = config.get("fee")
-    if (
-        not isinstance(exchange, dict)
-        or exchange.get("name") != "okx"
-        or exchange.get("pair_whitelist") != [pair]
-        or not isinstance(pair, str)
-        or not pair
-        or timeframe != "5m"
-        or config.get("timeframe") != timeframe
-        or config.get("trading_mode") != "futures"
-        or config.get("margin_mode") != "isolated"
-        or isinstance(fee, bool)
-        or not isinstance(fee, (int, float))
-        or float(fee) < 0
-    ):
-        raise SearchCampaignError(
-            "BLOCKED_DATA", "Search config/profile contract mismatch", status=503
-        )
-    return {
-        "search_timerange": timerange,
-        "data_provenance_sha256": _sha256(provenance_bytes),
-        "pair": pair,
-        "timeframe": timeframe,
-        "base_fee": float(fee),
-    }
 
 
 def _freqtrade_snapshot(

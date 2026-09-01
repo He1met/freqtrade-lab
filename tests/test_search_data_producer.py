@@ -9,6 +9,7 @@ import pytest
 from lab import search_campaign
 from scripts import run_bounded_research_pilot as pilot
 from scripts import run_freqtrade_backtest as offline_runner
+from tests.test_development_run import _approved_candidate_database
 
 
 def _arrow_modules():
@@ -29,6 +30,23 @@ def _record(path: Path, role: str) -> dict[str, object]:
 
 def _timestamps(start: datetime, stop: datetime, step: timedelta) -> list[datetime]:
     return [start + index * step for index in range(int((stop - start) / step))]
+
+
+def _ohlcv_table(pa, dates: list[datetime], *, missing_volume: bool = False):
+    rows = len(dates)
+    return pa.table(
+        {
+            "date": pa.array(dates, type=pa.timestamp("ms", tz="UTC")),
+            "open": pa.array([100.0] * rows, type=pa.float64()),
+            "high": pa.array([101.0] * rows, type=pa.float64()),
+            "low": pa.array([99.0] * rows, type=pa.float64()),
+            "close": pa.array([100.0] * rows, type=pa.float64()),
+            "volume": pa.array(
+                [None] * rows if missing_volume else [1.0] * rows,
+                type=pa.float64(),
+            ),
+        }
+    )
 
 
 def _source_acquisition(
@@ -64,7 +82,11 @@ def _source_acquisition(
     for name, (dates, role) in series.items():
         path = data_root / name
         feather.write_feather(
-            pa.table({"date": pa.array(dates, type=pa.timestamp("ms", tz="UTC"))}),
+            _ohlcv_table(
+                pa,
+                dates,
+                missing_volume=name.endswith("-1h-mark.feather"),
+            ),
             path,
             compression="uncompressed",
         )
@@ -158,6 +180,416 @@ def _produce(tmp_path: Path, **source_kwargs: object) -> tuple[Path, dict[str, o
     return output, result
 
 
+def _search_plan(root: Path) -> dict[str, object]:
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    return {
+        "schema": pilot.SEARCH_SCHEMA,
+        "search_timerange": provenance["contract"]["search_timerange"],
+        "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
+    }
+
+
+def _save_search_provenance(root: Path, provenance: dict[str, object]) -> dict[str, object]:
+    _write_json(
+        root / pilot.ACQUISITION / "retained-data-provenance.json", provenance
+    )
+    return _search_plan(root)
+
+
+def _series_local_name(provenance: dict[str, object], series: str) -> str:
+    suffix = pilot.SEARCH_SERIES_SUFFIXES[series]
+    return next(
+        name
+        for name in provenance["local_only_files"]
+        if name.startswith("data/okx/") and name.endswith(suffix)
+    )
+
+
+def _resign_local_file(
+    root: Path, provenance: dict[str, object], local_name: str
+) -> None:
+    path = root / pilot.ACQUISITION / local_name
+    data = path.read_bytes()
+    receipt = provenance["local_only_files"][local_name]
+    receipt["bytes"] = len(data)
+    receipt["sha256"] = pilot.digest(data)
+
+
+def _rewrite_search_window(root: Path, timerange_value: str) -> dict[str, object]:
+    pa, feather = _arrow_modules()
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    window = pilot._search_window_contract(timerange_value)
+    for series, step in pilot.SEARCH_SERIES_STEPS.items():
+        local_name = _series_local_name(provenance, series)
+        path = root / pilot.ACQUISITION / local_name
+        path.chmod(0o600)
+        values = _timestamps(window["starts"][series], window["search_stop"], step)
+        feather.write_feather(
+            _ohlcv_table(pa, values, missing_volume=series == "mark_1h"),
+            path,
+            compression="uncompressed",
+        )
+        provenance["local_only_files"][local_name]["rows"] = window["rows"][series]
+        _resign_local_file(root, provenance, local_name)
+    provenance["contract"]["search_timerange"] = timerange_value
+    provenance["search_retention"] = {
+        "startup_start_utc": window["startup_start"].isoformat().replace("+00:00", "Z"),
+        "search_start_utc": window["search_start"].isoformat().replace("+00:00", "Z"),
+        "end_exclusive_utc": window["search_stop"].isoformat().replace("+00:00", "Z"),
+        "later_rows_exposed_to_search": False,
+        "rows": window["rows"],
+    }
+    return _save_search_provenance(root, provenance)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "missing-source-acquisition",
+        "extra-source-acquisition-field",
+        "uppercase-source-sha",
+        "missing-search-retention",
+        "extra-search-retention-field",
+        "later-rows-true",
+        "wrong-retention-rows",
+        "missing-source-series",
+        "extra-source-series",
+        "missing-local-series",
+        "extra-local-series",
+        "wrong-local-rows",
+        "extra-actual-data-file",
+    ),
+)
+def test_t0_search_consumer_rejects_inexact_v2_contract(
+    tmp_path: Path, case: str
+) -> None:
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    if case == "missing-source-acquisition":
+        provenance.pop("source_acquisition")
+    elif case == "extra-source-acquisition-field":
+        provenance["source_acquisition"]["extra"] = "x"
+    elif case == "uppercase-source-sha":
+        provenance["source_acquisition"]["provenance_sha256"] = "A" * 64
+    elif case == "missing-search-retention":
+        provenance.pop("search_retention")
+    elif case == "extra-search-retention-field":
+        provenance["search_retention"]["extra"] = "x"
+    elif case == "later-rows-true":
+        provenance["search_retention"]["later_rows_exposed_to_search"] = True
+    elif case == "wrong-retention-rows":
+        provenance["search_retention"]["rows"]["futures_5m"] += 1
+    elif case == "missing-source-series":
+        provenance["source_acquisition"]["data_sha256"].pop(
+            next(iter(provenance["source_acquisition"]["data_sha256"]))
+        )
+    elif case == "extra-source-series":
+        provenance["source_acquisition"]["data_sha256"]["futures/extra.feather"] = "c" * 64
+    elif case == "missing-local-series":
+        provenance["local_only_files"].pop(
+            _series_local_name(provenance, "futures_5m")
+        )
+    elif case == "extra-local-series":
+        provenance["local_only_files"]["data/okx/futures/extra.feather"] = {
+            "bytes": 1,
+            "sha256": "c" * 64,
+            "rows": 1,
+        }
+    elif case == "wrong-local-rows":
+        provenance["local_only_files"][
+            _series_local_name(provenance, "futures_5m")
+        ]["rows"] += 1
+    elif case == "extra-actual-data-file":
+        extra = root / pilot.ACQUISITION / "data" / "okx" / "futures" / "extra.feather"
+        extra.write_bytes(b"extra")
+    plan = _save_search_provenance(root, provenance)
+
+    with pytest.raises(pilot.PilotError):
+        pilot.verify_data(root, plan)
+
+
+@pytest.mark.parametrize(
+    "case", ("credential", "db-url", "external-channel", "pair", "market")
+)
+def test_t0_search_consumer_reuses_safe_config_and_identity_validation(
+    tmp_path: Path, case: str
+) -> None:
+    root, _ = _produce(tmp_path)
+    acquisition = root / pilot.ACQUISITION
+    provenance_path = acquisition / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    if case == "market":
+        path = acquisition / "market_snapshot.json"
+        market = json.loads(path.read_bytes())
+        market["symbol"] = "BTC/USDT:USDT"
+        _write_json(path, market)
+        _resign_local_file(root, provenance, "market_snapshot.json")
+    else:
+        path = acquisition / "config.json"
+        config = json.loads(path.read_bytes())
+        if case == "credential":
+            config["exchange"]["key"] = "secret"
+        elif case == "db-url":
+            config["db_url"] = "sqlite:///private.sqlite"
+        elif case == "external-channel":
+            config["telegram"] = {"enabled": True}
+        elif case == "pair":
+            config["exchange"]["pair_whitelist"] = ["BTC/USDT:USDT"]
+        _write_json(path, config)
+        data = path.read_bytes()
+        provenance["files"]["config.json"] = {
+            "bytes": len(data),
+            "sha256": pilot.digest(data),
+        }
+    plan = _save_search_provenance(root, provenance)
+
+    with pytest.raises(pilot.PilotError):
+        pilot.verify_data(root, plan)
+
+
+def test_t0_search_consumer_rejects_self_signed_non_feather(tmp_path: Path) -> None:
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    local_name = _series_local_name(provenance, "futures_5m")
+    path = root / pilot.ACQUISITION / local_name
+    path.chmod(0o600)
+    path.write_bytes(b"not a feather file")
+    _resign_local_file(root, provenance, local_name)
+    plan = _save_search_provenance(root, provenance)
+
+    with pytest.raises(pilot.PilotError, match="readable Feather"):
+        pilot.verify_data(root, plan)
+
+
+def test_t0_search_consumer_requires_exact_pyarrow_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pyarrow, _ = _arrow_modules()
+    root, _ = _produce(tmp_path)
+    monkeypatch.setattr(pyarrow, "__version__", "25.0.1")
+
+    with pytest.raises(pilot.PilotError, match="exact PyArrow 25.0.0"):
+        pilot.verify_data(root, _search_plan(root))
+    capability = search_campaign.freeze_search_capability(root, None, None)
+    try:
+        assert capability.status == "BLOCKED_DATA"
+    finally:
+        capability.close()
+
+
+@pytest.mark.parametrize(
+    "case", ("gap", "duplicate", "wrong-start", "early-end", "post-stop", "null", "non-utc")
+)
+def test_t1_exact_pyarrow_rejects_invalid_search_timestamps(
+    tmp_path: Path, case: str
+) -> None:
+    pa, feather = _arrow_modules()
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    local_name = _series_local_name(provenance, "futures_5m")
+    path = root / pilot.ACQUISITION / local_name
+    table = feather.read_table(path)
+    values = table.column("date").to_pylist()
+    step = pilot.SEARCH_SERIES_STEPS["futures_5m"]
+    if case == "gap":
+        values[100] = values[99] + 2 * step
+    elif case == "duplicate":
+        values[100] = values[99]
+    elif case == "wrong-start":
+        values[0] += step
+    elif case == "early-end":
+        values[-1] -= step
+    elif case == "post-stop":
+        values[-1] = pilot.FROZEN_SEARCH_STOP + step
+    elif case == "null":
+        values[100] = None
+    elif case == "non-utc":
+        values = [item.replace(tzinfo=None) for item in values]
+    timestamp_type = pa.timestamp("ms") if case == "non-utc" else pa.timestamp("ms", tz="UTC")
+    path.chmod(0o600)
+    feather.write_feather(
+        table.set_column(0, "date", pa.array(values, type=timestamp_type)),
+        path,
+        compression="uncompressed",
+    )
+    _resign_local_file(root, provenance, local_name)
+    plan = _save_search_provenance(root, provenance)
+
+    with pytest.raises(pilot.PilotError):
+        pilot.verify_data(root, plan)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "missing-volume",
+        "extra-column",
+        "null-close",
+        "infinite-open",
+        "integer-volume",
+        "infinite-mark-volume",
+        "null-futures-volume",
+        "null-funding-volume",
+    ),
+)
+def test_t1_exact_pyarrow_rejects_invalid_search_ohlcv_schema_or_values(
+    tmp_path: Path, case: str
+) -> None:
+    pa, feather = _arrow_modules()
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    if case == "infinite-mark-volume":
+        series = "mark_1h"
+    elif case == "null-funding-volume":
+        series = "funding_history"
+    else:
+        series = "futures_5m"
+    local_name = _series_local_name(provenance, series)
+    path = root / pilot.ACQUISITION / local_name
+    table = feather.read_table(path)
+    if case == "missing-volume":
+        table = table.remove_column(table.schema.get_field_index("volume"))
+    elif case == "extra-column":
+        table = table.append_column("forged", pa.array([1.0] * table.num_rows))
+    elif case == "null-close":
+        values = table.column("close").to_pylist()
+        values[100] = None
+        index = table.schema.get_field_index("close")
+        table = table.set_column(index, "close", pa.array(values, type=pa.float64()))
+    elif case == "infinite-open":
+        values = table.column("open").to_pylist()
+        values[100] = float("inf")
+        index = table.schema.get_field_index("open")
+        table = table.set_column(index, "open", pa.array(values, type=pa.float64()))
+    elif case == "integer-volume":
+        index = table.schema.get_field_index("volume")
+        table = table.set_column(
+            index, "volume", pa.array([1] * table.num_rows, type=pa.int64())
+        )
+    elif case == "infinite-mark-volume":
+        values = table.column("volume").to_pylist()
+        values[100] = float("inf")
+        index = table.schema.get_field_index("volume")
+        table = table.set_column(index, "volume", pa.array(values, type=pa.float64()))
+    elif case in {"null-futures-volume", "null-funding-volume"}:
+        values = table.column("volume").to_pylist()
+        values[10] = None
+        index = table.schema.get_field_index("volume")
+        table = table.set_column(index, "volume", pa.array(values, type=pa.float64()))
+    path.chmod(0o600)
+    feather.write_feather(table, path, compression="uncompressed")
+    _resign_local_file(root, provenance, local_name)
+    plan = _save_search_provenance(root, provenance)
+
+    with pytest.raises(pilot.PilotError):
+        pilot.verify_data(root, plan)
+
+
+def test_t1_exact_pyarrow_accepts_dynamic_non_june_30_day_window(
+    tmp_path: Path,
+) -> None:
+    root, _ = _produce(tmp_path)
+    plan = _rewrite_search_window(root, "20260801-20260831")
+
+    verified = pilot.verify_data(root, plan)
+    snapshot = search_campaign._acquisition_snapshot(root)
+
+    assert verified["status"] == "DATA_READY"
+    assert verified["search_timerange"] == "20260801-20260831"
+    assert verified["rows"] == pilot.FROZEN_SEARCH_ROWS
+    assert snapshot["search_timerange"] == "20260801-20260831"
+
+
+def test_t2_full_length_date_only_feathers_block_before_any_mutation(
+    tmp_path: Path,
+) -> None:
+    pa, feather = _arrow_modules()
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    for series in pilot.SEARCH_SERIES_STEPS:
+        local_name = _series_local_name(provenance, series)
+        path = root / pilot.ACQUISITION / local_name
+        dates = feather.read_table(path, columns=["date"]).column("date")
+        path.chmod(0o600)
+        feather.write_feather(
+            pa.table({"date": dates}), path, compression="uncompressed"
+        )
+        _resign_local_file(root, provenance, local_name)
+    _save_search_provenance(root, provenance)
+    with pytest.raises(pilot.PilotError, match="exact Freqtrade OHLCV schema"):
+        pilot.verify_data(root, _search_plan(root))
+    database, candidate_id = _approved_candidate_database(
+        tmp_path, pair="XRP/USDT:USDT"
+    )
+    before = search_campaign.business_table_digest(database)
+
+    capability = search_campaign.freeze_search_capability(root, None, None)
+    try:
+        assert capability.status == "BLOCKED_DATA"
+        assert capability.reason == "Search-only data contract could not be verified"
+        with pytest.raises(search_campaign.SearchCampaignError) as raised:
+            search_campaign.prepare_round_one(database, capability, [candidate_id])
+        assert raised.value.code == "BLOCKED_DATA"
+        assert search_campaign.business_table_digest(database) == before
+        assert not (root / pilot.SEARCH_CAMPAIGN).exists()
+        assert not (root / pilot.SEARCH_TRIALS).exists()
+        assert not (root / search_campaign.STRATEGIES).exists()
+    finally:
+        capability.close()
+
+
+def test_t2_three_one_row_feathers_block_before_campaign_or_database_mutation(
+    tmp_path: Path,
+) -> None:
+    pa, feather = _arrow_modules()
+    root, _ = _produce(tmp_path)
+    provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    window = pilot._search_window_contract(pilot.FROZEN_SEARCH_TIMERANGE)
+    for series in pilot.SEARCH_SERIES_STEPS:
+        local_name = _series_local_name(provenance, series)
+        path = root / pilot.ACQUISITION / local_name
+        path.chmod(0o600)
+        feather.write_feather(
+            _ohlcv_table(
+                pa,
+                [window["starts"][series]],
+                missing_volume=series == "mark_1h",
+            ),
+            path,
+            compression="uncompressed",
+        )
+        _resign_local_file(root, provenance, local_name)
+    _save_search_provenance(root, provenance)
+    with pytest.raises(pilot.PilotError, match="output is not contiguous"):
+        pilot.verify_data(root, _search_plan(root))
+    database, candidate_id = _approved_candidate_database(
+        tmp_path, pair="XRP/USDT:USDT"
+    )
+    before = search_campaign.business_table_digest(database)
+
+    capability = search_campaign.freeze_search_capability(root, None, None)
+    try:
+        assert capability.status == "BLOCKED_DATA"
+        assert capability.reason == "Search-only data contract could not be verified"
+        with pytest.raises(search_campaign.SearchCampaignError) as raised:
+            search_campaign.prepare_round_one(database, capability, [candidate_id])
+        assert raised.value.code == "BLOCKED_DATA"
+        assert search_campaign.business_table_digest(database) == before
+        assert not (root / pilot.SEARCH_CAMPAIGN).exists()
+        assert not (root / pilot.SEARCH_TRIALS).exists()
+        assert not (root / search_campaign.STRATEGIES).exists()
+    finally:
+        capability.close()
+
+
 def test_t1_producer_publishes_only_exact_search_values_and_real_check_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -191,11 +623,14 @@ def test_t1_producer_publishes_only_exact_search_values_and_real_check_data(
     }
     _, feather = _arrow_modules()
     for path in (output / "acquisition" / "data" / "okx").rglob("*.feather"):
-        dates = feather.read_table(path, columns=["date"]).column("date").to_pylist()
+        table = feather.read_table(path)
+        dates = table.column("date").to_pylist()
         assert dates[0].astimezone(timezone.utc) == next(
             start for suffix, start in starts.items() if path.name.endswith(suffix)
         )
         assert all(item < pilot.FROZEN_SEARCH_STOP for item in dates)
+        if path.name.endswith("-1h-mark.feather"):
+            assert table.column("volume").null_count == table.num_rows
     plan = {
         "schema": pilot.SEARCH_SCHEMA,
         "search_timerange": pilot.FROZEN_SEARCH_TIMERANGE,
