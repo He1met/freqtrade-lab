@@ -46,6 +46,14 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="startup-frozen private Search-only campaign root outside Git",
     )
     parser.add_argument("--artifact-root", type=Path)
+    parser.add_argument(
+        "--release-root",
+        type=Path,
+        help=(
+            "startup-frozen private Release root outside Git; defaults to "
+            "<runtime-root>/releases"
+        ),
+    )
     parser.add_argument("--frequi-base-url")
     parser.add_argument("--frequi-results-root", type=Path)
     parser.add_argument("--codex-binary", type=Path)
@@ -94,6 +102,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.port,
         search_root=args.search_root,
         artifact_root=args.artifact_root,
+        release_root=args.release_root,
         frequi_base_url=args.frequi_base_url,
         frequi_results_root=args.frequi_results_root,
         codex_binary=args.codex_binary,

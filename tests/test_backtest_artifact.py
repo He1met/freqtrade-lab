@@ -16,9 +16,12 @@ from typing import Any, Callable, Dict, Mapping, Optional
 import pytest
 
 from lab.backtest_artifact import (
+    MAX_JSON_DEPTH,
+    MAX_JSON_NODES,
     SUPPORTED_FREQTRADE_COMMIT,
     ArtifactImportError,
     _load_archive,
+    _strict_json,
     import_backtest_execution,
     parse_backtest_artifact,
 )
@@ -362,6 +365,26 @@ def _assert_cli_failure(result: subprocess.CompletedProcess[str]) -> None:
 
 
 # T0: pure parsing and frozen-format checks.
+
+
+def test_t0_strict_json_accepts_exact_depth_and_node_budgets() -> None:
+    nested = b"[" * MAX_JSON_DEPTH + b"0" + b"]" * MAX_JSON_DEPTH
+    assert _strict_json(nested, "bounded") is not None
+
+    flat = ("[" + ",".join("0" for _ in range(MAX_JSON_NODES - 1)) + "]").encode()
+    assert len(_strict_json(flat, "bounded")) == MAX_JSON_NODES - 1
+
+
+def test_t0_strict_json_rejects_depth_over_budget() -> None:
+    nested = b"[" * (MAX_JSON_DEPTH + 1) + b"0" + b"]" * (MAX_JSON_DEPTH + 1)
+    with pytest.raises(ArtifactImportError, match="maximum nesting depth"):
+        _strict_json(nested, "bounded")
+
+
+def test_t0_strict_json_rejects_nodes_over_budget() -> None:
+    flat = ("[" + ",".join("0" for _ in range(MAX_JSON_NODES)) + "]").encode()
+    with pytest.raises(ArtifactImportError, match="maximum node count"):
+        _strict_json(flat, "bounded")
 
 
 def test_t0_parses_real_frozen_fixture_and_units() -> None:

@@ -16,6 +16,10 @@ import pytest
 
 from lab import backtest_artifact, development_run, research_console
 from lab.database import get_connection, init_database
+from lab.strategy_library import (
+    load_research_run_detail,
+    render_research_run_detail_page,
+)
 
 
 NOW = "2026-01-01T00:00:00.000Z"
@@ -501,6 +505,19 @@ def test_t2_http_real_prepare_import_and_gate_on_tracked_fixture(
     ]
     assert later_rows == 0
     assert releases == 0
+
+    detail = load_research_run_detail(
+        database,
+        public["research_profile_id"],
+        candidate_id,
+        run_id,
+    )
+    assert detail["selected_run"]["verdict"] == "REJECTED"
+    assert detail["manual_review"]["status"] == "UNAVAILABLE"
+    assert detail["manual_review"]["release"] is None
+    detail_page = render_research_run_detail_page(detail).decode("utf-8")
+    assert "已完成 · 拒绝" in detail_page
+    assert "既有非人工终态不可再次人工评审" in detail_page
 
 
 def test_t1_get_context_and_public_run_routes_do_not_expose_private_paths(
