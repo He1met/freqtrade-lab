@@ -102,14 +102,17 @@ With `--search-root`, run the Console under the frozen Freqtrade 2026.7 venv
 containing exact `pyarrow==25.0.0`; otherwise Search reports `BLOCKED_DATA`.
 
 ```bash
-mkdir -p /absolute/private/path/freqtrade-lab-console-runtime
-chmod 700 /absolute/private/path/freqtrade-lab-console-runtime
+mkdir -p /absolute/private/path/freqtrade-lab-console-runtime \
+  /absolute/private/path/freqtrade-lab-releases
+chmod 700 /absolute/private/path/freqtrade-lab-console-runtime \
+  /absolute/private/path/freqtrade-lab-releases
 test -d /absolute/private/path/search-campaign/acquisition
 chmod 700 /absolute/private/path/search-campaign
 
 python3 scripts/serve_research_console.py \
   --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
   --runtime-root /absolute/private/path/freqtrade-lab-console-runtime \
+  --release-root /absolute/private/path/freqtrade-lab-releases \
   --pilot-root /absolute/private/path/frozen-pilot \
   --search-root /absolute/private/path/search-campaign \
   --freqtrade-python /absolute/private/path/freqtrade-2026.7-venv/bin/python \
@@ -191,6 +194,19 @@ after both artifacts and the three-scenario contract validate. Success keeps
 timeout, nonzero exit, or restart never retries and never leaves partial
 later-phase metrics or result paths. The page links to the Strategy Library
 detail using the exact Profile, Candidate, and ResearchRun ids.
+
+After all three scenarios complete on that same `ResearchRun`, the Console
+revalidates the existing Candidate, Profile, Holdout receipts, Artifact hashes,
+and scenario contract before exposing one terminal human action. `REJECT`
+records the bounded human reason and creates no Release.
+`PASS_AND_CREATE_RELEASE` publishes one SHA-bound, read-only local package under
+the startup-frozen private `--release-root`, then atomically records `PASSED`
+and its Release row. The package contains the Candidate source, a dry-run-only
+config, manifest, README, and a shell-escaped handoff command. The Lab displays
+that command but never executes it or manages deployment. A filesystem/SQLite
+ambiguity is reported as `UNKNOWN`, retains the orphan for inspection, and
+disables automatic retry. Neither terminal action proves profitability,
+robustness, tradability, or fund safety.
 
 If a startup-safe `--artifact-root`, `--frequi-base-url`, and a separate
 disposable `--frequi-results-root` are all configured, completed artifacts are

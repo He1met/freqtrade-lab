@@ -1212,6 +1212,50 @@ def test_t1_failure_cannot_override_an_already_completed_authoritative_state(
     ]
     assert _execution_rows(database, research_run_id) == before
 
+    decided_at = "2026-01-01T00:03:00.000Z"
+    human_review = {
+        "action": "REJECT",
+        "reason": "TEST_ONLY human economic rejection",
+        "source": "RESEARCH_CONSOLE",
+        "decided_at": decided_at,
+    }
+    checks.update(
+        {
+            "next_phase": "TERMINAL_REJECTED",
+            "judge": "HUMAN",
+            "human_review": human_review,
+        }
+    )
+    with get_connection(database) as connection:
+        connection.execute(
+            """
+            UPDATE research_runs
+            SET verdict='REJECTED', checks_json=?, rejection_reasons_json=?
+            WHERE id=?
+            """,
+            (
+                json.dumps(checks, sort_keys=True, separators=(",", ":")),
+                json.dumps(
+                    [
+                        {
+                            "code": "HUMAN_REJECT",
+                            "reason": human_review["reason"],
+                            "source": human_review["source"],
+                            "decided_at": human_review["decided_at"],
+                        }
+                    ],
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                research_run_id,
+            ),
+        )
+        connection.commit()
+    rejected = holdout_run.load_public_research_run(database, research_run_id)
+    assert rejected["verdict"] == "REJECTED"
+    assert rejected["economic_review"] == "REJECTED"
+    assert rejected["release_count"] == 0
+
 
 def test_t1_public_authorization_states_and_exact_strategy_detail_url(
     tmp_path: Path,

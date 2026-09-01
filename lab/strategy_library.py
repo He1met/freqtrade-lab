@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from lab.database import get_connection
+from lab.manual_release import ManualReleaseError, stored_manual_review
 from lab.frequi import (
     FreqUIConfig,
     FreqUIConfigurationError,
@@ -974,12 +975,15 @@ def load_research_run_detail(
                 """,
                 (candidate_id, profile_id),
             ).fetchall()
+            stored_review = stored_manual_review(connection, research_run_id)
             connection.rollback()
-        except (sqlite3.Error, StrategyLibraryError) as exc:
+        except (sqlite3.Error, StrategyLibraryError, ManualReleaseError) as exc:
             if connection.in_transaction:
                 connection.rollback()
             if isinstance(exc, StrategyLibraryError):
                 raise
+            if isinstance(exc, ManualReleaseError):
+                raise StrategyLibraryError("manual review state is invalid") from exc
             raise StrategyLibraryError(f"strategy detail query failed: {exc}") from exc
 
     selected_run = {
@@ -998,6 +1002,29 @@ def load_research_run_detail(
         "scenario_count": sum(item["execution_id"] is not None for item in scenarios),
         "succeeded_count": sum(item["status"] == "SUCCEEDED" for item in scenarios),
     }
+    manual_review = (
+        stored_review
+        if stored_review is not None
+        else {
+            "status": (
+                "PENDING"
+                if selected_run["status"] == "COMPLETED"
+                and selected_run["succeeded_count"] == len(REQUIRED_SCENARIOS)
+                else "UNAVAILABLE"
+            ),
+            "can_reject": False,
+            "can_pass_and_create_release": False,
+            "reason": (
+                "请在 Research Console 复验资格并执行一次人工终态"
+                if selected_run["status"] == "COMPLETED"
+                and selected_run["succeeded_count"] == len(REQUIRED_SCENARIOS)
+                else "ResearchRun 尚未形成三场景人工评审资格"
+            ),
+            "release": None,
+            "profitability_claim": "NOT_ESTABLISHED",
+            "tradability_claim": "NOT_ESTABLISHED",
+        }
+    )
     return {
         "profile": {"id": selected["profile_id"], "name": selected["profile_name"]},
         "candidate": {
@@ -1008,6 +1035,7 @@ def load_research_run_detail(
             "strategy_family": selected["strategy_family"],
         },
         "selected_run": selected_run,
+        "manual_review": manual_review,
         "frequi_service": selected_frequi_probe,
         "scenarios": scenarios,
         "history": [
@@ -1509,6 +1537,7 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
     profile = model["profile"]
     candidate = model["candidate"]
     selected_run = model["selected_run"]
+    manual_review = model["manual_review"]
     back_query = urlencode({"profile_id": profile["id"]})
     status_label, tone = _status_presentation(selected_run)
     scenario_rows = "".join(_render_scenario_row(item) for item in model["scenarios"])
@@ -1524,6 +1553,30 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
             f'错误阶段：{_escape(selected_run["error_stage"] or "UNKNOWN")} · '
             f'{_escape(selected_run["error_message"] or "无错误详情")}</div>'
         )
+    release = manual_review.get("release")
+    if isinstance(release, Mapping):
+        handoff = release.get("dry_run_handoff")
+        command = handoff.get("command") if isinstance(handoff, Mapping) else None
+        release_detail = (
+            '<div class="evidence-grid">'
+            + _evidence_item("Release", release.get("id"))
+            + _evidence_item("Manifest SHA-256", release.get("manifest_sha256"))
+            + _evidence_item("Handoff", handoff.get("status") if isinstance(handoff, Mapping) else None)
+            + '</div>'
+            + (
+                f'<pre class="handoff-command">{_escape(command)}</pre>'
+                if isinstance(command, str)
+                else ""
+            )
+        )
+    else:
+        release_detail = ""
+    review_detail = (
+        '<div class="manual-review">'
+        f'<strong>{_escape(manual_review.get("status", "UNKNOWN"))}</strong> · '
+        f'{_escape(manual_review.get("reason", "UNKNOWN"))}'
+        f'{release_detail}</div>'
+    )
     page = f"""<!doctype html>
 <html lang="zh-CN"><head>
   <meta charset="utf-8">
@@ -1546,6 +1599,8 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
     .boundary,.run-error {{ padding:10px 12px; border-radius:8px; margin:12px 0; font-size:12px; }}
     .boundary {{ color:#475569; border:1px solid #dbeafe; background:#f8fbff; }}
     .run-error {{ color:#991b1b; border:1px solid #fecaca; background:#fef2f2; }}
+    .manual-review {{ padding:12px; border:1px solid var(--line); border-radius:8px; margin:12px 0; }}
+    .handoff-command {{ white-space:pre-wrap; overflow-wrap:anywhere; padding:10px; background:var(--soft); border-radius:6px; }}
     h2 {{ margin:26px 0 10px; font-size:17px; }} .table-wrap {{ overflow-x:auto; border:1px solid var(--line); border-radius:9px; }}
     table {{ width:100%; border-collapse:collapse; min-width:820px; }} th,td {{ padding:10px 11px; text-align:left;
       border-bottom:1px solid var(--line); vertical-align:top; }} thead th {{ color:var(--muted); background:var(--soft); font-size:11px; }}
@@ -1577,6 +1632,7 @@ def render_research_run_detail_page(model: Mapping[str, Any]) -> bytes:
   </div>
   <div class="boundary">本页固定到链接中的同一个 ResearchRun；SUCCEEDED 只表示 Artifact 已验证落库，不代表 Judge 通过或策略盈利。FreqUI 仅打开通用 Backtest 页，需按页面提示手动选择；它读取的是独立可丢弃副本，不是冻结 Artifact 根目录。</div>
   {run_error}
+  <h2>人工终态与 Manual Release</h2>{review_detail}
   <h2>三场景结果</h2><div class="table-wrap"><table><thead><tr><th>场景</th><th>状态</th><th>收益</th>
     <th>最大回撤</th><th>PF</th><th>交易数</th><th>Scenario Judge</th><th>证据</th></tr></thead>
     <tbody>{scenario_rows}</tbody></table></div>{evidence}

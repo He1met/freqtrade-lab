@@ -79,6 +79,14 @@ from lab.holdout_run import (
     load_public_research_run,
     prepare_holdout_continuation,
 )
+from lab.manual_release import (
+    FrozenReleaseRoot,
+    ManualReleaseError,
+    freeze_release_root,
+    inspect_manual_review,
+    pass_and_create_release,
+    reject_research_run,
+)
 from lab.search_campaign import (
     FrozenSearchCapability,
     PreparedSearchRound,
@@ -647,6 +655,7 @@ class ResearchConsoleController:
         freqtrade_source: Optional[PathLike] = None,
         webserver_base_url: str = "http://127.0.0.1:8080",
         artifact_root: Optional[PathLike] = None,
+        release_root: Optional[PathLike] = None,
         frequi_config: Optional[FreqUIConfig] = None,
         task_timeout_seconds: float = 300.0,
     ) -> None:
@@ -682,6 +691,7 @@ class ResearchConsoleController:
         self._shutting_down = False
         self._closed = False
         self._search_capability: Optional[FrozenSearchCapability] = None
+        self._release_root: Optional[FrozenReleaseRoot] = None
         try:
             campaigns = runtime / "campaigns"
             try:
@@ -740,6 +750,11 @@ class ResearchConsoleController:
             self._artifact_root = (
                 None if artifact_root is None else Path(artifact_root)
             )
+            self._release_root = freeze_release_root(
+                runtime / "releases" if release_root is None else release_root,
+                PROJECT_ROOT,
+                create=release_root is None,
+            )
             self._frequi_config = frequi_config or FreqUIConfig(None, None, None)
             self.campaigns_root = campaigns
             self.check_data_argv = build_check_data_argv(pilot, resolved_python)
@@ -777,6 +792,9 @@ class ResearchConsoleController:
                 self._recover_interrupted_campaigns()
             )
         except Exception:
+            if self._release_root is not None:
+                self._release_root.close()
+                self._release_root = None
             if self._search_capability is not None:
                 self._search_capability.close()
             if self._campaigns_fd >= 0:
@@ -3381,6 +3399,35 @@ class ResearchConsoleController:
                 normalized["reason"] = "Research Console 当前不可授权"
         result = dict(payload)
         result["authorization"] = normalized
+        release_root = self._release_root
+        executions = payload.get("executions")
+        review_candidate = (
+            payload.get("status") == "COMPLETED"
+            and isinstance(executions, list)
+            and len(executions) == 3
+        )
+        if not review_candidate:
+            result["manual_review"] = {
+                "status": "UNAVAILABLE",
+                "can_reject": False,
+                "can_pass_and_create_release": False,
+                "reason": "ResearchRun 尚未形成同一 Run 的三场景人工评审资格",
+                "release": None,
+            }
+        elif release_root is None:
+            result["manual_review"] = {
+                "status": "UNKNOWN",
+                "can_reject": False,
+                "can_pass_and_create_release": False,
+                "reason": "Release root is unavailable",
+                "release": None,
+            }
+        else:
+            result["manual_review"] = inspect_manual_review(
+                self.config.database_path,
+                release_root,
+                str(payload.get("research_run_id")),
+            )
         return result
 
     def _copy_frequi_best_effort(self, research_run_id: str) -> bool:
@@ -3889,6 +3936,47 @@ class ResearchConsoleController:
                 ) from exc
         return self.get_research_run(research_run_id)
 
+    def review_research_run(
+        self, research_run_id: str, action: str, reason: str
+    ) -> Dict[str, Any]:
+        """Apply one exact human terminal action; never execute the handoff."""
+        with self._lock:
+            if self._closed or self._shutting_down:
+                raise ControlRequestError(
+                    409, "console_shutting_down", "Research Console 正在关闭"
+                )
+            release_root = self._release_root
+            if release_root is None:
+                raise ControlRequestError(
+                    503, "release_root_unavailable", "Release root 不可用"
+                )
+            try:
+                if action == "REJECT":
+                    reject_research_run(
+                        self.config.database_path,
+                        release_root,
+                        research_run_id,
+                        reason,
+                        now=_utc_now(),
+                    )
+                elif action == "PASS_AND_CREATE_RELEASE":
+                    pass_and_create_release(
+                        self.config.database_path,
+                        release_root,
+                        research_run_id,
+                        reason,
+                        now=_utc_now(),
+                    )
+                else:
+                    raise ControlRequestError(
+                        400, "invalid_action", "人工终态 action 无效"
+                    )
+            except ManualReleaseError as exc:
+                raise ControlRequestError(
+                    exc.status, exc.code, exc.message
+                ) from exc
+        return self.get_research_run(research_run_id)
+
     def cancel_research_run(self, research_run_id: str) -> Dict[str, Any]:
         with self._lock:
             job = self._active
@@ -4145,6 +4233,8 @@ class ResearchConsoleController:
             self._runtime_lock_fd = -1
             search_capability = self._search_capability
             self._search_capability = None
+            release_root = self._release_root
+            self._release_root = None
             self._closed = True
         try:
             os.close(campaigns_descriptor)
@@ -4155,6 +4245,8 @@ class ResearchConsoleController:
             finally:
                 if search_capability is not None:
                     search_capability.close()
+                if release_root is not None:
+                    release_root.close()
 
 
 CONSOLE_HTML = """<!doctype html>
@@ -4204,6 +4296,11 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 <p class="note">永久警告：授权只执行一次，不能撤销、重试或重跑 Development；完成也不代表策略盈利、安全或可交易。</p>
 <div id="research-scenarios" class="grid"><div class="check"><div class="name">DEVELOPMENT</div><div class="status">暂无数据</div></div><div class="check"><div class="name">HOLDOUT</div><div class="status">SEALED_UNREAD</div></div><div class="check"><div class="name">HOLDOUT_STRESS</div><div class="status">SEALED_UNREAD</div></div></div>
 <p><span class="name">Verdict：</span><span id="research-verdict">未评审</span> · <a id="research-detail" hidden>打开同一 ResearchRun 的 Strategy Library 明细</a></p>
+<div class="check"><h3>人工终态</h3><div id="manual-review-status" class="note">等待同一 ResearchRun 三场景完成并复验</div>
+<div class="field"><label for="manual-review-reason">人工理由（必填）</label><textarea id="manual-review-reason" maxlength="1000"></textarea></div>
+<button id="manual-reject" class="danger" disabled>REJECT</button><button id="manual-pass" disabled>PASS_AND_CREATE_RELEASE</button>
+<pre id="manual-release-command">尚无 dry-run 交接命令</pre>
+<p class="note">只生成并展示 handoff；Lab 不执行 dry-run、不管理部署。PASSED / Release 仍不证明未来盈利、稳健、可交易或资金安全。</p></div>
 <h3>规范化研究状态</h3><pre id="research-status">尚未运行</pre>
 </section>
 <section><h2>数据检查</h2><p class="note">只运行已冻结 Pilot 目录的 CHECK_DATA；成功不代表策略有效、盈利或可交易。</p>
@@ -4235,6 +4332,11 @@ const researchStatus = document.getElementById('research-status');
 const researchScenarios = document.getElementById('research-scenarios');
 const researchVerdict = document.getElementById('research-verdict');
 const researchDetail = document.getElementById('research-detail');
+const manualReviewStatus = document.getElementById('manual-review-status');
+const manualReviewReason = document.getElementById('manual-review-reason');
+const manualRejectButton = document.getElementById('manual-reject');
+const manualPassButton = document.getElementById('manual-pass');
+const manualReleaseCommand = document.getElementById('manual-release-command');
 const searchSeeds = document.getElementById('search-seeds');
 const searchChildren = document.getElementById('search-children');
 const searchParentLock = document.getElementById('search-parent-lock');
@@ -4315,6 +4417,16 @@ function renderResearch(value) {
   researchVerdict.textContent = value && value.verdict !== null && value.verdict !== undefined ? String(value.verdict) : '未评审';
   researchDetail.hidden = !(value && typeof value.strategy_detail_url === 'string');
   if (!researchDetail.hidden) researchDetail.href = value.strategy_detail_url;
+  const review = value && value.manual_review ? value.manual_review : null;
+  manualReviewStatus.textContent = review ? `${review.status} · ${review.reason || '无理由'}` : '人工终态状态 UNKNOWN';
+  manualReviewReason.maxLength = review && Number.isInteger(review.reason_max_chars) ? review.reason_max_chars : 1000;
+  manualRejectButton.disabled = !(review && review.can_reject === true);
+  manualPassButton.disabled = !(review && review.can_pass_and_create_release === true);
+  const release = review && review.release;
+  const handoff = release && release.dry_run_handoff;
+  manualReleaseCommand.textContent = handoff && typeof handoff.command === 'string'
+    ? `Release ${release.id}\nmanifest_sha256: ${release.manifest_sha256}\nstatus: ${handoff.status}\n\n${handoff.command}`
+    : '尚无 dry-run 交接命令';
   researchScenarios.replaceChildren();
   const executions = value && Array.isArray(value.executions) ? value.executions : [];
   ['DEVELOPMENT','HOLDOUT','HOLDOUT_STRESS'].forEach(scenario => {
@@ -4559,6 +4671,20 @@ researchHoldoutButton.addEventListener('click', async () => {
     if (!researchTimer) researchTimer = setInterval(pollResearch,750);
   } catch (error) { researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2); await loadResearchContext(); }
 });
+async function manualReviewAction(action) {
+  if (!researchRunId) return;
+  const reason = manualReviewReason.value;
+  manualRejectButton.disabled = true; manualPassButton.disabled = true;
+  try {
+    const value = await request(`/api/research-runs/${researchRunId}/actions`, {method:'POST',headers:postHeaders,body:JSON.stringify({action,reason})});
+    renderResearch(value);
+  } catch (error) {
+    researchStatus.textContent = JSON.stringify(error.payload || {error:error.message}, null, 2);
+    await pollResearch();
+  }
+}
+manualRejectButton.addEventListener('click', () => manualReviewAction('REJECT'));
+manualPassButton.addEventListener('click', () => manualReviewAction('PASS_AND_CREATE_RELEASE'));
 async function poll() {
   if (!campaignId) return;
   try {
@@ -5083,11 +5209,23 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                         research_action_match.group(1)
                     )
                     response_status = 202
+                elif (
+                    set(body) == {"action", "reason"}
+                    and body.get("action")
+                    in {"REJECT", "PASS_AND_CREATE_RELEASE"}
+                    and isinstance(body.get("reason"), str)
+                ):
+                    payload = self.controller.review_research_run(
+                        research_action_match.group(1),
+                        str(body["action"]),
+                        str(body["reason"]),
+                    )
+                    response_status = 200
                 else:
                     raise ControlRequestError(
                         400,
                         "invalid_action",
-                        "ResearchRun action 只允许 CANCEL 或 AUTHORIZE_HOLDOUT",
+                        "ResearchRun action 只允许固定 CANCEL、AUTHORIZE_HOLDOUT、REJECT 或 PASS_AND_CREATE_RELEASE",
                     )
             else:
                 campaign_id = search_action_match.group(1)
@@ -5222,6 +5360,7 @@ def create_research_console_server(
     artifact_root: Optional[PathLike] = None,
     *,
     search_root: Optional[PathLike] = None,
+    release_root: Optional[PathLike] = None,
     frequi_base_url: Optional[str] = None,
     frequi_results_root: Optional[PathLike] = None,
     codex_binary: Optional[PathLike] = None,
@@ -5257,6 +5396,7 @@ def create_research_console_server(
             freqtrade_source=freqtrade_source,
             webserver_base_url=webserver_base_url,
             artifact_root=handler.artifact_root,
+            release_root=release_root,
             frequi_config=handler.frequi_config,
             task_timeout_seconds=task_timeout_seconds,
         )

@@ -2603,7 +2603,6 @@ def load_public_research_run(
         or [item["sequence"] for item in executions] != [1, 2, 3]
         or executions[0]["status"] != "SUCCEEDED"
         or executions[0]["scenario_passed"] != 1
-        or release_count != 0
     ):
         raise HoldoutRunError("run_state_conflict", "continuation execution set is invalid")
     checks = _json_object(run["checks_json"], "continuation checks")
@@ -2612,7 +2611,7 @@ def load_public_research_run(
         rejection_reasons = json.loads(run["rejection_reasons_json"])
     except (TypeError, json.JSONDecodeError, RecursionError) as exc:
         raise HoldoutRunError("run_state_conflict", "continuation state is invalid") from exc
-    if not isinstance(rejection_reasons, list) or rejection_reasons:
+    if not isinstance(rejection_reasons, list):
         raise HoldoutRunError("run_state_conflict", "continuation rejection state is invalid")
     directory = Path(str(run["run_dir"]))
     opened = {
@@ -2667,15 +2666,13 @@ def load_public_research_run(
         and all(item["finished_at"] is None for item in later)
         and all(metrics == {} for metrics in later_metrics)
         and checks == running_checks
+        and rejection_reasons == []
         and run["error_stage"] is None
         and run["error_message"] is None
         and run["finished_at"] is None
     )
-    completed = (
-        run["status"] == "COMPLETED"
-        and run["stage"] == "COMPLETED"
-        and run["verdict"] is None
-        and all(item["status"] == "SUCCEEDED" for item in later)
+    completed_evidence = (
+        all(item["status"] == "SUCCEEDED" for item in later)
         and all(item["scenario_passed"] is None for item in later)
         and all(
             isinstance(item["result_archive_path"], str)
@@ -2694,10 +2691,78 @@ def load_public_research_run(
         )
         and all(bool(metrics) for metrics in later_metrics)
         and all(opened.values())
-        and checks == completed_checks
         and run["error_stage"] is None
         and run["error_message"] is None
         and run["finished_at"] is not None
+    )
+    completed = (
+        run["status"] == "COMPLETED"
+        and run["stage"] == "COMPLETED"
+        and run["verdict"] is None
+        and completed_evidence
+        and checks == completed_checks
+        and rejection_reasons == []
+        and release_count == 0
+    )
+    human_review = checks.get("human_review")
+    rejected_review = (
+        isinstance(human_review, dict)
+        and set(human_review) == {"action", "reason", "source", "decided_at"}
+        and human_review.get("action") == "REJECT"
+        and human_review.get("source") == "RESEARCH_CONSOLE"
+        and isinstance(human_review.get("reason"), str)
+        and bool(human_review["reason"])
+        and isinstance(human_review.get("decided_at"), str)
+        and bool(human_review["decided_at"])
+    )
+    passed_review = (
+        isinstance(human_review, dict)
+        and set(human_review)
+        == {"action", "reason", "source", "decided_at", "release_id"}
+        and human_review.get("action") == "PASS_AND_CREATE_RELEASE"
+        and human_review.get("source") == "RESEARCH_CONSOLE"
+        and isinstance(human_review.get("reason"), str)
+        and bool(human_review["reason"])
+        and isinstance(human_review.get("decided_at"), str)
+        and bool(human_review["decided_at"])
+        and isinstance(human_review.get("release_id"), str)
+        and bool(human_review["release_id"])
+    )
+    final_checks_common = {
+        **_ORIGINAL_CHECKS,
+        "authorization": "AUTHORIZED",
+        "holdout": "SUCCEEDED",
+        "holdout_stress": "SUCCEEDED",
+        "judge": "HUMAN",
+        "human_review": human_review,
+    }
+    manually_rejected = (
+        run["status"] == "COMPLETED"
+        and run["stage"] == "COMPLETED"
+        and run["verdict"] == "REJECTED"
+        and completed_evidence
+        and rejected_review
+        and checks
+        == {**final_checks_common, "next_phase": "TERMINAL_REJECTED"}
+        and len(rejection_reasons) == 1
+        and isinstance(rejection_reasons[0], dict)
+        and rejection_reasons[0].get("code") == "HUMAN_REJECT"
+        and rejection_reasons[0].get("reason") == human_review.get("reason")
+        and rejection_reasons[0].get("source") == "RESEARCH_CONSOLE"
+        and rejection_reasons[0].get("decided_at")
+        == human_review.get("decided_at")
+        and release_count == 0
+    )
+    manually_passed = (
+        run["status"] == "COMPLETED"
+        and run["stage"] == "COMPLETED"
+        and run["verdict"] == "PASSED"
+        and completed_evidence
+        and passed_review
+        and checks
+        == {**final_checks_common, "next_phase": "MANUAL_DRY_RUN_HANDOFF"}
+        and rejection_reasons == []
+        and release_count == 1
     )
     failure_checks = {
         **_ORIGINAL_CHECKS,
@@ -2719,6 +2784,7 @@ def load_public_research_run(
             for item in later
         )
         and checks == failure_checks
+        and rejection_reasons == []
         and run["error_stage"] == "HOLDOUT_BACKTEST"
         and isinstance(run["error_message"], str)
         and run["error_message"] in _PUBLIC_ERROR_CODES
@@ -2736,7 +2802,7 @@ def load_public_research_run(
         )
         and run["finished_at"] is not None
     )
-    if not (running or completed or failed):
+    if not (running or completed or manually_rejected or manually_passed or failed):
         raise HoldoutRunError("run_state_conflict", "continuation public state is invalid")
     execution_values = [
         _public_execution(executions[0], True),
@@ -2777,10 +2843,10 @@ def load_public_research_run(
             str(run["candidate_id"]),
             research_run_id,
         ),
-        "economic_review": "NOT_RUN",
+        "economic_review": run["verdict"] or "NOT_RUN",
         "profitability_claim": "NOT_ESTABLISHED",
         "tradability_claim": "NOT_ESTABLISHED",
-        "release_count": 0,
+        "release_count": release_count,
     }
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import shutil
 import subprocess
 import threading
@@ -741,6 +742,89 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
             "COMPLETED",
             None,
         )
+        assert public["manual_review"]["status"] == "AVAILABLE", public[
+            "manual_review"
+        ]
+        assert public["manual_review"]["can_reject"] is True
+        assert public["manual_review"]["can_pass_and_create_release"] is True
+
+        reject_database = tmp_path / "reject-lab.sqlite"
+        with get_connection(database, read_only=True) as source, sqlite3.connect(
+            reject_database
+        ) as destination:
+            source.backup(destination)
+        reject_runtime = tmp_path / "reject-console-runtime"
+        (reject_runtime / "campaigns").mkdir(parents=True)
+        with _serve_real_t2(
+            reject_database,
+            reject_runtime,
+            run_dir,
+            capability,
+            tmp_path,
+        ) as reject_server:
+            status, _, _, rejected = _post(
+                reject_server,
+                f"/api/research-runs/{research_run_id}/actions",
+                {
+                    "action": "REJECT",
+                    "reason": "隔离 T2：人工决定终止该假设。",
+                },
+            )
+            assert status == 200, rejected
+            assert rejected["verdict"] == "REJECTED"
+            assert rejected["release_count"] == 0
+            assert rejected["manual_review"]["status"] == "REJECTED"
+        with get_connection(reject_database, read_only=True) as connection:
+            assert connection.execute(
+                "SELECT COUNT(*) FROM releases WHERE research_run_id=?",
+                (research_run_id,),
+            ).fetchone()[0] == 0
+        assert list((reject_runtime / "releases").iterdir()) == []
+
+        status, _, _, illegal = _post(
+            server,
+            f"/api/research-runs/{research_run_id}/actions",
+            {
+                "action": "PASS_AND_CREATE_RELEASE",
+                "reason": "人工经济复核通过",
+                "release_root": str(tmp_path / "browser-must-not-control"),
+            },
+        )
+        assert status == 400
+        assert illegal["error"] == "invalid_action"
+        with get_connection(database, read_only=True) as connection:
+            assert connection.execute(
+                "SELECT verdict FROM research_runs WHERE id=?", (research_run_id,)
+            ).fetchone()[0] is None
+
+        status, _, _, public = _post(
+            server,
+            f"/api/research-runs/{research_run_id}/actions",
+            {
+                "action": "PASS_AND_CREATE_RELEASE",
+                "reason": "人工经济复核通过；仅生成 dry-run handoff，不执行。",
+            },
+        )
+        assert status == 200, public
+        assert public["verdict"] == "PASSED"
+        assert public["release_count"] == 1
+        review = public["manual_review"]
+        assert review["status"] == "PASSED"
+        assert review["reason"].startswith("人工经济复核通过")
+        release = review["release"]
+        assert release["dry_run_handoff"]["status"] == "NOT_EXECUTED"
+        assert release["dry_run_handoff"]["command"].startswith(
+            "freqtrade trade --dry-run"
+        )
+        release_root = runtime_root / "releases"
+        release_dirs = list(release_root.iterdir())
+        assert len(release_dirs) == 1
+        release_dir = release_dirs[0]
+        assert (release_dir / "strategies" / "BoundedCandidate.py").is_file()
+        manifest_bytes = (release_dir / "manifest.json").read_bytes()
+        assert hashlib.sha256(manifest_bytes).hexdigest() == release["manifest_sha256"]
+        assert json.loads(manifest_bytes)["research_run_id"] == research_run_id
+        assert len(worker_argv) == 1
 
         detail_url = public["strategy_detail_url"]
         assert detail_url.endswith(f"research_run_id={research_run_id}")
@@ -748,6 +832,8 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
         assert status == 200
         page_text = page.decode("utf-8")
         assert "SUCCEEDED 只表示 Artifact 已验证落库" in page_text
+        assert ">PASSED<" in page_text
+        assert release["id"] in page_text
         assert str(run_dir) not in page_text
         assert "result_archive_path" not in page_text
 
@@ -762,7 +848,8 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
             selected["verdict"],
             selected["scenario_count"],
             selected["succeeded_count"],
-        ) == (research_run_id, "COMPLETED", "COMPLETED", None, 3, 3)
+        ) == (research_run_id, "COMPLETED", "COMPLETED", "PASSED", 3, 3)
+        assert detail["manual_review"]["release"]["id"] == release["id"]
         assert [item["scenario"] for item in detail["scenarios"]] == [
             "DEVELOPMENT",
             "HOLDOUT",
@@ -835,12 +922,12 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
     assert (run["status"], run["stage"], run["verdict"]) == (
         "COMPLETED",
         "COMPLETED",
-        None,
+        "PASSED",
     )
     checks = json.loads(run["checks_json"])
-    assert checks["next_phase"] == "HUMAN_ECONOMIC_REVIEW"
-    assert checks["judge"] == "NOT_RUN"
-    assert releases == 0
+    assert checks["next_phase"] == "MANUAL_DRY_RUN_HANDOFF"
+    assert checks["judge"] == "HUMAN"
+    assert releases == 1
     assert tables == {
         "research_profiles",
         "generation_runs",
