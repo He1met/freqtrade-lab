@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import sys
+import traceback
 import types
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -329,6 +330,49 @@ def _funding_catalog_bytes(
     )
 
 
+def _mock_monthly_archives(module, monkeypatch, *, poison="SEALED_RATE_MARKER"):
+    """Serve complete synthetic local months, including protected boundary rows."""
+    first = int(module.SEARCH_START.timestamp() * 1000)
+    stop = module.DATA_END_MS
+    archives = {}
+    month_rows = {}
+    for year, month in module._archive_months():
+        begin, last_day = module._archive_month_bounds(year, month)
+        rows = [
+            (
+                module.INSTRUMENT_ID,
+                "0.0001" if first <= timestamp < stop else poison,
+                str(timestamp + 1000),
+            )
+            for timestamp in range(
+                begin, last_day + 24 * 60 * 60 * 1000, module.FUNDING_INTERVAL_MS
+            )
+        ]
+        month_rows[(year, month)] = rows
+
+    def request(method, url, *, body=None):
+        if method == "POST":
+            begin = int(json.loads(body)["dateQuery"]["begin"])
+            group = next(
+                group for group in module._archive_month_groups()
+                if module._archive_month_bounds(*group[0])[0] == begin
+            )
+            return _funding_catalog_group_bytes(module, group), {
+                "content-type": "application/json"
+            }
+        for (year, month), rows in month_rows.items():
+            _, archive_name, csv_name = module._archive_names(year, month)
+            if url.endswith(f"/{archive_name}?v=999"):
+                raw = _funding_archive_bytes(csv_name, rows)
+                archives[archive_name] = raw
+                return raw, {"content-type": "application/zip"}
+        pytest.fail("unexpected synthetic archive request")
+
+    monkeypatch.setattr(module, "archive_http_request", request)
+    monkeypatch.setattr(module.time, "sleep", lambda seconds: None)
+    return month_rows, archives
+
+
 def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     acquisition_module,
 ) -> None:
@@ -423,7 +467,7 @@ def test_profile_candle_fetch_uses_the_selected_pair_not_historical_xrp(
 
 @pytest.mark.parametrize("profile_acquisition_module", [True], indirect=True)
 def test_profile_1d_mode_writes_prepare_search_data_source_contract(
-    profile_acquisition_module, tmp_path: Path
+    profile_acquisition_module, monkeypatch, tmp_path: Path
 ) -> None:
     import pyarrow as pa
     import pyarrow.feather as feather
@@ -452,6 +496,9 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
     profile_acquisition_module.configure_profile_acquisition(
         database, profile_id, window, 85
     )
+    _mock_monthly_archives(profile_acquisition_module, monkeypatch)
+    requests = []
+    profile_acquisition_module.fetch_archive_funding_history(requests)
     root = tmp_path / "profile-source"
     receipt = _prepare_generated_root(root)
     series = {
@@ -508,6 +555,7 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
                 "authentication": "none",
                 "pair": "XRP/USDT:USDT",
                 "instrument_id": "XRP-USDT-SWAP",
+                "requests": requests,
                 "data_window": {
                     "start_utc": profile_acquisition_module.DATA_START.isoformat(),
                     "end_exclusive_utc": profile_acquisition_module.DATA_END.isoformat(),
@@ -909,7 +957,10 @@ def test_archive_funding_rejects_timestamp_outside_post_grid_drift_budget(
         development_start_utc="2026-05-03T00:00:00Z",
         end_exclusive_utc="2026-05-05T00:00:00Z",
     )
+    # Keep the negative drift inside the permitted window; before-start rows
+    # are now deliberately skipped without interpreting their rate.
     timestamp = int(profile_acquisition_module.SEARCH_START.timestamp() * 1000)
+    timestamp += profile_acquisition_module.FUNDING_INTERVAL_MS
     _, archive_name, csv_name = profile_acquisition_module._archive_names(2026, 4)
     archive = _funding_archive_bytes(
         csv_name,
@@ -1273,7 +1324,10 @@ def test_archive_parser_fails_closed_on_format_drift(
 
     with pytest.raises(RuntimeError, match=message):
         profile_acquisition_module._parse_funding_archive(
-            raw, archive_name=archive_name, csv_name=csv_name
+            raw, archive_name=archive_name, csv_name=csv_name,
+            year=2026, month=4,
+            start_ms=int(profile_acquisition_module.SEARCH_START.timestamp() * 1000),
+            end_exclusive_ms=profile_acquisition_module.DATA_END_MS,
         )
 
 
@@ -1586,3 +1640,291 @@ def test_persistent_catalog_429_removes_owned_output_and_provenance(
     assert receipts[0]["retry_wait_seconds"] == (
         profile_acquisition_module.ARCHIVE_CATALOG_RETRY_FALLBACK_SECONDS
     )
+
+
+@pytest.mark.parametrize("poison", ("NaN", "Inf", "-Inf", "BAD_RATE_MARKER", "1e9999"))
+@pytest.mark.parametrize("timeframe", ("5m", "1d"))
+def test_archive_boundary_never_converts_protected_rates(
+    profile_acquisition_module, monkeypatch, tmp_path, poison, timeframe
+):
+    module = profile_acquisition_module
+    _configure_profile_helper(
+        module, tmp_path, timeframe=timeframe,
+        pre_roll_candles=24 if timeframe == "5m" else 1,
+        data_start_utc=(
+            "2026-02-28T22:00:00Z" if timeframe == "5m" else "2026-02-28T00:00:00Z"
+        ),
+        search_start_utc="2026-03-01T00:00:00Z",
+        development_start_utc="2026-04-02T00:00:00Z",
+        end_exclusive_utc="2026-05-01T00:00:00Z",
+    )
+    _, archives = _mock_monthly_archives(module, monkeypatch, poison=poison)
+    conversions = []
+
+    class GuardedFloat(float):
+        def __new__(cls, value):
+            if value == poison:
+                raise AssertionError("protected rate conversion attempted")
+            conversions.append(value)
+            return super().__new__(cls, value)
+
+    monkeypatch.setattr(module, "float", GuardedFloat, raising=False)
+    receipts = []
+    # Exercise the production route selection as well as catalog/parser/validator.
+    rows = module.fetch_funding_history(
+        object(), receipts, fetched_at=datetime(2026, 9, 5, tzinfo=timezone.utc)
+    )
+    first = int(module.SEARCH_START.timestamp() * 1000)
+    assert [row["timestamp"] for row in rows] == list(
+        range(first, module.DATA_END_MS, module.FUNDING_INTERVAL_MS)
+    )
+    assert conversions == ["0.0001"] * 183
+    assert all(row["fundingRate"] == 0.0001 for row in rows)
+    monthly = [receipt for receipt in receipts if receipt["method"] == "GET"]
+    assert [receipt["csv_rows"] for receipt in monthly] == [93, 90, 93]
+    assert [receipt["csv_physical_lines"] for receipt in monthly] == [94, 91, 94]
+    assert [
+        receipt["rate_selection"]["selected_rows"] for receipt in monthly
+    ] == [92, 90, 1]
+    assert [
+        receipt["rate_selection"]["uninterpreted_rate_rows"] for receipt in monthly
+    ] == [1, 0, 92]
+    for receipt in monthly:
+        raw = archives[receipt["archive_filename"]]
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            csv_raw = archive.read(receipt["csv_filename"])
+        assert (
+            receipt["archive_sha256"] == receipt["response_sha256"]
+            == hashlib.sha256(raw).hexdigest()
+        )
+        assert receipt["archive_bytes"] == receipt["response_bytes"] == len(raw)
+        assert receipt["csv_sha256"] == hashlib.sha256(csv_raw).hexdigest()
+        assert receipt["csv_bytes"] == len(csv_raw)
+        assert receipt["rate_selection"]["start_ms"] == first
+        assert receipt["rate_selection"]["end_exclusive_ms"] == module.DATA_END_MS
+        assert (
+            receipt["rate_selection"]["uninterpreted_rate_validation"]
+            == "NOT_PERFORMED"
+        )
+        assert receipt["timestamp_normalization"]["scope"] == "SELECTED_ROWS"
+        assert receipt["timestamp_normalization"]["maximum_observed_drift_ms"] == 1000
+        assert (
+            receipt["timestamp_normalization"]["normalized_rows"]
+            == receipt["rate_selection"]["selected_rows"]
+        )
+    assert poison not in json.dumps(receipts)
+
+
+def _parse_synthetic_archive(module, rows, *, start_ms, end_ms, month=4):
+    _, archive_name, csv_name = module._archive_names(2026, month)
+    raw = _funding_archive_bytes(csv_name, rows)
+    return module._parse_funding_archive(
+        raw, archive_name=archive_name, csv_name=csv_name,
+        year=2026, month=month, start_ms=start_ms, end_exclusive_ms=end_ms,
+    )
+
+
+@pytest.mark.parametrize(
+    ("start_delta", "end_delta", "raw_delta", "selected"),
+    (
+        (0, 28800000, 0, True),
+        (0, 28800000, 2000, True),
+        (0, 28800000, -1, False),
+        (0, 28800000, 28800000, False),
+        (0, 28800000, 28802000, False),
+        (0, 28801000, 28800000, True),
+        (0, 28801000, 28800500, True),
+        (0, 28801000, 28801000, False),
+        (0, 28801000, 28802000, False),
+        (1000, 28800000, 2000, False),
+    ),
+)
+def test_archive_selection_requires_both_raw_and_normalized_half_open_times(
+    profile_acquisition_module, monkeypatch, start_delta, end_delta, raw_delta, selected
+):
+    module = profile_acquisition_module
+    monkeypatch.setattr(module, "INSTRUMENT_ID", "XRP-USDT-SWAP")
+    grid = 1775001600000  # 2026-04-01T00:00:00Z
+    poison = "BOUNDARY_RATE_MUST_NOT_BE_READ"
+    result, receipt = _parse_synthetic_archive(
+        module,
+        [(module.INSTRUMENT_ID, "0.1" if selected else poison, str(grid + raw_delta))],
+        start_ms=grid + start_delta, end_ms=grid + end_delta,
+    )
+    expected_timestamp = (
+        grid + raw_delta // module.FUNDING_INTERVAL_MS * module.FUNDING_INTERVAL_MS
+    )
+    assert result == (
+        [{"timestamp": expected_timestamp, "fundingRate": 0.1}] if selected else []
+    )
+    assert receipt["csv_rows"] == 1
+    assert receipt["rate_selection"]["selected_rows"] == int(selected)
+    assert receipt["rate_selection"]["uninterpreted_rate_rows"] == int(not selected)
+    if not selected:
+        assert receipt["timestamp_normalization"]["maximum_observed_drift_ms"] is None
+
+
+@pytest.mark.parametrize("rate", ("NaN", "Inf", "-Inf", "BAD_RATE_MARKER", "1e9999"))
+def test_archive_selected_poison_rates_still_fail_without_value_in_traceback(
+    profile_acquisition_module, monkeypatch, rate, capsys
+):
+    module = profile_acquisition_module
+    monkeypatch.setattr(module, "INSTRUMENT_ID", "XRP-USDT-SWAP")
+    with pytest.raises(RuntimeError, match="row 2 rate is (invalid|not finite)"):
+        try:
+            _parse_synthetic_archive(
+                module, [(module.INSTRUMENT_ID, rate, "1775001601000")],
+                start_ms=1775001600000, end_ms=1775030400000,
+            )
+        except RuntimeError:
+            traceback.print_exc()
+            raise
+    captured = capsys.readouterr()
+    assert rate not in captured.err
+    assert "row 2 rate is" in captured.err
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    (
+        (("XRP-USDT-SWAP", "unused"), "shape changed"),
+        (("BTC-USDT-SWAP", "unused", "1775030400000"), "instrument mismatch"),
+        *(
+            (("XRP-USDT-SWAP", "unused", value), "timestamp is invalid")
+            for value in (
+                "1775030400", "17750304000000", "+1775030400000", "1775030400000.0",
+                "１７７５０３０４０００００", " 1775030400000", "invalid",
+            )
+        ),
+    ),
+)
+def test_archive_checks_unselected_row_identity_shape_and_strict_timestamp(
+    profile_acquisition_module, monkeypatch, fields, message
+):
+    module = profile_acquisition_module
+    monkeypatch.setattr(module, "INSTRUMENT_ID", "XRP-USDT-SWAP")
+    monkeypatch.setattr(
+        module, "float", lambda value: pytest.fail("rate accessed before row validation"),
+        raising=False,
+    )
+    with pytest.raises(RuntimeError, match=message):
+        _parse_synthetic_archive(
+            module, [fields], start_ms=1775001600000, end_ms=1775030400000,
+        )
+
+
+def test_archive_does_not_access_unselected_rate_field_and_counts_physical_lines(
+    profile_acquisition_module, monkeypatch
+):
+    module = profile_acquisition_module
+    monkeypatch.setattr(module, "INSTRUMENT_ID", "XRP-USDT-SWAP")
+    original_reader = module.csv.reader
+
+    class ProtectedFields(list):
+        def __getitem__(self, index):
+            if index == 1:
+                pytest.fail("protected rate field accessed")
+            return super().__getitem__(index)
+
+    class GuardedReader:
+        def __init__(self, *args, **kwargs):
+            self.reader = original_reader(*args, **kwargs)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            fields = next(self.reader)
+            return ProtectedFields(fields) if self.reader.line_num > 1 else fields
+
+        @property
+        def line_num(self):
+            return self.reader.line_num
+
+    monkeypatch.setattr(module.csv, "reader", GuardedReader)
+    rows, receipt = _parse_synthetic_archive(
+        module, [(module.INSTRUMENT_ID, '"SEALED\nMULTILINE"', "1775030400000")],
+        start_ms=1775001600000, end_ms=1775030400000,
+    )
+    assert rows == []
+    assert receipt["csv_rows"] == 1
+    assert receipt["csv_physical_lines"] == 3
+    assert receipt["rate_selection"]["uninterpreted_rate_rows"] == 1
+
+
+@pytest.mark.parametrize("case", ("missing", "duplicate", "collision", "wrong_month"))
+def test_archive_selected_sequence_and_month_still_fail_closed(
+    profile_acquisition_module, monkeypatch, tmp_path, case
+):
+    module = profile_acquisition_module
+    _configure_profile_helper(module, tmp_path)
+    month_rows, _ = _mock_monthly_archives(module, monkeypatch)
+    rows = month_rows[(2026, 4)]
+    if case == "missing":
+        del rows[10]
+    elif case == "duplicate":
+        rows.append(rows[10])
+    elif case == "collision":
+        instrument, rate, timestamp = rows[10]
+        rows.append((instrument, rate, str(int(timestamp) + 1000)))
+    else:
+        rows.append(month_rows[(2026, 3)][10])
+    message = (
+        "every fixed eight-hour timestamp" if case == "missing"
+        else "timestamp drifted" if case == "wrong_month"
+        else "duplicate UTC timestamps"
+    )
+    with pytest.raises(RuntimeError, match=message):
+        module.fetch_archive_funding_history([])
+
+
+def test_archive_selected_rate_failure_through_main_cleans_output_and_stderr(
+    profile_acquisition_module, monkeypatch, tmp_path, capsys
+):
+    module = profile_acquisition_module
+    database, profile_id, _, window = _configure_profile_helper(module, tmp_path)
+    month_rows, _ = _mock_monthly_archives(module, monkeypatch)
+    poison = "PRIVATE_SYNTHETIC_RATE_MARKER"
+    instrument, _, timestamp = month_rows[(2026, 3)][1]
+    month_rows[(2026, 3)][1] = (instrument, poison, timestamp)
+    output = tmp_path / "failed-source"
+    sibling = tmp_path / "unrelated.txt"
+    sibling.write_text("keep")
+    monkeypatch.setattr(sys, "argv", [
+        str(PROFILE_HELPER), "--output-root", str(output),
+        "--window-spec", str(window), "--profile-database", str(database),
+        "--profile-id", profile_id, "--pre-roll-candles", "24",
+    ])
+    monkeypatch.setattr(module, "validate_runtime", lambda: _runtime(module))
+    market = {"id": module.INSTRUMENT_ID, "symbol": module.SYMBOL, "swap": True, "linear": True}
+    closed = []
+    exchange = types.SimpleNamespace(
+        public_get_public_instruments=lambda params: {"code": "0", "data": [{
+            "instId": module.INSTRUMENT_ID, "instType": "SWAP",
+            "settleCcy": "USDT", "state": "live",
+        }]},
+        parse_market=lambda instrument: market,
+        set_markets=lambda *args: None,
+        fetch_market_leverage_tiers=lambda *args: [{"symbol": module.SYMBOL}],
+        close=lambda: closed.append(True),
+    )
+    monkeypatch.setattr(module.transport.ccxt, "okx", lambda config: exchange)
+    monkeypatch.setattr(module, "install_request_guard", lambda exchange: None)
+    monkeypatch.setattr(module, "request_receipt", lambda exchange, label: {"label": label})
+    monkeypatch.setattr(module, "fetch_profile_candles", lambda *args, **kwargs: [])
+    monkeypatch.setattr(module, "store_profile_market_data", lambda *args: pytest.fail("data published"))
+    monkeypatch.setattr(module, "write_profile_provenance", lambda *args: pytest.fail("provenance published"))
+    with pytest.raises(RuntimeError, match="row 3 rate is invalid"):
+        try:
+            module.main()
+        except RuntimeError:
+            traceback.print_exc()
+            raise
+    assert closed == [True]
+    assert not output.exists()
+    assert sibling.read_text() == "keep"
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "row 3 rate is invalid" in captured.err
+    assert poison not in captured.err
+    assert "could not convert string to float" not in captured.err
