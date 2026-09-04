@@ -429,6 +429,9 @@ def test_t0_parses_real_frozen_fixture_and_units() -> None:
         1000.0, 100.0, 1)
     assert parsed.configured_fee == 0.0005
     assert (parsed.total_trades, parsed.wins, parsed.draws, parsed.losses) == (11, 8, 0, 3)
+    assert parsed.net_profit_after_base_fees_pct == pytest.approx(parsed.profit_pct)
+    assert parsed.average_holding_period_minutes == pytest.approx(77.27272727272727)
+    assert parsed.roi_exit_count == 4
     assert (
         parsed.profit_pct, parsed.max_drawdown_pct, parsed.win_rate,
         parsed.long_profit_pct, parsed.short_profit_pct, parsed.profit_factor,
@@ -438,6 +441,18 @@ def test_t0_parses_real_frozen_fixture_and_units() -> None:
         0.07989229, -0.38582829299999995, 0.2892287571951341,
         -25.236478243392586, -16.902568083351948, -693.448650620233,
     ))
+
+
+@pytest.mark.parametrize("field", ["trade_duration", "exit_reason"])
+def test_t0_rejects_incomplete_economic_trade_evidence(
+    tmp_path: Path, field: str
+) -> None:
+    def mutate(report: Dict[str, Any]) -> None:
+        del report["strategy"][STRATEGY]["trades"][0][field]
+
+    root = _mutate_evidence(tmp_path, report=mutate)
+    with pytest.raises(ArtifactImportError, match=field):
+        _parse(root)
 
 
 def test_t0_parses_native_1d_artifact_with_daily_candle_bounds(tmp_path: Path) -> None:
@@ -830,6 +845,11 @@ def test_t2_imports_into_exact_existing_execution(tmp_path: Path) -> None:
         "pairs": ["XRP/USDT:USDT"],
         "trading_mode": "futures",
     }
+    assert metrics["economic"] == {
+        "average_holding_period_minutes": pytest.approx(77.27272727272727),
+        "net_profit_after_base_fees_pct": pytest.approx(parsed.profit_pct),
+        "roi_exit_count": 4,
+    }
     assert {key: len(value) for key, value in _snapshot(db_path).items()} == table_counts_before
 
 
@@ -869,6 +889,11 @@ def test_t2_zero_trade_import_requires_opt_in_and_preserves_real_zeros(
     ) == pytest.approx((0.0,) * 9)
     metrics = json.loads(execution["metrics_json"])
     assert (metrics["wins"], metrics["draws"], metrics["losses"]) == (0, 0, 0)
+    assert metrics["economic"] == {
+        "average_holding_period_minutes": None,
+        "net_profit_after_base_fees_pct": 0.0,
+        "roi_exit_count": 0,
+    }
 
 
 @pytest.mark.parametrize(

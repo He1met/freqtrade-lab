@@ -117,6 +117,9 @@ class ParsedBacktestArtifact:
     wins: int
     draws: int
     losses: int
+    net_profit_after_base_fees_pct: float
+    average_holding_period_minutes: Optional[float]
+    roi_exit_count: int
 
     def metrics_json(self) -> str:
         """Return the deliberately small, deterministic database payload."""
@@ -136,6 +139,11 @@ class ParsedBacktestArtifact:
                 "trading_mode": self.trading_mode,
             },
             "draws": self.draws,
+            "economic": {
+                "average_holding_period_minutes": self.average_holding_period_minutes,
+                "net_profit_after_base_fees_pct": self.net_profit_after_base_fees_pct,
+                "roi_exit_count": self.roi_exit_count,
+            },
             "losses": self.losses,
             "wins": self.wins,
         }
@@ -780,6 +788,8 @@ def parse_backtest_artifact(
     trades = result.get("trades")
     if not isinstance(trades, list) or len(trades) != total_trades:
         raise ArtifactImportError("trade list length must equal total_trades")
+    holding_period_minutes = 0.0
+    roi_exit_count = 0
     for index, trade_value in enumerate(trades):
         trade = _required_mapping(trade_value, f"trade {index}")
         pair = _required_string(trade, "pair", f"trade {index}")
@@ -800,6 +810,14 @@ def parse_backtest_artifact(
         if not isinstance(is_short, bool):
             raise ArtifactImportError(f"trade {index} is_short must be boolean")
         _required_number(trade, "funding_fees", label=f"trade {index}")
+        duration = _required_number(
+            trade, "trade_duration", label=f"trade {index}", minimum=0.0
+        )
+        assert duration is not None
+        holding_period_minutes += duration
+        exit_reason = _required_string(trade, "exit_reason", f"trade {index}")
+        if exit_reason == "roi":
+            roi_exit_count += 1
 
     profit_total = _required_number(result, "profit_total", label="strategy result")
     max_drawdown = _required_number(
@@ -935,6 +953,11 @@ def parse_backtest_artifact(
         wins=wins,
         draws=draws,
         losses=losses,
+        net_profit_after_base_fees_pct=_percentage(profit_total, "profit_total"),
+        average_holding_period_minutes=(
+            None if total_trades == 0 else holding_period_minutes / total_trades
+        ),
+        roi_exit_count=roi_exit_count,
     )
 
 

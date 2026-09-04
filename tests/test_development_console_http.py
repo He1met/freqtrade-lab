@@ -211,10 +211,28 @@ def _seed_public_research_run(database: Path) -> tuple[str, str]:
                       '/private/local/result.zip',
                       '/private/local/stdout.log',
                       '/private/local/stderr.log', 0, 12, -1.5, 2.0, 0.4,
-                      0.8, '{"raw_private_log":"must-not-leak"}', 0,
+                      0.8, ?, 0,
                       ?, ?, ?)
             """,
-            (execution_id, research_run_id, NOW, NOW, NOW),
+            (
+                execution_id,
+                research_run_id,
+                json.dumps(
+                    {
+                        "artifact": {"archive_sha256": "b" * 64},
+                        "economic": {
+                            "average_holding_period_minutes": 2880.0,
+                            "net_profit_after_base_fees_pct": -1.5,
+                            "roi_exit_count": 0,
+                        },
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                NOW,
+                NOW,
+                NOW,
+            ),
         )
         connection.commit()
     return candidate_id, research_run_id
@@ -567,6 +585,10 @@ def test_t1_get_context_and_public_run_routes_do_not_expose_private_paths(
             "max_drawdown_pct": 2.0,
             "win_rate": 0.4,
             "profit_factor": 0.8,
+            "artifact_sha256": "b" * 64,
+            "net_profit_after_base_fees_pct": -1.5,
+            "average_holding_period_minutes": 2880.0,
+            "roi_exit_count": 0,
             "scenario_passed": False,
             "started_at": NOW,
             "finished_at": NOW,
@@ -684,7 +706,7 @@ def test_t1_get_run_normalizes_database_error_text(
             UPDATE backtest_executions
             SET status='FAILED', total_trades=NULL, profit_pct=NULL,
                 max_drawdown_pct=NULL, win_rate=NULL, profit_factor=NULL,
-                scenario_passed=NULL
+                metrics_json='{}', scenario_passed=NULL
             WHERE research_run_id=?
             """,
             (research_run_id,),

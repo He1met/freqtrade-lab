@@ -2822,12 +2822,14 @@ def report_metrics(
         net = finite(result["profit_total"], "profit_total") * 100
         fee_cost: Optional[float] = None
         holding: Optional[float] = None
+        roi_exit_count: Optional[int] = None
         direction: Optional[float] = None
         trades = result.get("trades")
         if configured_fee is not None:
             if not isinstance(trades, list) or len(trades) != total:
                 raise PilotError(f"{phase} trade detail is incomplete")
             fee_cost = 0.0
+            roi_exit_count = 0
             if total:
                 balance = finite(result.get("starting_balance"), "starting_balance", 0)
                 if balance <= 0:
@@ -2848,6 +2850,10 @@ def report_metrics(
                     finite(item.get("trade_duration"), "trade_duration", 0)
                     for item in trades
                 ) / total
+                exit_reasons = [item.get("exit_reason") for item in trades]
+                if any(not isinstance(item, str) or not item for item in exit_reasons):
+                    raise PilotError(f"{phase} trade exit reason is invalid")
+                roi_exit_count = sum(item == "roi" for item in exit_reasons)
                 shorts = sum(item.get("is_short") is True for item in trades)
                 direction = max(shorts, total - shorts) / total
         return {
@@ -2862,6 +2868,7 @@ def report_metrics(
             "max_drawdown_pct": finite(result["max_drawdown_account"], "drawdown", 0) * 100,
             "profit_factor": finite(result["profit_factor"], "profit_factor", 0),
             "average_holding_period_minutes": holding,
+            "roi_exit_count": roi_exit_count,
             "direction_concentration": direction,
             "market_state_concentration": (
                 None
@@ -3369,6 +3376,7 @@ def _search_result(
     metrics.update({key: raw.get(key) for key in (
         "gross_profit_before_fees_pct",
         "configured_fee_cost_pct", "average_holding_period_minutes",
+        "roi_exit_count",
         "direction_concentration", "market_state_concentration",
         "market_state_definition", "market_state_lookback_candles",
     )})
@@ -3425,6 +3433,7 @@ def _validated_search_metrics(value: Any) -> Mapping[str, Any]:
     holding, direction, market_state = (value.get(key) for key in (
         "average_holding_period_minutes", "direction_concentration", "market_state_concentration"
     ))
+    roi_exit_count = value.get("roi_exit_count")
     trade_metrics = (holding, direction, market_state)
     lookback = value.get("market_state_lookback_candles")
     if (not all(finite_number(item) for item in (net, drawdown, profit_factor, gross, fee_cost))
@@ -3433,6 +3442,15 @@ def _validated_search_metrics(value: Any) -> Mapping[str, Any]:
             or (trades == 0 and any(item is not None for item in trade_metrics))
             or (trades > 0 and (not all(finite_number(item) for item in trade_metrics)
                                or holding < 0 or not 0 <= direction <= 1 or not 0 <= market_state <= 1))
+            or (
+                roi_exit_count is not None
+                and (
+                    isinstance(roi_exit_count, bool)
+                    or not isinstance(roi_exit_count, int)
+                    or roi_exit_count < 0
+                    or roi_exit_count > trades
+                )
+            )
             or value.get("market_state_definition") != MARKET_STATE_DEFINITION
             or isinstance(lookback, bool) or not isinstance(lookback, int) or lookback <= 0):
         raise PilotError("Search finalist metrics are invalid")

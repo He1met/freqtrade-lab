@@ -2126,6 +2126,81 @@ def _public_number(
     return value
 
 
+def _public_economic_metrics(
+    value: Any,
+    *,
+    total_trades: Optional[int],
+    profit_pct: Optional[float],
+) -> dict[str, Any]:
+    """Project verified economic evidence; legacy rows remain explicit UNKNOWN."""
+    unknown = {
+        "artifact_sha256": None,
+        "net_profit_after_base_fees_pct": None,
+        "average_holding_period_minutes": None,
+        "roi_exit_count": None,
+    }
+    try:
+        payload = json.loads(value)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development metrics_json is invalid"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development metrics_json is invalid"
+        )
+    artifact = payload.get("artifact")
+    artifact_sha256 = (
+        artifact.get("archive_sha256") if isinstance(artifact, dict) else None
+    )
+    if artifact_sha256 is not None and (
+        not isinstance(artifact_sha256, str)
+        or _SHA256.fullmatch(artifact_sha256) is None
+    ):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development artifact identity is invalid"
+        )
+    economic = payload.get("economic")
+    if economic is None:
+        return {**unknown, "artifact_sha256": artifact_sha256}
+    if not isinstance(economic, dict) or set(economic) != {
+        "average_holding_period_minutes",
+        "net_profit_after_base_fees_pct",
+        "roi_exit_count",
+    }:
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development economic metrics are invalid"
+        )
+    net = _public_number(economic["net_profit_after_base_fees_pct"])
+    holding = economic["average_holding_period_minutes"]
+    if holding is not None:
+        holding = _public_number(holding, minimum=0.0)
+    roi_count = economic["roi_exit_count"]
+    if (
+        isinstance(roi_count, bool)
+        or not isinstance(roi_count, int)
+        or roi_count < 0
+        or total_trades is None
+        or roi_count > total_trades
+        or (total_trades == 0 and holding is not None)
+        or (total_trades > 0 and holding is None)
+        or profit_pct is None
+        or net is None
+        or not math.isclose(
+            float(net), float(profit_pct), rel_tol=1e-12, abs_tol=1e-12
+        )
+    ):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development economic metrics are invalid"
+        )
+    return {
+        "artifact_sha256": artifact_sha256,
+        "net_profit_after_base_fees_pct": net,
+        "average_holding_period_minutes": holding,
+        "roi_exit_count": roi_count,
+    }
+
+
 def _public_gate_results(
     row: Any, execution: Any
 ) -> tuple[list[dict[str, Any]], Optional[list[str]], dict[str, Any]]:
@@ -2356,7 +2431,7 @@ def load_public_research_run(
             """
             SELECT scenario, status, total_trades, profit_pct,
                    max_drawdown_pct, win_rate, profit_factor, scenario_passed,
-                   created_at, started_at, finished_at
+                   metrics_json, created_at, started_at, finished_at
             FROM backtest_executions
             WHERE research_run_id=? AND scenario='DEVELOPMENT'
             ORDER BY sequence, id
@@ -2378,6 +2453,11 @@ def load_public_research_run(
         row["error_stage"], row["error_message"]
     )
     gate_results, expected_reasons, actual = _public_gate_results(row, execution)
+    economic = _public_economic_metrics(
+        execution["metrics_json"],
+        total_trades=actual["total_trades"],
+        profit_pct=actual["profit_pct"],
+    )
     timestamps = _public_timestamps(row, execution)
     _validate_public_run_state(
         row,
@@ -2412,6 +2492,7 @@ def load_public_research_run(
             "max_drawdown_pct": actual["max_drawdown_pct"],
             "win_rate": actual["win_rate"],
             "profit_factor": actual["profit_factor"],
+            **economic,
             "scenario_passed": (
                 None
                 if execution["scenario_passed"] is None

@@ -425,14 +425,37 @@ def _profile_archive(tmp_path: Path, *, drift: bool = False) -> tuple[Path, str,
 
 def test_t0_search_artifact_accepts_profile_bound_config(tmp_path: Path) -> None:
     raw, archive_name, profile = _profile_archive(tmp_path)
-    assert pilot.report_metrics(
+    metrics = pilot.report_metrics(
         raw,
         archive_name,
         "DailyTrend",
         "Search",
         configured_fee=float(profile["taker_fee_rate"]),
         profile_snapshot=profile,
-    )["total_trades"] == 0
+    )
+    assert metrics["total_trades"] == 0
+    assert metrics["average_holding_period_minutes"] is None
+    assert metrics["roi_exit_count"] == 0
+
+
+def test_t0_search_metrics_reject_roi_count_above_trade_count() -> None:
+    with pytest.raises(pilot.PilotError, match="metrics"):
+        pilot._validated_search_metrics(
+            {
+                "total_trades": 1,
+                "net_profit_after_base_fees_pct": 1.0,
+                "gross_profit_before_fees_pct": 1.1,
+                "configured_fee_cost_pct": 0.1,
+                "max_drawdown_pct": 1.0,
+                "profit_factor": 1.2,
+                "average_holding_period_minutes": 1440.0,
+                "roi_exit_count": 2,
+                "direction_concentration": 1.0,
+                "market_state_concentration": 1.0,
+                "market_state_definition": pilot.MARKET_STATE_DEFINITION,
+                "market_state_lookback_candles": 42,
+            }
+        )
 
 
 
@@ -589,6 +612,7 @@ def _profile_screen_result(
         "gross_profit_before_fees_pct": float(metrics["profit_pct"]) + 0.1,
         "configured_fee_cost_pct": 0.1,
         "average_holding_period_minutes": 60.0 if trades else None,
+        "roi_exit_count": 0,
         "direction_concentration": 0.5 if trades else None,
         "market_state_concentration": 0.5 if trades else None,
         "market_state_definition": pilot.MARKET_STATE_DEFINITION,
