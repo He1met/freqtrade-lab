@@ -1279,7 +1279,14 @@ def test_t1_round_two_exit_three_is_a_legal_no_finalist_terminal(
 
 
 @pytest.mark.parametrize(
-    "changed_factor", ("holdout", "stress", "development-period", "validation")
+    "changed_factor",
+    (
+        "holdout",
+        "stress",
+        "development-period",
+        "validation",
+        search_campaign.ENTRY_SMA_FILTER_84_V1,
+    ),
 )
 def test_t1_reserved_changed_factor_fails_before_any_round_two_root_write(
     tmp_path: Path,
