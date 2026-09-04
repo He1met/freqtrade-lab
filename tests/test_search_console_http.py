@@ -321,6 +321,7 @@ def _env(
     seeds: int = 1,
     child: bool = False,
     timeframe: str = "5m",
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> Env:
     database, profile_id, seed_ids, child_id = _database(tmp_path, seeds, child, timeframe)
     with get_connection(database, read_only=True) as connection:
@@ -346,7 +347,7 @@ def _env(
     def acquisition(_root: Path, _database: Path) -> dict[str, Any]:
         if damaged["value"]:
             raise search_campaign.SearchCampaignError("BLOCKED_DATA", "Search input changed", status=503)
-        return {
+        result = {
             "search_timerange": search_timerange,
             "data_provenance_sha256": pilot.digest(provenance),
             "source_acquisition_sha256": "b" * 64,
@@ -358,6 +359,9 @@ def _env(
             "development_timerange": development_timerange,
             "pre_roll_candles": 20,
         }
+        if economic_gate is not None:
+            result["economic_gate"] = dict(economic_gate)
+        return result
 
     monkeypatch.setattr(search_campaign, "_acquisition_snapshot", acquisition)
     monkeypatch.setattr(
@@ -947,6 +951,49 @@ def test_t0_explicit_search_rejects_a_cross_source_development_root(
         assert capability.status == "BLOCKED_DATA"
         assert capability.reason == (
             "Search and Development source acquisitions do not match"
+        )
+
+
+def test_t0_console_carries_search_economic_gate_into_development_capability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gate = {
+        "name": pilot.PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": 0.5,
+        "minimum_average_holding_period_minutes": 4320.0,
+        "maximum_roi_exit_count": 0,
+    }
+    environment = _env(
+        tmp_path,
+        monkeypatch,
+        "sleep",
+        economic_gate=gate,
+    )
+    captured: dict[str, Any] = {}
+
+    def freeze_development(*_args, **kwargs):
+        captured.update(kwargs["profile_contract"])
+        return development_run.FrozenDevelopmentCapability(
+            status="READY",
+            reason="ready",
+            source_acquisition_sha256="b" * 64,
+            profile_contract=kwargs["profile_contract"],
+            profile_economic_gate=gate,
+        )
+
+    monkeypatch.setattr(
+        research_console,
+        "freeze_development_capability",
+        freeze_development,
+    )
+
+    with _serve(environment) as server:
+        assert captured["economic_gate"] == gate
+        assert (
+            server.research_console_controller._development_capability
+            .profile_economic_gate
+            == gate
         )
 
 
