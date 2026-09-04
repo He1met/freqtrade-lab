@@ -736,9 +736,27 @@ def _archive_catalog_group(
 
 
 def _parse_funding_archive(
-    raw: bytes, *, archive_name: str, csv_name: str
+    raw: bytes,
+    *,
+    archive_name: str,
+    csv_name: str,
+    year: int,
+    month: int,
+    start_ms: int,
+    end_exclusive_ms: int,
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Interpret rates only when raw AND floored times belong to [start, end).
+
+    Raw time is checked first: flooring never admits a rate at/after the cutoff,
+    even when the cutoff is a grid point plus a legal drift. Profile callers use
+    UTC-midnight boundaries. Hashes cover all bytes; csv_rows counts all records
+    excluding the header, while csv_physical_lines includes the header and any
+    embedded newlines. Unselected rates have no semantic validation.
+    """
     assert INSTRUMENT_ID is not None
+    if start_ms >= end_exclusive_ms:
+        raise RuntimeError("funding archive window is empty")
+    label = f"{year:04d}-{month:02d}"
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             members = archive.infolist()
@@ -765,34 +783,56 @@ def _parse_funding_archive(
         if header != ARCHIVE_CSV_HEADER:
             raise RuntimeError(f"funding archive {archive_name} header changed")
         rows: list[dict[str, object]] = []
+        csv_rows = 0
+        timestamp_drifts: list[int] = []
         for number, fields in enumerate(reader, start=2):
+            csv_rows += 1
             if len(fields) != 3:
                 raise RuntimeError(
                     f"funding archive {archive_name} row {number} shape changed"
                 )
-            instrument, raw_rate, raw_timestamp = fields
-            if instrument != INSTRUMENT_ID:
+            if fields[0] != INSTRUMENT_ID:
                 raise RuntimeError(
                     f"funding archive {archive_name} row {number} instrument mismatch"
                 )
-            if not raw_timestamp.isascii() or not raw_timestamp.isdigit():
+            raw_timestamp = fields[2]
+            if (
+                len(raw_timestamp) != 13
+                or not raw_timestamp.isascii()
+                or not raw_timestamp.isdigit()
+            ):
                 raise RuntimeError(
                     f"funding archive {archive_name} row {number} timestamp is invalid"
                 )
+            timestamp = int(raw_timestamp)
+            if not start_ms <= timestamp < end_exclusive_ms:
+                continue
+            drift = timestamp % FUNDING_INTERVAL_MS
+            normalized_timestamp = timestamp - drift
+            if not start_ms <= normalized_timestamp < end_exclusive_ms:
+                continue
+            local = datetime.fromtimestamp(timestamp / 1000, UTC).astimezone(
+                ARCHIVE_TIMEZONE
+            )
+            if (local.year, local.month) != (year, month) or not (
+                0 <= drift <= MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
+            ):
+                raise RuntimeError(f"funding archive month {label} timestamp drifted")
             try:
-                rate = float(raw_rate)
-            except ValueError as exc:
+                rate = float(fields[1])
+            except ValueError:
                 raise RuntimeError(
                     f"funding archive {archive_name} row {number} rate is invalid"
-                ) from exc
+                ) from None
             if not math.isfinite(rate):
                 raise RuntimeError(
                     f"funding archive {archive_name} row {number} rate is not finite"
                 )
-            rows.append({"timestamp": int(raw_timestamp), "fundingRate": rate})
-    except (UnicodeError, csv.Error, StopIteration) as exc:
-        raise RuntimeError(f"funding archive {archive_name} CSV is invalid") from exc
-    if not rows:
+            rows.append({"timestamp": normalized_timestamp, "fundingRate": rate})
+            timestamp_drifts.append(drift)
+    except (UnicodeError, csv.Error, StopIteration):
+        raise RuntimeError(f"funding archive {archive_name} CSV is invalid") from None
+    if not csv_rows:
         raise RuntimeError(f"funding archive {archive_name} CSV is empty")
     return rows, {
         "archive_filename": archive_name,
@@ -801,7 +841,23 @@ def _parse_funding_archive(
         "csv_filename": csv_name,
         "csv_bytes": len(csv_raw),
         "csv_sha256": sha256(csv_raw),
-        "csv_rows": len(rows),
+        "csv_rows": csv_rows,
+        "csv_physical_lines": reader.line_num,
+        "rate_selection": {
+            "method": "RAW_AND_NORMALIZED_IN_HALF_OPEN_V1",
+            "start_ms": start_ms,
+            "end_exclusive_ms": end_exclusive_ms,
+            "selected_rows": len(rows),
+            "uninterpreted_rate_rows": csv_rows - len(rows),
+            "uninterpreted_rate_validation": "NOT_PERFORMED",
+        },
+        "timestamp_normalization": {
+            "method": FUNDING_ARCHIVE_TIMESTAMP_NORMALIZATION,
+            "scope": "SELECTED_ROWS",
+            "maximum_allowed_drift_ms": MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS,
+            "maximum_observed_drift_ms": max(timestamp_drifts, default=None),
+            "normalized_rows": sum(drift > 0 for drift in timestamp_drifts),
+        },
     }
 
 
@@ -810,6 +866,7 @@ def fetch_archive_funding_history(
 ) -> list[dict[str, object]]:
     _configured()
     assert SEARCH_START is not None and DATA_END_MS is not None
+    first = int(SEARCH_START.timestamp() * 1000)
     output: list[dict[str, object]] = []
     seen_archives: set[str] = set()
     catalog_entries = [
@@ -827,24 +884,14 @@ def fetch_archive_funding_history(
         if not content_type.lower().startswith("application/zip"):
             raise RuntimeError(f"funding archive month {label} Content-Type is not ZIP")
         rows, archive_receipt = _parse_funding_archive(
-            raw, archive_name=archive_name, csv_name=csv_name
+            raw,
+            archive_name=archive_name,
+            csv_name=csv_name,
+            year=year,
+            month=month,
+            start_ms=first,
+            end_exclusive_ms=DATA_END_MS,
         )
-        normalized_rows: list[dict[str, object]] = []
-        timestamp_drifts: list[int] = []
-        for row in rows:
-            timestamp = int(row["timestamp"])
-            local = datetime.fromtimestamp(timestamp / 1000, UTC).astimezone(
-                ARCHIVE_TIMEZONE
-            )
-            drift = timestamp % FUNDING_INTERVAL_MS
-            if (local.year, local.month) != (year, month) or not (
-                0 <= drift <= MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
-            ):
-                raise RuntimeError(f"funding archive month {label} timestamp drifted")
-            normalized_rows.append(
-                {**row, "timestamp": timestamp - drift}
-            )
-            timestamp_drifts.append(drift)
         requests.append(
             {
                 "label": f"funding-archive-{label}",
@@ -854,28 +901,16 @@ def fetch_archive_funding_history(
                 "response_bytes": len(raw),
                 "response_sha256": sha256(raw),
                 "response_headers": headers,
-                "timestamp_normalization": {
-                    "method": FUNDING_ARCHIVE_TIMESTAMP_NORMALIZATION,
-                    "maximum_allowed_drift_ms": (
-                        MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
-                    ),
-                    "maximum_observed_drift_ms": max(timestamp_drifts),
-                    "normalized_rows": sum(
-                        drift > 0 for drift in timestamp_drifts
-                    ),
-                },
                 **archive_receipt,
             }
         )
-        output.extend(normalized_rows)
+        output.extend(rows)
     all_timestamps = [int(row["timestamp"]) for row in output]
     if len(all_timestamps) != len(set(all_timestamps)):
         raise RuntimeError("funding archive contains duplicate UTC timestamps")
-    first = int(SEARCH_START.timestamp() * 1000)
-    filtered = [row for row in output if first <= int(row["timestamp"]) < DATA_END_MS]
-    filtered.sort(key=lambda row: int(row["timestamp"]))
-    validate_funding_history(filtered)
-    return filtered
+    output.sort(key=lambda row: int(row["timestamp"]))
+    validate_funding_history(output)
+    return output
 
 
 def fetch_rest_funding_history(
