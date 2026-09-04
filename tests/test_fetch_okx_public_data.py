@@ -257,33 +257,39 @@ def _funding_archive_bytes(
     return output.getvalue()
 
 
-def _funding_catalog_bytes(
+def _funding_catalog_group_bytes(
     module,
-    year: int,
-    month: int,
+    months: list[tuple[int, int]],
     *,
     details_override=None,
-    url_override: str | None = None,
+    groups_override=None,
 ) -> bytes:
-    begin, end = module._archive_month_bounds(year, month)
-    _, archive_name, _ = module._archive_names(year, month)
-    url = (
-        f"https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
-        f"{year:04d}{month:02d}/{archive_name}?v=999"
-    )
+    begin = module._archive_month_bounds(*months[0])[0]
+    end = module._archive_month_bounds(*months[-1])[1]
+    groups = []
+    for year, month in months:
+        date_ts = module._archive_month_bounds(year, month)[0]
+        _, archive_name, _ = module._archive_names(year, month)
+        groups.append(
+            {
+                "dateTs": str(date_ts),
+                "filename": archive_name,
+                "sizeMB": "0",
+                "url": (
+                    "https://static.okx.com/cdn/okex/traderecords/"
+                    f"swaprates/monthly/{year:04d}{month:02d}/"
+                    f"{archive_name}?v=999"
+                ),
+            }
+        )
+    if groups_override is not None:
+        groups = groups_override
     details = [
         {
             "ccy": "",
-            "dateRangeEnd": str(begin),
+            "dateRangeEnd": str(module._archive_month_bounds(*months[-1])[0]),
             "dateRangeStart": str(begin),
-            "groupDetails": [
-                {
-                    "dateTs": str(begin),
-                    "filename": archive_name,
-                    "sizeMB": "0",
-                    "url": url if url_override is None else url_override,
-                }
-            ],
+            "groupDetails": groups,
             "groupSizeMB": "0",
             "instFamily": module.PAIR_FAMILY,
             "instId": "",
@@ -307,6 +313,20 @@ def _funding_catalog_bytes(
         "msg": "",
     }
     return json.dumps(value, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+
+def _funding_catalog_bytes(
+    module,
+    year: int,
+    month: int,
+    *,
+    details_override=None,
+) -> bytes:
+    return _funding_catalog_group_bytes(
+        module,
+        [(year, month)],
+        details_override=details_override,
+    )
 
 
 def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
@@ -650,6 +670,14 @@ def test_issue_45_profile_window_binds_exact_90_day_pre_roll(
     assert profile_acquisition_module._archive_months() == [
         (2025, month) for month in range(3, 13)
     ] + [(2026, 1), (2026, 2), (2026, 3)]
+    assert [
+        len(group) for group in profile_acquisition_module._archive_month_groups()
+    ] == [6, 6, 1]
+    assert profile_acquisition_module._archive_month_groups() == [
+        [(2025, month) for month in range(3, 9)],
+        [(2025, month) for month in range(9, 13)] + [(2026, 1), (2026, 2)],
+        [(2026, 3)],
+    ]
 
 
 def test_expired_funding_window_selects_monthly_archive(
@@ -682,6 +710,88 @@ def test_expired_funding_window_selects_monthly_archive(
     )
 
     assert actual is expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (("3", 3.0), ("99", 2.0), ("invalid", 2.0), (None, 2.0)),
+)
+def test_catalog_retry_after_is_bounded(
+    profile_acquisition_module, value, expected
+) -> None:
+    assert profile_acquisition_module._catalog_retry_delay(value) == expected
+
+
+def test_catalog_retry_after_http_date_is_honored(profile_acquisition_module) -> None:
+    now = datetime(2026, 9, 5, 0, 0, tzinfo=timezone.utc)
+
+    assert (
+        profile_acquisition_module._catalog_retry_delay(
+            "Sat, 05 Sep 2026 00:00:04 GMT", now=now
+        )
+        == 4.0
+    )
+
+
+@pytest.mark.parametrize(
+    "months",
+    (
+        [],
+        [(2026, month) for month in range(1, 8)],
+        [(2026, 4), (2026, 6)],
+    ),
+)
+def test_archive_catalog_group_rejects_unbounded_or_nonconsecutive_months(
+    profile_acquisition_module, tmp_path: Path, months
+) -> None:
+    _configure_profile_helper(profile_acquisition_module, tmp_path)
+
+    with pytest.raises(RuntimeError, match="consecutive and bounded"):
+        profile_acquisition_module._archive_catalog_group(months, [])
+
+
+def test_archive_catalog_retries_one_429_and_records_both_attempts(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    _configure_profile_helper(profile_acquisition_module, tmp_path)
+    months = [(2026, 4), (2026, 5)]
+    raw = _funding_catalog_group_bytes(profile_acquisition_module, months)
+    calls = []
+    sleeps = []
+
+    def request(method, url, *, body=None):
+        calls.append((method, url, body))
+        if len(calls) == 1:
+            raise profile_acquisition_module.ArchiveCatalogRateLimited(
+                b'{"code":"50011","msg":"rate limit"}',
+                {
+                    "content-type": "application/json",
+                    "retry-after": "3",
+                },
+            )
+        return raw, {
+            "content-type": "application/json",
+            "content-length": str(len(raw)),
+        }
+
+    monkeypatch.setattr(profile_acquisition_module, "archive_http_request", request)
+    monkeypatch.setattr(
+        profile_acquisition_module.time,
+        "sleep",
+        lambda seconds: sleeps.append(seconds),
+    )
+    receipts = []
+
+    entries = profile_acquisition_module._archive_catalog_group(months, receipts)
+
+    assert [(entry[0], entry[1]) for entry in entries] == months
+    assert [receipt["http_status"] for receipt in receipts] == [429, 200]
+    assert [receipt["attempt"] for receipt in receipts] == [1, 2]
+    assert receipts[0]["retry_wait_seconds"] == 3.0
+    assert sleeps == [
+        profile_acquisition_module.ARCHIVE_CATALOG_THROTTLE_SECONDS,
+        3.0,
+    ]
 
 
 def test_archive_funding_crosses_okx_local_month_and_records_hashes(
@@ -726,19 +836,14 @@ def test_archive_funding_crosses_okx_local_month_and_records_hashes(
         )
         archives[url] = _funding_archive_bytes(csv_name, month_rows[(year, month)])
     calls = []
+    sleeps = []
 
     def request(method, url, *, body=None):
         calls.append((method, url, body))
         if method == "POST":
-            payload = json.loads(body)
-            begin = int(payload["dateQuery"]["begin"])
-            selected = next(
-                (year, month)
-                for year, month in ((2026, 4), (2026, 5))
-                if profile_acquisition_module._archive_month_bounds(year, month)[0]
-                == begin
+            raw = _funding_catalog_group_bytes(
+                profile_acquisition_module, [(2026, 4), (2026, 5)]
             )
-            raw = _funding_catalog_bytes(profile_acquisition_module, *selected)
             return raw, {
                 "content-type": "application/json;charset=UTF-8",
                 "content-length": str(len(raw)),
@@ -753,15 +858,19 @@ def test_archive_funding_crosses_okx_local_month_and_records_hashes(
         }
 
     monkeypatch.setattr(profile_acquisition_module, "archive_http_request", request)
+    monkeypatch.setattr(
+        profile_acquisition_module.time,
+        "sleep",
+        lambda seconds: sleeps.append(seconds),
+    )
     receipts = []
 
     rows = profile_acquisition_module.fetch_archive_funding_history(receipts)
 
     assert [row["timestamp"] for row in rows] == expected_timestamps
     assert [item["label"] for item in receipts] == [
-        "funding-archive-catalog-2026-04",
+        "funding-archive-catalog-2026-04-through-2026-05-attempt-1",
         "funding-archive-2026-04",
-        "funding-archive-catalog-2026-05",
         "funding-archive-2026-05",
     ]
     assert all(
@@ -770,7 +879,116 @@ def test_archive_funding_crosses_okx_local_month_and_records_hashes(
         for receipt in receipts
         if receipt["method"] == "GET"
     )
-    assert len([call for call in calls if call[0] == "POST"]) == 2
+    assert len([call for call in calls if call[0] == "POST"]) == 1
+    assert sleeps == [profile_acquisition_module.ARCHIVE_CATALOG_THROTTLE_SECONDS]
+
+
+def test_issue_45_archive_uses_6_6_1_groups_and_binds_provenance(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        pair="BTC/USDT:USDT",
+        timeframe="1d",
+        pre_roll_candles=90,
+        history_start_date="2024-12-01",
+        data_start_utc="2024-12-01T00:00:00Z",
+        search_start_utc="2025-03-01T00:00:00Z",
+        development_start_utc="2025-09-01T00:00:00Z",
+        end_exclusive_utc="2026-03-01T00:00:00Z",
+    )
+    first = int(profile_acquisition_module.SEARCH_START.timestamp() * 1000)
+    stop = profile_acquisition_module.DATA_END_MS
+    expected_timestamps = list(
+        range(first, stop, profile_acquisition_module.FUNDING_INTERVAL_MS)
+    )
+    groups = profile_acquisition_module._archive_month_groups()
+    month_rows = {month: [] for group in groups for month in group}
+    for timestamp in expected_timestamps:
+        local = datetime.fromtimestamp(timestamp / 1000, timezone.utc).astimezone(
+            profile_acquisition_module.ARCHIVE_TIMEZONE
+        )
+        month_rows[(local.year, local.month)].append(
+            ("BTC-USDT-SWAP", "0.0001", str(timestamp))
+        )
+    archives = {}
+    for year, month in month_rows:
+        _, archive_name, csv_name = profile_acquisition_module._archive_names(
+            year, month
+        )
+        url = (
+            "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+            f"{year:04d}{month:02d}/{archive_name}?v=999"
+        )
+        archives[url] = _funding_archive_bytes(csv_name, month_rows[(year, month)])
+    calls = []
+    sleeps = []
+
+    def request(method, url, *, body=None):
+        calls.append((method, url, body))
+        if method == "POST":
+            payload = json.loads(body)
+            begin = int(payload["dateQuery"]["begin"])
+            selected = next(
+                group
+                for group in groups
+                if profile_acquisition_module._archive_month_bounds(*group[0])[0]
+                == begin
+            )
+            raw = _funding_catalog_group_bytes(profile_acquisition_module, selected)
+            return raw, {
+                "content-type": "application/json",
+                "content-length": str(len(raw)),
+            }
+        raw = archives[url]
+        return raw, {
+            "content-type": "application/zip",
+            "content-length": str(len(raw)),
+        }
+
+    monkeypatch.setattr(profile_acquisition_module, "archive_http_request", request)
+    monkeypatch.setattr(
+        profile_acquisition_module.time,
+        "sleep",
+        lambda seconds: sleeps.append(seconds),
+    )
+    receipts = []
+
+    rows = profile_acquisition_module.fetch_archive_funding_history(receipts)
+
+    assert len(rows) == 1095
+    assert [row["timestamp"] for row in rows] == expected_timestamps
+    catalog_receipts = [receipt for receipt in receipts if receipt["method"] == "POST"]
+    assert [receipt["label"] for receipt in catalog_receipts] == [
+        "funding-archive-catalog-2025-03-through-2025-08-attempt-1",
+        "funding-archive-catalog-2025-09-through-2026-02-attempt-1",
+        "funding-archive-catalog-2026-03-attempt-1",
+    ]
+    assert len([receipt for receipt in receipts if receipt["method"] == "GET"]) == 13
+    assert len([call for call in calls if call[0] == "POST"]) == 3
+    assert sleeps == [profile_acquisition_module.ARCHIVE_CATALOG_THROTTLE_SECONDS] * 3
+
+    root = tmp_path / "issue-45-source"
+    receipt_path = _prepare_generated_root(root)
+    for name in (
+        "BTC_USDT_USDT-1d-futures.feather",
+        "BTC_USDT_USDT-1h-mark.feather",
+        "BTC_USDT_USDT-1h-funding_rate.feather",
+    ):
+        (root / "data" / "okx" / "futures" / name).write_bytes(name.encode())
+    receipt_path.write_bytes(
+        profile_acquisition_module.canonical_bytes({"requests": receipts})
+    )
+    provenance_path = profile_acquisition_module.write_profile_provenance(
+        root, receipt_path, _runtime(profile_acquisition_module)
+    )
+    provenance = json.loads(provenance_path.read_bytes())
+
+    assert provenance["files"][receipt_path.name]["sha256"] == pilot.digest(
+        receipt_path.read_bytes()
+    )
+    assert provenance["source"]["pair"] == "BTC/USDT:USDT"
 
 
 @pytest.mark.parametrize(
@@ -830,6 +1048,60 @@ def test_archive_http_rejects_redirect_without_followup(
         profile_acquisition_module.archive_http_request("GET", url)
 
     assert response.closed is True
+
+
+def test_archive_http_exposes_catalog_429_for_bounded_retry(
+    profile_acquisition_module, monkeypatch
+) -> None:
+    raw = b'{"code":"50011","msg":"rate limit"}'
+
+    class Response:
+        status = 429
+
+        def getheaders(self):
+            return [
+                ("Content-Type", "application/json"),
+                ("Content-Length", str(len(raw))),
+                ("Retry-After", "3"),
+            ]
+
+        def getheader(self, name):
+            return None
+
+        def read(self, maximum):
+            return raw
+
+        def close(self):
+            pass
+
+    class Connection:
+        def __init__(self, host, timeout):
+            pass
+
+        def request(self, method, target, *, body, headers):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        profile_acquisition_module.http.client, "HTTPSConnection", Connection
+    )
+
+    with pytest.raises(
+        profile_acquisition_module.ArchiveCatalogRateLimited
+    ) as captured:
+        profile_acquisition_module.archive_http_request(
+            "POST",
+            profile_acquisition_module.ARCHIVE_CATALOG_URL,
+            body=b"{}",
+        )
+
+    assert captured.value.body == raw
+    assert captured.value.headers["retry-after"] == "3"
 
 
 def test_archive_http_rejects_content_md5_mismatch(
@@ -954,9 +1226,46 @@ def test_archive_catalog_rejects_missing_or_duplicate_month(
             {"content-type": "application/json", "content-length": str(len(raw))},
         ),
     )
+    monkeypatch.setattr(profile_acquisition_module.time, "sleep", lambda seconds: None)
 
-    with pytest.raises(RuntimeError, match="missing or repeated"):
-        profile_acquisition_module._archive_catalog_entry(2026, 4, [])
+    with pytest.raises(RuntimeError, match="missing, duplicate, or extra"):
+        profile_acquisition_module._archive_catalog_group([(2026, 4)], [])
+
+
+@pytest.mark.parametrize("case", ("missing", "duplicate", "extra"))
+def test_archive_catalog_group_rejects_month_set_drift(
+    profile_acquisition_module, monkeypatch, tmp_path: Path, case: str
+) -> None:
+    _configure_profile_helper(profile_acquisition_module, tmp_path)
+    months = [(2026, 4), (2026, 5)]
+    value = json.loads(_funding_catalog_group_bytes(profile_acquisition_module, months))
+    groups = value["data"]["details"][0]["groupDetails"]
+    if case == "missing":
+        groups.pop()
+    elif case == "duplicate":
+        groups[1] = dict(groups[0])
+    else:
+        groups.append(
+            {
+                "dateTs": "0",
+                "filename": "unexpected.zip",
+                "sizeMB": "0",
+                "url": "https://static.okx.com/unexpected.zip?v=999",
+            }
+        )
+    raw = json.dumps(value, separators=(",", ":"), sort_keys=True).encode()
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "archive_http_request",
+        lambda method, url, *, body=None: (
+            raw,
+            {"content-type": "application/json", "content-length": str(len(raw))},
+        ),
+    )
+    monkeypatch.setattr(profile_acquisition_module.time, "sleep", lambda seconds: None)
+
+    with pytest.raises(RuntimeError, match="catalog group"):
+        profile_acquisition_module._archive_catalog_group(months, [])
 
 
 def test_profile_store_uses_freqtrade_funding_rate_format_and_names(
@@ -1157,36 +1466,56 @@ def test_acquisition_failure_removes_owned_output_root(
     assert not output_root.exists()
 
 
-def test_profile_archive_failure_removes_owned_output_root(
+def test_persistent_catalog_429_removes_owned_output_and_provenance(
     profile_acquisition_module, monkeypatch, tmp_path: Path
 ) -> None:
+    database, profile_id, _, window = _configure_profile_helper(
+        profile_acquisition_module, tmp_path
+    )
     output_root = tmp_path / "partial-profile-output"
     monkeypatch.setattr(
         profile_acquisition_module,
         "parse_args",
         lambda: types.SimpleNamespace(
             output_root=output_root,
-            window_spec=tmp_path / "window.json",
-            profile_database=tmp_path / "lab.sqlite",
-            profile_id="profile-1",
-            pre_roll_candles=90,
+            window_spec=window,
+            profile_database=database,
+            profile_id=profile_id,
+            pre_roll_candles=24,
         ),
-    )
-    monkeypatch.setattr(
-        profile_acquisition_module, "configure_profile_acquisition", lambda *args: {}
     )
     monkeypatch.setattr(profile_acquisition_module, "validate_runtime", lambda: {})
     monkeypatch.setattr(
         profile_acquisition_module, "implementation_snapshot", lambda: {}
     )
+    attempts = []
+
+    def rate_limited(method, url, *, body=None):
+        attempts.append((method, url, body))
+        raise profile_acquisition_module.ArchiveCatalogRateLimited(
+            b'{"code":"50011","msg":"rate limit"}',
+            {"content-type": "application/json", "retry-after": "999"},
+        )
+
+    monkeypatch.setattr(
+        profile_acquisition_module, "archive_http_request", rate_limited
+    )
+    monkeypatch.setattr(profile_acquisition_module.time, "sleep", lambda seconds: None)
+    receipts = []
 
     def fail_archive(root, runtime):
         (root / "partial-archive.zip").write_bytes(b"partial")
-        raise RuntimeError("controlled archive failure")
+        profile_acquisition_module._archive_catalog_group([(2026, 4)], receipts)
 
     monkeypatch.setattr(profile_acquisition_module, "acquire", fail_archive)
 
-    with pytest.raises(RuntimeError, match="controlled archive failure"):
+    with pytest.raises(RuntimeError, match="remained rate limited"):
         profile_acquisition_module.main()
 
     assert not output_root.exists()
+    assert not (output_root / "retained-data-provenance.json").exists()
+    assert len(attempts) == 2
+    assert [receipt["http_status"] for receipt in receipts] == [429, 429]
+    assert receipts[0]["retry_wait_seconds"] == (
+        profile_acquisition_module.ARCHIVE_CATALOG_RETRY_FALLBACK_SECONDS
+    )

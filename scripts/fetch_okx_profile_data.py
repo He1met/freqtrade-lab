@@ -15,8 +15,10 @@ import math
 import os
 import shutil
 import sys
+import time
 import zipfile
 from datetime import UTC, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -57,14 +59,26 @@ ARCHIVE_CSV_HEADER = ["instrument_name", "funding_rate", "funding_time"]
 MAX_ARCHIVE_CATALOG_BYTES = 1_000_000
 MAX_ARCHIVE_ZIP_BYTES = 10_000_000
 MAX_ARCHIVE_CSV_BYTES = 20_000_000
+MAX_ARCHIVE_CATALOG_MONTHS = 6
+ARCHIVE_CATALOG_THROTTLE_SECONDS = 1.0
+ARCHIVE_CATALOG_RETRY_FALLBACK_SECONDS = 2.0
+ARCHIVE_CATALOG_RETRY_MAX_SECONDS = 5.0
 RECEIPT_HEADERS = (
     "content-type",
     "content-length",
     "etag",
     "last-modified",
     "content-md5",
+    "retry-after",
     "x-oss-hash-crc64ecma",
 )
+
+
+class ArchiveCatalogRateLimited(RuntimeError):
+    def __init__(self, body: bytes, headers: dict[str, str]) -> None:
+        super().__init__("funding archive catalog rate limited")
+        self.body = body
+        self.headers = headers
 
 
 def _load_historical_transport() -> ModuleType:
@@ -296,6 +310,14 @@ def _archive_months() -> list[tuple[int, int]]:
     return result
 
 
+def _archive_month_groups() -> list[list[tuple[int, int]]]:
+    months = _archive_months()
+    return [
+        months[offset : offset + MAX_ARCHIVE_CATALOG_MONTHS]
+        for offset in range(0, len(months), MAX_ARCHIVE_CATALOG_MONTHS)
+    ]
+
+
 def _archive_names(year: int, month: int) -> tuple[str, str, str]:
     assert INSTRUMENT_ID is not None
     label = f"{year:04d}-{month:02d}"
@@ -399,7 +421,8 @@ def archive_http_request(
         response = connection.getresponse()
         if 300 <= response.status < 400:
             raise RuntimeError("funding archive redirect response rejected")
-        if response.status != 200:
+        rate_limited = method == "POST" and response.status == 429
+        if response.status != 200 and not rate_limited:
             raise RuntimeError(
                 f"funding archive HTTP status {response.status} is not successful"
             )
@@ -428,6 +451,8 @@ def archive_http_request(
                 raise RuntimeError("funding archive Content-MD5 is invalid") from exc
             if len(expected_md5) != 16 or hashlib.md5(data).digest() != expected_md5:
                 raise RuntimeError("funding archive Content-MD5 mismatch")
+        if rate_limited:
+            raise ArchiveCatalogRateLimited(data, selected)
         return data, selected
     finally:
         if response is not None:
@@ -467,13 +492,122 @@ def _strict_catalog_response(raw: bytes) -> dict[str, Any]:
     return value
 
 
-def _archive_catalog_entry(
-    year: int, month: int, requests: list[dict[str, object]]
-) -> tuple[str, str, str]:
+def _month_after(month: tuple[int, int]) -> tuple[int, int]:
+    year, number = month
+    return (year + 1, 1) if number == 12 else (year, number + 1)
+
+
+def _catalog_group_label(months: list[tuple[int, int]]) -> str:
+    first = f"{months[0][0]:04d}-{months[0][1]:02d}"
+    last = f"{months[-1][0]:04d}-{months[-1][1]:02d}"
+    return first if first == last else f"{first}-through-{last}"
+
+
+def _catalog_retry_delay(value: str | None, *, now: datetime | None = None) -> float:
+    fallback = max(
+        ARCHIVE_CATALOG_THROTTLE_SECONDS,
+        ARCHIVE_CATALOG_RETRY_FALLBACK_SECONDS,
+    )
+    if value is None:
+        return fallback
+    delay: float | None = None
+    if value.isascii() and value.isdigit():
+        delay = float(int(value))
+    else:
+        try:
+            parsed = parsedate_to_datetime(value)
+            if parsed.tzinfo is None or parsed.utcoffset() is None:
+                raise ValueError("Retry-After date must be timezone-aware")
+            current = datetime.now(UTC) if now is None else now.astimezone(UTC)
+            delay = (parsed.astimezone(UTC) - current).total_seconds()
+        except (TypeError, ValueError, OverflowError):
+            return fallback
+    if delay < 0 or delay > ARCHIVE_CATALOG_RETRY_MAX_SECONDS:
+        return fallback
+    return max(ARCHIVE_CATALOG_THROTTLE_SECONDS, delay)
+
+
+def _catalog_attempt_receipt(
+    *,
+    label: str,
+    attempt: int,
+    body: bytes,
+    raw: bytes,
+    headers: dict[str, str],
+    status: int,
+) -> dict[str, object]:
+    return {
+        "label": f"funding-archive-catalog-{label}-attempt-{attempt}",
+        "method": "POST",
+        "url": ARCHIVE_CATALOG_URL,
+        "attempt": attempt,
+        "http_status": status,
+        "fetched_at_utc": datetime.now(UTC).isoformat(),
+        "request_bytes": len(body),
+        "request_sha256": sha256(body),
+        "response_bytes": len(raw),
+        "response_sha256": sha256(raw),
+        "response_headers": headers,
+    }
+
+
+def _request_archive_catalog(
+    body: bytes,
+    *,
+    label: str,
+    requests: list[dict[str, object]],
+) -> tuple[bytes, dict[str, str]]:
+    time.sleep(ARCHIVE_CATALOG_THROTTLE_SECONDS)
+    for attempt in (1, 2):
+        try:
+            raw, headers = archive_http_request("POST", ARCHIVE_CATALOG_URL, body=body)
+        except ArchiveCatalogRateLimited as exc:
+            receipt = _catalog_attempt_receipt(
+                label=label,
+                attempt=attempt,
+                body=body,
+                raw=exc.body,
+                headers=exc.headers,
+                status=429,
+            )
+            requests.append(receipt)
+            if attempt == 2:
+                raise RuntimeError(
+                    f"funding archive catalog group {label} remained rate limited"
+                ) from exc
+            delay = _catalog_retry_delay(exc.headers.get("retry-after"))
+            receipt["retry_wait_seconds"] = delay
+            time.sleep(delay)
+            continue
+        requests.append(
+            _catalog_attempt_receipt(
+                label=label,
+                attempt=attempt,
+                body=body,
+                raw=raw,
+                headers=headers,
+                status=200,
+            )
+        )
+        return raw, headers
+    raise AssertionError("catalog retry loop did not terminate")
+
+
+def _archive_catalog_group(
+    months: list[tuple[int, int]], requests: list[dict[str, object]]
+) -> list[tuple[int, int, str, str, str]]:
     _configured()
     assert PAIR_FAMILY is not None and INSTRUMENT_ID is not None
-    label, archive_name, csv_name = _archive_names(year, month)
-    begin, end = _archive_month_bounds(year, month)
+    if not 1 <= len(months) <= MAX_ARCHIVE_CATALOG_MONTHS or any(
+        current != _month_after(previous)
+        for previous, current in zip(months, months[1:], strict=False)
+    ):
+        raise RuntimeError(
+            "funding archive catalog months must be consecutive and bounded"
+        )
+    label = _catalog_group_label(months)
+    begin = _archive_month_bounds(*months[0])[0]
+    end = _archive_month_bounds(*months[-1])[1]
     payload = {
         "dateQuery": {
             "begin": str(begin),
@@ -485,23 +619,10 @@ def _archive_catalog_entry(
         "module": "3",
     }
     body = canonical_bytes(payload)
-    raw, headers = archive_http_request("POST", ARCHIVE_CATALOG_URL, body=body)
+    raw, headers = _request_archive_catalog(body, label=label, requests=requests)
     content_type = headers.get("content-type", "")
     if not content_type.lower().startswith("application/json"):
         raise RuntimeError("funding archive catalog Content-Type is not JSON")
-    requests.append(
-        {
-            "label": f"funding-archive-catalog-{label}",
-            "method": "POST",
-            "url": ARCHIVE_CATALOG_URL,
-            "fetched_at_utc": datetime.now(UTC).isoformat(),
-            "request_bytes": len(body),
-            "request_sha256": sha256(body),
-            "response_bytes": len(raw),
-            "response_sha256": sha256(raw),
-            "response_headers": headers,
-        }
-    )
     value = _strict_catalog_response(raw)
     if set(value) != {"code", "data", "msg"} or value.get("code") != "0":
         raise RuntimeError("funding archive catalog response is unsuccessful")
@@ -532,7 +653,7 @@ def _archive_catalog_entry(
     details = data.get("details")
     if not isinstance(details, list) or len(details) != 1:
         raise RuntimeError(
-            f"funding archive catalog month {label} is missing or repeated"
+            f"funding archive catalog group {label} has missing, duplicate, or extra months"
         )
     detail = details[0]
     expected_detail_fields = {
@@ -548,41 +669,66 @@ def _archive_catalog_entry(
     if not isinstance(detail, dict) or set(detail) != expected_detail_fields:
         raise RuntimeError("funding archive catalog detail shape changed")
     groups = detail.get("groupDetails")
+    first_month_start = str(_archive_month_bounds(*months[0])[0])
+    last_month_start = str(_archive_month_bounds(*months[-1])[0])
     if (
         detail.get("ccy") != ""
+        or detail.get("dateRangeStart") != first_month_start
+        or detail.get("dateRangeEnd") != last_month_start
         or detail.get("instFamily") != PAIR_FAMILY
         or detail.get("instId") != ""
         or detail.get("instType") != "SWAP"
         or not isinstance(detail.get("groupSizeMB"), str)
         or not isinstance(groups, list)
-        or len(groups) != 1
+        or len(groups) != len(months)
     ):
-        raise RuntimeError(f"funding archive catalog month {label} is invalid")
-    group = groups[0]
-    if not isinstance(group, dict) or set(group) != {
-        "dateTs",
-        "filename",
-        "sizeMB",
-        "url",
-    }:
-        raise RuntimeError("funding archive catalog group shape changed")
-    date_ts = str(begin)
-    url = group.get("url")
-    if (
-        detail.get("dateRangeStart") != date_ts
-        or detail.get("dateRangeEnd") != date_ts
-        or group.get("dateTs") != date_ts
-        or group.get("filename") != archive_name
-        or not isinstance(group.get("sizeMB"), str)
-        or not isinstance(url, str)
-    ):
-        raise RuntimeError(f"funding archive catalog month {label} drifted")
-    expected_path = f"{ARCHIVE_ASSET_PREFIX}{year:04d}{month:02d}/{archive_name}"
-    parsed = urlparse(url)
-    _validate_archive_endpoint("GET", url)
-    if parsed.path != expected_path:
-        raise RuntimeError(f"funding archive catalog month {label} path drifted")
-    return url, archive_name, csv_name
+        raise RuntimeError(f"funding archive catalog group {label} drifted")
+    expected: dict[str, tuple[int, int, str, str]] = {}
+    for year, month in months:
+        _, archive_name, csv_name = _archive_names(year, month)
+        expected[str(_archive_month_bounds(year, month)[0])] = (
+            year,
+            month,
+            archive_name,
+            csv_name,
+        )
+    found: dict[str, tuple[int, int, str, str, str]] = {}
+    for group in groups:
+        if not isinstance(group, dict) or set(group) != {
+            "dateTs",
+            "filename",
+            "sizeMB",
+            "url",
+        }:
+            raise RuntimeError("funding archive catalog group shape changed")
+        date_ts = group.get("dateTs")
+        if not isinstance(date_ts, str) or date_ts not in expected or date_ts in found:
+            raise RuntimeError(
+                f"funding archive catalog group {label} has missing, duplicate, or extra months"
+            )
+        year, month, archive_name, csv_name = expected[date_ts]
+        url = group.get("url")
+        if (
+            group.get("filename") != archive_name
+            or not isinstance(group.get("sizeMB"), str)
+            or not isinstance(url, str)
+        ):
+            raise RuntimeError(
+                f"funding archive catalog month {year:04d}-{month:02d} drifted"
+            )
+        expected_path = f"{ARCHIVE_ASSET_PREFIX}{year:04d}{month:02d}/{archive_name}"
+        parsed = urlparse(url)
+        _validate_archive_endpoint("GET", url)
+        if parsed.path != expected_path:
+            raise RuntimeError(
+                f"funding archive catalog month {year:04d}-{month:02d} path drifted"
+            )
+        found[date_ts] = (year, month, url, archive_name, csv_name)
+    if set(found) != set(expected):
+        raise RuntimeError(
+            f"funding archive catalog group {label} has missing, duplicate, or extra months"
+        )
+    return [found[str(_archive_month_bounds(*month)[0])] for month in months]
 
 
 def _parse_funding_archive(
@@ -662,9 +808,13 @@ def fetch_archive_funding_history(
     assert SEARCH_START is not None and DATA_END_MS is not None
     output: list[dict[str, object]] = []
     seen_archives: set[str] = set()
-    for year, month in _archive_months():
+    catalog_entries = [
+        entry
+        for months in _archive_month_groups()
+        for entry in _archive_catalog_group(months, requests)
+    ]
+    for year, month, url, archive_name, csv_name in catalog_entries:
         label = f"{year:04d}-{month:02d}"
-        url, archive_name, csv_name = _archive_catalog_entry(year, month, requests)
         if archive_name in seen_archives:
             raise RuntimeError(f"funding archive month {label} is repeated")
         seen_archives.add(archive_name)

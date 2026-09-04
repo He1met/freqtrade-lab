@@ -512,6 +512,9 @@ they are never attributed to the current helper.
 
 Funding windows older than the bounded OKX REST retention use the official,
 unauthenticated monthly funding archive catalog and `static.okx.com` ZIPs.
+Each catalog request covers at most six consecutive OKX-local calendar months
+and is proactively throttled. Only a catalog `429` receives one bounded retry;
+both attempts and any retry wait are preserved in the receipt.
 Catalog and asset endpoints, redirects, ZIP/CSV shape, instrument, finite rates,
 UTC bounds, duplicates, and the fixed eight-hour series are checked fail closed.
 The receipt records catalog request/response hashes, available HTTP validators,
