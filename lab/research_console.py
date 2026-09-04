@@ -818,6 +818,7 @@ class ResearchConsoleController:
                             search_capability.search_timerange,
                             search_capability.development_timerange,
                             search_capability.pre_roll_candles,
+                            search_capability.economic_gate,
                         )
                     except bounded_pilot.PilotError:
                         development_profile_contract = None
