@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from lab import search_campaign
+from lab.bounded_strategy import analyze_bounded_causal_strategy
 from lab.database import get_connection
 from lab import bounded_research as pilot
 from tests.test_development_run import BOUNDED_SOURCE, _approved_candidate_database
@@ -473,6 +474,120 @@ def test_t0_round_one_binds_candidate_and_keeps_six_tables_byte_equal(
         assert raised.value.code == "invalid_search_request"
     finally:
         capability.close()
+
+
+TSMOM_SOURCE = '''import talib.abstract as ta
+from pandas import DataFrame
+from technical import qtpylib
+from freqtrade.strategy import IStrategy
+
+class EthTsmom28(IStrategy):
+    INTERFACE_VERSION = 3
+    timeframe = "1d"
+    can_short = True
+    startup_candle_count = 90
+    process_only_new_candles = True
+    minimal_roi = {}
+    stoploss = -0.20
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe["close_28"] = dataframe["close"].shift(28)
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe.loc[dataframe["close"] > dataframe["close_28"], "enter_long"] = 1
+        dataframe.loc[dataframe["close"] < dataframe["close_28"], "enter_short"] = 1
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe.loc[dataframe["close"] < dataframe["close_28"], "exit_long"] = 1
+        dataframe.loc[dataframe["close"] > dataframe["close_28"], "exit_short"] = 1
+        return dataframe
+'''
+
+
+TSMOM_SMA_FILTER_SOURCE = TSMOM_SOURCE.replace(
+    '        return dataframe\n\n    def populate_entry_trend',
+    '        dataframe["entry_sma_84"] = dataframe["close"].rolling(84).mean()\n'
+    '        return dataframe\n\n    def populate_entry_trend',
+).replace(
+    'dataframe.loc[dataframe["close"] > dataframe["close_28"], "enter_long"]',
+    'dataframe.loc[(dataframe["close"] > dataframe["close_28"]) & '
+    '(dataframe["close"] > dataframe["entry_sma_84"]), "enter_long"]',
+).replace(
+    'dataframe.loc[dataframe["close"] < dataframe["close_28"], "enter_short"]',
+    'dataframe.loc[(dataframe["close"] < dataframe["close_28"]) & '
+    '(dataframe["close"] < dataframe["entry_sma_84"]), "enter_short"]',
+).replace("class EthTsmom28", "class EthTsmom28Sma84")
+
+
+def _tsmom_snapshots(tmp_path: Path) -> tuple[object, object]:
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        parent = search_campaign.load_approved_candidate_snapshot(
+            connection, candidate_id
+        )
+    parent = replace(
+        parent,
+        class_name="EthTsmom28",
+        code_text=TSMOM_SOURCE,
+    )
+    child = replace(
+        parent,
+        candidate_id="tsmom-sma-filter-child",
+        class_name="EthTsmom28Sma84",
+        parent_candidate_id=parent.candidate_id,
+        code_text=TSMOM_SMA_FILTER_SOURCE,
+    )
+    return parent, child
+
+
+def test_t0_round_two_accepts_only_frozen_sma84_entry_filter(
+    tmp_path: Path,
+) -> None:
+    parent, child = _tsmom_snapshots(tmp_path)
+
+    assert analyze_bounded_causal_strategy(
+        parent.code_text, parent.class_name, expected_timeframe="1d"
+    ).max_lookback == 29
+    assert analyze_bounded_causal_strategy(
+        child.code_text, child.class_name, expected_timeframe="1d"
+    ).max_lookback == 84
+    assert search_campaign._single_factor_change(
+        parent, child, search_campaign.ENTRY_SMA_FILTER_84_V1
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    (
+        TSMOM_SMA_FILTER_SOURCE.replace("rolling(84)", "rolling(83)"),
+        TSMOM_SMA_FILTER_SOURCE.replace(
+            '& (dataframe["close"] < dataframe["entry_sma_84"])', ""
+        ),
+        TSMOM_SMA_FILTER_SOURCE.replace(
+            'dataframe["close"] < dataframe["entry_sma_84"]',
+            'dataframe["close"] > dataframe["entry_sma_84"]',
+            1,
+        ),
+        TSMOM_SMA_FILTER_SOURCE.replace("stoploss = -0.20", "stoploss = -0.12"),
+        TSMOM_SMA_FILTER_SOURCE.replace(
+            'dataframe["close"] < dataframe["close_28"], "exit_long"',
+            'dataframe["close"] <= dataframe["close_28"], "exit_long"',
+        ),
+    ),
+    ids=("wrong-window", "one-sided", "wrong-direction", "extra-field", "exit-change"),
+)
+def test_t0_sma84_entry_filter_rejects_any_extra_or_incomplete_change(
+    tmp_path: Path, source: str
+) -> None:
+    parent, child = _tsmom_snapshots(tmp_path)
+    child = replace(child, code_text=source)
+
+    assert not search_campaign._single_factor_change(
+        parent, child, search_campaign.ENTRY_SMA_FILTER_84_V1
+    )
 
 
 LOOKBACK_SOURCE = '''import talib.abstract as ta

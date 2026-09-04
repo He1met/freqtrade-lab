@@ -9,6 +9,7 @@ and projects its receipts to a path-free Console state.
 from __future__ import annotations
 
 import ast
+import copy
 import fcntl
 import hashlib
 import io
@@ -64,6 +65,8 @@ BUSINESS_TABLES = (
     "releases",
 )
 CHANGED_FACTOR = re.compile(r"^[a-z][a-z0-9_.-]{0,62}$")
+ENTRY_SMA_FILTER_84_V1 = "entry_sma_filter_84_v1"
+_ENTRY_SMA_FILTER_COLUMN = "entry_sma_84"
 PRIVATE_OUTPUT = re.compile(r"^round-[12]\.(?:stdout|stderr)\.log$")
 PUBLIC_TRIAL_FIELDS = pilot.SEARCH_PUBLIC_TRIAL_FIELDS
 PUBLIC_IDENTITY_FIELDS = ("candidate_id", "class_name", "mechanism", "strategy_sha256", "search_metrics")
@@ -1333,6 +1336,135 @@ def _single_literal_factor_change(
     )
 
 
+def _single_sma_entry_filter_change_v1(
+    parent: ApprovedCandidateSnapshot,
+    child: ApprovedCandidateSnapshot,
+) -> bool:
+    """Accept only one causal SMA84 filter added to both entry directions."""
+
+    def strategy_class(tree: ast.Module, class_name: str) -> ast.ClassDef:
+        classes = [
+            item
+            for item in tree.body
+            if isinstance(item, ast.ClassDef) and item.name == class_name
+        ]
+        if len(classes) != 1:
+            raise ValueError("strategy class")
+        return classes[0]
+
+    def method(strategy: ast.ClassDef, name: str) -> ast.FunctionDef:
+        methods = [
+            item
+            for item in strategy.body
+            if isinstance(item, ast.FunctionDef) and item.name == name
+        ]
+        if len(methods) != 1:
+            raise ValueError("strategy method")
+        return methods[0]
+
+    def signal_target(function: ast.FunctionDef, signal: str) -> ast.Tuple:
+        matches: list[ast.Tuple] = []
+        for statement in function.body:
+            if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
+                continue
+            target = statement.targets[0]
+            if (
+                not isinstance(target, ast.Subscript)
+                or not isinstance(target.value, ast.Attribute)
+                or target.value.attr != "loc"
+                or not isinstance(target.slice, ast.Tuple)
+                or len(target.slice.elts) != 2
+                or not isinstance(target.slice.elts[1], ast.Constant)
+                or target.slice.elts[1].value != signal
+            ):
+                continue
+            matches.append(target.slice)
+        if len(matches) != 1:
+            raise ValueError("entry signal")
+        return matches[0]
+
+    try:
+        parent_tree = ast.parse(parent.code_text)
+        child_tree = ast.parse(child.code_text)
+        parent_class = strategy_class(parent_tree, parent.class_name)
+        child_class = strategy_class(child_tree, child.class_name)
+        if any(
+            isinstance(node, ast.Constant)
+            and node.value == _ENTRY_SMA_FILTER_COLUMN
+            for node in ast.walk(parent_class)
+        ):
+            return False
+
+        parent_indicators = method(parent_class, "populate_indicators")
+        child_indicators = method(child_class, "populate_indicators")
+        expected_indicator = ast.parse(
+            'dataframe["entry_sma_84"] = dataframe["close"].rolling(84).mean()'
+        ).body[0]
+        additions = [
+            index
+            for index, statement in enumerate(child_indicators.body)
+            if ast.dump(statement, include_attributes=False)
+            == ast.dump(expected_indicator, include_attributes=False)
+        ]
+        if len(additions) != 1:
+            return False
+        del child_indicators.body[additions[0]]
+
+        parent_entry = method(parent_class, "populate_entry_trend")
+        child_entry = method(child_class, "populate_entry_trend")
+        for signal, operator in (
+            ("enter_long", ast.Gt),
+            ("enter_short", ast.Lt),
+        ):
+            parent_target = signal_target(parent_entry, signal)
+            child_target = signal_target(child_entry, signal)
+            parent_mask = parent_target.elts[0]
+            child_mask = child_target.elts[0]
+            expected_filter = ast.Compare(
+                left=ast.Subscript(
+                    value=ast.Name(id="dataframe", ctx=ast.Load()),
+                    slice=ast.Constant(value="close"),
+                    ctx=ast.Load(),
+                ),
+                ops=[operator()],
+                comparators=[
+                    ast.Subscript(
+                        value=ast.Name(id="dataframe", ctx=ast.Load()),
+                        slice=ast.Constant(value=_ENTRY_SMA_FILTER_COLUMN),
+                        ctx=ast.Load(),
+                    )
+                ],
+            )
+            if (
+                not isinstance(child_mask, ast.BinOp)
+                or not isinstance(child_mask.op, ast.BitAnd)
+                or ast.dump(child_mask.left, include_attributes=False)
+                != ast.dump(parent_mask, include_attributes=False)
+                or ast.dump(child_mask.right, include_attributes=False)
+                != ast.dump(expected_filter, include_attributes=False)
+            ):
+                return False
+            child_target.elts[0] = copy.deepcopy(parent_mask)
+
+        parent_class.name = "FrozenStrategy"
+        child_class.name = "FrozenStrategy"
+        return ast.dump(parent_tree, include_attributes=False) == ast.dump(
+            child_tree, include_attributes=False
+        )
+    except (SyntaxError, ValueError, TypeError):
+        return False
+
+
+def _single_factor_change(
+    parent: ApprovedCandidateSnapshot,
+    child: ApprovedCandidateSnapshot,
+    changed_factor: str,
+) -> bool:
+    if changed_factor == ENTRY_SMA_FILTER_84_V1:
+        return _single_sma_entry_filter_change_v1(parent, child)
+    return _single_literal_factor_change(parent, child, changed_factor)
+
+
 def _search_plan(
     capability: FrozenSearchCapability,
     campaign_id: str,
@@ -2050,14 +2182,14 @@ def prepare_round_two(
                or item.strategy_family != parent.strategy_family for item in snapshots):
             raise SearchCampaignError("invalid_child_set", "Round 2 children must bind the exact selected parent/Profile/mechanism")
         if any(
-            not _single_literal_factor_change(parent, snapshot, changed_factor)
+            not _single_factor_change(parent, snapshot, changed_factor)
             for snapshot, changed_factor in zip(
                 snapshots, changed_factors, strict=True
             )
         ):
             raise SearchCampaignError(
                 "invalid_child_set",
-                "Profile Round 2 must change exactly one literal class setting",
+                "Profile Round 2 must match one frozen single-factor change",
             )
         candidate_plans = [
             _candidate_plan(snapshot, _planned_strategy_file(snapshot, 2), round_number=2,

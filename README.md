@@ -215,6 +215,12 @@ not interchangeable.
 The page then locks that parent into the existing Codex card: the user generates
 one child at a time, reviews its source, and explicitly approves or rejects it.
 Round 2 accepts one approved single-factor child. The active budget is three attempts (two plus one), with a fail-closed hard ceiling of six; there is no third round, automatic child loop, Hyperopt, or threshold rescue.
+Literal class-setting changes retain their existing exact-AST comparison. The
+versioned `entry_sma_filter_84_v1` factor is the only structural exception: it
+requires exactly one `close.rolling(84).mean()` indicator named
+`entry_sma_84`, adds it with `&` to both long and short entry masks in the
+matching direction, and preserves every other class field, signal, and AST
+node. Partial, reversed, or additional changes fail closed.
 
 Search completion freezes either a finalist or a no-finalist terminal result;
 neither result proves profitability, robustness, or tradability. Selecting a
