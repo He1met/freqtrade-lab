@@ -74,6 +74,7 @@ FINALIST_BINDING_FIELDS = {
     "trials_sha256", "round_receipt_sha256", "projection_sha256",
     "profile_snapshot",
 }
+FINALIST_BINDING_OPTIONAL_FIELDS = {"economic_gate"}
 SEARCH_DATABASE_CHANGED = "SEARCH_DATABASE_CHANGED"
 
 
@@ -108,11 +109,12 @@ class FrozenSearchCapability:
     profile_snapshot_sha256: Optional[str] = None
     development_timerange: Optional[str] = None
     pre_roll_candles: Optional[int] = None
+    economic_gate: Optional[Mapping[str, Any]] = None
     _directory_fd: int = field(default=-1, repr=False, compare=False)
 
     def public(self) -> dict[str, Any]:
         profile = self.profile_snapshot
-        return {
+        result = {
             "status": self.status,
             "reason": self.reason,
             "data_contract": "freqtrade-lab-retained-search-data-v2",
@@ -135,10 +137,16 @@ class FrozenSearchCapability:
                 if profile is not None
                 else None
             ),
+            "economic_gate": (
+                None
+                if self.economic_gate is None
+                else dict(self.economic_gate)
+            ),
             "security_gate": BOUNDED_CAUSAL_STRATEGY_V1,
             "outside_git": self.status == "READY",
             "single_owner_lock": self.status == "READY",
         }
+        return result
 
     def open_private_output(self, name: str) -> BinaryIO:
         if self.status != "READY" or self._directory_fd < 0:
@@ -249,6 +257,8 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
                 )
             },
         }
+        if "economic_gate" in contract:
+            verification["economic_gate"] = contract["economic_gate"]
         verified = pilot._verify_search_data(
             acquisition,
             provenance,
@@ -256,7 +266,7 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
             verification,
         )
         source_acquisition = provenance["source_acquisition"]
-        return {
+        result = {
             "search_timerange": timerange,
             "data_provenance_sha256": _sha256(provenance_bytes),
             "source_acquisition_sha256": _sha256(
@@ -270,6 +280,11 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
             "development_timerange": contract["development_timerange"],
             "pre_roll_candles": contract["pre_roll_candles"],
         }
+        if "economic_gate" in contract:
+            result["economic_gate"] = pilot.validate_profile_economic_gate(
+                contract["economic_gate"]
+            )
+        return result
     except pilot.PilotError as exc:
         if str(exc) == "BLOCKED_INSUFFICIENT_CAPACITY":
             raise SearchCampaignError(
@@ -356,6 +371,7 @@ def freeze_search_capability(
                     "timeframe", "base_fee", "profile_snapshot",
                     "profile_snapshot_sha256", "development_timerange",
                     "pre_roll_candles",
+                    "economic_gate",
                 )
             },
         )
@@ -436,6 +452,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         capability.profile_snapshot_sha256,
         capability.development_timerange,
         capability.pre_roll_candles,
+        capability.economic_gate,
     )
     current = (
         current_acquisition["search_timerange"],
@@ -448,6 +465,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         current_acquisition.get("profile_snapshot_sha256"),
         current_acquisition.get("development_timerange"),
         current_acquisition.get("pre_roll_candles"),
+        current_acquisition.get("economic_gate"),
     )
     if frozen != current:
         raise SearchCampaignError(
@@ -1339,6 +1357,7 @@ def _search_plan(
             capability.search_timerange,
             capability.development_timerange,
             capability.pre_roll_candles,
+            capability.economic_gate,
         )
     except pilot.PilotError as exc:
         raise SearchCampaignError(
@@ -1434,8 +1453,7 @@ def _finalist_projection_binding(
             "search_generation_invalid", "Search finalist projection is invalid"
         )
     round_one, candidate = rounds[0], candidates[0]
-    return (
-        {
+    binding = {
             "candidate_id": candidate["candidate_id"],
             "generation_run_id": candidate["generation_run_id"],
             "source_sha256": candidate["strategy_sha256"],
@@ -1451,9 +1469,12 @@ def _finalist_projection_binding(
             "projection_sha256": pilot.search_projection_sha256(
                 request, terminal, evidence
             ),
-        },
-        candidate,
-    )
+        }
+    if "economic_gate" in round_one:
+        binding["economic_gate"] = pilot.validate_profile_economic_gate(
+            round_one["economic_gate"]
+        )
+    return binding, candidate
 
 
 def _terminal_projection(
@@ -1640,7 +1661,8 @@ def parse_finalist_projection(
         profile_contract = pilot.profile_search_contract(
             *(round_one[key] for key in (
                 "profile_snapshot", "search_timerange",
-                "development_timerange", "pre_roll_candles"))
+                "development_timerange", "pre_roll_candles")),
+            economic_gate=round_one.get("economic_gate"),
         )
         _, search_stop = pilot.timerange(binding["search_timerange"], "Search")
         development_start, _ = pilot.timerange(binding["development_timerange"], "Development")
@@ -1678,7 +1700,10 @@ def verify_persisted_finalist_projection(
     """Perform the heavy projection parse before Development opens a write transaction."""
     message = "Search finalist handoff binding is invalid"
     try:
-        if not isinstance(value, Mapping) or set(value) != FINALIST_BINDING_FIELDS:
+        if not isinstance(value, Mapping) or set(value) not in (
+            FINALIST_BINDING_FIELDS,
+            FINALIST_BINDING_FIELDS | FINALIST_BINDING_OPTIONAL_FIELDS,
+        ):
             raise ValueError(message)
         binding = dict(value)
         search_id = binding["search_generation_id"]

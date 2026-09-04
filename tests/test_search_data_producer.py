@@ -17,6 +17,13 @@ PROFILE_SEARCH_TIMERANGE = "20260601-20260701"
 PROFILE_DEVELOPMENT_TIMERANGE = "20260701-20260731"
 PROFILE_TIMEFRAME = "5m"
 PROFILE_PRE_ROLL_CANDLES = 24
+PROFILE_ECONOMIC_GATE = {
+    "name": pilot.PROFILE_ECONOMIC_GATE,
+    "version": 1,
+    "minimum_net_profit_after_base_fees_pct": 0.5,
+    "minimum_average_holding_period_minutes": 4320.0,
+    "maximum_roi_exit_count": 0,
+}
 PROFILE_SEARCH_STEPS, PROFILE_SEARCH_SUFFIXES = pilot._search_series_contract(
     PROFILE_TIMEFRAME
 )
@@ -75,10 +82,11 @@ def _source_acquisition(
     *,
     missing_search_candle: bool = False,
     prefixed_python_dependency: bool = False,
+    economic_gate: dict[str, object] | None = None,
 ) -> tuple[Path, str, str]:
     pa, feather = _arrow_modules()
     profile_contract = pilot.profile_acquisition_contract(
-        **_profile_prepare_kwargs(tmp_path)
+        **_profile_prepare_kwargs(tmp_path), economic_gate=economic_gate
     )
     root = tmp_path / "complete-source-acquisition"
     data_root = root / "data" / "okx" / "futures"
@@ -219,7 +227,9 @@ def _source_acquisition(
                 "timeframe": "5m",
                 "profile_acquisition": {
                     key: profile_contract[key]
-                    for key in pilot.PROFILE_ACQUISITION_FIELDS
+                    for key in pilot._profile_acquisition_contract_fields(
+                        profile_contract
+                    )
                 },
             },
             "files": files,
@@ -272,9 +282,14 @@ def _profile_candidate_id(database: Path) -> str:
     return str(row[0])
 
 
-def _produce(tmp_path: Path, **source_kwargs: object) -> tuple[Path, dict[str, object]]:
+def _produce(
+    tmp_path: Path,
+    *,
+    economic_gate: dict[str, object] | None = None,
+    **source_kwargs: object,
+) -> tuple[Path, dict[str, object]]:
     source, provenance_sha, receipt_sha = _source_acquisition(
-        tmp_path, **source_kwargs
+        tmp_path, economic_gate=economic_gate, **source_kwargs
     )
     output = tmp_path / "search-campaign"
     result = pilot.prepare_search_data(
@@ -282,16 +297,20 @@ def _produce(tmp_path: Path, **source_kwargs: object) -> tuple[Path, dict[str, o
         output,
         provenance_sha,
         receipt_sha,
+        economic_gate=economic_gate,
         **_profile_prepare_kwargs(tmp_path),
     )
     return output, result
 
 
 def _produce_development(
-    tmp_path: Path, **source_kwargs: object
+    tmp_path: Path,
+    *,
+    economic_gate: dict[str, object] | None = None,
+    **source_kwargs: object,
 ) -> tuple[Path, Path, dict[str, object]]:
     source, provenance_sha, receipt_sha = _source_acquisition(
-        tmp_path, **source_kwargs
+        tmp_path, economic_gate=economic_gate, **source_kwargs
     )
     output = tmp_path / "development-pilot"
     result = pilot.prepare_development_data(
@@ -299,6 +318,7 @@ def _produce_development(
         output,
         provenance_sha,
         receipt_sha,
+        economic_gate=economic_gate,
         **_profile_prepare_kwargs(tmp_path),
     )
     return source, output, result
@@ -308,7 +328,7 @@ def _search_plan(root: Path) -> dict[str, object]:
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
     contract = provenance["contract"]
-    return {
+    plan = {
         "schema": pilot.SEARCH_SCHEMA,
         "search_timerange": contract["search_timerange"],
         "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
@@ -326,6 +346,9 @@ def _search_plan(root: Path) -> dict[str, object]:
             )
         },
     }
+    if "economic_gate" in contract:
+        plan["economic_gate"] = contract["economic_gate"]
+    return plan
 
 
 def _save_search_provenance(root: Path, provenance: dict[str, object]) -> dict[str, object]:
@@ -333,6 +356,44 @@ def _save_search_provenance(root: Path, provenance: dict[str, object]) -> dict[s
         root / pilot.ACQUISITION / "retained-data-provenance.json", provenance
     )
     return _search_plan(root)
+
+
+def test_t0_profile_economic_gate_v1_validates_boundaries_and_file_input(
+    tmp_path: Path,
+) -> None:
+    boundary = {
+        **PROFILE_ECONOMIC_GATE,
+        "minimum_net_profit_after_base_fees_pct": 0.0,
+        "minimum_average_holding_period_minutes": 0.0,
+        "maximum_roi_exit_count": 0,
+    }
+    path = tmp_path / "economic-gate.json"
+    _write_json(path, boundary)
+    assert pilot.load_profile_economic_gate(path) == boundary
+    assert pilot.validate_profile_economic_gate(PROFILE_ECONOMIC_GATE) == (
+        PROFILE_ECONOMIC_GATE
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        {},
+        {key: value for key, value in PROFILE_ECONOMIC_GATE.items() if key != "maximum_roi_exit_count"},
+        {**PROFILE_ECONOMIC_GATE, "version": True},
+        {**PROFILE_ECONOMIC_GATE, "version": 2},
+        {**PROFILE_ECONOMIC_GATE, "minimum_net_profit_after_base_fees_pct": None},
+        {**PROFILE_ECONOMIC_GATE, "minimum_average_holding_period_minutes": -1},
+        {**PROFILE_ECONOMIC_GATE, "maximum_roi_exit_count": True},
+        {**PROFILE_ECONOMIC_GATE, "maximum_roi_exit_count": -1},
+        {**PROFILE_ECONOMIC_GATE, "extra": 1},
+    ),
+)
+def test_t0_profile_economic_gate_v1_rejects_missing_null_and_tamper(
+    value: object,
+) -> None:
+    with pytest.raises(pilot.PilotError):
+        pilot.validate_profile_economic_gate(value)
 
 
 def _series_local_name(provenance: dict[str, object], series: str) -> str:
@@ -816,6 +877,40 @@ def test_t1_producer_publishes_only_exact_search_values_and_real_check_data(
         "development_timerange": PROFILE_DEVELOPMENT_TIMERANGE,
         "pre_roll_candles": PROFILE_PRE_ROLL_CANDLES,
     }
+
+
+def test_t2_profile_economic_gate_is_bound_through_both_prepared_roots(
+    tmp_path: Path,
+) -> None:
+    search_root, _ = _produce(
+        tmp_path / "search", economic_gate=PROFILE_ECONOMIC_GATE
+    )
+    search_provenance_path = (
+        search_root / pilot.ACQUISITION / "retained-data-provenance.json"
+    )
+    search_provenance = json.loads(search_provenance_path.read_bytes())
+    assert search_provenance["contract"]["economic_gate"] == (
+        PROFILE_ECONOMIC_GATE
+    )
+    search_snapshot = search_campaign._acquisition_snapshot(
+        search_root, _profile_database_path(tmp_path / "search")
+    )
+    assert search_snapshot["economic_gate"] == PROFILE_ECONOMIC_GATE
+
+    _, development_root, _ = _produce_development(
+        tmp_path / "development", economic_gate=PROFILE_ECONOMIC_GATE
+    )
+    ready = pilot.check_development_data(development_root)
+    assert ready["status"] == "DEVELOPMENT_DATA_READY"
+    plan = json.loads((development_root / pilot.PLAN).read_bytes())
+    assert plan["profile_contract"]["economic_gate"] == PROFILE_ECONOMIC_GATE
+    assert json.loads(
+        (
+            development_root
+            / pilot.DEVELOPMENT_ISOLATION
+            / "retained-data-provenance.json"
+        ).read_bytes()
+    )["contract"]["economic_gate"] == PROFILE_ECONOMIC_GATE
 
 
 def test_t1_development_producer_publishes_one_isolated_profile_root(

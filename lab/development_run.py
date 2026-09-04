@@ -115,6 +115,7 @@ class FrozenDevelopmentCapability:
     max_open_trades: Optional[int] = None
     base_fee: Optional[float] = None
     economic_gate: Optional[Mapping[str, Any]] = None
+    profile_economic_gate: Optional[Mapping[str, Any]] = None
     profile_contract: Optional[Mapping[str, Any]] = None
     data_receipts: Tuple[Tuple[str, int, str], ...] = ()
     market_receipt: Optional[Tuple[int, str]] = None
@@ -138,6 +139,11 @@ class FrozenDevelopmentCapability:
             "development_timerange": self.development_timerange,
             "thresholds": (
                 None if self.economic_gate is None else dict(self.economic_gate)
+            ),
+            "profile_economic_gate": (
+                None
+                if self.profile_economic_gate is None
+                else dict(self.profile_economic_gate)
             ),
             "holdout": "SEALED_UNREAD",
             "holdout_stress": "SEALED_UNREAD",
@@ -477,6 +483,11 @@ def freeze_development_capability(
             profile_public.update(
                 timeframe=str(frozen_profile["timeframe"]),
                 economic_gate=dict(frozen_profile["finalist_gate"]),
+                profile_economic_gate=(
+                    None
+                    if frozen_profile["economic_gate"] is None
+                    else dict(frozen_profile["economic_gate"])
+                ),
             )
         root = _resolve_directory(pilot_root, "Pilot root")
         python = _resolve_executable(freqtrade_python)
@@ -756,6 +767,12 @@ def freeze_development_capability(
             max_open_trades=int(runtime["max_open_trades"]),
             base_fee=float(runtime["fee"]),
             economic_gate=gate,
+            profile_economic_gate=(
+                None
+                if frozen_profile is None
+                or frozen_profile["economic_gate"] is None
+                else dict(frozen_profile["economic_gate"])
+            ),
             profile_contract=(
                 None if profile_contract is None else dict(profile_contract)
             ),
@@ -810,6 +827,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.max_open_trades,
         capability.base_fee,
         capability.economic_gate,
+        capability.profile_economic_gate,
         capability.profile_contract,
     )
     current = (
@@ -835,6 +853,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.max_open_trades,
         refreshed.base_fee,
         refreshed.economic_gate,
+        refreshed.profile_economic_gate,
         refreshed.profile_contract,
     )
     if refreshed.status != "READY" or current != frozen:
@@ -938,7 +957,8 @@ def _profile_gate(
         and (capability.max_open_trades is None or normalized["max_open_trades"] == capability.max_open_trades)
         and close(normalized["fee"], capability.base_fee, 1e-15)
         and (frozen is None or (frozen["profile_snapshot"] == profile_snapshot
-                                and frozen["finalist_gate"] == normalized["finalist_gate"]))
+                                and frozen["finalist_gate"] == normalized["finalist_gate"]
+                                and frozen["economic_gate"] == capability.profile_economic_gate))
     )
     if frozen is None:
         matches = matches and (
@@ -1012,6 +1032,7 @@ def _verified_search_finalist_binding(
                 for key, expected in document_hashes.items()
             )
             or binding["development_timerange"] != capability.development_timerange
+            or binding.get("economic_gate") != capability.profile_economic_gate
         ):
             raise ValueError(message)
     except (KeyError, TypeError, UnicodeError, ValueError, GenerationContractError) as exc:
@@ -1061,6 +1082,8 @@ def _snapshot(
     }
     if capability.profile_contract is not None:
         snapshot["normalized_profile_contract"] = dict(resolved_profile)
+        if capability.profile_economic_gate is not None:
+            snapshot["economic_gate"] = dict(capability.profile_economic_gate)
     if search_finalist_binding is not None:
         snapshot["search_finalist_binding"] = dict(search_finalist_binding)
     return snapshot
@@ -1668,7 +1691,7 @@ def _development_gate_contract(snapshot: Mapping[str, Any]) -> dict[str, Any]:
             raise DevelopmentRunError(
                 "run_state_conflict", "Development frozen Gate is invalid"
             )
-        return {**EXPECTED_GATE, "strictly_positive": False}
+        return {**EXPECTED_GATE, "strictly_positive": False, "economic_gate": None}
     from lab import bounded_research as pilot
 
     if not isinstance(normalized, Mapping):
@@ -1680,6 +1703,11 @@ def _development_gate_contract(snapshot: Mapping[str, Any]) -> dict[str, Any]:
             normalized.get("profile_snapshot"),
             finalist_gate=snapshot.get("gate"),
         )
+        economic_gate = (
+            None
+            if "economic_gate" not in snapshot
+            else pilot.validate_profile_economic_gate(snapshot["economic_gate"])
+        )
     except pilot.PilotError as exc:
         raise DevelopmentRunError(
             "run_state_conflict", "Development frozen Profile is invalid"
@@ -1688,12 +1716,21 @@ def _development_gate_contract(snapshot: Mapping[str, Any]) -> dict[str, Any]:
         raise DevelopmentRunError(
             "run_state_conflict", "Development frozen Profile changed"
         )
+    binding = snapshot.get("search_finalist_binding")
+    if economic_gate is not None and (
+        not isinstance(binding, Mapping)
+        or binding.get("economic_gate") != economic_gate
+    ):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development economic Gate binding changed"
+        )
     return {
         "minimum_trades": verified["minimum_trades"],
         "minimum_profit_pct": 0.0,
         "minimum_profit_factor": verified["minimum_profit_factor"],
         "maximum_drawdown_pct": verified["maximum_drawdown_pct"],
         "strictly_positive": True,
+        "economic_gate": economic_gate,
     }
 
 
@@ -1785,6 +1822,11 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                 "profit_factor": row["profit_factor"],
                 "max_drawdown_pct": row["max_drawdown_pct"],
             }
+            economic = _public_economic_metrics(
+                row["metrics_json"],
+                total_trades=metrics["total_trades"],
+                profit_pct=metrics["profit_pct"],
+            )
             reasons: list[str] = []
             if metrics["total_trades"] < gate_contract["minimum_trades"]:
                 reasons.append("MINIMUM_TRADES_NOT_MET")
@@ -1798,6 +1840,36 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                 reasons.append("MINIMUM_PROFIT_FACTOR_NOT_MET")
             if metrics["max_drawdown_pct"] > gate_contract["maximum_drawdown_pct"]:
                 reasons.append("MAXIMUM_DRAWDOWN_EXCEEDED")
+            economic_gate = gate_contract["economic_gate"]
+            if economic_gate is not None:
+                net = economic["net_profit_after_base_fees_pct"]
+                holding = economic["average_holding_period_minutes"]
+                roi_count = economic["roi_exit_count"]
+                if (
+                    net is None
+                    or net
+                    < economic_gate[
+                        "minimum_net_profit_after_base_fees_pct"
+                    ]
+                ):
+                    reasons.append(
+                        "MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET"
+                    )
+                if (
+                    holding is None
+                    or holding
+                    < economic_gate[
+                        "minimum_average_holding_period_minutes"
+                    ]
+                ):
+                    reasons.append(
+                        "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET"
+                    )
+                if (
+                    roi_count is None
+                    or roi_count > economic_gate["maximum_roi_exit_count"]
+                ):
+                    reasons.append("MAXIMUM_ROI_EXIT_COUNT_EXCEEDED")
             passed = not reasons
             checks = {
                 "candidate_binding": "PASSED",
@@ -1919,6 +1991,9 @@ _PUBLIC_REJECTION_REASONS = frozenset(
         "MINIMUM_PROFIT_PCT_NOT_MET",
         "MINIMUM_PROFIT_FACTOR_NOT_MET",
         "MAXIMUM_DRAWDOWN_EXCEEDED",
+        "MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET",
+        "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET",
+        "MAXIMUM_ROI_EXIT_COUNT_EXCEEDED",
     }
 )
 _PUBLIC_ERROR_CODES = frozenset(
@@ -2237,6 +2312,11 @@ def _public_gate_results(
         "minimum_profit_factor": actual["profit_factor"],
         "maximum_drawdown_pct": actual["max_drawdown_pct"],
     }
+    economic = _public_economic_metrics(
+        execution["metrics_json"],
+        total_trades=actual["total_trades"],
+        profit_pct=actual["profit_pct"],
+    )
     if terminal and any(
         gate_actual[criterion] is None
         for criterion in (
@@ -2293,6 +2373,80 @@ def _public_gate_results(
             "maximum_drawdown_pct",
         )
     ]
+    economic_gate = gate_contract["economic_gate"]
+    if economic_gate is not None:
+        economic_actual = {
+            "minimum_net_profit_after_base_fees_pct": economic[
+                "net_profit_after_base_fees_pct"
+            ],
+            "minimum_average_holding_period_minutes": economic[
+                "average_holding_period_minutes"
+            ],
+            "maximum_roi_exit_count": economic["roi_exit_count"],
+        }
+        economic_passed: dict[str, Optional[bool]] = {
+            criterion: None for criterion in economic_actual
+        }
+        if terminal:
+            economic_passed = {
+                "minimum_net_profit_after_base_fees_pct": (
+                    economic_actual["minimum_net_profit_after_base_fees_pct"]
+                    is not None
+                    and economic_actual[
+                        "minimum_net_profit_after_base_fees_pct"
+                    ]
+                    >= economic_gate[
+                        "minimum_net_profit_after_base_fees_pct"
+                    ]
+                ),
+                "minimum_average_holding_period_minutes": (
+                    economic_actual[
+                        "minimum_average_holding_period_minutes"
+                    ]
+                    is not None
+                    and economic_actual[
+                        "minimum_average_holding_period_minutes"
+                    ]
+                    >= economic_gate[
+                        "minimum_average_holding_period_minutes"
+                    ]
+                ),
+                "maximum_roi_exit_count": (
+                    economic_actual["maximum_roi_exit_count"] is not None
+                    and economic_actual["maximum_roi_exit_count"]
+                    <= economic_gate["maximum_roi_exit_count"]
+                ),
+            }
+            assert reasons is not None
+            for criterion, reason in (
+                (
+                    "minimum_net_profit_after_base_fees_pct",
+                    "MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET",
+                ),
+                (
+                    "minimum_average_holding_period_minutes",
+                    "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET",
+                ),
+                (
+                    "maximum_roi_exit_count",
+                    "MAXIMUM_ROI_EXIT_COUNT_EXCEEDED",
+                ),
+            ):
+                if economic_passed[criterion] is not True:
+                    reasons.append(reason)
+        gate_results.extend(
+            {
+                "criterion": criterion,
+                "threshold": economic_gate[criterion],
+                "actual": economic_actual[criterion],
+                "passed": economic_passed[criterion],
+            }
+            for criterion in (
+                "minimum_net_profit_after_base_fees_pct",
+                "minimum_average_holding_period_minutes",
+                "maximum_roi_exit_count",
+            )
+        )
     return gate_results, reasons, actual
 
 

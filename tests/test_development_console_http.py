@@ -20,9 +20,43 @@ from lab.strategy_library import (
     load_research_run_detail,
     render_research_run_detail_page,
 )
+from tests.test_development_run import (
+    _bind_profile_economic_gate,
+    _seed_development_run,
+)
 
 
 NOW = "2026-01-01T00:00:00.000Z"
+
+
+def test_t1_http_projects_profile_economic_gate_results(tmp_path: Path) -> None:
+    database, research_run_id = _seed_development_run(tmp_path)
+    _bind_profile_economic_gate(
+        database,
+        research_run_id,
+        {
+            "net_profit_after_base_fees_pct": 0.5,
+            "average_holding_period_minutes": 4319.0,
+            "roi_exit_count": 0,
+        },
+    )
+    development_run.finalize_development_gate(database, research_run_id)
+
+    with _serve_console(database, tmp_path) as server:
+        status, _, _, payload = _request(
+            server, f"/api/research-runs/{research_run_id}"
+        )
+
+    assert status == 200
+    assert payload["rejection_reasons"] == [
+        "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET"
+    ]
+    assert payload["gate_results"][-2] == {
+        "criterion": "minimum_average_holding_period_minutes",
+        "threshold": 4320.0,
+        "actual": 4319.0,
+        "passed": False,
+    }
 
 
 @pytest.fixture

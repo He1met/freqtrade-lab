@@ -136,6 +136,14 @@ PROFILE_SNAPSHOT_FIELDS = {
     "min_profit_factor", "is_default", "created_at", "updated_at",
 }
 PROFILE_SEARCH_GATE = "PROFILE_DRIVEN_POSITIVE_FINALIST_V1"
+PROFILE_ECONOMIC_GATE = "PROFILE_DRIVEN_ECONOMIC_GATE_V1"
+PROFILE_ECONOMIC_GATE_FIELDS = {
+    "name",
+    "version",
+    "minimum_net_profit_after_base_fees_pct",
+    "minimum_average_holding_period_minutes",
+    "maximum_roi_exit_count",
+}
 PROFILE_ACTIVE_ATTEMPTS = 3
 PROFILE_TRADABLE_BALANCE_RATIO = 0.99
 SEARCH_PUBLIC_TRIAL_FIELDS = (
@@ -157,6 +165,13 @@ SEARCH_TERMINAL_FIELDS = {
     "status", "finalist_gate", "search_finalist", "round_receipt_sha256",
     "trials_sha256", "brief", "created_at_utc",
 }
+
+
+def _search_terminal_fields(value: Mapping[str, Any]) -> set[str]:
+    fields = set(SEARCH_TERMINAL_FIELDS)
+    if "economic_gate" in value:
+        fields.add("economic_gate")
+    return fields
 MARKET_STATE_DEFINITION = "LAST_CLOSED_CLOSE_VS_SMA_N_V1"
 PROFILE_TIMEFRAME_STEPS = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
@@ -319,7 +334,7 @@ def verify_search_terminal_projection(
                 or len(error) > 1000 or error != " ".join(error.split())):
             raise PilotError("Search blocked terminal projection is invalid")
     else:
-        if set(terminal) != SEARCH_TERMINAL_FIELDS or len(verified_attempts) != len(expected):
+        if set(terminal) != _search_terminal_fields(terminal) or len(verified_attempts) != len(expected):
             raise PilotError("Search terminal projection omits an attempt")
         current_attempts = [{key: value for key, value in item.items()
                              if key not in {"round", "attempt_number"} and not (key == "evidence" and value is None)}
@@ -332,6 +347,7 @@ def verify_search_terminal_projection(
         if (status != expected_status or terminal.get("brief") != brief
                 or terminal.get("search_finalist") != finalist
                 or terminal.get("finalist_gate") != current["finalist_gate"]
+                or terminal.get("economic_gate") != current.get("economic_gate")
                 or not isinstance(receipt_sha, str) or _SHA256.fullmatch(receipt_sha) is None):
             raise PilotError("Search terminal projection outcome is invalid")
     return {"round_contracts": contracts, "profile_snapshot": dict(contracts[0]["profile_snapshot"]),
@@ -360,6 +376,58 @@ def finite(value: Any, label: str, minimum: Optional[float] = None) -> float:
     if not math.isfinite(number) or (minimum is not None and number < minimum):
         raise PilotError(f"{label} must be a finite number")
     return number
+
+
+def validate_profile_economic_gate(value: Any) -> dict[str, Any]:
+    """Validate one result-independent Profile economic Gate V1 contract."""
+    if not isinstance(value, Mapping) or set(value) != PROFILE_ECONOMIC_GATE_FIELDS:
+        raise PilotError("Profile economic Gate shape is invalid")
+    version = value.get("version")
+    if (
+        value.get("name") != PROFILE_ECONOMIC_GATE
+        or isinstance(version, bool)
+        or version != 1
+    ):
+        raise PilotError("Profile economic Gate version is not supported")
+    minimum_net = finite(
+        value.get("minimum_net_profit_after_base_fees_pct"),
+        "Profile economic Gate minimum net profit",
+        0,
+    )
+    minimum_holding = finite(
+        value.get("minimum_average_holding_period_minutes"),
+        "Profile economic Gate minimum holding period",
+        0,
+    )
+    maximum_roi = value.get("maximum_roi_exit_count")
+    if isinstance(maximum_roi, bool) or not isinstance(maximum_roi, int) or maximum_roi < 0:
+        raise PilotError("Profile economic Gate maximum ROI exit count is invalid")
+    return {
+        "name": PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": minimum_net,
+        "minimum_average_holding_period_minutes": minimum_holding,
+        "maximum_roi_exit_count": maximum_roi,
+    }
+
+
+def load_profile_economic_gate(path: Path) -> dict[str, Any]:
+    """Load one bounded JSON Gate input and normalize it before freezing."""
+    value, _ = load_json(path, "Profile economic Gate")
+    return validate_profile_economic_gate(value)
+
+
+def _profile_economic_gate(value: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+    if "economic_gate" not in value:
+        return None
+    return validate_profile_economic_gate(value.get("economic_gate"))
+
+
+def _profile_acquisition_contract_fields(value: Mapping[str, Any]) -> tuple[str, ...]:
+    return (
+        *PROFILE_ACQUISITION_FIELDS,
+        *(("economic_gate",) if "economic_gate" in value else ()),
+    )
 
 
 def timerange(value: Any, label: str) -> tuple[datetime, datetime]:
@@ -598,7 +666,12 @@ def _validated_profile_search_contract(value: Mapping[str, Any]) -> dict[str, An
     startup_start = search_start - PROFILE_TIMEFRAME_STEPS[str(timeframe)] * pre_roll
     if search_stop > development_start or history_start > startup_start:
         raise PilotError("Profile Search/Development windows are not frozen and disjoint")
-    return {**profile, "capacity": profile_search_capacity(snapshot, value["search_timerange"])}
+    economic_gate = _profile_economic_gate(value)
+    return {
+        **profile,
+        "capacity": profile_search_capacity(snapshot, value["search_timerange"]),
+        "economic_gate": economic_gate,
+    }
 
 
 def validate_profile_search_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
@@ -606,7 +679,10 @@ def validate_profile_search_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
     public = {key: value for key, value in plan.items() if not key.startswith("_")}
     base = {"schema", "campaign_id", "freqtrade_version", "round", "previous_round_receipt_sha256",
             "search_timerange", "data_provenance_sha256", "budget", "ranking", "finalist_gate", "parent", "candidates"}
-    if set(public) != base | PROFILE_SEARCH_FIELDS:
+    expected_fields = base | PROFILE_SEARCH_FIELDS
+    if "economic_gate" in public:
+        expected_fields.add("economic_gate")
+    if set(public) != expected_fields:
         raise PilotError("Profile Search plan extension is incomplete or contains extras")
     profile = validate_profile_search_contract(public)
     snapshot = profile["profile_snapshot"]
@@ -641,6 +717,7 @@ def profile_search_contract(
     search_timerange: str,
     development_timerange: str,
     pre_roll_candles: int,
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Freeze the candidate-independent Profile contract used by data and Search."""
     contract = {
@@ -650,6 +727,8 @@ def profile_search_contract(
         "development_timerange": development_timerange,
         "pre_roll_candles": pre_roll_candles,
     }
+    if economic_gate is not None:
+        contract["economic_gate"] = validate_profile_economic_gate(economic_gate)
     profile = _validated_profile_search_contract(contract)
     contract.update(capacity=profile["capacity"], finalist_gate=profile["finalist_gate"],
                     holdout="SEALED_UNREAD", holdout_stress="SEALED_UNREAD")
@@ -663,6 +742,7 @@ def profile_acquisition_contract(
     search_timerange: str,
     development_timerange: str,
     pre_roll_candles: int,
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Load one Profile read-only and return its acquisition/runtime contract."""
     try:
@@ -671,7 +751,11 @@ def profile_acquisition_contract(
     except GenerationContractError as exc:
         raise PilotError(exc.message) from exc
     contract = profile_search_contract(
-        snapshot, search_timerange, development_timerange, pre_roll_candles
+        snapshot,
+        search_timerange,
+        development_timerange,
+        pre_roll_candles,
+        economic_gate,
     )
     profile = validate_profile_search_contract(contract)
     return {
@@ -692,7 +776,7 @@ def validate_profile_search_contract(value: Mapping[str, Any]) -> dict[str, Any]
 
 
 def _search_contract(plan: Mapping[str, Any]) -> dict[str, Any]:
-    return {
+    contract = {
         "schema": plan["schema"],
         "campaign_id": plan["campaign_id"],
         "freqtrade_version": plan["freqtrade_version"],
@@ -706,6 +790,11 @@ def _search_contract(plan: Mapping[str, Any]) -> dict[str, Any]:
             for key in PROFILE_SEARCH_FIELDS - {"strategy_analyses"}
         },
     }
+    if "economic_gate" in plan:
+        contract["economic_gate"] = validate_profile_economic_gate(
+            plan["economic_gate"]
+        )
+    return contract
 
 
 def _load_search_campaign(
@@ -725,8 +814,11 @@ def _load_search_campaign(
         "parent",
         "candidates",
     }
+    expected_fields = required | PROFILE_SEARCH_FIELDS
+    if "economic_gate" in plan:
+        expected_fields.add("economic_gate")
     if (
-        set(plan) != required | PROFILE_SEARCH_FIELDS
+        set(plan) != expected_fields
         or plan.get("schema") != SEARCH_SCHEMA
         or plan.get("freqtrade_version") != "2026.7"
     ):
@@ -1120,6 +1212,10 @@ def _verify_search_data(
         "holdout": plan["holdout"],
         "holdout_stress": plan["holdout_stress"],
     }
+    if "economic_gate" in plan:
+        expected_contract["economic_gate"] = validate_profile_economic_gate(
+            plan["economic_gate"]
+        )
     if (
         digest(provenance_bytes) != plan["data_provenance_sha256"]
         or provenance.get("schema") != SEARCH_DATA_SCHEMA
@@ -1382,7 +1478,8 @@ def _load_search_source(
         development_timerange, "Development"
     )
     expected_acquisition = {
-        key: profile_contract[key] for key in PROFILE_ACQUISITION_FIELDS
+        key: profile_contract[key]
+        for key in _profile_acquisition_contract_fields(profile_contract)
     }
     expected_config = profile_search_config(profile_contract["profile_snapshot"])
     if any(
@@ -1670,6 +1767,7 @@ def prepare_search_data(
     search_timerange: str,
     development_timerange: str,
     pre_roll_candles: int,
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Publish a fresh root containing only one verified Search acquisition."""
     raw_source = source_root.expanduser()
@@ -1704,14 +1802,11 @@ def prepare_search_data(
         search_timerange,
         development_timerange,
         pre_roll_candles,
+        economic_gate,
     )
     data_contract = {
         key: acquisition_contract[key]
-        for key in (
-            "profile_snapshot", "profile_snapshot_sha256", "search_timerange",
-            "development_timerange", "pre_roll_candles", "capacity",
-            "finalist_gate", "holdout", "holdout_stress",
-        )
+        for key in _profile_acquisition_contract_fields(acquisition_contract)
     }
     profile = validate_profile_search_contract(data_contract)
     timeframe = str(profile["timeframe"])
@@ -1845,7 +1940,7 @@ def _profile_development_selection(profile: Mapping[str, Any]) -> dict[str, Any]
 def _profile_development_contract(
     profile_contract: Mapping[str, Any], timeframe: str
 ) -> dict[str, Any]:
-    return {
+    contract = {
         "data_dir": "data/okx",
         "market_snapshot": "market_snapshot.json",
         "leverage_tiers": "isolated_tiers_snapshot.json",
@@ -1856,6 +1951,11 @@ def _profile_development_contract(
         "profile_snapshot_sha256": profile_contract["profile_snapshot_sha256"],
         "pre_roll_candles": profile_contract["pre_roll_candles"],
     }
+    if "economic_gate" in profile_contract:
+        contract["economic_gate"] = validate_profile_economic_gate(
+            profile_contract["economic_gate"]
+        )
+    return contract
 
 
 def _profile_development_window_spec(
@@ -1922,6 +2022,7 @@ def _profile_development_input_contract(
     search_timerange: str,
     development_timerange: str,
     pre_roll_candles: int,
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     acquisition_contract = profile_acquisition_contract(
         database_path,
@@ -1929,10 +2030,11 @@ def _profile_development_input_contract(
         search_timerange,
         development_timerange,
         pre_roll_candles,
+        economic_gate,
     )
     profile_contract = {
         key: acquisition_contract[key]
-        for key in PROFILE_ACQUISITION_FIELDS
+        for key in _profile_acquisition_contract_fields(acquisition_contract)
     }
     profile = validate_profile_search_contract(profile_contract)
     return profile_contract, profile
@@ -2036,7 +2138,8 @@ def check_development_data(root: Path) -> dict[str, Any]:
         or plan.get("schema") != PROFILE_DEVELOPMENT_SCHEMA
         or plan.get("freqtrade_version") != "2026.7"
         or not isinstance(profile_contract, dict)
-        or set(profile_contract) != set(PROFILE_ACQUISITION_FIELDS)
+        or set(profile_contract)
+        != set(_profile_acquisition_contract_fields(profile_contract))
         or plan.get("candidates") != []
     ):
         raise PilotError("Development plan shape/version is invalid")
@@ -2252,6 +2355,7 @@ def prepare_development_data(
     search_timerange: str,
     development_timerange: str,
     pre_roll_candles: int,
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Publish one independent Profile Development-only pilot root."""
     raw_source = source_root.expanduser()
@@ -2289,6 +2393,7 @@ def prepare_development_data(
         search_timerange,
         development_timerange,
         pre_roll_candles,
+        economic_gate,
     )
     timeframe = str(profile["timeframe"])
     frozen = _load_search_source(
@@ -3492,17 +3597,35 @@ def _search_parent(item: Optional[Mapping[str, Any]]) -> Optional[dict[str, Any]
 
 
 def _search_finalist(
-    ranked: Sequence[Mapping[str, Any]], gate: Mapping[str, Any]
+    ranked: Sequence[Mapping[str, Any]],
+    gate: Mapping[str, Any],
+    economic_gate: Optional[Mapping[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
+    normalized_economic = (
+        None
+        if economic_gate is None
+        else validate_profile_economic_gate(economic_gate)
+    )
     for item in ranked:
         metrics = item["search_metrics"]
         _validated_search_metrics(metrics)
-        if (
+        profile_passed = (
             metrics["total_trades"] >= gate["minimum_trades"]
             and metrics["net_profit_after_base_fees_pct"] > 0
             and metrics["max_drawdown_pct"] <= gate["maximum_drawdown_pct"]
             and metrics["profit_factor"] >= gate["minimum_profit_factor"]
-        ):
+        )
+        economic_passed = normalized_economic is None or (
+            metrics["net_profit_after_base_fees_pct"]
+            >= normalized_economic["minimum_net_profit_after_base_fees_pct"]
+            and metrics["average_holding_period_minutes"] is not None
+            and metrics["average_holding_period_minutes"]
+            >= normalized_economic["minimum_average_holding_period_minutes"]
+            and metrics["roi_exit_count"] is not None
+            and metrics["roi_exit_count"]
+            <= normalized_economic["maximum_roi_exit_count"]
+        )
+        if profile_passed and economic_passed:
             return _search_parent(item)
     return None
 
@@ -3519,7 +3642,11 @@ def _search_round_outcome(
     ranked = _rank_search_results(trials)
     selected_parent = _search_parent(ranked[0] if ranked else None)
     finalist = (
-        _search_finalist(ranked, plan["finalist_gate"])
+        _search_finalist(
+            ranked,
+            plan["finalist_gate"],
+            plan.get("economic_gate"),
+        )
         if plan["round"] == SEARCH_MAX_ROUNDS
         else None
     )
@@ -3759,6 +3886,10 @@ def screen_search(
                 "brief": brief,
                 "created_at_utc": now(),
             }
+            if "economic_gate" in plan:
+                terminal["economic_gate"] = validate_profile_economic_gate(
+                    plan["economic_gate"]
+                )
             terminal_path = root / SEARCH_TERMINAL
             write_once_atomic(terminal_path, terminal)
         return {
@@ -4388,6 +4519,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         command.add_argument("--search-timerange", required=True)
         command.add_argument("--development-timerange", required=True)
         command.add_argument("--pre-roll-candles", required=True, type=int)
+        command.add_argument(
+            "--economic-gate",
+            type=Path,
+            help="pre-result PROFILE_DRIVEN_ECONOMIC_GATE_V1 JSON",
+        )
         command.add_argument("--output-root", required=True, type=Path)
     check_development = commands.add_parser(
         "check-development-data",
@@ -4401,6 +4537,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     if args.command in {"prepare-search-data", "prepare-development-data"}:
         try:
+            economic_gate = (
+                None
+                if args.economic_gate is None
+                else load_profile_economic_gate(args.economic_gate)
+            )
             prepare_data = (
                 prepare_search_data
                 if args.command == "prepare-search-data"
@@ -4416,6 +4557,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 search_timerange=args.search_timerange,
                 development_timerange=args.development_timerange,
                 pre_roll_candles=args.pre_roll_candles,
+                economic_gate=economic_gate,
             )
         except PilotError:
             raise
