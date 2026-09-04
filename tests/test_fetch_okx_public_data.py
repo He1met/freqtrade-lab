@@ -1,7 +1,11 @@
+import base64
+import hashlib
 import importlib.util
+import io
 import json
 import sys
 import types
+import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,7 +15,6 @@ from lab.database import get_connection
 from lab import bounded_research as pilot
 from tests.test_development_run import _approved_candidate_database
 from tests.test_search_data_producer import _ohlcv_table, _timestamps
-
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = (
@@ -90,6 +93,7 @@ def _configure_profile_helper(
     pair: str = "XRP/USDT:USDT",
     timeframe: str = "5m",
     pre_roll_candles: int = 24,
+    history_start_date: str = "2025-01-01",
     **window_overrides,
 ) -> tuple[Path, str, dict[str, object], Path]:
     database, candidate_id = _approved_candidate_database(
@@ -97,7 +101,8 @@ def _configure_profile_helper(
     )
     with get_connection(database) as connection:
         connection.execute(
-            "UPDATE research_profiles SET history_start_date='2025-01-01'"
+            "UPDATE research_profiles SET history_start_date=?",
+            (history_start_date,),
         )
         profile_id = str(
             connection.execute(
@@ -109,9 +114,7 @@ def _configure_profile_helper(
         profile = pilot.load_profile_snapshot(connection, profile_id)
         connection.commit()
     window = _write_profile_window(tmp_path, **window_overrides)
-    module.configure_profile_acquisition(
-        database, profile_id, window, pre_roll_candles
-    )
+    module.configure_profile_acquisition(database, profile_id, window, pre_roll_candles)
     return database, profile_id, profile, window
 
 
@@ -232,6 +235,80 @@ class _CandleExchange:
         ]
 
 
+def _funding_archive_bytes(
+    csv_name: str,
+    rows: list[tuple[str, str, str]],
+    *,
+    header: tuple[str, str, str] = (
+        "instrument_name",
+        "funding_rate",
+        "funding_time",
+    ),
+    extra_member: bool = False,
+) -> bytes:
+    csv_bytes = (
+        ",".join(header) + "\r\n" + "".join(",".join(row) + "\r\n" for row in rows)
+    ).encode("utf-8")
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(csv_name, csv_bytes)
+        if extra_member:
+            archive.writestr("unexpected.csv", csv_bytes)
+    return output.getvalue()
+
+
+def _funding_catalog_bytes(
+    module,
+    year: int,
+    month: int,
+    *,
+    details_override=None,
+    url_override: str | None = None,
+) -> bytes:
+    begin, end = module._archive_month_bounds(year, month)
+    _, archive_name, _ = module._archive_names(year, month)
+    url = (
+        f"https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+        f"{year:04d}{month:02d}/{archive_name}?v=999"
+    )
+    details = [
+        {
+            "ccy": "",
+            "dateRangeEnd": str(begin),
+            "dateRangeStart": str(begin),
+            "groupDetails": [
+                {
+                    "dateTs": str(begin),
+                    "filename": archive_name,
+                    "sizeMB": "0",
+                    "url": url if url_override is None else url_override,
+                }
+            ],
+            "groupSizeMB": "0",
+            "instFamily": module.PAIR_FAMILY,
+            "instId": "",
+            "instType": "SWAP",
+        }
+    ]
+    if details_override is not None:
+        details = details_override
+    value = {
+        "code": "0",
+        "data": {
+            "begin": str(begin),
+            "ccyList": [],
+            "dateAggrType": "monthly",
+            "details": details,
+            "end": str(end),
+            "exportTime": "1",
+            "instrumentList": [module.PAIR_FAMILY],
+            "totalSizeMB": "0",
+        },
+        "msg": "",
+    }
+    return json.dumps(value, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+
 def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     acquisition_module,
 ) -> None:
@@ -257,9 +334,7 @@ def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
 def test_profile_source_window_derives_5m_warmup_and_contract(
     profile_acquisition_module, tmp_path: Path
 ) -> None:
-    _, _, _, window = _configure_profile_helper(
-        profile_acquisition_module, tmp_path
-    )
+    _, _, _, window = _configure_profile_helper(profile_acquisition_module, tmp_path)
 
     assert profile_acquisition_module.load_window_spec(window) == (
         datetime(2026, 2, 28, 22, tzinfo=timezone.utc),
@@ -270,9 +345,10 @@ def test_profile_source_window_derives_5m_warmup_and_contract(
     assert profile_acquisition_module.PROFILE_ACQUISITION["search_timerange"] == (
         "20260301-20260402"
     )
-    assert profile_acquisition_module.PROFILE_ACQUISITION[
-        "development_timerange"
-    ] == "20260402-20260502"
+    assert (
+        profile_acquisition_module.PROFILE_ACQUISITION["development_timerange"]
+        == "20260402-20260502"
+    )
 
 
 def test_profile_5m_mark_series_floors_non_hour_warmup(
@@ -360,13 +436,19 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
     receipt = _prepare_generated_root(root)
     series = {
         "XRP_USDT_USDT-1d-futures.feather": (
-            profile_acquisition_module.DATA_START, timedelta(days=1), False
+            profile_acquisition_module.DATA_START,
+            timedelta(days=1),
+            False,
         ),
         "XRP_USDT_USDT-1h-mark.feather": (
-            profile_acquisition_module.DATA_START, timedelta(hours=1), True
+            profile_acquisition_module.DATA_START,
+            timedelta(hours=1),
+            True,
         ),
         "XRP_USDT_USDT-1h-funding_rate.feather": (
-            profile_acquisition_module.SEARCH_START, timedelta(hours=8), False
+            profile_acquisition_module.SEARCH_START,
+            timedelta(hours=8),
+            False,
         ),
     }
     for name, (start, step, missing_volume) in series.items():
@@ -379,6 +461,18 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
             root / "data" / "okx" / "futures" / name,
             compression="uncompressed",
         )
+    funding_path = (
+        root / "data" / "okx" / "futures" / "XRP_USDT_USDT-1h-funding_rate.feather"
+    )
+    assert funding_path.name == "XRP_USDT_USDT-1h-funding_rate.feather"
+    assert feather.read_table(funding_path).column_names == [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+    ]
     (root / "market_snapshot.json").write_bytes(
         profile_acquisition_module.canonical_bytes(
             {"id": "XRP-USDT-SWAP", "symbol": "XRP/USDT:USDT"}
@@ -435,10 +529,13 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
     assert provenance["files"]["producer/fetch_okx_profile_data.py"]["sha256"] == (
         pilot.digest(PROFILE_HELPER.read_bytes())
     )
-    assert provenance["files"][
-        "producer/historical_fetch_okx_public_data.py"
-    ]["sha256"] == "8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f"
-    assert any(name.endswith("-1d-futures.feather") for name in provenance["local_only_files"])
+    assert (
+        provenance["files"]["producer/historical_fetch_okx_public_data.py"]["sha256"]
+        == "8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f"
+    )
+    assert any(
+        name.endswith("-1d-futures.feather") for name in provenance["local_only_files"]
+    )
     prepared = pilot.prepare_search_data(
         root,
         tmp_path / "prepared-search",
@@ -483,7 +580,7 @@ def test_profile_window_rejects_duplicate_and_unknown_fields(
         profile_acquisition_module.load_window_spec(unknown)
 
 
-def test_profile_60_30_funding_uses_three_bounded_batches(
+def test_profile_60_30_rest_funding_uses_three_bounded_batches(
     profile_acquisition_module, monkeypatch, tmp_path: Path
 ) -> None:
     _configure_profile_helper(
@@ -502,7 +599,7 @@ def test_profile_60_30_funding_uses_three_bounded_batches(
     exchange = _FundingExchange(profile_acquisition_module.FUNDING_INTERVAL_MS)
     requests = []
 
-    funding = profile_acquisition_module.fetch_funding_history(exchange, requests)
+    funding = profile_acquisition_module.fetch_rest_funding_history(exchange, requests)
 
     assert len(funding) == 270
     assert [call[2] for call in exchange.calls] == [100, 100, 70]
@@ -526,6 +623,395 @@ def test_profile_60_30_funding_uses_three_bounded_batches(
     assert profile_acquisition_module.validate_funding_history(funding)["rows"] == 270
     with pytest.raises(RuntimeError, match="every fixed eight-hour timestamp"):
         profile_acquisition_module.validate_funding_history(funding[:-1])
+    with pytest.raises(RuntimeError, match="every fixed eight-hour timestamp"):
+        profile_acquisition_module.validate_funding_history(funding + [funding[-1]])
+
+
+def test_issue_45_profile_window_binds_exact_90_day_pre_roll(
+    profile_acquisition_module, tmp_path: Path
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        pair="BTC/USDT:USDT",
+        timeframe="1d",
+        pre_roll_candles=90,
+        history_start_date="2024-12-01",
+        data_start_utc="2024-12-01T00:00:00Z",
+        search_start_utc="2025-03-01T00:00:00Z",
+        development_start_utc="2025-09-01T00:00:00Z",
+        end_exclusive_utc="2026-03-01T00:00:00Z",
+    )
+
+    assert profile_acquisition_module.DATA_START == datetime(
+        2024, 12, 1, tzinfo=timezone.utc
+    )
+    assert profile_acquisition_module.PROFILE_ACQUISITION["pre_roll_candles"] == 90
+    assert profile_acquisition_module._archive_months() == [
+        (2025, month) for month in range(3, 13)
+    ] + [(2026, 1), (2026, 2), (2026, 3)]
+
+
+def test_expired_funding_window_selects_monthly_archive(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        timeframe="1d",
+        pre_roll_candles=1,
+        data_start_utc="2026-03-31T00:00:00Z",
+        search_start_utc="2026-04-01T00:00:00Z",
+        development_start_utc="2026-05-03T00:00:00Z",
+        end_exclusive_utc="2026-05-05T00:00:00Z",
+    )
+    expected = [{"timestamp": 1, "fundingRate": 0.1}]
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "fetch_archive_funding_history",
+        lambda requests: expected,
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "fetch_rest_funding_history",
+        lambda exchange, requests: pytest.fail("REST path must not be selected"),
+    )
+
+    actual = profile_acquisition_module.fetch_funding_history(
+        object(), [], fetched_at=datetime(2026, 9, 4, tzinfo=timezone.utc)
+    )
+
+    assert actual is expected
+
+
+def test_archive_funding_crosses_okx_local_month_and_records_hashes(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        pair="BTC/USDT:USDT",
+        timeframe="1d",
+        pre_roll_candles=1,
+        data_start_utc="2026-03-31T00:00:00Z",
+        search_start_utc="2026-04-01T00:00:00Z",
+        development_start_utc="2026-05-03T00:00:00Z",
+        end_exclusive_utc="2026-05-05T00:00:00Z",
+    )
+    first = int(profile_acquisition_module.SEARCH_START.timestamp() * 1000)
+    stop = profile_acquisition_module.DATA_END_MS
+    expected_timestamps = list(
+        range(first, stop, profile_acquisition_module.FUNDING_INTERVAL_MS)
+    )
+    month_rows: dict[tuple[int, int], list[tuple[str, str, str]]] = {
+        (2026, 4): [("BTC-USDT-SWAP", "0.0001", str(first - 8 * 60 * 60 * 1000))],
+        (2026, 5): [],
+    }
+    for timestamp in expected_timestamps:
+        local = datetime.fromtimestamp(timestamp / 1000, timezone.utc).astimezone(
+            profile_acquisition_module.ARCHIVE_TIMEZONE
+        )
+        month_rows[(local.year, local.month)].append(
+            ("BTC-USDT-SWAP", "0.0001", str(timestamp))
+        )
+    month_rows[(2026, 5)].append(("BTC-USDT-SWAP", "0.0001", str(stop)))
+    archives: dict[str, bytes] = {}
+    for year, month in ((2026, 4), (2026, 5)):
+        _, archive_name, csv_name = profile_acquisition_module._archive_names(
+            year, month
+        )
+        url = (
+            "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+            f"{year:04d}{month:02d}/{archive_name}?v=999"
+        )
+        archives[url] = _funding_archive_bytes(csv_name, month_rows[(year, month)])
+    calls = []
+
+    def request(method, url, *, body=None):
+        calls.append((method, url, body))
+        if method == "POST":
+            payload = json.loads(body)
+            begin = int(payload["dateQuery"]["begin"])
+            selected = next(
+                (year, month)
+                for year, month in ((2026, 4), (2026, 5))
+                if profile_acquisition_module._archive_month_bounds(year, month)[0]
+                == begin
+            )
+            raw = _funding_catalog_bytes(profile_acquisition_module, *selected)
+            return raw, {
+                "content-type": "application/json;charset=UTF-8",
+                "content-length": str(len(raw)),
+            }
+        raw = archives[url]
+        md5 = base64.b64encode(hashlib.md5(raw).digest()).decode("ascii")
+        return raw, {
+            "content-type": "application/zip",
+            "content-length": str(len(raw)),
+            "content-md5": md5,
+            "etag": hashlib.md5(raw).hexdigest(),
+        }
+
+    monkeypatch.setattr(profile_acquisition_module, "archive_http_request", request)
+    receipts = []
+
+    rows = profile_acquisition_module.fetch_archive_funding_history(receipts)
+
+    assert [row["timestamp"] for row in rows] == expected_timestamps
+    assert [item["label"] for item in receipts] == [
+        "funding-archive-catalog-2026-04",
+        "funding-archive-2026-04",
+        "funding-archive-catalog-2026-05",
+        "funding-archive-2026-05",
+    ]
+    assert all(
+        receipt["archive_sha256"] == receipt["response_sha256"]
+        and len(receipt["csv_sha256"]) == 64
+        for receipt in receipts
+        if receipt["method"] == "GET"
+    )
+    assert len([call for call in calls if call[0] == "POST"]) == 2
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "https://example.invalid/cdn/okex/traderecords/swaprates/monthly/202604/"
+        "BTC-USDT-SWAP-fundingrates-2026-04.zip?v=999",
+        "https://static.okx.com/other/202604/"
+        "BTC-USDT-SWAP-fundingrates-2026-04.zip?v=999",
+        "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/202604/"
+        "BTC-USDT-SWAP-fundingrates-2026-04.zip?v=changed",
+    ),
+)
+def test_archive_endpoint_rejects_unpinned_asset_before_io(
+    profile_acquisition_module, url: str
+) -> None:
+    with pytest.raises(RuntimeError, match="forbidden funding archive endpoint"):
+        profile_acquisition_module._validate_archive_endpoint("GET", url)
+
+
+def test_archive_http_rejects_redirect_without_followup(
+    profile_acquisition_module, monkeypatch
+) -> None:
+    class Response:
+        status = 302
+
+        def getheaders(self):
+            return [("Location", "https://example.invalid/file.zip")]
+
+        def close(self):
+            self.closed = True
+
+    response = Response()
+
+    class Connection:
+        def __init__(self, host, timeout):
+            self.host = host
+
+        def request(self, method, target, *, body, headers):
+            self.target = target
+
+        def getresponse(self):
+            return response
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(
+        profile_acquisition_module.http.client, "HTTPSConnection", Connection
+    )
+    url = (
+        "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+        "202604/XRP-USDT-SWAP-fundingrates-2026-04.zip?v=999"
+    )
+
+    with pytest.raises(RuntimeError, match="redirect response rejected"):
+        profile_acquisition_module.archive_http_request("GET", url)
+
+    assert response.closed is True
+
+
+def test_archive_http_rejects_content_md5_mismatch(
+    profile_acquisition_module, monkeypatch
+) -> None:
+    raw = b"not-the-attested-archive"
+
+    class Response:
+        status = 200
+
+        def getheaders(self):
+            return [
+                ("Content-Length", str(len(raw))),
+                ("Content-MD5", base64.b64encode(b"0" * 16).decode("ascii")),
+            ]
+
+        def getheader(self, name):
+            return None
+
+        def read(self, maximum):
+            return raw
+
+        def close(self):
+            pass
+
+    class Connection:
+        def __init__(self, host, timeout):
+            pass
+
+        def request(self, method, target, *, body, headers):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        profile_acquisition_module.http.client, "HTTPSConnection", Connection
+    )
+    url = (
+        "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+        "202604/XRP-USDT-SWAP-fundingrates-2026-04.zip?v=999"
+    )
+
+    with pytest.raises(RuntimeError, match="Content-MD5 mismatch"):
+        profile_acquisition_module.archive_http_request("GET", url)
+
+
+@pytest.mark.parametrize(
+    ("header", "instrument", "rate", "extra_member", "message"),
+    (
+        (
+            ("bad", "funding_rate", "funding_time"),
+            "XRP-USDT-SWAP",
+            "0.1",
+            False,
+            "header changed",
+        ),
+        (
+            ("instrument_name", "funding_rate", "funding_time"),
+            "BTC-USDT-SWAP",
+            "0.1",
+            False,
+            "instrument mismatch",
+        ),
+        (
+            ("instrument_name", "funding_rate", "funding_time"),
+            "XRP-USDT-SWAP",
+            "nan",
+            False,
+            "not finite",
+        ),
+        (
+            ("instrument_name", "funding_rate", "funding_time"),
+            "XRP-USDT-SWAP",
+            "0.1",
+            True,
+            "must contain exactly",
+        ),
+    ),
+)
+def test_archive_parser_fails_closed_on_format_drift(
+    profile_acquisition_module,
+    monkeypatch,
+    tmp_path: Path,
+    header,
+    instrument,
+    rate,
+    extra_member,
+    message,
+) -> None:
+    _configure_profile_helper(profile_acquisition_module, tmp_path)
+    _, archive_name, csv_name = profile_acquisition_module._archive_names(2026, 4)
+    raw = _funding_archive_bytes(
+        csv_name,
+        [(instrument, rate, "1775001600000")],
+        header=header,
+        extra_member=extra_member,
+    )
+
+    with pytest.raises(RuntimeError, match=message):
+        profile_acquisition_module._parse_funding_archive(
+            raw, archive_name=archive_name, csv_name=csv_name
+        )
+
+
+@pytest.mark.parametrize("details", ([], [{}, {}]))
+def test_archive_catalog_rejects_missing_or_duplicate_month(
+    profile_acquisition_module, monkeypatch, tmp_path: Path, details
+) -> None:
+    _configure_profile_helper(profile_acquisition_module, tmp_path)
+    raw = _funding_catalog_bytes(
+        profile_acquisition_module, 2026, 4, details_override=details
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "archive_http_request",
+        lambda method, url, *, body=None: (
+            raw,
+            {"content-type": "application/json", "content-length": str(len(raw))},
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="missing or repeated"):
+        profile_acquisition_module._archive_catalog_entry(2026, 4, [])
+
+
+def test_profile_store_uses_freqtrade_funding_rate_format_and_names(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        pair="BTC/USDT:USDT",
+        timeframe="1d",
+        pre_roll_candles=1,
+        data_start_utc="2026-03-31T00:00:00Z",
+        search_start_utc="2026-04-01T00:00:00Z",
+        development_start_utc="2026-05-03T00:00:00Z",
+        end_exclusive_utc="2026-05-05T00:00:00Z",
+    )
+    calls = []
+
+    def convert(rows, timeframe, symbol, *, fill_missing, drop_incomplete):
+        calls.append(
+            ("convert", rows, timeframe, symbol, fill_missing, drop_incomplete)
+        )
+        return {
+            "rows": rows,
+            "columns": ["date", "open", "high", "low", "close", "volume"],
+        }
+
+    class Handler:
+        def ohlcv_store(self, symbol, timeframe, frame, candle_type):
+            calls.append(("store", symbol, timeframe, frame, candle_type))
+
+    monkeypatch.setattr(
+        profile_acquisition_module.transport, "ohlcv_to_dataframe", convert
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module.transport,
+        "get_datahandler",
+        lambda data_dir, data_format: Handler(),
+    )
+    funding = [{"timestamp": 1, "fundingRate": 0.0001}]
+
+    profile_acquisition_module.store_profile_market_data(
+        tmp_path / "data", [[1, 1, 1, 1, 1, 1]], [[1, 1, 1, 1, 1, 0]], funding
+    )
+
+    funding_convert = [call for call in calls if call[0] == "convert"][-1]
+    assert funding_convert[1] == [[1, 0.0001, 0, 0, 0, 0]]
+    assert funding_convert[2:4] == ("1h", "BTC/USDT:USDT")
+    assert funding_convert[4:] == (False, False)
+    assert [call[4] for call in calls if call[0] == "store"] == [
+        profile_acquisition_module.transport.CandleType.FUTURES,
+        profile_acquisition_module.transport.CandleType.MARK,
+        profile_acquisition_module.transport.CandleType.FUNDING_RATE,
+    ]
+    assert [call[2] for call in calls if call[0] == "store"] == ["1d", "1h", "1h"]
 
 
 def test_ohlcv_values_reject_corrupt_prices_and_volume(acquisition_module) -> None:
@@ -582,9 +1068,7 @@ def test_custom_candidate_updates_fixed_config_and_provenance(
     strategy, research_spec, strategy_bytes, spec_bytes = _write_candidate_inputs(
         source_root
     )
-    selected = acquisition_module.load_local_candidate_inputs(
-        strategy, research_spec
-    )
+    selected = acquisition_module.load_local_candidate_inputs(strategy, research_spec)
     assert selected is not None
 
     output_root = tmp_path / "output"
@@ -631,9 +1115,7 @@ def test_default_candidate_output_remains_the_fixed_fixture(
     )
 
     provenance = json.loads(provenance_path.read_bytes())
-    assert provenance["contract"]["strategy"] == (
-        "strategies/StrategyTestV3Futures.py"
-    )
+    assert provenance["contract"]["strategy"] == ("strategies/StrategyTestV3Futures.py")
     assert provenance["files"]["research-spec.json"]["role"] == (
         "fixed_research_profile_and_candidate"
     )
@@ -671,5 +1153,40 @@ def test_acquisition_failure_removes_owned_output_root(
 
     with pytest.raises(RuntimeError, match="controlled acquisition failure"):
         acquisition_module.main()
+
+    assert not output_root.exists()
+
+
+def test_profile_archive_failure_removes_owned_output_root(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
+) -> None:
+    output_root = tmp_path / "partial-profile-output"
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "parse_args",
+        lambda: types.SimpleNamespace(
+            output_root=output_root,
+            window_spec=tmp_path / "window.json",
+            profile_database=tmp_path / "lab.sqlite",
+            profile_id="profile-1",
+            pre_roll_candles=90,
+        ),
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module, "configure_profile_acquisition", lambda *args: {}
+    )
+    monkeypatch.setattr(profile_acquisition_module, "validate_runtime", lambda: {})
+    monkeypatch.setattr(
+        profile_acquisition_module, "implementation_snapshot", lambda: {}
+    )
+
+    def fail_archive(root, runtime):
+        (root / "partial-archive.zip").write_bytes(b"partial")
+        raise RuntimeError("controlled archive failure")
+
+    monkeypatch.setattr(profile_acquisition_module, "acquire", fail_archive)
+
+    with pytest.raises(RuntimeError, match="controlled archive failure"):
+        profile_acquisition_module.main()
 
     assert not output_root.exists()

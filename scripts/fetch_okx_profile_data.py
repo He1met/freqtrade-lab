@@ -4,24 +4,29 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import csv
+import hashlib
+import http.client
 import importlib.util
+import io
 import json
 import math
 import os
 import shutil
 import sys
-from datetime import UTC, datetime, timedelta
+import zipfile
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-
+from urllib.parse import urlparse
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from lab import bounded_research
-
 
 HISTORICAL_PRODUCER = (
     REPOSITORY_ROOT
@@ -40,6 +45,26 @@ WINDOW_FIELDS = (
 )
 FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000
 MAX_FUNDING_BATCH = 100
+FUNDING_REST_RETENTION = timedelta(days=90)
+ARCHIVE_CATALOG_HOST = "www.okx.com"
+ARCHIVE_CATALOG_PATH = "/priapi/v5/broker/public/trade-data/download-link"
+ARCHIVE_CATALOG_URL = f"https://{ARCHIVE_CATALOG_HOST}{ARCHIVE_CATALOG_PATH}"
+ARCHIVE_ASSET_HOST = "static.okx.com"
+ARCHIVE_ASSET_PREFIX = "/cdn/okex/traderecords/swaprates/monthly/"
+ARCHIVE_QUERY = "v=999"
+ARCHIVE_TIMEZONE = timezone(timedelta(hours=8))
+ARCHIVE_CSV_HEADER = ["instrument_name", "funding_rate", "funding_time"]
+MAX_ARCHIVE_CATALOG_BYTES = 1_000_000
+MAX_ARCHIVE_ZIP_BYTES = 10_000_000
+MAX_ARCHIVE_CSV_BYTES = 20_000_000
+RECEIPT_HEADERS = (
+    "content-type",
+    "content-length",
+    "etag",
+    "last-modified",
+    "content-md5",
+    "x-oss-hash-crc64ecma",
+)
 
 
 def _load_historical_transport() -> ModuleType:
@@ -120,7 +145,10 @@ def _utc_z(value: object, label: str) -> datetime:
 
 def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime]:
     value = _strict_json_object(path, "Profile source window")
-    if set(value) != {"schema", *WINDOW_FIELDS} or value.get("schema") != PROFILE_WINDOW_SCHEMA:
+    if (
+        set(value) != {"schema", *WINDOW_FIELDS}
+        or value.get("schema") != PROFILE_WINDOW_SCHEMA
+    ):
         raise RuntimeError("Profile source window shape/version is not supported")
     data_start, search_start, development_start, end_exclusive = (
         _utc_z(value[field], f"Profile source {field}") for field in WINDOW_FIELDS
@@ -184,21 +212,18 @@ def configure_profile_acquisition(
 
 
 def _configured() -> dict[str, Any]:
-    if (
-        PROFILE_ACQUISITION is None
-        or None in (
-            DATA_START,
-            SEARCH_START,
-            DEVELOPMENT_START,
-            DATA_END,
-            DATA_START_MS,
-            DATA_END_MS,
-            MARK_START_MS,
-            SYMBOL,
-            INSTRUMENT_ID,
-            PAIR_FAMILY,
-            FUTURES_TIMEFRAME,
-        )
+    if PROFILE_ACQUISITION is None or None in (
+        DATA_START,
+        SEARCH_START,
+        DEVELOPMENT_START,
+        DATA_END,
+        DATA_START_MS,
+        DATA_END_MS,
+        MARK_START_MS,
+        SYMBOL,
+        INSTRUMENT_ID,
+        PAIR_FAMILY,
+        FUTURES_TIMEFRAME,
     ):
         raise RuntimeError("Profile acquisition is not configured")
     return PROFILE_ACQUISITION
@@ -254,7 +279,438 @@ def fetch_profile_candles(
     return output
 
 
-def fetch_funding_history(exchange: Any, requests: list[dict[str, object]]) -> list[dict]:
+def _archive_months() -> list[tuple[int, int]]:
+    _configured()
+    assert SEARCH_START is not None and DATA_END_MS is not None
+    first = int(SEARCH_START.timestamp() * 1000)
+    expected = list(range(first, DATA_END_MS, FUNDING_INTERVAL_MS))
+    if not expected:
+        raise RuntimeError("funding archive window is empty")
+    start = datetime.fromtimestamp(expected[0] / 1000, UTC).astimezone(ARCHIVE_TIMEZONE)
+    stop = datetime.fromtimestamp(expected[-1] / 1000, UTC).astimezone(ARCHIVE_TIMEZONE)
+    result: list[tuple[int, int]] = []
+    year, month = start.year, start.month
+    while (year, month) <= (stop.year, stop.month):
+        result.append((year, month))
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return result
+
+
+def _archive_names(year: int, month: int) -> tuple[str, str, str]:
+    assert INSTRUMENT_ID is not None
+    label = f"{year:04d}-{month:02d}"
+    stem = f"{INSTRUMENT_ID}-fundingrates-{label}"
+    return label, f"{stem}.zip", f"{stem}.csv"
+
+
+def _archive_month_bounds(year: int, month: int) -> tuple[int, int]:
+    start = datetime(year, month, 1, tzinfo=ARCHIVE_TIMEZONE)
+    next_start = (
+        datetime(year + 1, 1, 1, tzinfo=ARCHIVE_TIMEZONE)
+        if month == 12
+        else datetime(year, month + 1, 1, tzinfo=ARCHIVE_TIMEZONE)
+    )
+    last_day = next_start - timedelta(days=1)
+    return int(start.timestamp() * 1000), int(last_day.timestamp() * 1000)
+
+
+def _validate_archive_endpoint(method: str, url: str) -> tuple[str, str]:
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or parsed.fragment
+    ):
+        raise RuntimeError(f"forbidden funding archive endpoint {url!r}")
+    if method == "POST":
+        if (
+            parsed.hostname != ARCHIVE_CATALOG_HOST
+            or parsed.path != ARCHIVE_CATALOG_PATH
+            or parsed.query
+        ):
+            raise RuntimeError(f"forbidden funding archive endpoint {url!r}")
+        return ARCHIVE_CATALOG_HOST, parsed.path
+    if method == "GET":
+        relative = parsed.path.removeprefix(ARCHIVE_ASSET_PREFIX)
+        parts = relative.split("/")
+        month_key = parts[0] if len(parts) == 2 else ""
+        archive_name = parts[1] if len(parts) == 2 else ""
+        suffix = (
+            f"-fundingrates-{month_key[:4]}-{month_key[4:]}.zip"
+            if len(month_key) == 6
+            else ""
+        )
+        instrument = (
+            archive_name[: -len(suffix)]
+            if suffix and archive_name.endswith(suffix)
+            else ""
+        )
+        if (
+            parsed.hostname != ARCHIVE_ASSET_HOST
+            or not parsed.path.startswith(ARCHIVE_ASSET_PREFIX)
+            or len(parts) != 2
+            or not month_key.isascii()
+            or not month_key.isdigit()
+            or len(month_key) != 6
+            or not instrument.endswith("-SWAP")
+            or not instrument.isascii()
+            or instrument.upper() != instrument
+            or not instrument.replace("-", "").isalnum()
+            or (INSTRUMENT_ID is not None and instrument != INSTRUMENT_ID)
+            or parsed.query != ARCHIVE_QUERY
+        ):
+            raise RuntimeError(f"forbidden funding archive endpoint {url!r}")
+        return ARCHIVE_ASSET_HOST, f"{parsed.path}?{parsed.query}"
+    raise RuntimeError(f"forbidden funding archive method {method!r}")
+
+
+def _receipt_headers(headers: list[tuple[str, str]]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for raw_name, value in headers:
+        name = raw_name.lower()
+        if name in result:
+            raise RuntimeError(f"funding archive response repeats header {name!r}")
+        if name in RECEIPT_HEADERS:
+            result[name] = value
+    return result
+
+
+def archive_http_request(
+    method: str, url: str, *, body: bytes | None = None
+) -> tuple[bytes, dict[str, str]]:
+    """Perform one pinned, unauthenticated HTTPS request without redirects."""
+    host, target = _validate_archive_endpoint(method, url)
+    if (method == "POST") != (body is not None):
+        raise RuntimeError("funding archive request body disagrees with method")
+    maximum = MAX_ARCHIVE_CATALOG_BYTES if method == "POST" else MAX_ARCHIVE_ZIP_BYTES
+    headers = {
+        "Accept": "application/json" if method == "POST" else "application/zip",
+        "Accept-Encoding": "identity",
+        "User-Agent": "freqtrade-lab-profile-source-v1",
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    connection = http.client.HTTPSConnection(host, timeout=30)
+    response: http.client.HTTPResponse | None = None
+    try:
+        connection.request(method, target, body=body, headers=headers)
+        response = connection.getresponse()
+        if 300 <= response.status < 400:
+            raise RuntimeError("funding archive redirect response rejected")
+        if response.status != 200:
+            raise RuntimeError(
+                f"funding archive HTTP status {response.status} is not successful"
+            )
+        selected = _receipt_headers(response.getheaders())
+        content_encoding = response.getheader("Content-Encoding")
+        if content_encoding not in (None, "", "identity"):
+            raise RuntimeError("funding archive response encoding is not identity")
+        raw_length = selected.get("content-length")
+        if raw_length is not None:
+            try:
+                length = int(raw_length)
+            except ValueError as exc:
+                raise RuntimeError("funding archive Content-Length is invalid") from exc
+            if length < 0 or length > maximum:
+                raise RuntimeError("funding archive response is too large")
+        data = response.read(maximum + 1)
+        if len(data) > maximum:
+            raise RuntimeError("funding archive response is too large")
+        if raw_length is not None and len(data) != int(raw_length):
+            raise RuntimeError("funding archive Content-Length disagrees with body")
+        content_md5 = selected.get("content-md5")
+        if content_md5 is not None:
+            try:
+                expected_md5 = base64.b64decode(content_md5, validate=True)
+            except ValueError as exc:
+                raise RuntimeError("funding archive Content-MD5 is invalid") from exc
+            if len(expected_md5) != 16 or hashlib.md5(data).digest() != expected_md5:
+                raise RuntimeError("funding archive Content-MD5 mismatch")
+        return data, selected
+    finally:
+        if response is not None:
+            response.close()
+        connection.close()
+
+
+def _strict_catalog_response(raw: bytes) -> dict[str, Any]:
+    def no_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise RuntimeError(
+                    f"funding archive catalog contains duplicate key {key!r}"
+                )
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=no_duplicates,
+            parse_constant=lambda item: (_ for _ in ()).throw(
+                RuntimeError(
+                    f"funding archive catalog contains non-finite number {item}"
+                )
+            ),
+        )
+    except RuntimeError:
+        raise
+    except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise RuntimeError(
+            f"funding archive catalog is not strict JSON: {exc}"
+        ) from exc
+    if not isinstance(value, dict):
+        raise RuntimeError("funding archive catalog must be a JSON object")
+    return value
+
+
+def _archive_catalog_entry(
+    year: int, month: int, requests: list[dict[str, object]]
+) -> tuple[str, str, str]:
+    _configured()
+    assert PAIR_FAMILY is not None and INSTRUMENT_ID is not None
+    label, archive_name, csv_name = _archive_names(year, month)
+    begin, end = _archive_month_bounds(year, month)
+    payload = {
+        "dateQuery": {
+            "begin": str(begin),
+            "dateAggrType": "monthly",
+            "end": str(end),
+        },
+        "instQueryParam": {"instFamilyList": [PAIR_FAMILY]},
+        "instType": "SWAP",
+        "module": "3",
+    }
+    body = canonical_bytes(payload)
+    raw, headers = archive_http_request("POST", ARCHIVE_CATALOG_URL, body=body)
+    content_type = headers.get("content-type", "")
+    if not content_type.lower().startswith("application/json"):
+        raise RuntimeError("funding archive catalog Content-Type is not JSON")
+    requests.append(
+        {
+            "label": f"funding-archive-catalog-{label}",
+            "method": "POST",
+            "url": ARCHIVE_CATALOG_URL,
+            "fetched_at_utc": datetime.now(UTC).isoformat(),
+            "request_bytes": len(body),
+            "request_sha256": sha256(body),
+            "response_bytes": len(raw),
+            "response_sha256": sha256(raw),
+            "response_headers": headers,
+        }
+    )
+    value = _strict_catalog_response(raw)
+    if set(value) != {"code", "data", "msg"} or value.get("code") != "0":
+        raise RuntimeError("funding archive catalog response is unsuccessful")
+    data = value.get("data")
+    expected_data_fields = {
+        "begin",
+        "ccyList",
+        "dateAggrType",
+        "details",
+        "end",
+        "exportTime",
+        "instrumentList",
+        "totalSizeMB",
+    }
+    if not isinstance(data, dict) or set(data) != expected_data_fields:
+        raise RuntimeError("funding archive catalog data shape changed")
+    if (
+        data.get("begin") != str(begin)
+        or data.get("end") != str(end)
+        or data.get("dateAggrType") != "monthly"
+        or data.get("ccyList") != []
+        or data.get("instrumentList") != [PAIR_FAMILY]
+        or not isinstance(data.get("exportTime"), str)
+        or not str(data.get("exportTime")).isdigit()
+        or not isinstance(data.get("totalSizeMB"), str)
+    ):
+        raise RuntimeError("funding archive catalog contract changed")
+    details = data.get("details")
+    if not isinstance(details, list) or len(details) != 1:
+        raise RuntimeError(
+            f"funding archive catalog month {label} is missing or repeated"
+        )
+    detail = details[0]
+    expected_detail_fields = {
+        "ccy",
+        "dateRangeEnd",
+        "dateRangeStart",
+        "groupDetails",
+        "groupSizeMB",
+        "instFamily",
+        "instId",
+        "instType",
+    }
+    if not isinstance(detail, dict) or set(detail) != expected_detail_fields:
+        raise RuntimeError("funding archive catalog detail shape changed")
+    groups = detail.get("groupDetails")
+    if (
+        detail.get("ccy") != ""
+        or detail.get("instFamily") != PAIR_FAMILY
+        or detail.get("instId") != ""
+        or detail.get("instType") != "SWAP"
+        or not isinstance(detail.get("groupSizeMB"), str)
+        or not isinstance(groups, list)
+        or len(groups) != 1
+    ):
+        raise RuntimeError(f"funding archive catalog month {label} is invalid")
+    group = groups[0]
+    if not isinstance(group, dict) or set(group) != {
+        "dateTs",
+        "filename",
+        "sizeMB",
+        "url",
+    }:
+        raise RuntimeError("funding archive catalog group shape changed")
+    date_ts = str(begin)
+    url = group.get("url")
+    if (
+        detail.get("dateRangeStart") != date_ts
+        or detail.get("dateRangeEnd") != date_ts
+        or group.get("dateTs") != date_ts
+        or group.get("filename") != archive_name
+        or not isinstance(group.get("sizeMB"), str)
+        or not isinstance(url, str)
+    ):
+        raise RuntimeError(f"funding archive catalog month {label} drifted")
+    expected_path = f"{ARCHIVE_ASSET_PREFIX}{year:04d}{month:02d}/{archive_name}"
+    parsed = urlparse(url)
+    _validate_archive_endpoint("GET", url)
+    if parsed.path != expected_path:
+        raise RuntimeError(f"funding archive catalog month {label} path drifted")
+    return url, archive_name, csv_name
+
+
+def _parse_funding_archive(
+    raw: bytes, *, archive_name: str, csv_name: str
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    assert INSTRUMENT_ID is not None
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            members = archive.infolist()
+            if len(members) != 1 or members[0].filename != csv_name:
+                raise RuntimeError(
+                    f"funding archive {archive_name} must contain exactly {csv_name}"
+                )
+            member = members[0]
+            if member.is_dir() or member.flag_bits & 1:
+                raise RuntimeError(f"funding archive {archive_name} member is invalid")
+            if member.file_size < 1 or member.file_size > MAX_ARCHIVE_CSV_BYTES:
+                raise RuntimeError(f"funding archive {archive_name} CSV is too large")
+            with archive.open(member) as stream:
+                csv_raw = stream.read(MAX_ARCHIVE_CSV_BYTES + 1)
+            if len(csv_raw) != member.file_size or len(csv_raw) > MAX_ARCHIVE_CSV_BYTES:
+                raise RuntimeError(f"funding archive {archive_name} CSV size mismatch")
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError(
+            f"funding archive {archive_name} is not a valid ZIP"
+        ) from exc
+    try:
+        reader = csv.reader(io.StringIO(csv_raw.decode("utf-8", "strict")), strict=True)
+        header = next(reader)
+        if header != ARCHIVE_CSV_HEADER:
+            raise RuntimeError(f"funding archive {archive_name} header changed")
+        rows: list[dict[str, object]] = []
+        for number, fields in enumerate(reader, start=2):
+            if len(fields) != 3:
+                raise RuntimeError(
+                    f"funding archive {archive_name} row {number} shape changed"
+                )
+            instrument, raw_rate, raw_timestamp = fields
+            if instrument != INSTRUMENT_ID:
+                raise RuntimeError(
+                    f"funding archive {archive_name} row {number} instrument mismatch"
+                )
+            if not raw_timestamp.isascii() or not raw_timestamp.isdigit():
+                raise RuntimeError(
+                    f"funding archive {archive_name} row {number} timestamp is invalid"
+                )
+            try:
+                rate = float(raw_rate)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"funding archive {archive_name} row {number} rate is invalid"
+                ) from exc
+            if not math.isfinite(rate):
+                raise RuntimeError(
+                    f"funding archive {archive_name} row {number} rate is not finite"
+                )
+            rows.append({"timestamp": int(raw_timestamp), "fundingRate": rate})
+    except (UnicodeError, csv.Error, StopIteration) as exc:
+        raise RuntimeError(f"funding archive {archive_name} CSV is invalid") from exc
+    if not rows:
+        raise RuntimeError(f"funding archive {archive_name} CSV is empty")
+    return rows, {
+        "archive_filename": archive_name,
+        "archive_bytes": len(raw),
+        "archive_sha256": sha256(raw),
+        "csv_filename": csv_name,
+        "csv_bytes": len(csv_raw),
+        "csv_sha256": sha256(csv_raw),
+        "csv_rows": len(rows),
+    }
+
+
+def fetch_archive_funding_history(
+    requests: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    _configured()
+    assert SEARCH_START is not None and DATA_END_MS is not None
+    output: list[dict[str, object]] = []
+    seen_archives: set[str] = set()
+    for year, month in _archive_months():
+        label = f"{year:04d}-{month:02d}"
+        url, archive_name, csv_name = _archive_catalog_entry(year, month, requests)
+        if archive_name in seen_archives:
+            raise RuntimeError(f"funding archive month {label} is repeated")
+        seen_archives.add(archive_name)
+        raw, headers = archive_http_request("GET", url)
+        content_type = headers.get("content-type", "")
+        if not content_type.lower().startswith("application/zip"):
+            raise RuntimeError(f"funding archive month {label} Content-Type is not ZIP")
+        rows, archive_receipt = _parse_funding_archive(
+            raw, archive_name=archive_name, csv_name=csv_name
+        )
+        for row in rows:
+            timestamp = int(row["timestamp"])
+            local = datetime.fromtimestamp(timestamp / 1000, UTC).astimezone(
+                ARCHIVE_TIMEZONE
+            )
+            if (local.year, local.month) != (
+                year,
+                month,
+            ) or timestamp % FUNDING_INTERVAL_MS != 0:
+                raise RuntimeError(f"funding archive month {label} timestamp drifted")
+        requests.append(
+            {
+                "label": f"funding-archive-{label}",
+                "method": "GET",
+                "url": url,
+                "fetched_at_utc": datetime.now(UTC).isoformat(),
+                "response_bytes": len(raw),
+                "response_sha256": sha256(raw),
+                "response_headers": headers,
+                **archive_receipt,
+            }
+        )
+        output.extend(rows)
+    all_timestamps = [int(row["timestamp"]) for row in output]
+    if len(all_timestamps) != len(set(all_timestamps)):
+        raise RuntimeError("funding archive contains duplicate UTC timestamps")
+    first = int(SEARCH_START.timestamp() * 1000)
+    filtered = [row for row in output if first <= int(row["timestamp"]) < DATA_END_MS]
+    filtered.sort(key=lambda row: int(row["timestamp"]))
+    validate_funding_history(filtered)
+    return filtered
+
+
+def fetch_rest_funding_history(
+    exchange: Any, requests: list[dict[str, object]]
+) -> list[dict]:
     _configured()
     assert SEARCH_START is not None and DATA_END_MS is not None and SYMBOL is not None
     first = int(SEARCH_START.timestamp() * 1000)
@@ -284,6 +740,22 @@ def fetch_funding_history(exchange: Any, requests: list[dict[str, object]]) -> l
     return output
 
 
+def fetch_funding_history(
+    exchange: Any,
+    requests: list[dict[str, object]],
+    *,
+    fetched_at: datetime | None = None,
+) -> list[dict]:
+    _configured()
+    assert SEARCH_START is not None
+    current = datetime.now(UTC) if fetched_at is None else fetched_at
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise RuntimeError("funding retrieval timestamp must be timezone-aware")
+    if SEARCH_START < current.astimezone(UTC) - FUNDING_REST_RETENTION:
+        return fetch_archive_funding_history(requests)
+    return fetch_rest_funding_history(exchange, requests)
+
+
 def validate_funding_history(funding: list[dict]) -> dict[str, object]:
     _configured()
     assert SEARCH_START is not None and DATA_END_MS is not None
@@ -292,15 +764,53 @@ def validate_funding_history(funding: list[dict]) -> dict[str, object]:
     )
     timestamps = [item.get("timestamp") for item in funding]
     if timestamps != expected:
-        raise RuntimeError("funding history must cover every fixed eight-hour timestamp")
+        raise RuntimeError(
+            "funding history must cover every fixed eight-hour timestamp"
+        )
     rates = [item.get("fundingRate") for item in funding]
-    if any(isinstance(rate, bool) or not isinstance(rate, (int, float)) for rate in rates):
+    if any(
+        isinstance(rate, bool) or not isinstance(rate, (int, float)) for rate in rates
+    ):
         raise RuntimeError("funding history contains an invalid funding rate")
     return {
         "rows": len(funding),
         "first_timestamp": timestamps[0],
         "last_timestamp": timestamps[-1],
     }
+
+
+def store_profile_market_data(
+    data_dir: Path,
+    futures: list[list],
+    mark: list[list],
+    funding: list[dict],
+) -> None:
+    """Write only Freqtrade 2026.7's standard futures data representation."""
+    _configured()
+    assert SYMBOL is not None and FUTURES_TIMEFRAME is not None
+    handler = transport.get_datahandler(data_dir, "feather")
+    futures_df = transport.ohlcv_to_dataframe(
+        futures,
+        FUTURES_TIMEFRAME,
+        SYMBOL,
+        fill_missing=False,
+        drop_incomplete=False,
+    )
+    mark_df = transport.ohlcv_to_dataframe(
+        mark, "1h", SYMBOL, fill_missing=False, drop_incomplete=False
+    )
+    funding_df = transport.ohlcv_to_dataframe(
+        [[item["timestamp"], item["fundingRate"], 0, 0, 0, 0] for item in funding],
+        "1h",
+        SYMBOL,
+        fill_missing=False,
+        drop_incomplete=False,
+    )
+    handler.ohlcv_store(
+        SYMBOL, FUTURES_TIMEFRAME, futures_df, transport.CandleType.FUTURES
+    )
+    handler.ohlcv_store(SYMBOL, "1h", mark_df, transport.CandleType.MARK)
+    handler.ohlcv_store(SYMBOL, "1h", funding_df, transport.CandleType.FUNDING_RATE)
 
 
 def acquire(root: Path, runtime: dict[str, object]) -> Path:
@@ -362,9 +872,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         ):
             raise RuntimeError("parsed market does not match the Profile")
         exchange.set_markets([market], {})
-        tiers = exchange.fetch_market_leverage_tiers(
-            SYMBOL, {"marginMode": "isolated"}
-        )
+        tiers = exchange.fetch_market_leverage_tiers(SYMBOL, {"marginMode": "isolated"})
         requests.append(request_receipt(exchange, "isolated-position-tiers"))
         if not tiers or any(tier.get("symbol") != SYMBOL for tier in tiers):
             raise RuntimeError("OKX isolated leverage tiers are missing or mismatched")
@@ -388,7 +896,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
             label="mark-1h",
             requests=requests,
         )
-        funding = fetch_funding_history(exchange, requests)
+        funding = fetch_funding_history(exchange, requests, fetched_at=started)
     finally:
         exchange.close()
     step_ms = int(
@@ -410,31 +918,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         step_ms=60 * 60 * 1000,
     )
     funding_stats = validate_funding_history(funding)
-    handler = transport.get_datahandler(data_dir, "feather")
-    futures_df = transport.ohlcv_to_dataframe(
-        futures,
-        FUTURES_TIMEFRAME,
-        SYMBOL,
-        fill_missing=False,
-        drop_incomplete=False,
-    )
-    mark_df = transport.ohlcv_to_dataframe(
-        mark, "1h", SYMBOL, fill_missing=False, drop_incomplete=False
-    )
-    funding_df = transport.ohlcv_to_dataframe(
-        [[item["timestamp"], item["fundingRate"], 0, 0, 0, 0] for item in funding],
-        "1h",
-        SYMBOL,
-        fill_missing=False,
-        drop_incomplete=False,
-    )
-    handler.ohlcv_store(
-        SYMBOL, FUTURES_TIMEFRAME, futures_df, transport.CandleType.FUTURES
-    )
-    handler.ohlcv_store(SYMBOL, "1h", mark_df, transport.CandleType.MARK)
-    handler.ohlcv_store(
-        SYMBOL, "1h", funding_df, transport.CandleType.FUNDING_RATE
-    )
+    store_profile_market_data(data_dir, futures, mark, funding)
     market_path = root / "market_snapshot.json"
     tiers_path = root / "isolated_tiers_snapshot.json"
     market_path.write_bytes(canonical_bytes(market))
@@ -587,9 +1071,7 @@ def write_profile_provenance(
             "development_timerange": contract["search_timerange"],
             "holdout_timerange": contract["development_timerange"],
             "timeframe": FUTURES_TIMEFRAME,
-            "profile_acquisition": {
-                key: contract[key] for key in acquisition_fields
-            },
+            "profile_acquisition": {key: contract[key] for key in acquisition_fields},
         },
         "files": files,
         "local_only_files": local_only,
@@ -629,9 +1111,7 @@ def main() -> None:
     os.mkdir(output, 0o700)
     try:
         receipt = acquire(output, runtime)
-        provenance = write_profile_provenance(
-            output, receipt, runtime, implementations
-        )
+        provenance = write_profile_provenance(output, receipt, runtime, implementations)
     except BaseException:
         shutil.rmtree(output)
         raise
