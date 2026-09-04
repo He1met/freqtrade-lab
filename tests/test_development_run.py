@@ -1456,6 +1456,176 @@ def test_t0_fixed_development_gate_truth_table_and_public_contract(
     ]
 
 
+def _bind_profile_economic_gate(
+    database: Path,
+    research_run_id: str,
+    economic: dict[str, object] | None,
+) -> None:
+    gate = {
+        "name": pilot.PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": 0.5,
+        "minimum_average_holding_period_minutes": 4320.0,
+        "maximum_roi_exit_count": 0,
+    }
+    with get_connection(database) as connection:
+        row = connection.execute(
+            "SELECT research_profile_id,input_snapshot_json FROM research_runs WHERE id=?",
+            (research_run_id,),
+        ).fetchone()
+        assert row is not None
+        profile = codex_generation.load_profile_snapshot(
+            connection, str(row["research_profile_id"])
+        )
+        normalized = pilot.validate_profile_runtime_contract(profile)
+        snapshot = json.loads(row["input_snapshot_json"])
+        snapshot["gate"] = normalized["finalist_gate"]
+        snapshot["normalized_profile_contract"] = normalized
+        snapshot["economic_gate"] = gate
+        snapshot["search_finalist_binding"] = {"economic_gate": gate}
+        metrics = {} if economic is None else {"economic": economic}
+        connection.execute(
+            "UPDATE research_runs SET input_snapshot_json=? WHERE id=?",
+            (json.dumps(snapshot), research_run_id),
+        )
+        connection.execute(
+            "UPDATE backtest_executions SET metrics_json=? WHERE research_run_id=?",
+            (json.dumps(metrics), research_run_id),
+        )
+        connection.commit()
+
+
+def test_t0_development_economic_gate_binding_tamper_fails_closed() -> None:
+    profile = {
+        "id": "economic-profile",
+        "name": "Economic profile",
+        "domain": "OKX_CRYPTO_PERP",
+        "exchange": "okx",
+        "trading_mode": "futures",
+        "margin_mode": "isolated",
+        "pairs": ["ADA/USDT:USDT"],
+        "timeframe": "5m",
+        "detail_timeframe": None,
+        "history_start_date": "2026-01-01",
+        "smoke_days": 7,
+        "holdout_days": 30,
+        "starting_balance": 1000.0,
+        "stake_amount": 100.0,
+        "max_open_trades": 1,
+        "taker_fee_rate": 0.0005,
+        "stress_fee_multiplier": 2.0,
+        "max_drawdown_pct": 5.0,
+        "min_development_trades": 30,
+        "min_holdout_trades": 30,
+        "min_profit_factor": 1.1,
+        "is_default": 0,
+        "created_at": NOW,
+        "updated_at": NOW,
+    }
+    normalized = pilot.validate_profile_runtime_contract(profile)
+    gate = {
+        "name": pilot.PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": 0.5,
+        "minimum_average_holding_period_minutes": 4320.0,
+        "maximum_roi_exit_count": 0,
+    }
+    snapshot = {
+        "normalized_profile_contract": normalized,
+        "gate": normalized["finalist_gate"],
+        "economic_gate": gate,
+        "search_finalist_binding": {
+            "economic_gate": {
+                **gate,
+                "minimum_average_holding_period_minutes": 4319.0,
+            }
+        },
+    }
+
+    with pytest.raises(development_run.DevelopmentRunError) as raised:
+        development_run._development_gate_contract(snapshot)
+    assert raised.value.code == "run_state_conflict"
+
+
+@pytest.mark.parametrize(
+    ("economic", "expected_reasons"),
+    (
+        (
+            {
+                "net_profit_after_base_fees_pct": 0.5,
+                "average_holding_period_minutes": 4320.0,
+                "roi_exit_count": 0,
+            },
+            [],
+        ),
+        (
+            {
+                "net_profit_after_base_fees_pct": 0.49,
+                "average_holding_period_minutes": 4320.0,
+                "roi_exit_count": 0,
+            },
+            ["MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET"],
+        ),
+        (
+            {
+                "net_profit_after_base_fees_pct": 0.5,
+                "average_holding_period_minutes": 4319.0,
+                "roi_exit_count": 0,
+            },
+            ["MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET"],
+        ),
+        (
+            {
+                "net_profit_after_base_fees_pct": 0.5,
+                "average_holding_period_minutes": 4320.0,
+                "roi_exit_count": 1,
+            },
+            ["MAXIMUM_ROI_EXIT_COUNT_EXCEEDED"],
+        ),
+        (
+            None,
+            [
+                "MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET",
+                "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET",
+                "MAXIMUM_ROI_EXIT_COUNT_EXCEEDED",
+            ],
+        ),
+    ),
+)
+def test_t1_profile_economic_gate_is_enforced_and_projected_without_schema_change(
+    tmp_path: Path,
+    economic: dict[str, object] | None,
+    expected_reasons: list[str],
+) -> None:
+    profit_pct = (
+        0.5
+        if economic is None
+        else float(economic["net_profit_after_base_fees_pct"])
+    )
+    database, research_run_id = _seed_development_run(
+        tmp_path, profit_pct=profit_pct
+    )
+    _bind_profile_economic_gate(database, research_run_id, economic)
+
+    public = development_run.finalize_development_gate(database, research_run_id)
+
+    assert public["rejection_reasons"] == expected_reasons
+    assert [item["criterion"] for item in public["gate_results"]][-3:] == [
+        "minimum_net_profit_after_base_fees_pct",
+        "minimum_average_holding_period_minutes",
+        "maximum_roi_exit_count",
+    ]
+    assert public["development"]["scenario_passed"] is (not expected_reasons)
+    with get_connection(database, read_only=True) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+    assert tables == set(development_run._BUSINESS_TABLES)
+
+
 @pytest.mark.parametrize(
     ("initial_trades", "tampered_trades", "tampered_profit"),
     [(30, 0, -99.0), (29, 29, -99.0)],

@@ -20,6 +20,7 @@ def _frozen_capability(
     monkeypatch: pytest.MonkeyPatch,
     database: Path,
     candidate_id: str,
+    economic_gate: dict[str, object] | None = None,
 ) -> search_campaign.FrozenSearchCapability:
     with get_connection(database, read_only=True) as connection:
         connection.execute("BEGIN")
@@ -48,6 +49,8 @@ def _frozen_capability(
         "development_timerange": "20260205-20260307",
         "pre_roll_candles": 20,
     }
+    if economic_gate is not None:
+        acquisition["economic_gate"] = dict(economic_gate)
     freqtrade = {
         "freqtrade_python": python,
         "freqtrade_source": source,
@@ -82,6 +85,145 @@ def _frozen_capability(
 def _profile_id(capability: search_campaign.FrozenSearchCapability) -> str:
     assert capability.profile_snapshot is not None
     return str(capability.profile_snapshot["id"])
+
+
+def _economic_search_trial(**overrides: object) -> dict[str, object]:
+    metrics: dict[str, object] = {
+        "total_trades": 3,
+        "net_profit_after_base_fees_pct": 0.5,
+        "max_drawdown_pct": 15.0,
+        "profit_factor": 1.1,
+        "gross_profit_before_fees_pct": 0.6,
+        "configured_fee_cost_pct": 0.1,
+        "average_holding_period_minutes": 4320.0,
+        "roi_exit_count": 0,
+        "direction_concentration": 1.0,
+        "market_state_concentration": 0.5,
+        "market_state_definition": pilot.MARKET_STATE_DEFINITION,
+        "market_state_lookback_candles": 21,
+    }
+    metrics.update(overrides)
+    return {
+        "candidate_id": "economic-candidate",
+        "class_name": "EconomicCandidate",
+        "mechanism": "trend",
+        "strategy_sha256": "a" * 64,
+        "round": 2,
+        "attempt_number": 2,
+        "technical_status": "VALID",
+        "search_metrics": metrics,
+    }
+
+
+def test_t1_search_finalist_requires_profile_and_all_economic_gate_boundaries() -> None:
+    profile_gate = {
+        "name": pilot.PROFILE_SEARCH_GATE,
+        "minimum_trades": 3,
+        "minimum_profit_factor": 1.1,
+        "maximum_drawdown_pct": 15.0,
+        "net_profit_after_fees": "STRICTLY_POSITIVE",
+    }
+    economic_gate = {
+        "name": pilot.PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": 0.5,
+        "minimum_average_holding_period_minutes": 4320.0,
+        "maximum_roi_exit_count": 0,
+    }
+    passing = _economic_search_trial()
+    assert pilot._search_finalist([passing], profile_gate, economic_gate) == (
+        pilot._search_parent(passing)
+    )
+
+    for overrides in (
+        {"net_profit_after_base_fees_pct": 0.49, "gross_profit_before_fees_pct": 0.59},
+        {"average_holding_period_minutes": 4319.0},
+        {"roi_exit_count": 1},
+        {"roi_exit_count": None},
+    ):
+        assert pilot._search_finalist(
+            [_economic_search_trial(**overrides)], profile_gate, economic_gate
+        ) is None
+    with pytest.raises(pilot.PilotError):
+        pilot._search_finalist(
+            [_economic_search_trial(average_holding_period_minutes=None)],
+            profile_gate,
+            economic_gate,
+        )
+
+
+def test_t1_negative_valid_search_result_remains_a_parent_not_a_finalist() -> None:
+    trial = _economic_search_trial(
+        net_profit_after_base_fees_pct=-0.2,
+        gross_profit_before_fees_pct=-0.1,
+    )
+    ranked = pilot._rank_search_results([trial])
+    assert pilot._search_parent(ranked[0])["search_metrics"][
+        "net_profit_after_base_fees_pct"
+    ] == -0.2
+    assert pilot._search_finalist(
+        ranked,
+        {
+            "minimum_trades": 3,
+            "minimum_profit_factor": 1.1,
+            "maximum_drawdown_pct": 15.0,
+        },
+        {
+            "name": pilot.PROFILE_ECONOMIC_GATE,
+            "version": 1,
+            "minimum_net_profit_after_base_fees_pct": 0.5,
+            "minimum_average_holding_period_minutes": 4320.0,
+            "maximum_roi_exit_count": 0,
+        },
+    ) is None
+
+
+def test_t1_search_plan_freezes_gate_and_drift_fails_before_side_effects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    gate = {
+        "name": pilot.PROFILE_ECONOMIC_GATE,
+        "version": 1,
+        "minimum_net_profit_after_base_fees_pct": 0.5,
+        "minimum_average_holding_period_minutes": 4320.0,
+        "maximum_roi_exit_count": 0,
+    }
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id, gate
+    )
+    try:
+        before = search_campaign.business_table_digest(database)
+        drifted = replace(
+            capability,
+            economic_gate={
+                **gate,
+                "minimum_net_profit_after_base_fees_pct": 0.6,
+            },
+        )
+        with pytest.raises(search_campaign.SearchCampaignError) as raised:
+            _prepare_round_one(
+                database,
+                drifted,
+                [candidate_id],
+                campaign_id="economic-gate-drift",
+            )
+        assert raised.value.code == "BLOCKED_DATA"
+        assert search_campaign.business_table_digest(database) == before
+        assert capability.search_root is not None
+        assert not (capability.search_root / pilot.SEARCH_CAMPAIGN).exists()
+
+        prepared = _prepare_round_one(
+            database,
+            capability,
+            [candidate_id],
+            campaign_id="economic-gate-bound",
+        )
+        plan = pilot.load_plan(capability.search_root, pilot.SEARCH_CAMPAIGN)
+        assert prepared.campaign_id == "economic-gate-bound"
+        assert plan["economic_gate"] == gate
+    finally:
+        capability.close()
 
 
 def _prepare_round_one(

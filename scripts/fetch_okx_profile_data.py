@@ -186,6 +186,7 @@ def configure_profile_acquisition(
     profile_id: str,
     window_spec: Path,
     pre_roll_candles: int,
+    economic_gate: Any = None,
 ) -> dict[str, Any]:
     data_start, search_start, development_start, end_exclusive = load_window_spec(
         window_spec
@@ -196,6 +197,7 @@ def configure_profile_acquisition(
         f"{search_start:%Y%m%d}-{development_start:%Y%m%d}",
         f"{development_start:%Y%m%d}-{end_exclusive:%Y%m%d}",
         pre_roll_candles,
+        economic_gate,
     )
     step = bounded_research.PROFILE_TIMEFRAME_STEPS[str(contract["timeframe"])]
     if data_start != search_start - step * pre_roll_candles:
@@ -1192,7 +1194,9 @@ def write_profile_provenance(
         local_only[name] = file_record(
             root / name, role, status="LOCAL_ONLY_NOT_DISTRIBUTED"
         )
-    acquisition_fields = bounded_research.PROFILE_ACQUISITION_FIELDS
+    acquisition_fields = bounded_research._profile_acquisition_contract_fields(
+        contract
+    )
     provenance = {
         "schema": "freqtrade-lab-retained-okx-data-v1",
         "portable_retained_fixture": False,
@@ -1238,16 +1242,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile-database", required=True, type=Path)
     parser.add_argument("--profile-id", required=True)
     parser.add_argument("--pre-roll-candles", required=True, type=int)
+    parser.add_argument(
+        "--economic-gate",
+        type=Path,
+        help="pre-result PROFILE_DRIVEN_ECONOMIC_GATE_V1 JSON",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    economic_gate_path = getattr(args, "economic_gate", None)
+    economic_gate = (
+        None
+        if economic_gate_path is None
+        else bounded_research.load_profile_economic_gate(economic_gate_path)
+    )
     configure_profile_acquisition(
         args.profile_database,
         args.profile_id,
         args.window_spec,
         args.pre_roll_candles,
+        economic_gate,
     )
     runtime = validate_runtime()
     implementations = implementation_snapshot()

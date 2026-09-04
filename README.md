@@ -95,11 +95,25 @@ acquisition. Its window file has exactly this shape; `data_start_utc` is
 }
 ```
 
+Freeze the versioned project economic Gate before acquisition. For Issue #49
+the reviewed file is:
+
+```json
+{
+  "name": "PROFILE_DRIVEN_ECONOMIC_GATE_V1",
+  "version": 1,
+  "minimum_net_profit_after_base_fees_pct": 0.5,
+  "minimum_average_holding_period_minutes": 4320,
+  "maximum_roi_exit_count": 0
+}
+```
+
 ```bash
 PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
   scripts/fetch_okx_profile_data.py \
   --output-root /absolute/private/path/complete-source-acquisition \
   --window-spec /absolute/private/path/profile-source-window.json \
+  --economic-gate /absolute/private/path/profile-economic-gate.json \
   --profile-database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
   --profile-id <profile-id> \
   --pre-roll-candles <positive-integer>
@@ -128,6 +142,7 @@ PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
   --search-timerange <YYYYMMDD-YYYYMMDD> \
   --development-timerange <YYYYMMDD-YYYYMMDD> \
   --pre-roll-candles <positive-integer> \
+  --economic-gate /absolute/private/path/profile-economic-gate.json \
   --output-root /absolute/private/path/search-campaign
 
 PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
@@ -140,10 +155,11 @@ PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
   --search-timerange <same-YYYYMMDD-YYYYMMDD> \
   --development-timerange <same-YYYYMMDD-YYYYMMDD> \
   --pre-roll-candles <same-positive-integer> \
+  --economic-gate /absolute/private/path/profile-economic-gate.json \
   --output-root /absolute/private/path/development-pilot
 ```
 
-The source must be one closed retrieval whose runner inputs match its reviewed provenance and receipt hashes. The selected schema-v1 Profile governs pair, dynamic `5m`/`1d` timeframe, non-negative fee (including `0`), sizing, finalist Gate, capacity, and disjoint frozen Search/Development windows; capacity is checked before mutation. Each non-existent `--output-root` is published atomically with mode `0700`. The Search root contains only its Search slice. The Development root contains controls plus a physical Development slice whose base candles start at `Development start - timeframe * pre_roll_candles`, whose mark series starts at that instant rounded down to the hour, whose funding series starts at Development, and whose stop is exclusive. Neither derived root contains Holdout values.
+The source must be one closed retrieval whose runner inputs match its reviewed provenance and receipt hashes. The same economic Gate file must be supplied to acquisition and both preparation commands; its normalized object is frozen into SHA-bound, Git-external source and prepared provenance before results exist. Search finalist selection and Development enforce that identical Gate. Missing, changed, `NULL`, or `UNKNOWN` economic evidence fails closed; the browser and Codex cannot submit replacement thresholds after a result. The selected schema-v1 Profile governs pair, dynamic `5m`/`1d` timeframe, non-negative fee (including `0`), sizing, finalist Gate, capacity, and disjoint frozen Search/Development windows; capacity is checked before mutation. Each non-existent `--output-root` is published atomically with mode `0700`. The Search root contains only its Search slice. The Development root contains controls plus a physical Development slice whose base candles start at `Development start - timeframe * pre_roll_candles`, whose mark series starts at that instant rounded down to the hour, whose funding series starts at Development, and whose stop is exclusive. Neither derived root contains Holdout values.
 At Console startup, both roots must bind the same original source-acquisition hashes. Console and `screen-search` never receive the complete source or later rows.
 Candidate generation and explicit `APPROVE` remain governed by their own
 preflights and do not consume Search data; Search requires this prepared root.
