@@ -11,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
@@ -43,6 +44,9 @@ MANIFEST_NAME = "research-bundle-v1.json"
 CLI = PROJECT_ROOT / "scripts" / "serve_strategy_library.py"
 # Must remain later than the dynamic import timestamp used by this fixture.
 NOW = "2099-01-01T00:00:00.000Z"
+NEWER_THAN_NOW = (
+    datetime.fromisoformat(NOW.replace("Z", "+00:00")) + timedelta(days=1)
+).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 BUSINESS_TABLES = (
     "research_profiles",
     "generation_runs",
@@ -546,7 +550,7 @@ def test_release_marker_only_follows_current_unarchived_summary(database: Path) 
             profile_id,
             status="COMPLETED",
             verdict=None,
-            created_at="2026-09-02T00:00:00.000Z",
+            created_at=NEWER_THAN_NOW,
         )
         _insert_complete_scenarios(connection, newer)
         connection.commit()

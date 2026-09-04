@@ -7,9 +7,30 @@ from pathlib import Path
 import pytest
 
 from lab import search_campaign
-from scripts import run_bounded_research_pilot as pilot
+from lab.database import get_connection
+from lab import bounded_research as pilot
 from scripts import run_freqtrade_backtest as offline_runner
 from tests.test_development_run import _approved_candidate_database
+
+
+PROFILE_SEARCH_TIMERANGE = "20260601-20260701"
+PROFILE_DEVELOPMENT_TIMERANGE = "20260701-20260731"
+PROFILE_TIMEFRAME = "5m"
+PROFILE_PRE_ROLL_CANDLES = 24
+PROFILE_SEARCH_STEPS, PROFILE_SEARCH_SUFFIXES = pilot._search_series_contract(
+    PROFILE_TIMEFRAME
+)
+PROFILE_SEARCH_WINDOW = pilot._search_window_contract(
+    PROFILE_SEARCH_TIMERANGE,
+    timeframe=PROFILE_TIMEFRAME,
+    pre_roll_candles=PROFILE_PRE_ROLL_CANDLES,
+)
+PROFILE_SEARCH_ROWS = PROFILE_SEARCH_WINDOW["rows"]
+PROFILE_DEVELOPMENT_WINDOW = pilot._development_window_contract(
+    PROFILE_DEVELOPMENT_TIMERANGE,
+    timeframe=PROFILE_TIMEFRAME,
+    pre_roll_candles=PROFILE_PRE_ROLL_CANDLES,
+)
 
 
 def _arrow_modules():
@@ -56,6 +77,9 @@ def _source_acquisition(
     prefixed_python_dependency: bool = False,
 ) -> tuple[Path, str, str]:
     pa, feather = _arrow_modules()
+    profile_contract = pilot.profile_acquisition_contract(
+        **_profile_prepare_kwargs(tmp_path)
+    )
     root = tmp_path / "complete-source-acquisition"
     data_root = root / "data" / "okx" / "futures"
     data_root.mkdir(parents=True)
@@ -92,21 +116,24 @@ def _source_acquisition(
         )
         local[f"data/okx/futures/{name}"] = _record(path, role)
 
-    config = json.loads(
-        (
-            Path(__file__).parent
-            / "fixtures"
-            / "freqtrade_2026_7"
-            / "producer"
-            / "config.json"
-        ).read_bytes()
-    )
+    config = pilot.profile_search_config(profile_contract["profile_snapshot"])
     _write_json(root / "config.json", config)
     _write_json(
         root / "market_snapshot.json",
-        {"id": "XRP-USDT-SWAP", "symbol": "XRP/USDT:USDT"},
+        {
+            "id": "XRP-USDT-SWAP",
+            "symbol": "XRP/USDT:USDT",
+            "active": True,
+            "contract": True,
+            "swap": True,
+            "linear": True,
+            "inverse": False,
+            "type": "swap",
+        },
     )
-    _write_json(root / "isolated_tiers_snapshot.json", {"tiers": []})
+    _write_json(
+        root / "isolated_tiers_snapshot.json", [{"symbol": "XRP/USDT:USDT"}]
+    )
     local["market_snapshot.json"] = _record(
         root / "market_snapshot.json", "market_snapshot"
     )
@@ -124,13 +151,40 @@ def _source_acquisition(
                 "start_utc": source_start.isoformat(),
                 "end_exclusive_utc": source_stop.isoformat(),
                 "fully_closed_at_fetch": True,
+                "development_start_utc": research_start.isoformat(),
+                "holdout_start_utc": datetime(
+                    2026, 7, 1, tzinfo=timezone.utc
+                ).isoformat(),
+                "startup_candles_required": PROFILE_PRE_ROLL_CANDLES,
             },
         },
     )
+    producer_root = root / "producer"
+    producer_root.mkdir()
+    profile_helper = Path(__file__).resolve().parent.parent / "scripts" / (
+        "fetch_okx_profile_data.py"
+    )
+    historical_helper = Path(__file__).resolve().parent / "fixtures" / (
+        "freqtrade_2026_7/producer/fetch_okx_public_data.py"
+    )
+    (producer_root / "fetch_okx_profile_data.py").write_bytes(
+        profile_helper.read_bytes()
+    )
+    (producer_root / "historical_fetch_okx_public_data.py").write_bytes(
+        historical_helper.read_bytes()
+    )
     files = {
-        "config.json": _record(root / "config.json", "sanitized_freqtrade_config"),
+        "config.json": _record(root / "config.json", "profile_bound_search_config"),
         "retrieval_receipt.json": _record(
             root / "retrieval_receipt.json", "local_public_retrieval_receipt"
+        ),
+        "producer/fetch_okx_profile_data.py": _record(
+            producer_root / "fetch_okx_profile_data.py",
+            "profile_acquisition_and_validation",
+        ),
+        "producer/historical_fetch_okx_public_data.py": _record(
+            producer_root / "historical_fetch_okx_public_data.py",
+            "historical_transport_dependency",
         ),
     }
     dependencies = dict(offline_runner.SUPPORTED_DEPENDENCIES)
@@ -163,6 +217,10 @@ def _source_acquisition(
                 "development_timerange": "20260601-20260701",
                 "holdout_timerange": "20260701-20260731",
                 "timeframe": "5m",
+                "profile_acquisition": {
+                    key: profile_contract[key]
+                    for key in pilot.PROFILE_ACQUISITION_FIELDS
+                },
             },
             "files": files,
             "local_only_files": local,
@@ -171,22 +229,102 @@ def _source_acquisition(
     return root, pilot.digest(provenance_bytes), pilot.digest(receipt_bytes)
 
 
+def _profile_search_database(tmp_path: Path) -> tuple[Path, dict[str, object]]:
+    profile_root = tmp_path / "profile"
+    existing = list(profile_root.glob("approved-*.sqlite"))
+    if existing:
+        assert len(existing) == 1
+        database = existing[0]
+        candidate_id = _profile_candidate_id(database)
+    else:
+        database, candidate_id = _approved_candidate_database(
+            profile_root, pair="XRP/USDT:USDT", timeframe=PROFILE_TIMEFRAME
+        )
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        profile = search_campaign.load_approved_candidate_snapshot(
+            connection, candidate_id
+        ).profile
+    return database, dict(profile)
+
+
+def _profile_prepare_kwargs(tmp_path: Path) -> dict[str, object]:
+    database, profile = _profile_search_database(tmp_path)
+    return {
+        "database_path": database,
+        "profile_id": str(profile["id"]),
+        "search_timerange": PROFILE_SEARCH_TIMERANGE,
+        "development_timerange": PROFILE_DEVELOPMENT_TIMERANGE,
+        "pre_roll_candles": PROFILE_PRE_ROLL_CANDLES,
+    }
+
+
+def _profile_database_path(tmp_path: Path) -> Path:
+    paths = list((tmp_path / "profile").glob("approved-*.sqlite"))
+    assert len(paths) == 1
+    return paths[0]
+
+
+def _profile_candidate_id(database: Path) -> str:
+    with get_connection(database, read_only=True) as connection:
+        row = connection.execute("SELECT id FROM candidates").fetchone()
+    assert row is not None
+    return str(row[0])
+
+
 def _produce(tmp_path: Path, **source_kwargs: object) -> tuple[Path, dict[str, object]]:
     source, provenance_sha, receipt_sha = _source_acquisition(
         tmp_path, **source_kwargs
     )
     output = tmp_path / "search-campaign"
-    result = pilot.prepare_search_data(source, output, provenance_sha, receipt_sha)
+    result = pilot.prepare_search_data(
+        source,
+        output,
+        provenance_sha,
+        receipt_sha,
+        **_profile_prepare_kwargs(tmp_path),
+    )
     return output, result
+
+
+def _produce_development(
+    tmp_path: Path, **source_kwargs: object
+) -> tuple[Path, Path, dict[str, object]]:
+    source, provenance_sha, receipt_sha = _source_acquisition(
+        tmp_path, **source_kwargs
+    )
+    output = tmp_path / "development-pilot"
+    result = pilot.prepare_development_data(
+        source,
+        output,
+        provenance_sha,
+        receipt_sha,
+        **_profile_prepare_kwargs(tmp_path),
+    )
+    return source, output, result
 
 
 def _search_plan(root: Path) -> dict[str, object]:
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
+    contract = provenance["contract"]
     return {
         "schema": pilot.SEARCH_SCHEMA,
-        "search_timerange": provenance["contract"]["search_timerange"],
+        "search_timerange": contract["search_timerange"],
         "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
+        **{
+            key: contract[key]
+            for key in (
+                "profile_snapshot",
+                "profile_snapshot_sha256",
+                "development_timerange",
+                "pre_roll_candles",
+                "capacity",
+                "finalist_gate",
+                "holdout",
+                "holdout_stress",
+            )
+        },
     }
 
 
@@ -198,7 +336,8 @@ def _save_search_provenance(root: Path, provenance: dict[str, object]) -> dict[s
 
 
 def _series_local_name(provenance: dict[str, object], series: str) -> str:
-    suffix = pilot.SEARCH_SERIES_SUFFIXES[series]
+    _, suffixes = pilot._search_series_contract(provenance["contract"]["timeframe"])
+    suffix = suffixes[series]
     return next(
         name
         for name in provenance["local_only_files"]
@@ -220,8 +359,15 @@ def _rewrite_search_window(root: Path, timerange_value: str) -> dict[str, object
     pa, feather = _arrow_modules()
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
-    window = pilot._search_window_contract(timerange_value)
-    for series, step in pilot.SEARCH_SERIES_STEPS.items():
+    timeframe = provenance["contract"]["timeframe"]
+    pre_roll = provenance["contract"]["pre_roll_candles"]
+    window = pilot._search_window_contract(
+        timerange_value,
+        timeframe=timeframe,
+        pre_roll_candles=pre_roll,
+    )
+    steps, _ = pilot._search_series_contract(timeframe)
+    for series, step in steps.items():
         local_name = _series_local_name(provenance, series)
         path = root / pilot.ACQUISITION / local_name
         path.chmod(0o600)
@@ -234,6 +380,9 @@ def _rewrite_search_window(root: Path, timerange_value: str) -> dict[str, object
         provenance["local_only_files"][local_name]["rows"] = window["rows"][series]
         _resign_local_file(root, provenance, local_name)
     provenance["contract"]["search_timerange"] = timerange_value
+    provenance["contract"]["capacity"] = pilot.profile_search_capacity(
+        provenance["contract"]["profile_snapshot"], timerange_value
+    )
     provenance["search_retention"] = {
         "startup_start_utc": window["startup_start"].isoformat().replace("+00:00", "Z"),
         "search_start_utc": window["search_start"].isoformat().replace("+00:00", "Z"),
@@ -374,7 +523,9 @@ def test_t0_search_consumer_requires_exact_pyarrow_version(
 
     with pytest.raises(pilot.PilotError, match="exact PyArrow 25.0.0"):
         pilot.verify_data(root, _search_plan(root))
-    capability = search_campaign.freeze_search_capability(root, None, None)
+    capability = search_campaign.freeze_search_capability(
+        _profile_database_path(tmp_path), root, None, None
+    )
     try:
         assert capability.status == "BLOCKED_DATA"
     finally:
@@ -395,7 +546,7 @@ def test_t1_exact_pyarrow_rejects_invalid_search_timestamps(
     path = root / pilot.ACQUISITION / local_name
     table = feather.read_table(path)
     values = table.column("date").to_pylist()
-    step = pilot.SEARCH_SERIES_STEPS["futures_5m"]
+    step = PROFILE_SEARCH_STEPS["futures_5m"]
     if case == "gap":
         values[100] = values[99] + 2 * step
     elif case == "duplicate":
@@ -405,7 +556,7 @@ def test_t1_exact_pyarrow_rejects_invalid_search_timestamps(
     elif case == "early-end":
         values[-1] -= step
     elif case == "post-stop":
-        values[-1] = pilot.FROZEN_SEARCH_STOP + step
+        values[-1] = PROFILE_SEARCH_WINDOW["search_stop"] + step
     elif case == "null":
         values[100] = None
     elif case == "non-utc":
@@ -495,15 +646,17 @@ def test_t1_exact_pyarrow_accepts_dynamic_non_june_30_day_window(
     tmp_path: Path,
 ) -> None:
     root, _ = _produce(tmp_path)
-    plan = _rewrite_search_window(root, "20260801-20260831")
+    plan = _rewrite_search_window(root, "20260501-20260531")
 
     verified = pilot.verify_data(root, plan)
-    snapshot = search_campaign._acquisition_snapshot(root)
+    snapshot = search_campaign._acquisition_snapshot(
+        root, _profile_database_path(tmp_path)
+    )
 
     assert verified["status"] == "DATA_READY"
-    assert verified["search_timerange"] == "20260801-20260831"
-    assert verified["rows"] == pilot.FROZEN_SEARCH_ROWS
-    assert snapshot["search_timerange"] == "20260801-20260831"
+    assert verified["search_timerange"] == "20260501-20260531"
+    assert verified["rows"] == PROFILE_SEARCH_ROWS
+    assert snapshot["search_timerange"] == "20260501-20260531"
 
 
 def test_t2_full_length_date_only_feathers_block_before_any_mutation(
@@ -513,7 +666,7 @@ def test_t2_full_length_date_only_feathers_block_before_any_mutation(
     root, _ = _produce(tmp_path)
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
-    for series in pilot.SEARCH_SERIES_STEPS:
+    for series in PROFILE_SEARCH_STEPS:
         local_name = _series_local_name(provenance, series)
         path = root / pilot.ACQUISITION / local_name
         dates = feather.read_table(path, columns=["date"]).column("date")
@@ -525,17 +678,23 @@ def test_t2_full_length_date_only_feathers_block_before_any_mutation(
     _save_search_provenance(root, provenance)
     with pytest.raises(pilot.PilotError, match="exact Freqtrade OHLCV schema"):
         pilot.verify_data(root, _search_plan(root))
-    database, candidate_id = _approved_candidate_database(
-        tmp_path, pair="XRP/USDT:USDT"
-    )
+    database = _profile_database_path(tmp_path)
+    candidate_id = _profile_candidate_id(database)
     before = search_campaign.business_table_digest(database)
 
-    capability = search_campaign.freeze_search_capability(root, None, None)
+    capability = search_campaign.freeze_search_capability(
+        database, root, None, None
+    )
     try:
         assert capability.status == "BLOCKED_DATA"
-        assert capability.reason == "Search-only data contract could not be verified"
+        assert capability.reason == "Profile Search data contract could not be verified"
         with pytest.raises(search_campaign.SearchCampaignError) as raised:
-            search_campaign.prepare_round_one(database, capability, [candidate_id])
+            search_campaign.prepare_round_one(
+                database,
+                capability,
+                [candidate_id],
+                profile_id=str(_search_plan(root)["profile_snapshot"]["id"]),
+            )
         assert raised.value.code == "BLOCKED_DATA"
         assert search_campaign.business_table_digest(database) == before
         assert not (root / pilot.SEARCH_CAMPAIGN).exists()
@@ -552,8 +711,8 @@ def test_t2_three_one_row_feathers_block_before_campaign_or_database_mutation(
     root, _ = _produce(tmp_path)
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
-    window = pilot._search_window_contract(pilot.FROZEN_SEARCH_TIMERANGE)
-    for series in pilot.SEARCH_SERIES_STEPS:
+    window = PROFILE_SEARCH_WINDOW
+    for series in PROFILE_SEARCH_STEPS:
         local_name = _series_local_name(provenance, series)
         path = root / pilot.ACQUISITION / local_name
         path.chmod(0o600)
@@ -570,17 +729,23 @@ def test_t2_three_one_row_feathers_block_before_campaign_or_database_mutation(
     _save_search_provenance(root, provenance)
     with pytest.raises(pilot.PilotError, match="output is not contiguous"):
         pilot.verify_data(root, _search_plan(root))
-    database, candidate_id = _approved_candidate_database(
-        tmp_path, pair="XRP/USDT:USDT"
-    )
+    database = _profile_database_path(tmp_path)
+    candidate_id = _profile_candidate_id(database)
     before = search_campaign.business_table_digest(database)
 
-    capability = search_campaign.freeze_search_capability(root, None, None)
+    capability = search_campaign.freeze_search_capability(
+        database, root, None, None
+    )
     try:
         assert capability.status == "BLOCKED_DATA"
-        assert capability.reason == "Search-only data contract could not be verified"
+        assert capability.reason == "Profile Search data contract could not be verified"
         with pytest.raises(search_campaign.SearchCampaignError) as raised:
-            search_campaign.prepare_round_one(database, capability, [candidate_id])
+            search_campaign.prepare_round_one(
+                database,
+                capability,
+                [candidate_id],
+                profile_id=str(_search_plan(root)["profile_snapshot"]["id"]),
+            )
         assert raised.value.code == "BLOCKED_DATA"
         assert search_campaign.business_table_digest(database) == before
         assert not (root / pilot.SEARCH_CAMPAIGN).exists()
@@ -617,9 +782,9 @@ def test_t1_producer_publishes_only_exact_search_values_and_real_check_data(
         "data_sha256",
     }
     starts = {
-        "-5m-futures.feather": pilot.FROZEN_SEARCH_STARTUP,
-        "-1h-mark.feather": pilot.FROZEN_SEARCH_STARTUP,
-        "-1h-funding_rate.feather": pilot.FROZEN_SEARCH_START,
+        "-5m-futures.feather": PROFILE_SEARCH_WINDOW["startup_start"],
+        "-1h-mark.feather": PROFILE_SEARCH_WINDOW["starts"]["mark_1h"],
+        "-1h-funding_rate.feather": PROFILE_SEARCH_WINDOW["search_start"],
     }
     _, feather = _arrow_modules()
     for path in (output / "acquisition" / "data" / "okx").rglob("*.feather"):
@@ -628,22 +793,177 @@ def test_t1_producer_publishes_only_exact_search_values_and_real_check_data(
         assert dates[0].astimezone(timezone.utc) == next(
             start for suffix, start in starts.items() if path.name.endswith(suffix)
         )
-        assert all(item < pilot.FROZEN_SEARCH_STOP for item in dates)
+        assert all(item < PROFILE_SEARCH_WINDOW["search_stop"] for item in dates)
         if path.name.endswith("-1h-mark.feather"):
             assert table.column("volume").null_count == table.num_rows
-    plan = {
-        "schema": pilot.SEARCH_SCHEMA,
-        "search_timerange": pilot.FROZEN_SEARCH_TIMERANGE,
-        "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
-    }
+    plan = _search_plan(output)
     assert pilot.verify_data(output, plan)["status"] == "DATA_READY"
-    assert search_campaign._acquisition_snapshot(output) == {
-        "search_timerange": pilot.FROZEN_SEARCH_TIMERANGE,
+    assert search_campaign._acquisition_snapshot(
+        output, _profile_database_path(tmp_path)
+    ) == {
+        "search_timerange": PROFILE_SEARCH_TIMERANGE,
         "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
+        "source_acquisition_sha256": pilot.digest(
+            pilot.canonical(provenance["source_acquisition"])
+        ),
         "pair": "XRP/USDT:USDT",
         "timeframe": "5m",
         "base_fee": 0.0005,
+        "profile_snapshot": provenance["contract"]["profile_snapshot"],
+        "profile_snapshot_sha256": provenance["contract"][
+            "profile_snapshot_sha256"
+        ],
+        "development_timerange": PROFILE_DEVELOPMENT_TIMERANGE,
+        "pre_roll_candles": PROFILE_PRE_ROLL_CANDLES,
     }
+
+
+def test_t1_development_producer_publishes_one_isolated_profile_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for name in ("init_database", "run_research_candidate"):
+        monkeypatch.setattr(
+            pilot,
+            name,
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError(
+                    "Development materializer must not create a ResearchRun"
+                )
+            ),
+        )
+    source, output, result = _produce_development(tmp_path)
+
+    assert result["status"] == "DEVELOPMENT_DATA_READY"
+    assert stat.S_IMODE(output.stat().st_mode) == 0o700
+    assert {path.name for path in output.iterdir()} == {
+        pilot.PLAN,
+        pilot.WINDOW,
+        pilot.ACQUISITION,
+        pilot.DEVELOPMENT_ISOLATION,
+    }
+    assert not list(output.rglob("*.sqlite*"))
+    assert not (output / "candidates").exists()
+    assert not (output / "workspace").exists()
+    assert not (output / "holdout-isolation").exists()
+
+    plan = json.loads((output / pilot.PLAN).read_bytes())
+    acquisition = output / pilot.ACQUISITION
+    acquisition_provenance = json.loads(
+        (acquisition / "retained-data-provenance.json").read_bytes()
+    )
+    isolation = output / pilot.DEVELOPMENT_ISOLATION
+    development_provenance = json.loads(
+        (isolation / "retained-data-provenance.json").read_bytes()
+    )
+    assert plan["schema"] == pilot.PROFILE_DEVELOPMENT_SCHEMA
+    assert plan["candidates"] == []
+    assert {path.name for path in acquisition.iterdir()} == {
+        "config.json",
+        "market_snapshot.json",
+        "isolated_tiers_snapshot.json",
+        "retained-data-provenance.json",
+    }
+    assert not (acquisition / "data").exists()
+
+    source_provenance = json.loads(
+        (source / "retained-data-provenance.json").read_bytes()
+    )
+    expected_source_acquisition = {
+        "provenance_sha256": pilot.digest(
+            (source / "retained-data-provenance.json").read_bytes()
+        ),
+        "retrieval_receipt_sha256": pilot.digest(
+            (source / "retrieval_receipt.json").read_bytes()
+        ),
+        "data_sha256": {
+            name.removeprefix("data/okx/"): receipt["sha256"]
+            for name, receipt in source_provenance["local_only_files"].items()
+            if name.startswith("data/okx/")
+        },
+    }
+    assert plan["source_acquisition"] == expected_source_acquisition
+    assert (
+        acquisition_provenance["source_acquisition"]
+        == expected_source_acquisition
+        == development_provenance["source_acquisition"]
+    )
+    assert development_provenance["development_isolation"][
+        "holdout_values_present"
+    ] is False
+
+    starts = {
+        "-5m-futures.feather": PROFILE_DEVELOPMENT_WINDOW["startup_start"],
+        "-1h-mark.feather": PROFILE_DEVELOPMENT_WINDOW["starts"]["mark_1h"],
+        "-1h-funding_rate.feather": PROFILE_DEVELOPMENT_WINDOW[
+            "development_start"
+        ],
+    }
+    _, feather = _arrow_modules()
+    for path in (isolation / "data" / "okx").rglob("*.feather"):
+        dates = feather.read_table(path, columns=["date"]).column("date").to_pylist()
+        assert dates[0].astimezone(timezone.utc) == next(
+            start for suffix, start in starts.items() if path.name.endswith(suffix)
+        )
+        assert all(
+            item < PROFILE_DEVELOPMENT_WINDOW["development_stop"]
+            for item in dates
+        )
+
+    verified = offline_runner._verify_data_provenance(
+        development_provenance,
+        scenario="DEVELOPMENT",
+        timerange=PROFILE_DEVELOPMENT_TIMERANGE,
+        pair="XRP/USDT:USDT",
+        data_dir=isolation / "data" / "okx",
+        market_snapshot=acquisition / "market_snapshot.json",
+        leverage_tiers=acquisition / "isolated_tiers_snapshot.json",
+        timeframe=PROFILE_TIMEFRAME,
+    )
+    assert set(verified["data_sha256"]) == set(
+        expected_source_acquisition["data_sha256"]
+    )
+    assert pilot.check_development_data(output) == result
+    assert (
+        pilot.main(
+            ["check-development-data", "--pilot-root", str(output)]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "DEVELOPMENT_DATA_READY"
+
+
+def test_t0_development_check_rejects_extra_candidate_file(tmp_path: Path) -> None:
+    _, output, _ = _produce_development(tmp_path)
+    marker = output / "candidate.py"
+    marker.write_text("user-owned", encoding="utf-8")
+
+    with pytest.raises(pilot.PilotError, match="file set is not exact"):
+        pilot.check_development_data(output)
+
+    assert marker.read_text(encoding="utf-8") == "user-owned"
+
+
+def test_t0_development_publish_failure_leaves_no_partial_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source, provenance_sha, receipt_sha = _source_acquisition(tmp_path)
+    output = tmp_path / "development-pilot"
+
+    def fail_publish(*args: object, **kwargs: object) -> None:
+        raise pilot.ResearchCandidateError("injected publication failure")
+
+    monkeypatch.setattr(pilot, "_publish_directory_exclusive", fail_publish)
+    with pytest.raises(pilot.PilotError, match="injected publication failure"):
+        pilot.prepare_development_data(
+            source,
+            output,
+            provenance_sha,
+            receipt_sha,
+            **_profile_prepare_kwargs(tmp_path),
+        )
+
+    assert not output.exists()
+    assert not list(tmp_path.glob(".development-data-*"))
 
 
 def test_t1_legacy_python_dependency_is_published_canonically(tmp_path: Path) -> None:
@@ -671,7 +991,83 @@ def test_t0_producer_rejects_untrusted_source_without_partial_output(
     output = tmp_path / "search-campaign"
 
     with pytest.raises(pilot.PilotError, match="trusted SHA|tracked receipt"):
-        pilot.prepare_search_data(source, output, provenance_sha, receipt_sha)
+        pilot.prepare_search_data(
+            source,
+            output,
+            provenance_sha,
+            receipt_sha,
+            **_profile_prepare_kwargs(tmp_path),
+        )
+
+    assert not output.exists()
+    assert not list(tmp_path.glob(".search-data-*"))
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "development-window",
+        "pre-roll",
+        "profile-gate",
+        "receipt-development",
+        "receipt-holdout",
+        "receipt-startup",
+    ),
+)
+def test_t0_producer_rejects_profile_contract_drift_without_partial_output(
+    tmp_path: Path, case: str
+) -> None:
+    source, provenance_sha, receipt_sha = _source_acquisition(tmp_path)
+    kwargs = _profile_prepare_kwargs(tmp_path)
+    if case == "development-window":
+        kwargs["development_timerange"] = "20260701-20260801"
+    elif case == "pre-roll":
+        kwargs["pre_roll_candles"] = PROFILE_PRE_ROLL_CANDLES - 1
+    else:
+        if case == "profile-gate":
+            with get_connection(kwargs["database_path"]) as connection:
+                connection.execute(
+                    "UPDATE research_profiles SET max_drawdown_pct = 4.0 WHERE id = ?",
+                    (kwargs["profile_id"],),
+                )
+                connection.commit()
+        else:
+            receipt_path = source / "retrieval_receipt.json"
+            receipt = json.loads(receipt_path.read_bytes())
+            field, value = {
+                "receipt-development": (
+                    "development_start_utc",
+                    "2026-06-02T00:00:00+00:00",
+                ),
+                "receipt-holdout": (
+                    "holdout_start_utc",
+                    "2026-07-02T00:00:00+00:00",
+                ),
+                "receipt-startup": (
+                    "startup_candles_required",
+                    PROFILE_PRE_ROLL_CANDLES - 1,
+                ),
+            }[case]
+            receipt["data_window"][field] = value
+            receipt_bytes = _write_json(receipt_path, receipt)
+            provenance_path = source / "retained-data-provenance.json"
+            provenance = json.loads(provenance_path.read_bytes())
+            provenance["files"]["retrieval_receipt.json"] = _record(
+                receipt_path, "local_public_retrieval_receipt"
+            )
+            provenance_bytes = _write_json(provenance_path, provenance)
+            receipt_sha = pilot.digest(receipt_bytes)
+            provenance_sha = pilot.digest(provenance_bytes)
+    output = tmp_path / "search-campaign"
+
+    with pytest.raises(pilot.PilotError):
+        pilot.prepare_search_data(
+            source,
+            output,
+            provenance_sha,
+            receipt_sha,
+            **kwargs,
+        )
 
     assert not output.exists()
     assert not list(tmp_path.glob(".search-data-*"))
@@ -684,7 +1080,13 @@ def test_t0_producer_rejects_a_search_gap_without_partial_output(tmp_path: Path)
     output = tmp_path / "search-campaign"
 
     with pytest.raises(pilot.PilotError, match="not contiguous"):
-        pilot.prepare_search_data(source, output, provenance_sha, receipt_sha)
+        pilot.prepare_search_data(
+            source,
+            output,
+            provenance_sha,
+            receipt_sha,
+            **_profile_prepare_kwargs(tmp_path),
+        )
 
     assert not output.exists()
     assert not list(tmp_path.glob(".search-data-*"))
@@ -699,7 +1101,13 @@ def test_t0_producer_never_overwrites_an_existing_root(tmp_path: Path) -> None:
     marker.write_text("preserve", encoding="utf-8")
 
     with pytest.raises(pilot.PilotError, match="already exists"):
-        pilot.prepare_search_data(source, output, "0" * 64, "0" * 64)
+        pilot.prepare_search_data(
+            source,
+            output,
+            "0" * 64,
+            "0" * 64,
+            **_profile_prepare_kwargs(tmp_path),
+        )
 
     assert marker.read_text(encoding="utf-8") == "preserve"
 
@@ -718,9 +1126,13 @@ def test_t0_producer_rejects_sensitive_config(tmp_path: Path) -> None:
     provenance_bytes = _write_json(provenance_path, provenance)
     output = tmp_path / "search-campaign"
 
-    with pytest.raises(pilot.PilotError, match="db_url|single-file boundary"):
+    with pytest.raises(pilot.PilotError, match="frozen Search Profile"):
         pilot.prepare_search_data(
-            source, output, pilot.digest(provenance_bytes), receipt_sha
+            source,
+            output,
+            pilot.digest(provenance_bytes),
+            receipt_sha,
+            **_profile_prepare_kwargs(tmp_path),
         )
 
     assert not output.exists()
@@ -744,7 +1156,13 @@ def test_t0_control_drift_after_validation_fails_clean(
     output = tmp_path / "search-campaign"
 
     with pytest.raises(pilot.PilotError, match="changed after provenance validation"):
-        pilot.prepare_search_data(source, output, provenance_sha, receipt_sha)
+        pilot.prepare_search_data(
+            source,
+            output,
+            provenance_sha,
+            receipt_sha,
+            **_profile_prepare_kwargs(tmp_path),
+        )
 
     assert not output.exists()
     assert not list(tmp_path.glob(".search-data-*"))
@@ -777,8 +1195,11 @@ def test_t2_generated_root_runs_real_search_preflight_and_isolation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     output, _ = _produce(tmp_path)
+    profile_contract = _search_plan(output)
+    profile_id = profile_contract["profile_snapshot"]["id"]
     candidates = []
-    for index, mechanism in enumerate(("ema", "rsi", "channel"), start=1):
+    analyses = {}
+    for index, mechanism in enumerate(("ema", "rsi"), start=1):
         class_name = f"SearchSeed{index}"
         data = _candidate_source(class_name)
         path = output / "candidates" / f"{class_name}.py"
@@ -794,24 +1215,35 @@ def test_t2_generated_root_runs_real_search_preflight_and_isolation(
                 "parent_strategy_sha256": None,
                 "strategy_file": f"candidates/{class_name}.py",
                 "strategy_sha256": pilot.digest(data),
+                "generation_run_id": f"generation-{index}",
+                "profile_id": profile_id,
             }
         )
+        analysis = pilot.analyze_bounded_causal_strategy_file(
+            path, class_name, expected_timeframe=PROFILE_TIMEFRAME
+        )
+        analyses[f"seed-{index}"] = {
+            "timeframe": analysis.timeframe,
+            "startup_candle_count": analysis.startup_candle_count,
+            "maximum_lookback": analysis.max_lookback,
+        }
     provenance = output / "acquisition" / "retained-data-provenance.json"
     _write_json(
         output / pilot.SEARCH_CAMPAIGN,
         {
+            **profile_contract,
             "schema": pilot.SEARCH_SCHEMA,
             "campaign_id": "producer-consumer-test",
             "freqtrade_version": "2026.7",
             "round": 1,
             "previous_round_receipt_sha256": None,
-            "search_timerange": pilot.FROZEN_SEARCH_TIMERANGE,
             "data_provenance_sha256": pilot.digest(provenance.read_bytes()),
             "budget": {"maximum_attempts": 6},
             "ranking": list(pilot.SEARCH_RANKING),
-            "finalist_gate": pilot.SEARCH_GATE_CONTRACT,
+            "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
             "parent": None,
             "candidates": candidates,
+            "strategy_analyses": analyses,
         },
     )
     plan = pilot.load_plan(output, pilot.SEARCH_CAMPAIGN)
@@ -837,15 +1269,16 @@ def test_t2_generated_root_runs_real_search_preflight_and_isolation(
         )
         offline_runner._verify_data_provenance(
             isolated_provenance,
-            scenario="DEVELOPMENT",
-            timerange=pilot.FROZEN_SEARCH_TIMERANGE,
+            scenario="SEARCH",
+            timerange=PROFILE_SEARCH_TIMERANGE,
             pair="XRP/USDT:USDT",
             data_dir=Path(isolation["data_dir"]),
             market_snapshot=first_input / "market_snapshot.json",
             leverage_tiers=first_input / "isolated_tiers_snapshot.json",
         )
-        return [
-            {
+        results = []
+        for item in search_plan["candidates"]:
+            result = {
                 "candidate_id": item["candidate_id"],
                 "class_name": item["class_name"],
                 "strategy_sha256": item["strategy_sha256"],
@@ -853,11 +1286,38 @@ def test_t2_generated_root_runs_real_search_preflight_and_isolation(
                 "failure_reason": None,
                 "total_trades": 35,
                 "profit_pct": 0.2,
+                "gross_profit_before_fees_pct": 0.3,
+                "configured_fee_cost_pct": 0.1,
                 "max_drawdown_pct": 4.0,
                 "profit_factor": 1.1,
+                "average_holding_period_minutes": 45.0,
+                "direction_concentration": 0.6,
+                "market_state_concentration": 0.5,
+                "market_state_definition": pilot.MARKET_STATE_DEFINITION,
+                "market_state_lookback_candles": search_plan["pre_roll_candles"],
             }
-            for item in search_plan["candidates"]
-        ]
+            result_root = (
+                root
+                / f"search-results-round-{search_plan['round']}"
+                / str(item["candidate_id"])
+            )
+            raw_root = result_root / "raw"
+            raw_root.mkdir(parents=True)
+            archive_name = "backtest-result.zip"
+            archive_bytes = pilot.canonical(
+                {"candidate_id": item["candidate_id"], "kind": "test archive"}
+            )
+            (raw_root / archive_name).write_bytes(archive_bytes)
+            result.update(
+                archive=archive_name,
+                archive_sha256=pilot.digest(archive_bytes),
+                report_semantic_sha256=pilot.digest(
+                    pilot.canonical({"candidate_id": item["candidate_id"]})
+                ),
+            )
+            (result_root / "result.json").write_bytes(pilot.canonical(result))
+            results.append(result)
+        return results
 
     monkeypatch.setattr(pilot, "screen", outer_freqtrade_fake)
     source = tmp_path / "freqtrade-source"

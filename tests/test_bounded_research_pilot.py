@@ -1,23 +1,30 @@
-import importlib.util
 import json
 import shutil
 import sqlite3
+import subprocess
 import sys
+import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from lab import bounded_research as pilot
 from lab import search_campaign
+from lab.bounded_strategy import analyze_bounded_causal_strategy
 from scripts import run_freqtrade_backtest as offline_runner
+from tests.test_search_data_producer import (
+    _profile_search_database,
+    _source_acquisition as _profile_source_acquisition,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "run_bounded_research_pilot.py"
-SPEC = importlib.util.spec_from_file_location("bounded_pilot", SCRIPT)
-assert SPEC is not None and SPEC.loader is not None
-pilot = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(pilot)
+PROFILE_SEARCH_TIMERANGE = "20260601-20260701"
+PROFILE_DEVELOPMENT_TIMERANGE = "20260701-20260731"
+PROFILE_PRE_ROLL_CANDLES = 24
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -46,6 +53,68 @@ def _candidate_source(class_name: str, body: str = "return dataframe") -> bytes:
         "    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:\n"
         "        return dataframe\n"
     ).encode()
+
+
+def test_t0_profile_development_cli_parsers_share_prepare_arguments() -> None:
+    common = [
+        "--source-root",
+        "/tmp/source",
+        "--source-provenance-sha256",
+        "0" * 64,
+        "--source-receipt-sha256",
+        "1" * 64,
+        "--database",
+        "/tmp/lab.sqlite",
+        "--profile-id",
+        "profile-one",
+        "--search-timerange",
+        PROFILE_SEARCH_TIMERANGE,
+        "--development-timerange",
+        PROFILE_DEVELOPMENT_TIMERANGE,
+        "--pre-roll-candles",
+        str(PROFILE_PRE_ROLL_CANDLES),
+        "--output-root",
+        "/tmp/output",
+    ]
+    search = pilot.parse_args(["prepare-search-data", *common])
+    development = pilot.parse_args(["prepare-development-data", *common])
+
+    assert vars(search) | {"command": development.command} == vars(development)
+    assert pilot.parse_args(
+        ["check-development-data", "--pilot-root", "/tmp/pilot"]
+    ).pilot_root == Path("/tmp/pilot")
+
+
+def test_t0_profile_development_window_records_exact_base_warmup() -> None:
+    profile_snapshot = {
+        "holdout_days": 30,
+    }
+    profile_contract = {
+        "development_timerange": PROFILE_DEVELOPMENT_TIMERANGE,
+        "pre_roll_candles": 25,
+    }
+
+    window = pilot._profile_development_window_spec(
+        profile_contract,
+        {"timeframe": "5m", "profile_snapshot": profile_snapshot},
+    )
+
+    assert window["data_start_utc"] == "2026-06-30T21:55:00Z"
+    assert window["development_start_utc"] == "2026-07-01T00:00:00Z"
+
+
+def test_t0_thin_wrapper_loads_from_repo_external_cwd(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "prepare-development-data" in completed.stdout
+    assert "check-development-data" in completed.stdout
 
 
 def _plan_root(tmp_path: Path) -> Path:
@@ -286,114 +355,20 @@ def _main_args(root: Path, source: Path) -> list[str]:
 
 
 def _search_root(tmp_path: Path) -> tuple[Path, Path]:
+    database, profile = _profile_search_database(tmp_path)
+    source_acquisition, provenance_sha, receipt_sha = _profile_source_acquisition(tmp_path)
     root = tmp_path / "search-campaign"
-    data_root = root / "acquisition" / "data" / "okx" / "futures"
-    data_root.mkdir(parents=True)
-    data_names = {
-        "futures_5m": "TEST_USDT_USDT-5m-futures.feather",
-        "mark_1h": "TEST_USDT_USDT-1h-mark.feather",
-        "funding_history": "TEST_USDT_USDT-1h-funding_rate.feather",
-    }
-    rows = dict(pilot.FROZEN_SEARCH_ROWS)
-    local: dict[str, object] = {}
-    source_data_sha256: dict[str, str] = {}
-    for series, name in data_names.items():
-        data = f"unit-only-{series}\n".encode()
-        path = data_root / name
-        path.write_bytes(data)
-        relative = f"futures/{name}"
-        source_data_sha256[relative] = pilot.digest(data)
-        local[f"data/okx/{relative}"] = {
-            "bytes": len(data),
-            "sha256": pilot.digest(data),
-            "rows": rows[series],
-        }
-    config = json.loads(
-        (
-            Path(__file__).parent
-            / "fixtures"
-            / "freqtrade_2026_7"
-            / "producer"
-            / "config.json"
-        ).read_bytes()
+    pilot.prepare_search_data(
+        source_acquisition,
+        root,
+        provenance_sha,
+        receipt_sha,
+        database_path=database,
+        profile_id=str(profile["id"]),
+        search_timerange=PROFILE_SEARCH_TIMERANGE,
+        development_timerange=PROFILE_DEVELOPMENT_TIMERANGE,
+        pre_roll_candles=PROFILE_PRE_ROLL_CANDLES,
     )
-    config["exchange"]["pair_whitelist"] = ["TEST/USDT:USDT"]
-    _write_json(root / "acquisition" / "config.json", config)
-    _write_json(
-        root / "acquisition" / "market_snapshot.json",
-        {
-            "id": "TEST-USDT-SWAP",
-            "symbol": "TEST/USDT:USDT",
-            "active": True,
-            "contract": True,
-            "swap": True,
-            "linear": True,
-            "inverse": False,
-            "type": "swap",
-        },
-    )
-    _write_json(
-        root / "acquisition" / "isolated_tiers_snapshot.json",
-        [{"symbol": "TEST/USDT:USDT"}],
-    )
-    config = (root / "acquisition" / "config.json").read_bytes()
-    market = (root / "acquisition" / "market_snapshot.json").read_bytes()
-    tiers = (root / "acquisition" / "isolated_tiers_snapshot.json").read_bytes()
-    local.update(
-        {
-            "market_snapshot.json": {
-                "bytes": len(market),
-                "sha256": pilot.digest(market),
-            },
-            "isolated_tiers_snapshot.json": {
-                "bytes": len(tiers),
-                "sha256": pilot.digest(tiers),
-            },
-        }
-    )
-    provenance = {
-        "schema": "freqtrade-lab-retained-search-data-v2",
-        "source": {
-            "host": "www.okx.com",
-            "authentication": "none",
-            "pair": "TEST/USDT:USDT",
-            "instrument_id": "TEST-USDT-SWAP",
-        },
-        "freqtrade": {
-            "version": "2026.7",
-            "tag": "2026.7",
-            "commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
-            "dependencies": dict(offline_runner.SUPPORTED_DEPENDENCIES),
-        },
-        "contract": {
-            "timeframe": "5m",
-            "search_timerange": "20260101-20260131",
-            "data_dir": "data/okx",
-            "market_snapshot": "market_snapshot.json",
-            "leverage_tiers": "isolated_tiers_snapshot.json",
-            "config": "config.json",
-        },
-        "source_acquisition": {
-            "provenance_sha256": "a" * 64,
-            "retrieval_receipt_sha256": "b" * 64,
-            "data_sha256": source_data_sha256,
-        },
-        "search_retention": {
-            "startup_start_utc": "2025-12-31T22:00:00Z",
-            "search_start_utc": "2026-01-01T00:00:00Z",
-            "end_exclusive_utc": "2026-01-31T00:00:00Z",
-            "later_rows_exposed_to_search": False,
-            "rows": rows,
-        },
-        "local_only_files": local,
-        "files": {
-            "config.json": {
-                "bytes": len(config),
-                "sha256": pilot.digest(config),
-            }
-        },
-    }
-    _write_json(root / "acquisition" / "retained-data-provenance.json", provenance)
     source = tmp_path / "freqtrade-source"
     source.mkdir()
     return root, source
@@ -401,11 +376,77 @@ def _search_root(tmp_path: Path) -> tuple[Path, Path]:
 
 def _unit_search_rows(path: Path | str) -> int:
     name = str(path)
-    return next(
-        pilot.FROZEN_SEARCH_ROWS[series]
-        for series, suffix in pilot.SEARCH_SERIES_SUFFIXES.items()
-        if name.endswith(suffix)
+    rows = _profile_search_rows()
+    _, suffixes = pilot._search_series_contract("5m")
+    return next(rows[series] for series, suffix in suffixes.items() if name.endswith(suffix))
+
+
+def _profile_search_rows() -> dict[str, int]:
+    window = pilot._search_window_contract(
+        PROFILE_SEARCH_TIMERANGE,
+        timeframe="5m",
+        pre_roll_candles=PROFILE_PRE_ROLL_CANDLES,
     )
+    return dict(window["rows"])
+
+
+def _profile_archive(tmp_path: Path, *, drift: bool = False) -> tuple[Path, str, dict]:
+    _, profile = _profile_search_database(tmp_path)
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    archive_path = raw / "backtest-result.zip"
+    report = {
+        "strategy": {
+            "DailyTrend": {
+                "total_trades": 0,
+                "trades": [],
+                "profit_total": 0.0,
+                "max_drawdown_account": 0.0,
+                "profit_factor": 0.0,
+            }
+        }
+    }
+
+    config = pilot.profile_search_config(profile)
+    config["internals"] = {"process_throttle_secs": 5}
+    if drift:
+        config.update(
+            trading_mode="spot", margin_mode="cross", timeframe="1d",
+            dry_run=False, stake_currency="BTC", tradable_balance_ratio=0.5,
+            fee=0.001, dry_run_wallet=500.0, stake_amount=50.0,
+            max_open_trades=2,
+        )
+        config["exchange"].update(name="binance", pair_whitelist=["ETH/USDT:USDT"])
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("backtest-result.json", json.dumps(report))
+        archive.writestr("backtest-result_config.json", json.dumps(config))
+    return raw, archive_path.name, profile
+
+
+def test_t0_search_artifact_accepts_profile_bound_config(tmp_path: Path) -> None:
+    raw, archive_name, profile = _profile_archive(tmp_path)
+    assert pilot.report_metrics(
+        raw,
+        archive_name,
+        "DailyTrend",
+        "Search",
+        configured_fee=float(profile["taker_fee_rate"]),
+        profile_snapshot=profile,
+    )["total_trades"] == 0
+
+
+
+def test_t0_search_artifact_rejects_combined_profile_runtime_drift(tmp_path: Path) -> None:
+    raw, archive_name, profile = _profile_archive(tmp_path, drift=True)
+    with pytest.raises(pilot.PilotError, match="config"):
+        pilot.report_metrics(
+            raw,
+            archive_name,
+            "DailyTrend",
+            "Search",
+            configured_fee=float(profile["taker_fee_rate"]),
+            profile_snapshot=profile,
+        )
 
 
 def test_t0_search_capability_requires_exact_pyarrow(
@@ -413,21 +454,21 @@ def test_t0_search_capability_requires_exact_pyarrow(
 ) -> None:
     root, _ = _search_root(tmp_path)
     root.chmod(0o700)
-    provenance = root / pilot.ACQUISITION / "retained-data-provenance.json"
-    plan = {
-        "schema": pilot.SEARCH_SCHEMA,
-        "search_timerange": "20260101-20260131",
-        "data_provenance_sha256": pilot.digest(provenance.read_bytes()),
-    }
+    candidate = _search_candidate(root, "seed-a", "SeedA", "ema")
+    _write_search_campaign(root, [candidate])
+    plan = pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
     monkeypatch.setitem(sys.modules, "pyarrow", None)
     monkeypatch.setitem(sys.modules, "pyarrow.feather", None)
 
     with pytest.raises(pilot.PilotError, match="exact PyArrow 25.0.0"):
         pilot.verify_data(root, plan)
-    capability = search_campaign.freeze_search_capability(root, None, None)
+    campaign_before = (root / pilot.SEARCH_CAMPAIGN).read_bytes()
+    capability = search_campaign.freeze_search_capability(
+        tmp_path / "lab.sqlite", root, None, None
+    )
     try:
         assert capability.status == "BLOCKED_DATA"
-        assert not (root / pilot.SEARCH_CAMPAIGN).exists()
+        assert (root / pilot.SEARCH_CAMPAIGN).read_bytes() == campaign_before
         assert not (root / pilot.SEARCH_TRIALS).exists()
     finally:
         capability.close()
@@ -446,7 +487,15 @@ def _search_candidate(
 ) -> dict[str, object]:
     path = root / "candidates" / f"{class_name}.py"
     path.parent.mkdir(exist_ok=True)
-    source = _candidate_source(class_name, body)
+    contract = json.loads(
+        (root / pilot.ACQUISITION / "retained-data-provenance.json").read_bytes()
+    )["contract"]
+    source = _candidate_source(class_name, body).replace(
+            b"startup_candle_count = 20",
+            f"startup_candle_count = {contract['pre_roll_candles']}".encode(),
+    )
+    if contract["profile_snapshot"]["timeframe"] != "5m":
+        source = source.replace(b'timeframe = "5m"', b'timeframe = "1d"')
     path.write_bytes(source)
     return {
         "candidate_id": candidate_id,
@@ -457,6 +506,8 @@ def _search_candidate(
         "parent_strategy_sha256": parent_sha256,
         "strategy_file": f"candidates/{path.name}",
         "strategy_sha256": pilot.digest(source),
+        "generation_run_id": f"generation-{candidate_id}",
+        "profile_id": contract["profile_snapshot"]["id"],
     }
 
 
@@ -468,6 +519,35 @@ def _write_search_campaign(
     parent: dict[str, object] | None = None,
     previous_receipt_sha256: str | None = None,
 ) -> None:
+    provenance_path = root / "acquisition" / "retained-data-provenance.json"
+    provenance = json.loads(provenance_path.read_bytes())
+    frozen = provenance["contract"]
+    contract = pilot.profile_search_contract(
+        frozen["profile_snapshot"],
+        frozen["search_timerange"],
+        frozen["development_timerange"],
+        frozen["pre_roll_candles"],
+    )
+    timeframe = str(frozen["profile_snapshot"]["timeframe"])
+    analyses: dict[str, object] = {}
+    for candidate in candidates:
+        try:
+            analysis = analyze_bounded_causal_strategy(
+                (root / str(candidate["strategy_file"])).read_text(),
+                str(candidate["class_name"]),
+                expected_timeframe=timeframe,
+            )
+            analyses[str(candidate["candidate_id"])] = {
+                "timeframe": analysis.timeframe,
+                "startup_candle_count": analysis.startup_candle_count,
+                "maximum_lookback": analysis.max_lookback,
+            }
+        except ValueError:
+            analyses[str(candidate["candidate_id"])] = {
+                "timeframe": timeframe,
+                "startup_candle_count": PROFILE_PRE_ROLL_CANDLES,
+                "maximum_lookback": 1,
+            }
     _write_json(
         root / pilot.SEARCH_CAMPAIGN,
         {
@@ -476,17 +556,53 @@ def _write_search_campaign(
             "freqtrade_version": "2026.7",
             "round": round_number,
             "previous_round_receipt_sha256": previous_receipt_sha256,
-            "search_timerange": "20260101-20260131",
-            "data_provenance_sha256": pilot.digest(
-                (root / "acquisition" / "retained-data-provenance.json").read_bytes()
-            ),
+            "data_provenance_sha256": pilot.digest(provenance_path.read_bytes()),
             "budget": {"maximum_attempts": 6},
             "ranking": list(pilot.SEARCH_RANKING),
-            "finalist_gate": pilot.SEARCH_GATE_CONTRACT,
             "parent": parent,
             "candidates": candidates,
+            **contract,
+            "strategy_analyses": analyses,
+            "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
         },
     )
+
+
+def _profile_screen_result(
+    root: Path,
+    plan: dict[str, object],
+    candidate: dict[str, object],
+    values: dict[str, object],
+) -> dict[str, object]:
+    metrics = {
+        "total_trades": 30,
+        "profit_pct": 1.0,
+        "max_drawdown_pct": 1.0,
+        "profit_factor": 1.2,
+        **values,
+    }
+    trades = int(metrics["total_trades"])
+    raw = {
+        "candidate_id": candidate["candidate_id"],
+        "technical_status": "VALID",
+        **metrics,
+        "gross_profit_before_fees_pct": float(metrics["profit_pct"]) + 0.1,
+        "configured_fee_cost_pct": 0.1,
+        "average_holding_period_minutes": 60.0 if trades else None,
+        "direction_concentration": 0.5 if trades else None,
+        "market_state_concentration": 0.5 if trades else None,
+        "market_state_definition": pilot.MARKET_STATE_DEFINITION,
+        "market_state_lookback_candles": 20,
+        "archive": "result.zip",
+        "report_semantic_sha256": "a" * 64,
+    }
+    result_root = root / f"search-results-round-{plan['round']}" / str(candidate["candidate_id"])
+    (result_root / "raw").mkdir(parents=True, exist_ok=True)
+    archive = b"unit archive"
+    (result_root / "raw" / raw["archive"]).write_bytes(archive)
+    raw["archive_sha256"] = pilot.digest(archive)
+    _write_json(result_root / "result.json", raw)
+    return raw
 
 
 def _patch_search_screen(
@@ -511,14 +627,7 @@ def _patch_search_screen(
         root: Path, plan: dict[str, object], *args: object, **kwargs: object
     ) -> list[dict[str, object]]:
         return [
-            {
-                "candidate_id": item["candidate_id"],
-                "class_name": item["class_name"],
-                "strategy_sha256": item["strategy_sha256"],
-                "technical_status": "VALID",
-                "failure_reason": None,
-                **metrics[item["candidate_id"]],
-            }
+            _profile_screen_result(root, plan, item, metrics[item["candidate_id"]])
             for item in plan["candidates"]
         ]
 
@@ -1184,7 +1293,6 @@ def test_t0_search_negative_candidate_can_be_parent_but_not_finalist(
     candidates = [
         _search_candidate(root, "seed-a", "SeedA", "ema"),
         _search_candidate(root, "seed-b", "SeedB", "rsi"),
-        _search_candidate(root, "seed-c", "SeedC", "channel"),
     ]
     _write_search_campaign(root, candidates)
     _patch_search_screen(
@@ -1192,7 +1300,6 @@ def test_t0_search_negative_candidate_can_be_parent_but_not_finalist(
         {
             "seed-a": {"total_trades": 40, "profit_pct": -2.0, "max_drawdown_pct": 3.0, "profit_factor": 0.7},
             "seed-b": {"total_trades": 5, "profit_pct": -0.5, "max_drawdown_pct": 2.0, "profit_factor": 0.2},
-            "seed-c": {"total_trades": 80, "profit_pct": -4.0, "max_drawdown_pct": 1.0, "profit_factor": 0.9},
         },
     )
 
@@ -1220,100 +1327,6 @@ def test_t0_search_negative_candidate_can_be_parent_but_not_finalist(
     }
 
 
-def test_t0_search_finalist_gate_is_positive_without_pf_threshold(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root, source = _search_root(tmp_path)
-    seeds = [
-        _search_candidate(root, "seed-a", "SeedA", "ema"),
-        _search_candidate(root, "seed-b", "SeedB", "rsi"),
-        _search_candidate(root, "seed-c", "SeedC", "channel"),
-    ]
-    _write_search_campaign(root, seeds)
-    metrics = {
-        "seed-a": {"total_trades": 40, "profit_pct": -0.2, "max_drawdown_pct": 3.0, "profit_factor": 0.8},
-        "seed-b": {"total_trades": 40, "profit_pct": -0.5, "max_drawdown_pct": 2.0, "profit_factor": 0.9},
-        "seed-c": {"total_trades": 40, "profit_pct": -1.0, "max_drawdown_pct": 1.0, "profit_factor": 0.95},
-    }
-    _patch_search_screen(monkeypatch, metrics)
-    first = pilot.screen_search(
-        root,
-        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
-        Path(sys.executable),
-        source,
-    )
-    parent = _parent_contract(first)
-    children = [
-        _search_candidate(
-            root,
-            "child-high-dd",
-            "ChildHighDd",
-            parent["mechanism"],
-            relationship="SINGLE_FACTOR_CHILD",
-            changed_factor="ema-period",
-            parent_sha256=parent["strategy_sha256"],
-        ),
-        _search_candidate(
-            root,
-            "child-finalist",
-            "ChildFinalist",
-            parent["mechanism"],
-            relationship="SINGLE_FACTOR_CHILD",
-            changed_factor="adx-period",
-            parent_sha256=parent["strategy_sha256"],
-        ),
-        _search_candidate(
-            root,
-            "child-zero",
-            "ChildZero",
-            parent["mechanism"],
-            relationship="SINGLE_FACTOR_CHILD",
-            changed_factor="entry-cross",
-            parent_sha256=parent["strategy_sha256"],
-        ),
-    ]
-    _write_search_campaign(
-        root,
-        children,
-        round_number=2,
-        parent=parent,
-        previous_receipt_sha256=first["round_receipt_sha256"],
-    )
-    metrics.update(
-        {
-            "child-high-dd": {"total_trades": 50, "profit_pct": 5.0, "max_drawdown_pct": 10.01, "profit_factor": 9.0},
-            "child-finalist": {"total_trades": 30, "profit_pct": 0.01, "max_drawdown_pct": 10.0, "profit_factor": 0.2},
-            "child-zero": {"total_trades": 100, "profit_pct": 0.0, "max_drawdown_pct": 0.1, "profit_factor": 99.0},
-        }
-    )
-    _patch_search_screen(monkeypatch, metrics)
-
-    second = pilot.screen_search(
-        root,
-        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
-        Path(sys.executable),
-        source,
-    )
-
-    terminal = json.loads((root / pilot.SEARCH_TERMINAL).read_bytes())
-    assert second["status"] == terminal["status"] == "SEARCH_FINALIST_FROZEN"
-    terminal_before = (root / pilot.SEARCH_TERMINAL).read_bytes()
-    assert terminal["brief"]["selected_parent"]["candidate_id"] == "child-high-dd"
-    assert terminal["search_finalist"]["candidate_id"] == "child-finalist"
-    assert terminal["search_finalist"]["search_metrics"]["profit_factor"] == 0.2
-    assert terminal["brief"]["campaign"]["budget"]["consumed_total"] == 6
-    assert terminal["finalist_gate"] == pilot.SEARCH_GATE_CONTRACT
-    assert "minimum_profit_factor" not in terminal["finalist_gate"]
-    with pytest.raises(pilot.PilotError, match="terminal receipt already exists"):
-        pilot.screen_search(
-            root,
-            pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
-            Path(sys.executable),
-            source,
-        )
-    assert (root / pilot.SEARCH_TERMINAL).read_bytes() == terminal_before
-
-
 def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1322,10 +1335,7 @@ def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
     duplicate = _search_candidate(root, "duplicate", "DuplicateSeed", "rsi")
     duplicate["strategy_file"] = valid["strategy_file"]
     duplicate["strategy_sha256"] = valid["strategy_sha256"]
-    invalid = _search_candidate(
-        root, "invalid", "InvalidSeed", "channel", body="dataframe["
-    )
-    _write_search_campaign(root, [valid, duplicate, invalid])
+    _write_search_campaign(root, [valid, duplicate])
     _patch_search_screen(
         monkeypatch,
         {
@@ -1333,6 +1343,30 @@ def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
         },
     )
 
+    first = pilot.screen_search(
+        root,
+        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
+        Path(sys.executable),
+        source,
+    )
+    parent = _parent_contract(first)
+    invalid = _search_candidate(
+        root,
+        "invalid",
+        "InvalidSeed",
+        parent["mechanism"],
+        relationship="SINGLE_FACTOR_CHILD",
+        changed_factor="entry-period",
+        parent_sha256=parent["strategy_sha256"],
+        body="dataframe[",
+    )
+    _write_search_campaign(
+        root,
+        [invalid],
+        round_number=2,
+        parent=parent,
+        previous_receipt_sha256=first["round_receipt_sha256"],
+    )
     outcome = pilot.screen_search(
         root,
         pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
@@ -1342,23 +1376,23 @@ def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
 
     statuses = {
         item["candidate_id"]: item["technical_status"]
-        for item in outcome["brief"]["candidates"]
+        for item in _search_records(root)
+        if item["record_type"] == "TRIAL"
     }
     assert statuses == {"valid": "VALID", "duplicate": "INVALID", "invalid": "INVALID"}
-    assert outcome["brief"]["campaign"]["budget"] == {
-        "maximum_attempts": 6,
-        "consumed_before_round": 0,
-        "consumed_this_round": 3,
-        "consumed_total": 3,
-        "remaining": 3,
-    }
+    assert outcome["brief"]["campaign"]["budget"]["consumed_total"] == 3
+    assert outcome["brief"]["campaign"]["budget"]["remaining"] == 0
+    assert outcome["brief"]["campaign"]["budget"]["hard_remaining"] == 3
     assert len(
         [item for item in _search_records(root) if item["record_type"] == "TRIAL"]
     ) == 3
-    serialized = json.dumps(outcome["brief"], sort_keys=True).lower()
+    serialized = (
+        (root / pilot.SEARCH_TRIALS).read_text(encoding="utf-8")
+        + (root / pilot.SEARCH_TERMINAL).read_text(encoding="utf-8")
+    ).lower()
     for forbidden in ("acquisition", "validation", "development", "holdout", "stress"):
         assert forbidden not in serialized
-    with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
+    with pytest.raises(pilot.PilotError, match="terminal receipt already exists"):
         pilot.screen_search(
             root,
             pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
@@ -1373,9 +1407,9 @@ def test_t0_search_duplicates_and_invalid_source_consume_budget_without_leakage(
         "config.json",
         "market_snapshot.json",
         "isolated_tiers_snapshot.json",
-        "data/okx/futures/TEST_USDT_USDT-5m-futures.feather",
-        "data/okx/futures/TEST_USDT_USDT-1h-mark.feather",
-        "data/okx/futures/TEST_USDT_USDT-1h-funding_rate.feather",
+        "data/okx/futures/XRP_USDT_USDT-5m-futures.feather",
+        "data/okx/futures/XRP_USDT_USDT-1h-mark.feather",
+        "data/okx/futures/XRP_USDT_USDT-1h-funding_rate.feather",
     ),
 )
 def test_t0_search_runner_inputs_are_sha_bound_before_screen(
@@ -1388,6 +1422,7 @@ def test_t0_search_runner_inputs_are_sha_bound_before_screen(
         root, [_search_candidate(root, "seed-a", "SeedA", "ema")]
     )
     target = root / pilot.ACQUISITION / relative
+    target.chmod(0o600)
     target.write_bytes(target.read_bytes() + b"changed")
 
     def forbidden(*args: object, **kwargs: object) -> None:
@@ -1473,6 +1508,7 @@ def test_t0_search_isolation_preserves_sha_bound_instrument_identity(
         destination_root: Path,
         timerange: str,
         expected: dict[str, str],
+        **kwargs: object,
     ) -> dict[str, object]:
         files = {}
         for relative, sha256 in expected.items():
@@ -1484,7 +1520,7 @@ def test_t0_search_isolation_preserves_sha_bound_instrument_identity(
                 "sha256": sha256,
             }
         return {
-            "exclusive_stop_utc": "2026-01-31T00:00:00Z",
+            "exclusive_stop_utc": "2025-01-01T00:00:00Z",
             "files": files,
         }
 
@@ -1499,13 +1535,13 @@ def test_t0_search_isolation_preserves_sha_bound_instrument_identity(
         (root / pilot.ACQUISITION / "isolated_tiers_snapshot.json").read_bytes()
     )
 
-    assert converted["schema"] == offline_runner.RETAINED_DATA_SCHEMA
-    assert converted["source"]["instrument_id"] == "TEST-USDT-SWAP"
-    assert converted["source"]["pair"] == "TEST/USDT:USDT"
-    assert converted["contract"]["development_timerange"] == "20260101-20260131"
-    assert "search_timerange" not in converted["contract"]
+    assert converted["schema"] == offline_runner.SEARCH_DATA_SCHEMA
+    assert converted["source"]["instrument_id"] == "XRP-USDT-SWAP"
+    assert converted["source"]["pair"] == "XRP/USDT:USDT"
+    assert converted["contract"]["search_timerange"] == PROFILE_SEARCH_TIMERANGE
+    assert converted["contract"]["development_timerange"] == PROFILE_DEVELOPMENT_TIMERANGE
     offline_runner._verify_market_inputs(
-        market, tiers, pair="TEST/USDT:USDT", provenance=converted
+        market, tiers, pair="XRP/USDT:USDT", provenance=converted
     )
 
 
@@ -1516,7 +1552,6 @@ def test_t0_search_batch_is_reserved_before_candidate_processing(
     candidates = [
         _search_candidate(root, "seed-a", "SeedA", "ema"),
         _search_candidate(root, "seed-b", "SeedB", "rsi"),
-        _search_candidate(root, "seed-c", "SeedC", "channel"),
     ]
     _write_search_campaign(root, candidates)
     monkeypatch.setattr(pilot, "verify_data", lambda *args: {"status": "DATA_READY"})
@@ -1531,7 +1566,7 @@ def test_t0_search_batch_is_reserved_before_candidate_processing(
 
     records = _search_records(root)
     assert [item["record_type"] for item in records] == ["ROUND_STARTED"]
-    assert records[0]["attempt_numbers"] == [1, 2, 3]
+    assert records[0]["attempt_numbers"] == [1, 2]
     with pytest.raises(pilot.PilotError, match="round 1 already consumed"):
         pilot.screen_search(root, plan, Path(sys.executable), source)
 
@@ -1635,7 +1670,7 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
     root, source = _search_root(tmp_path)
     provenance_path = root / pilot.ACQUISITION / "retained-data-provenance.json"
     provenance = json.loads(provenance_path.read_bytes())
-    changed_name = "data/okx/futures/TEST_USDT_USDT-5m-futures.feather"
+    changed_name = "data/okx/futures/XRP_USDT_USDT-5m-futures.feather"
     provenance["local_only_files"][changed_name]["rows"] += 1
     _write_json(provenance_path, provenance)
     _write_search_campaign(
@@ -1647,6 +1682,7 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
         destination_root: Path,
         timerange: str,
         expected: dict[str, str],
+        **kwargs: object,
     ) -> dict[str, object]:
         files = {}
         for relative, sha256 in expected.items():
@@ -1655,11 +1691,11 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
             shutil.copyfile(source_root / relative, destination)
             source_rows = _unit_search_rows(relative)
             files[relative] = {
-                "rows": source_rows - 1 if relative.endswith("-5m-futures.feather") else source_rows,
+                    "rows": source_rows - 1 if relative.endswith("-5m-futures.feather") else source_rows,
                 "sha256": sha256,
             }
         return {
-            "exclusive_stop_utc": "2026-01-31T00:00:00Z",
+            "exclusive_stop_utc": "2025-01-01T00:00:00Z",
             "files": files,
         }
 
@@ -1671,8 +1707,8 @@ def test_t0_search_rejects_source_rows_filtered_at_the_search_stop(
     monkeypatch.setattr(
         pilot,
         "_search_feather_rows",
-        lambda path: _unit_search_rows(path)
-        + (1 if str(path).endswith("-5m-futures.feather") else 0),
+            lambda path: _unit_search_rows(path)
+            + (1 if str(path).endswith("-5m-futures.feather") else 0),
     )
     monkeypatch.setattr(pilot, "screen", forbidden)
     with pytest.raises(pilot.PilotError, match="post-window data"):
@@ -1739,7 +1775,7 @@ def test_t0_search_config_toctou_fails_before_candidate_screen(
     monkeypatch.setattr(
         pilot,
         "_verify_search_output_dates",
-        lambda *args: dict(pilot.FROZEN_SEARCH_ROWS),
+        lambda *args, **kwargs: _profile_search_rows(),
     )
     monkeypatch.setattr(pilot, "screen", forbidden)
     with pytest.raises(pilot.PilotError, match="config changed after preflight"):
@@ -1791,148 +1827,3 @@ def test_t0_search_runtime_inputs_are_cleaned_after_screen_failure(
         )
     assert not (root / "search-isolation-round-1").exists()
     assert not (root / "search-inputs-round-1").exists()
-
-
-def test_t1_search_two_round_six_candidate_smoke_has_no_later_phase_side_effects(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root, source = _search_root(tmp_path)
-
-    def forbidden(*args: object, **kwargs: object) -> None:
-        raise AssertionError("Search must not enter database or producer paths")
-
-    for name in ("init_database", "run_research_candidate", "materialize_selected_input"):
-        monkeypatch.setattr(pilot, name, forbidden)
-
-    def create_view(
-        source_root: Path,
-        destination_root: Path,
-        timerange: str,
-        expected: dict[str, str],
-    ) -> dict[str, object]:
-        files = {}
-        for relative, sha256 in expected.items():
-            destination = destination_root / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source_root / relative, destination)
-            files[relative] = {
-                "sha256": sha256,
-                "rows": _unit_search_rows(relative),
-            }
-        return {"exclusive_stop_utc": "2026-01-31T00:00:00Z", "files": files}
-
-    def isolated_screen(
-        campaign_root: Path,
-        plan: dict[str, object],
-        inputs: dict[str, Path],
-        python: Path,
-        source_root: Path,
-        isolation: dict[str, object],
-        **kwargs: object,
-    ) -> list[dict[str, object]]:
-        provenance = json.loads(Path(isolation["provenance"]).read_bytes())
-        first_input = next(iter(inputs.values()))
-        offline_runner._verify_dependency_versions(
-            provenance, offline_runner.SUPPORTED_DEPENDENCIES
-        )
-        offline_runner._verify_data_provenance(
-            provenance,
-            scenario="DEVELOPMENT",
-            timerange=plan["search_timerange"],
-            pair="TEST/USDT:USDT",
-            data_dir=Path(isolation["data_dir"]),
-            market_snapshot=first_input / "market_snapshot.json",
-            leverage_tiers=first_input / "isolated_tiers_snapshot.json",
-        )
-        (campaign_root / f"search-results-round-{plan['round']}").mkdir()
-        return [
-            {
-                "candidate_id": candidate["candidate_id"],
-                "class_name": candidate["class_name"],
-                "strategy_sha256": candidate["strategy_sha256"],
-                "technical_status": "VALID",
-                "failure_reason": None,
-                "total_trades": 35,
-                "profit_pct": 0.25 if candidate["candidate_id"] == "child-a" else -0.25,
-                "max_drawdown_pct": 5.0,
-                "profit_factor": 0.8,
-            }
-            for candidate in plan["candidates"]
-        ]
-
-    monkeypatch.setattr(pilot, "_create_scenario_data_view", create_view)
-    monkeypatch.setattr(pilot, "_search_feather_rows", _unit_search_rows)
-    monkeypatch.setattr(
-        pilot,
-        "_verify_search_output_dates",
-        lambda *args: dict(pilot.FROZEN_SEARCH_ROWS),
-    )
-    monkeypatch.setattr(pilot, "screen", isolated_screen)
-    seeds = [
-        _search_candidate(root, "seed-a", "SeedA", "ema"),
-        _search_candidate(root, "seed-b", "SeedB", "rsi"),
-        _search_candidate(root, "seed-c", "SeedC", "channel"),
-    ]
-    _write_search_campaign(root, seeds)
-    first = pilot.screen_search(
-        root,
-        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
-        Path(sys.executable),
-        source,
-    )
-    parent = _parent_contract(first)
-    children = [
-        _search_candidate(
-            root,
-            candidate_id,
-            class_name,
-            parent["mechanism"],
-            relationship="SINGLE_FACTOR_CHILD",
-            changed_factor=factor,
-            parent_sha256=parent["strategy_sha256"],
-        )
-        for candidate_id, class_name, factor in (
-            ("child-a", "ChildA", "period-a"),
-            ("child-b", "ChildB", "period-b"),
-            ("child-c", "ChildC", "period-c"),
-        )
-    ]
-    _write_search_campaign(
-        root,
-        children,
-        round_number=2,
-        parent=parent,
-        previous_receipt_sha256=first["round_receipt_sha256"],
-    )
-
-    second = pilot.screen_search(
-        root,
-        pilot.load_plan(root, pilot.SEARCH_CAMPAIGN),
-        Path(sys.executable),
-        source,
-    )
-
-    assert second["status"] == "SEARCH_FINALIST_FROZEN"
-    records = _search_records(root)
-    assert len([item for item in records if item["record_type"] == "TRIAL"]) == 6
-    assert sum(
-        len(item["attempt_numbers"])
-        for item in records
-        if item["record_type"] == "ROUND_STARTED"
-    ) == 6
-    for name in (
-        "workspace",
-        "selected-input",
-        "scenario-opens",
-        pilot.HOLDOUT_AUTHORIZATION,
-        pilot.TERMINAL,
-    ):
-        assert not (root / name).exists()
-    assert not list(root.rglob("*.sqlite"))
-    assert not (root / "search-isolation-round-1").exists()
-    assert not (root / "search-isolation-round-2").exists()
-    assert not (root / "search-inputs-round-1").exists()
-    assert not (root / "search-inputs-round-2").exists()
-    assert (root / "search-results-round-1").is_dir()
-    assert (root / "search-results-round-2").is_dir()
-    assert (root / pilot.SEARCH_TERMINAL).is_file()

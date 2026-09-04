@@ -518,7 +518,7 @@ def _candidate_profile_row(
     try:
         candidate = _bound_candidate(connection, candidate_id)
         assert capability.development is not None
-        _profile_gate(candidate, capability.development)
+        _profile_gate(connection, candidate, capability.development)
     except DevelopmentRunError as exc:
         raise HoldoutRunError(exc.code, exc.message) from exc
     row = connection.execute(

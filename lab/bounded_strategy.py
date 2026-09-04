@@ -1,4 +1,4 @@
-"""Versioned, fail-closed validation for the frozen 5m Pilot template.
+"""Versioned, fail-closed validation for a bounded Profile-driven strategy.
 
 This is deliberately a narrow source contract, not a general Python security
 analyser or sandbox. A strategy outside the exact allowlist must not be
@@ -11,6 +11,7 @@ import ast
 import keyword
 import math
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -23,6 +24,7 @@ MAX_METHOD_STATEMENTS = 64
 MAX_ASSIGNED_COLUMNS = 64
 MAX_MINIMAL_ROI_ENTRIES = 16
 MAX_MINIMAL_ROI_MINUTE = 10_080
+MAX_STATIC_LOOKBACK = 512
 EXPECTED_IMPORTS = (
     "import talib.abstract as ta",
     "from pandas import DataFrame",
@@ -54,14 +56,15 @@ ALLOWED_LIBRARY_CALLS = frozenset(
         "qtpylib.typical_price",
     }
 )
-ALLOWED_DATAFRAME_CALLS = frozenset({"max", "min", "rolling", "shift"})
+ALLOWED_DATAFRAME_CALLS = frozenset({"max", "mean", "min", "rolling", "shift"})
 
 _CLASS_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,79}$")
 _COLUMN_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,79}$")
 _ROI_MINUTE = re.compile(r"^(?:0|[1-9][0-9]{0,4})$")
 _FORBIDDEN_CALLS = frozenset({"exec", "eval", "compile", "__import__", "setattr"})
 _MAX_LITERAL_NUMBER = 1_000_000
-_MAX_SERIES_PERIOD = 20
+_SUPPORTED_TIMEFRAMES = frozenset({"5m", "1d"})
+_SOURCE_COLUMNS = frozenset({"date", "open", "high", "low", "close", "volume"})
 _ENTRY_SIGNAL_COLUMNS = frozenset({"enter_long", "enter_short"})
 _EXIT_SIGNAL_COLUMNS = frozenset({"exit_long", "exit_short"})
 _FORBIDDEN_METHOD_NODES = (
@@ -100,6 +103,15 @@ class BoundedStrategyError(ValueError):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+@dataclass(frozen=True)
+class BoundedStrategyAnalysis:
+    """Static execution requirements derived without importing strategy code."""
+
+    timeframe: str
+    startup_candle_count: int
+    max_lookback: int
 
 
 def _reject(code: str, message: str) -> None:
@@ -203,7 +215,11 @@ def _validate_roi_literal(class_name: str, node: ast.AST) -> None:
         keys.add(key_node.value)
 
 
-def _validate_fields(class_name: str, assignments: list[ast.Assign]) -> None:
+def _validate_fields(
+    class_name: str,
+    assignments: list[ast.Assign],
+    expected_timeframe: str,
+) -> dict[str, Any]:
     values: dict[str, Any] = {}
     for node in assignments:
         if (
@@ -234,11 +250,13 @@ def _validate_fields(class_name: str, assignments: list[ast.Assign]) -> None:
         for key, value in roi.items()
     )
     stoploss = values["stoploss"]
+    startup_candle_count = values["startup_candle_count"]
     if (
         values["INTERFACE_VERSION"] != 3
-        or values["timeframe"] != "5m"
-        or values["can_short"] is not True
-        or values["startup_candle_count"] != 20
+        or values["timeframe"] != expected_timeframe
+        or type(values["can_short"]) is not bool
+        or type(startup_candle_count) is not int
+        or not 1 <= startup_candle_count <= MAX_STATIC_LOOKBACK
         or values["process_only_new_candles"] is not True
         or not valid_roi
         or not _finite_number(stoploss, maximum=1)
@@ -246,8 +264,9 @@ def _validate_fields(class_name: str, assignments: list[ast.Assign]) -> None:
     ):
         _reject(
             "STRATEGY_FIELDS_MISMATCH",
-            f"{class_name} strategy fields violate the fixed 5m template",
+            f"{class_name} strategy fields violate the bounded Profile template",
         )
+    return values
 
 
 def _static_annotation(node: Optional[ast.AST], expected: str) -> bool:
@@ -326,13 +345,18 @@ def _validate_call(class_name: str, node: ast.Call) -> None:
             not isinstance(period, ast.Constant)
             or isinstance(period.value, bool)
             or not isinstance(period.value, int)
-            or not 1 <= period.value <= _MAX_SERIES_PERIOD
+            or period.value < 1
         ):
             _reject(
                 "FUTURE_AMBIGUOUS_SHIFT",
                 f"{class_name} has a negative or dynamic shift",
             )
-    if name in {"max", "min"}:
+        if period.value > MAX_STATIC_LOOKBACK:
+            _reject(
+                "LOOKBACK_RESOURCE_LIMIT",
+                f"{class_name} shift lookback exceeds the global resource limit",
+            )
+    if name in {"max", "mean", "min"}:
         receiver = node.func.value
         if (
             node.args
@@ -351,12 +375,22 @@ def _validate_call(class_name: str, node: ast.Call) -> None:
         or not isinstance(node.args[0], ast.Constant)
         or isinstance(node.args[0].value, bool)
         or not isinstance(node.args[0].value, int)
-        or not 2 <= node.args[0].value <= _MAX_SERIES_PERIOD
+        or node.args[0].value < 2
     ):
         _reject("DYNAMIC_ROLLING", f"{class_name} uses centered/dynamic rolling")
+    if (
+        name == "rolling"
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, int)
+        and not isinstance(node.args[0].value, bool)
+        and node.args[0].value > MAX_STATIC_LOOKBACK
+    ):
+        _reject(
+            "LOOKBACK_RESOURCE_LIMIT",
+            f"{class_name} rolling lookback exceeds the global resource limit",
+        )
     if call_name in {"ta.ADX", "ta.EMA", "ta.RSI"}:
         periods = [item for item in node.keywords if item.arg == "timeperiod"]
-        maximum = 10 if call_name == "ta.ADX" else 20
         if (
             len(node.args) != 1
             or not _is_name(node.args[0], "dataframe")
@@ -365,7 +399,7 @@ def _validate_call(class_name: str, node: ast.Call) -> None:
             or not isinstance(periods[0].value, ast.Constant)
             or isinstance(periods[0].value.value, bool)
             or not isinstance(periods[0].value.value, int)
-            or not 2 <= periods[0].value.value <= maximum
+            or not 2 <= periods[0].value.value <= MAX_STATIC_LOOKBACK
         ):
             _reject(
                 "LOOKBACK_OUTSIDE_TEMPLATE",
@@ -445,7 +479,7 @@ def _library_call_kind(
                 isinstance(value, ast.Constant)
                 and not isinstance(value.value, bool)
                 and isinstance(value.value, int)
-                and 2 <= value.value <= 20
+                and 2 <= value.value <= MAX_STATIC_LOOKBACK
             )
         else:
             valid = (
@@ -480,7 +514,7 @@ def _dataframe_call_kind(
         return "rolling"
     if name == "shift":
         return "series"
-    if name in {"max", "min"} and receiver == "rolling":
+    if name in {"max", "mean", "min"} and receiver == "rolling":
         return "series"
     _reject(
         "EXPRESSION_OUTSIDE_TEMPLATE",
@@ -585,6 +619,88 @@ def _expression_kind(class_name: str, node: ast.AST, bands_bound: bool) -> str:
     )
 
 
+def _keyword_integer(node: ast.Call, name: str) -> int:
+    value = next(item.value for item in node.keywords if item.arg == name)
+    assert isinstance(value, ast.Constant) and type(value.value) is int
+    return value.value
+
+
+def _expression_lookback(
+    node: ast.AST,
+    column_lookbacks: dict[str, int],
+    bands_lookback: Optional[int],
+) -> int:
+    """Return candles required for an already-validated bounded expression."""
+
+    if isinstance(node, ast.Constant):
+        return 1
+    if isinstance(node, ast.Name) and node.id == "dataframe":
+        return 1
+    if isinstance(node, ast.Subscript):
+        column = _subscript_column(node)
+        if column is not None:
+            if column not in column_lookbacks:
+                _reject(
+                    "UNBOUND_DATAFRAME_COLUMN",
+                    f"dataframe column {column} is read before a bounded binding",
+                )
+            return column_lookbacks[column]
+        if _is_name(node.value, "bands") and _static_column(node.slice) is not None:
+            assert bands_lookback is not None
+            return bands_lookback
+    if isinstance(node, ast.Call):
+        call_name = _dotted_name(node.func)
+        if call_name in {"ta.ADX", "ta.EMA", "ta.RSI"}:
+            period = _keyword_integer(node, "timeperiod")
+            return 2 * period if call_name == "ta.ADX" else period
+        if call_name == "qtpylib.typical_price":
+            return 1
+        if call_name in {"qtpylib.crossed_above", "qtpylib.crossed_below"}:
+            return max(
+                _expression_lookback(value, column_lookbacks, bands_lookback)
+                for value in node.args
+            )
+        if call_name == "qtpylib.bollinger_bands":
+            upstream = _expression_lookback(
+                node.args[0], column_lookbacks, bands_lookback
+            )
+            return upstream + _keyword_integer(node, "window") - 1
+        assert isinstance(node.func, ast.Attribute)
+        receiver = _expression_lookback(
+            node.func.value, column_lookbacks, bands_lookback
+        )
+        if node.func.attr == "rolling":
+            period = node.args[0]
+            assert isinstance(period, ast.Constant) and type(period.value) is int
+            return receiver + period.value - 1
+        if node.func.attr == "shift":
+            if node.args:
+                period = node.args[0]
+            else:
+                periods = [item.value for item in node.keywords if item.arg == "periods"]
+                period = periods[0] if periods else ast.Constant(1)
+            assert isinstance(period, ast.Constant) and type(period.value) is int
+            return receiver + period.value
+        if node.func.attr in {"max", "mean", "min"}:
+            return receiver
+    if isinstance(node, ast.Compare):
+        return max(
+            _expression_lookback(node.left, column_lookbacks, bands_lookback),
+            *(
+                _expression_lookback(value, column_lookbacks, bands_lookback)
+                for value in node.comparators
+            ),
+        )
+    if isinstance(node, ast.BinOp):
+        return max(
+            _expression_lookback(node.left, column_lookbacks, bands_lookback),
+            _expression_lookback(node.right, column_lookbacks, bands_lookback),
+        )
+    if isinstance(node, ast.UnaryOp):
+        return _expression_lookback(node.operand, column_lookbacks, bands_lookback)
+    raise AssertionError("validated bounded expression has no lookback rule")
+
+
 def _validate_method_nodes(
     class_name: str, method: ast.FunctionDef, statement: ast.stmt, bands_bound: bool
 ) -> None:
@@ -643,7 +759,8 @@ def _validate_method(
     class_name: str,
     method: ast.FunctionDef,
     assigned_columns: set[str],
-) -> None:
+    column_lookbacks: dict[str, int],
+) -> int:
     _validate_signature(class_name, method)
     if len(method.body) > MAX_METHOD_STATEMENTS:
         _reject(
@@ -656,6 +773,8 @@ def _validate_method(
             f"{class_name}.{method.name} must end with return dataframe",
         )
     bands_bound = False
+    bands_lookback: Optional[int] = None
+    method_lookback = 1
     for index, statement in enumerate(method.body):
         if isinstance(statement, ast.Return):
             if index != len(method.body) - 1 or not _is_name(statement.value, "dataframe"):
@@ -677,6 +796,8 @@ def _validate_method(
                 f"{class_name}.{method.name} contains a statement outside the frozen template",
             )
         target = statement.targets[0]
+        assigned_column: Optional[str] = None
+        loc: Optional[tuple[ast.AST, str]] = None
         binds_bands = isinstance(target, ast.Name) and target.id == "bands"
         if binds_bands:
             if (
@@ -696,7 +817,6 @@ def _validate_method(
             )
         else:
             column = _subscript_column(target)
-            loc = None
             if column is None:
                 loc = _loc_parts(target)
                 column = None if loc is None else loc[1]
@@ -704,6 +824,11 @@ def _validate_method(
                 _reject(
                     "DYNAMIC_DATAFRAME_ASSIGNMENT",
                     f"{class_name}.{method.name} may only assign fixed dataframe columns or loc targets",
+                )
+            if column in _SOURCE_COLUMNS:
+                _reject(
+                    "SOURCE_COLUMN_ASSIGNMENT",
+                    f"{class_name} may not overwrite source OHLCV column {column}",
                 )
             if method.name == "populate_indicators" and loc is not None:
                 _reject(
@@ -736,19 +861,30 @@ def _validate_method(
                     f"{class_name} exceeds the frozen assigned-column limit",
                 )
             assigned_columns.add(column)
+            assigned_column = column
         _validate_method_nodes(class_name, method, statement, bands_bound)
         expression_kind = _expression_kind(
             class_name, statement.value, bands_bound
         )
+        expression_lookback = _expression_lookback(
+            statement.value, column_lookbacks, bands_lookback
+        )
+        method_lookback = max(method_lookback, expression_lookback)
         if binds_bands and expression_kind != "mapping":
             _reject(
                 "EXPRESSION_OUTSIDE_TEMPLATE",
                 f"{class_name}.{method.name} bands must bind one fixed mapping call",
             )
         if not binds_bands and isinstance(target, ast.Subscript):
-            loc = _loc_parts(target)
             if loc is not None:
                 mask_kind = _expression_kind(class_name, loc[0], bands_bound)
+                mask_lookback = _expression_lookback(
+                    loc[0], column_lookbacks, bands_lookback
+                )
+                method_lookback = max(
+                    method_lookback,
+                    mask_lookback,
+                )
                 if mask_kind != "mask":
                     _reject(
                         "EXPRESSION_OUTSIDE_TEMPLATE",
@@ -763,6 +899,8 @@ def _validate_method(
                         "EXPRESSION_OUTSIDE_TEMPLATE",
                         f"{class_name}.{method.name} signal assignment must be literal 1",
                     )
+                assert assigned_column is not None
+                column_lookbacks[assigned_column] = mask_lookback
             elif expression_kind != "series":
                 _reject(
                     "EXPRESSION_OUTSIDE_TEMPLATE",
@@ -770,9 +908,17 @@ def _validate_method(
                 )
         if binds_bands:
             bands_bound = True
+            bands_lookback = expression_lookback
+        elif assigned_column is not None and loc is None:
+            column_lookbacks[assigned_column] = expression_lookback
+    return method_lookback
 
 
-def _validate_bounded_causal_strategy(source: str, class_name: str) -> None:
+def _validate_bounded_causal_strategy(
+    source: str,
+    class_name: str,
+    expected_timeframe: str,
+) -> BoundedStrategyAnalysis:
     """Validate one source string against ``BOUNDED_CAUSAL_STRATEGY_V1``."""
 
     if (
@@ -781,6 +927,11 @@ def _validate_bounded_causal_strategy(source: str, class_name: str) -> None:
         or keyword.iskeyword(class_name)
     ):
         _reject("INVALID_CLASS_NAME", "class_name must be a simple Python identifier")
+    if expected_timeframe not in _SUPPORTED_TIMEFRAMES:
+        _reject(
+            "UNSUPPORTED_TIMEFRAME",
+            "expected_timeframe must be one supported Profile timeframe",
+        )
     if not isinstance(source, str) or not source or "\x00" in source:
         _reject("INVALID_SOURCE", f"{class_name} source must be non-empty UTF-8 text")
     try:
@@ -832,22 +983,68 @@ def _validate_bounded_causal_strategy(source: str, class_name: str) -> None:
             "CLASS_OUTSIDE_TEMPLATE",
             f"{class_name} class body is outside the frozen template",
         )
-    _validate_fields(class_name, assignments)
+    values = _validate_fields(class_name, assignments, expected_timeframe)
     if len(methods) != 3 or {method.name for method in methods} != ALLOWED_STRATEGY_METHODS:
         _reject(
             "STRATEGY_METHODS_MISMATCH",
             f"{class_name} must implement exactly the three populate methods",
         )
     assigned_columns: set[str] = set()
-    for method in methods:
-        _validate_method(class_name, method, assigned_columns)
+    column_lookbacks = {column: 1 for column in _SOURCE_COLUMNS}
+    methods_by_name = {method.name: method for method in methods}
+    max_lookback = 1
+    for method_name in (
+        "populate_indicators",
+        "populate_entry_trend",
+        "populate_exit_trend",
+    ):
+        max_lookback = max(
+            max_lookback,
+            _validate_method(
+                class_name,
+                methods_by_name[method_name],
+                assigned_columns,
+                column_lookbacks,
+            ),
+        )
+    if values["can_short"] is False and assigned_columns & {
+        "enter_short",
+        "exit_short",
+    }:
+        _reject(
+            "SHORT_SIGNAL_DISABLED",
+            f"{class_name} assigns short signals while can_short is false",
+        )
+    if max_lookback > MAX_STATIC_LOOKBACK:
+        _reject(
+            "LOOKBACK_RESOURCE_LIMIT",
+            f"{class_name} derived lookback exceeds the global resource limit",
+        )
+    startup_candle_count = int(values["startup_candle_count"])
+    if startup_candle_count < max_lookback:
+        _reject(
+            "INSUFFICIENT_STARTUP_CANDLES",
+            f"{class_name}.startup_candle_count is below the derived maximum lookback",
+        )
+    return BoundedStrategyAnalysis(
+        timeframe=expected_timeframe,
+        startup_candle_count=startup_candle_count,
+        max_lookback=max_lookback,
+    )
 
 
-def validate_bounded_causal_strategy(source: str, class_name: str) -> None:
-    """Fail closed on both contract violations and recursion exhaustion."""
+def analyze_bounded_causal_strategy(
+    source: str,
+    class_name: str,
+    *,
+    expected_timeframe: str = "5m",
+) -> BoundedStrategyAnalysis:
+    """Analyze one bounded source without importing or executing it."""
 
     try:
-        _validate_bounded_causal_strategy(source, class_name)
+        return _validate_bounded_causal_strategy(
+            source, class_name, expected_timeframe
+        )
     except BoundedStrategyError:
         raise
     except RecursionError as exc:
@@ -857,10 +1054,39 @@ def validate_bounded_causal_strategy(source: str, class_name: str) -> None:
         ) from exc
 
 
+def validate_bounded_causal_strategy(
+    source: str,
+    class_name: str,
+    *,
+    expected_timeframe: str = "5m",
+) -> None:
+    """Fail closed on both contract violations and recursion exhaustion."""
+
+    analyze_bounded_causal_strategy(
+        source, class_name, expected_timeframe=expected_timeframe
+    )
+
+
 def validate_bounded_causal_strategy_file(
-    path: Union[str, Path], class_name: str
+    path: Union[str, Path],
+    class_name: str,
+    *,
+    expected_timeframe: str = "5m",
 ) -> None:
     """Read one bounded UTF-8 file and validate it without importing it."""
+
+    analyze_bounded_causal_strategy_file(
+        path, class_name, expected_timeframe=expected_timeframe
+    )
+
+
+def analyze_bounded_causal_strategy_file(
+    path: Union[str, Path],
+    class_name: str,
+    *,
+    expected_timeframe: str = "5m",
+) -> BoundedStrategyAnalysis:
+    """Read and analyze one bounded UTF-8 file without importing it."""
 
     candidate = Path(path)
     try:
@@ -876,12 +1102,18 @@ def validate_bounded_causal_strategy_file(
         raise BoundedStrategyError(
             "INVALID_SOURCE", f"{class_name} source cannot be read as UTF-8"
         ) from exc
-    validate_bounded_causal_strategy(source, class_name)
+    return analyze_bounded_causal_strategy(
+        source, class_name, expected_timeframe=expected_timeframe
+    )
 
 
 __all__ = [
     "BOUNDED_CAUSAL_STRATEGY_V1",
+    "MAX_STATIC_LOOKBACK",
+    "BoundedStrategyAnalysis",
     "BoundedStrategyError",
+    "analyze_bounded_causal_strategy",
+    "analyze_bounded_causal_strategy_file",
     "validate_bounded_causal_strategy",
     "validate_bounded_causal_strategy_file",
 ]

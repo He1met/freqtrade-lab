@@ -4,7 +4,9 @@ import pytest
 
 from lab.bounded_strategy import (
     BOUNDED_CAUSAL_STRATEGY_V1,
+    MAX_STATIC_LOOKBACK,
     BoundedStrategyError,
+    analyze_bounded_causal_strategy,
     validate_bounded_causal_strategy,
 )
 
@@ -21,6 +23,9 @@ def _source(
     class_extra: str = "",
     module_prefix: str = "",
     module_suffix: str = "",
+    timeframe: str = "5m",
+    startup_candle_count: int = 20,
+    can_short: bool = True,
 ) -> str:
     extra = "" if not class_extra else indent(class_extra.strip(), "    ") + "\n"
     return (
@@ -32,9 +37,9 @@ def _source(
         + class_header
         + "\n"
         + "    INTERFACE_VERSION = 3\n"
-        + '    timeframe = "5m"\n'
-        + "    can_short = True\n"
-        + "    startup_candle_count = 20\n"
+        + f"    timeframe = {timeframe!r}\n"
+        + f"    can_short = {can_short!r}\n"
+        + f"    startup_candle_count = {startup_candle_count}\n"
         + "    process_only_new_candles = True\n"
         + '    minimal_roi = {"0": 0.0}\n'
         + "    stoploss = -0.02\n"
@@ -94,6 +99,58 @@ return dataframe
 
     assert BOUNDED_CAUSAL_STRATEGY_V1 == "BOUNDED_CAUSAL_STRATEGY_V1"
     assert validate_bounded_causal_strategy(source, CLASS_NAME) is None
+    assert analyze_bounded_causal_strategy(source, CLASS_NAME).max_lookback == 20
+
+
+def test_t0_profile_bound_daily_rolling_mean_reports_84_candle_lookback() -> None:
+    source = _source(
+        indicators='dataframe["trend"] = dataframe["close"].rolling(84).mean()\nreturn dataframe',
+        timeframe="1d",
+        startup_candle_count=84,
+        can_short=False,
+    )
+
+    analysis = analyze_bounded_causal_strategy(
+        source, CLASS_NAME, expected_timeframe="1d"
+    )
+
+    assert analysis.timeframe == "1d"
+    assert analysis.startup_candle_count == 84
+    assert analysis.max_lookback == 84
+    assert (
+        validate_bounded_causal_strategy(
+            source, CLASS_NAME, expected_timeframe="1d"
+        )
+        is None
+    )
+
+
+def test_t0_startup_must_cover_derived_rolling_and_shift_lookback() -> None:
+    insufficient = _source(
+        indicators='dataframe["trend"] = dataframe["close"].rolling(84).mean()\nreturn dataframe',
+        timeframe="1d",
+        startup_candle_count=83,
+        can_short=False,
+    )
+    with pytest.raises(BoundedStrategyError) as raised:
+        analyze_bounded_causal_strategy(
+            insufficient, CLASS_NAME, expected_timeframe="1d"
+        )
+    assert raised.value.code == "INSUFFICIENT_STARTUP_CANDLES"
+
+    shifted = _source(
+        indicators=(
+            'dataframe["trend"] = '
+            'dataframe["close"].rolling(84).mean().shift(1)\n'
+            "return dataframe"
+        ),
+        timeframe="1d",
+        startup_candle_count=85,
+        can_short=False,
+    )
+    assert analyze_bounded_causal_strategy(
+        shifted, CLASS_NAME, expected_timeframe="1d"
+    ).max_lookback == 85
 
 
 @pytest.mark.parametrize(
@@ -213,6 +270,7 @@ def populate_indicators(self, dataframe, metadata):
         ),
         ('dataframe["x"] = dataframe.iloc[-1]\nreturn dataframe', "DYNAMIC_INDEXING"),
         ('dataframe["x"] = dataframe["close"].max()\nreturn dataframe', "FULL_SAMPLE_AGGREGATE"),
+        ('dataframe["x"] = dataframe["close"].mean()\nreturn dataframe', "FULL_SAMPLE_AGGREGATE"),
     ],
 )
 def test_t0_rejects_known_future_ambiguous_patterns(body: str, code: str) -> None:
@@ -262,11 +320,13 @@ def test_t0_rejects_resource_amplifying_or_arbitrary_rhs(expression: str) -> Non
 @pytest.mark.parametrize(
     "expression,code",
     [
-        ('dataframe["close"].shift(101)', "FUTURE_AMBIGUOUS_SHIFT"),
-        ('dataframe["close"].shift(21)', "FUTURE_AMBIGUOUS_SHIFT"),
         (
-            'qtpylib.bollinger_bands(dataframe["close"], window=21, stds=2)',
-            "LIBRARY_CALL_OUTSIDE_TEMPLATE",
+            f'dataframe["close"].shift({MAX_STATIC_LOOKBACK + 1})',
+            "LOOKBACK_RESOURCE_LIMIT",
+        ),
+        (
+            'dataframe["close"].rolling(21).mean()',
+            "INSUFFICIENT_STARTUP_CANDLES",
         ),
         (
             'qtpylib.bollinger_bands(dataframe["close"], window=20, stds=6)',

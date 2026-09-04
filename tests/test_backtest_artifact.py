@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional
 
@@ -21,6 +22,7 @@ from lab.backtest_artifact import (
     SUPPORTED_FREQTRADE_COMMIT,
     ArtifactImportError,
     _load_archive,
+    _scenario_execution_identity,
     _strict_json,
     import_backtest_execution,
     parse_backtest_artifact,
@@ -161,6 +163,27 @@ def _zero_trade_evidence(
         report=mutate_report,
         config=mutate_zero_config,
         provenance=mutate_provenance,
+    )
+
+
+def _zero_fee_evidence(tmp_path: Path) -> Path:
+    def report_fee(report: Dict[str, Any]) -> None:
+        for trade in report["strategy"][STRATEGY]["trades"]:
+            trade["fee_open"] = 0.0
+            trade["fee_close"] = 0.0
+
+    def config_fee(config: Dict[str, Any]) -> None:
+        config["fee"] = 0.0
+
+    def provenance_fee(provenance: Dict[str, Any]) -> None:
+        provenance["contract"]["fee"] = 0.0
+        provenance["fee_evidence"]["rate"] = 0.0
+
+    return _mutate_evidence(
+        tmp_path,
+        report=report_fee,
+        config=config_fee,
+        provenance=provenance_fee,
     )
 
 
@@ -417,6 +440,36 @@ def test_t0_parses_real_frozen_fixture_and_units() -> None:
     ))
 
 
+def test_t0_parses_native_1d_artifact_with_daily_candle_bounds(tmp_path: Path) -> None:
+    end = "2026-08-03T00:00:00Z"
+
+    def mutate_report(report: Dict[str, Any]) -> None:
+        result = report["strategy"][STRATEGY]
+        result["timeframe"] = "1d"
+        result["backtest_end"] = end
+        result["backtest_end_ts"] = 1785715200000
+
+    def mutate_config(config: Dict[str, Any]) -> None:
+        config["timeframe"] = "1d"
+
+    def mutate_provenance(provenance: Dict[str, Any]) -> None:
+        contract = provenance["contract"]
+        contract["timeframe"] = "1d"
+        contract["backtest_end_utc"] = end
+
+    root = _mutate_evidence(
+        tmp_path,
+        report=mutate_report,
+        config=mutate_config,
+        provenance=mutate_provenance,
+    )
+
+    parsed = _parse(root)
+
+    assert parsed.timeframe == "1d"
+    assert parsed.backtest_end == end
+
+
 def test_t0_preserves_null_metrics_and_zero_profit_factor(tmp_path: Path) -> None:
     def mutate(report: Dict[str, Any]) -> None:
         result = report["strategy"][STRATEGY]
@@ -430,6 +483,26 @@ def test_t0_preserves_null_metrics_and_zero_profit_factor(tmp_path: Path) -> Non
     assert parsed.sortino is None
     assert parsed.calmar is None
     assert parsed.profit_factor == 0.0
+
+
+def test_t0_parser_accepts_schema_valid_zero_fee(tmp_path: Path) -> None:
+    parsed = _parse(_zero_fee_evidence(tmp_path))
+
+    assert parsed.configured_fee == 0.0
+
+
+def test_t0_zero_fee_execution_identity_uses_scenario_sequence_and_multiplier() -> None:
+    start = datetime(2026, 8, 4, tzinfo=timezone.utc)
+    stop = datetime(2026, 8, 6, 23, 55, tzinfo=timezone.utc)
+    common = (start, stop, "5m", None, 0.0)
+
+    holdout = _scenario_execution_identity("HOLDOUT", 2, *common, 1.0)
+    stress = _scenario_execution_identity("HOLDOUT_STRESS", 3, *common, 2.0)
+
+    assert holdout != stress
+    assert holdout[:2] == ("HOLDOUT", 2)
+    assert stress[:2] == ("HOLDOUT_STRESS", 3)
+    assert (holdout[-1], stress[-1]) == (1.0, 2.0)
 
 
 @pytest.mark.parametrize("component", ["report", "config", "strategy", "metadata"])
@@ -943,7 +1016,9 @@ def test_t2_same_zip_cannot_succeed_for_holdout_and_stress(tmp_path: Path) -> No
     ]
 
 
-def test_t2_rejects_ambiguous_same_identity_scenarios(tmp_path: Path) -> None:
+def test_t2_scenario_distinguishes_otherwise_equal_execution_identity(
+    tmp_path: Path,
+) -> None:
     db_path = _seed_database(tmp_path)
     with get_connection(db_path) as connection:
         _insert_execution(
@@ -954,10 +1029,47 @@ def test_t2_rejects_ambiguous_same_identity_scenarios(tmp_path: Path) -> None:
             fee_multiplier=1.0,
         )
         connection.commit()
-    before = _snapshot(db_path)
-    with pytest.raises(ArtifactImportError, match="does not uniquely match scenario"):
-        _import(db_path)
-    assert _snapshot(db_path) == before
+
+    _import(db_path)
+
+    with get_connection(db_path, read_only=True) as connection:
+        rows = connection.execute(
+            "SELECT scenario, status FROM backtest_executions ORDER BY sequence"
+        ).fetchall()
+    assert [tuple(row) for row in rows] == [
+        ("DEVELOPMENT", "SUCCEEDED"),
+        ("HOLDOUT", "PENDING"),
+    ]
+
+
+def test_t2_zero_fee_rejects_reusing_holdout_archive_bytes_for_stress(
+    tmp_path: Path,
+) -> None:
+    root = _zero_fee_evidence(tmp_path)
+    db_path = _seed_database(tmp_path, scenario="HOLDOUT", fee_rate=0.0)
+    with get_connection(db_path) as connection:
+        connection.execute("UPDATE research_profiles SET taker_fee_rate = 0.0")
+        _insert_execution(
+            connection,
+            scenario="HOLDOUT_STRESS",
+            sequence=2,
+            fee_rate=0.0,
+            fee_multiplier=2.0,
+        )
+        connection.commit()
+
+    _import(db_path, root=root, scenario="HOLDOUT")
+    with get_connection(db_path) as connection:
+        connection.execute(
+            "UPDATE research_runs SET stage = 'HOLDOUT_STRESS_BACKTEST'"
+        )
+        connection.commit()
+    before_stress = _snapshot(db_path)
+
+    with pytest.raises(ArtifactImportError, match="archive bytes were already imported"):
+        _import(db_path, root=root, scenario="HOLDOUT_STRESS")
+
+    assert _snapshot(db_path) == before_stress
 
 
 @pytest.mark.parametrize(
@@ -985,7 +1097,7 @@ def test_t2_rejects_terminal_or_wrong_stage_parent(
     assert _snapshot(db_path) == before
 
 
-def test_t2_rejects_zero_profile_fee_identity(tmp_path: Path) -> None:
+def test_t2_importer_accepts_schema_valid_zero_fee_identity(tmp_path: Path) -> None:
     db_path = _seed_database(tmp_path)
     with get_connection(db_path) as connection:
         connection.execute(
@@ -993,10 +1105,15 @@ def test_t2_rejects_zero_profile_fee_identity(tmp_path: Path) -> None:
         )
         connection.execute("UPDATE backtest_executions SET fee_rate = 0.0")
         connection.commit()
-    before = _snapshot(db_path)
-    with pytest.raises(ArtifactImportError, match="fee must be positive"):
-        _import(db_path)
-    assert _snapshot(db_path) == before
+    parsed = _import(db_path, root=_zero_fee_evidence(tmp_path))
+
+    assert parsed.configured_fee == 0.0
+    with get_connection(db_path, read_only=True) as connection:
+        row = connection.execute(
+            "SELECT status, fee_rate FROM backtest_executions "
+            "WHERE id='execution-DEVELOPMENT'"
+        ).fetchone()
+    assert tuple(row) == ("SUCCEEDED", 0.0)
 
 
 @pytest.mark.parametrize("scenario", ["DEVELOPMENT", "HOLDOUT_STRESS"])

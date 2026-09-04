@@ -564,19 +564,35 @@ def _validate_cross_scenario(
             "profile holdout_days must equal the HOLDOUT artifact calendar span"
         )
 
-    identities = {
-        (
-            artifact.backtest_start,
-            artifact.backtest_end,
-            artifact.timeframe,
-            artifact.detail_timeframe,
-            artifact.configured_fee,
+    identities = set()
+    archive_sha256_values = set()
+    for sequence, scenario in enumerate(BUNDLE_SCENARIOS, start=1):
+        artifact = artifacts[scenario]
+        multiplier = (
+            profile.stress_fee_multiplier
+            if scenario == "HOLDOUT_STRESS"
+            else 1.0
         )
-        for artifact in artifacts.values()
-    }
+        identities.add(
+            (
+                scenario,
+                sequence,
+                artifact.backtest_start,
+                artifact.backtest_end,
+                artifact.timeframe,
+                artifact.detail_timeframe,
+                artifact.configured_fee,
+                multiplier,
+            )
+        )
+        archive_sha256_values.add(artifact.archive_sha256)
     if len(identities) != 3:
         raise ResearchBundleImportError(
-            "the three scenario timerange/timeframe/fee identities must be unique"
+            "the three frozen scenario execution identities must be unique"
+        )
+    if len(archive_sha256_values) != 3:
+        raise ResearchBundleImportError(
+            "the three scenarios must use distinct artifact archive bytes"
         )
 
     earliest = min(

@@ -8,7 +8,10 @@ artifact importer, and a narrow three-scenario bundle importer for Freqtrade
 library. The producer can run one bounded Freqtrade research Candidate; that
 technical completion does not prove that any strategy is profitable.
 
-## Quickstart: trusted local Candidate
+## Legacy 5m three-scenario fixture path
+
+This compatibility path is not the Profile-driven Issue #43 workflow. Use the
+Research Console section below for the current Search → Development entry.
 
 Use persistent absolute paths outside this Git repository. The Candidate source
 must be local code that you selected and reviewed; the acquisition command uses
@@ -50,38 +53,98 @@ python3 scripts/serve_strategy_library.py \
   --port 8765
 ```
 
-## Local Research Console: bounded Codex, Search, Development, and one-shot Holdout
+## Current Profile Quickstart: Search and Development in the Research Console
 
 The Research Console keeps the Strategy Library routes on the same loopback
 server and adds a small page at `http://127.0.0.1:8765/console`. One fixed
 `CHECK_DATA` child, one bounded Codex Candidate generation, either Search
-round, one approved Candidate's fixed `DEVELOPMENT` backtest, or its explicitly
-authorized Holdout continuation can occupy the same single slot; a concurrent
-start is rejected. For generation, the browser may submit
+round, or one approved Candidate's fixed `DEVELOPMENT` backtest can occupy the
+same single slot; a concurrent start is rejected. The legacy no-`--search-root`
+path also retains its separately authorized Holdout continuation, while the
+explicit Profile path keeps it sealed. For generation, the browser may submit
 only a Profile id, an optional same-Profile approved parent id, a bounded idea,
 an optional strategy family, and an optional expected failure mode. It cannot
 supply an executable, working directory, arguments, prompt template, model,
 environment, command, or output path.
 
-Before enabling Search, derive one fresh Search-only root from one complete,
-locally reviewed acquisition. The two SHA-256 values are explicit trust inputs:
+Use one exact Freqtrade `2026.7` venv Python for the acquisition helper, both
+preparation commands, their `--help` output, and the Console itself. Do not use
+the host's bare `python3` for this Profile flow:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 /absolute/private/path/freqtrade-2026.7-venv/bin/python \
+FTLAB_PROFILE_PYTHON=/absolute/private/path/freqtrade-2026.7-venv/bin/python
+
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
+  scripts/fetch_okx_profile_data.py --help
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
+  scripts/run_bounded_research_pilot.py --help
+```
+
+Before enabling Profile Search, first create one complete, local-only source
+acquisition. Its window file has exactly this shape; `data_start_utc` is
+`search_start_utc - timeframe * pre_roll_candles` (for example, 20 candles is
+100 minutes on `5m`, but 20 days on `1d`):
+
+```json
+{
+  "schema": "freqtrade-lab-profile-source-window-v1",
+  "data_start_utc": "2026-05-31T22:20:00Z",
+  "search_start_utc": "2026-06-01T00:00:00Z",
+  "development_start_utc": "2026-07-01T00:00:00Z",
+  "end_exclusive_utc": "2026-07-31T00:00:00Z"
+}
+```
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
+  scripts/fetch_okx_profile_data.py \
+  --output-root /absolute/private/path/complete-source-acquisition \
+  --window-spec /absolute/private/path/profile-source-window.json \
+  --profile-database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
+  --profile-id <profile-id> \
+  --pre-roll-candles <positive-integer>
+```
+
+For compatibility with the frozen legacy runner verifier, the Profile source
+receipt maps legacy `development_start_utc` to the Profile Search start and
+legacy `holdout_start_utc` to the Profile Development start. Its provenance
+likewise maps legacy `development_timerange` to Profile Search and legacy
+`holdout_timerange` to Profile Development. These are compatibility field
+names only: this flow acquires no actual Holdout or Holdout Stress values.
+
+Review the printed provenance and retrieval-receipt SHA-256 values. Then derive
+two independent roots from that same source: one contains only Search values;
+the other is the Development-only Pilot root required by the Console. The two
+SHA-256 values are explicit trust inputs to both commands:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
   scripts/run_bounded_research_pilot.py prepare-search-data \
   --source-root /absolute/private/path/complete-source-acquisition \
   --source-provenance-sha256 <64-lowercase-hex> \
   --source-receipt-sha256 <64-lowercase-hex> \
+  --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
+  --profile-id <profile-id> \
+  --search-timerange <YYYYMMDD-YYYYMMDD> \
+  --development-timerange <YYYYMMDD-YYYYMMDD> \
+  --pre-roll-candles <positive-integer> \
   --output-root /absolute/private/path/search-campaign
+
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
+  scripts/run_bounded_research_pilot.py prepare-development-data \
+  --source-root /absolute/private/path/complete-source-acquisition \
+  --source-provenance-sha256 <same-64-lowercase-hex> \
+  --source-receipt-sha256 <same-64-lowercase-hex> \
+  --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
+  --profile-id <same-profile-id> \
+  --search-timerange <same-YYYYMMDD-YYYYMMDD> \
+  --development-timerange <same-YYYYMMDD-YYYYMMDD> \
+  --pre-roll-candles <same-positive-integer> \
+  --output-root /absolute/private/path/development-pilot
 ```
 
-The source must be one fully closed, singular retrieval whose complete runner
-input set matches its reviewed provenance and receipt hashes. The output parent must
-already exist, but `--output-root` itself must not exist. This one-shot producer
-is the only Search preparation step allowed to inspect the complete source; it
-publishes a mode-`0700` root containing only `acquisition/`, the frozen
-`20260601-20260701` Search window, and its two-hour startup data. The Console and
-`screen-search` receive only that new root, never the source or later rows.
+The source must be one closed retrieval whose runner inputs match its reviewed provenance and receipt hashes. The selected schema-v1 Profile governs pair, dynamic `5m`/`1d` timeframe, non-negative fee (including `0`), sizing, finalist Gate, capacity, and disjoint frozen Search/Development windows; capacity is checked before mutation. Each non-existent `--output-root` is published atomically with mode `0700`. The Search root contains only its Search slice. The Development root contains controls plus a physical Development slice whose base candles start at `Development start - timeframe * pre_roll_candles`, whose mark series starts at that instant rounded down to the hour, whose funding series starts at Development, and whose stop is exclusive. Neither derived root contains Holdout values.
+At Console startup, both roots must bind the same original source-acquisition hashes. Console and `screen-search` never receive the complete source or later rows.
 Candidate generation and explicit `APPROVE` remain governed by their own
 preflights and do not consume Search data; Search requires this prepared root.
 The producer/consumer contract suite intentionally requires the same exact
@@ -107,42 +170,41 @@ mkdir -p /absolute/private/path/freqtrade-lab-console-runtime \
 chmod 700 /absolute/private/path/freqtrade-lab-console-runtime \
   /absolute/private/path/freqtrade-lab-releases
 test -d /absolute/private/path/search-campaign/acquisition
-chmod 700 /absolute/private/path/search-campaign
+test -d /absolute/private/path/development-pilot/development-isolation
+chmod 700 /absolute/private/path/search-campaign \
+  /absolute/private/path/development-pilot
 
-python3 scripts/serve_research_console.py \
+PYTHONDONTWRITEBYTECODE=1 "$FTLAB_PROFILE_PYTHON" \
+  scripts/serve_research_console.py \
   --database /absolute/private/path/freqtrade-lab-workspace/lab.sqlite \
   --runtime-root /absolute/private/path/freqtrade-lab-console-runtime \
   --release-root /absolute/private/path/freqtrade-lab-releases \
-  --pilot-root /absolute/private/path/frozen-pilot \
+  --pilot-root /absolute/private/path/development-pilot \
   --search-root /absolute/private/path/search-campaign \
-  --freqtrade-python /absolute/private/path/freqtrade-2026.7-venv/bin/python \
+  --freqtrade-python "$FTLAB_PROFILE_PYTHON" \
   --freqtrade-source /absolute/private/path/clean-freqtrade-2026.7 \
   --artifact-root /absolute/private/path/freqtrade-lab-workspace/artifacts \
   --port 8765
 ```
 
-`--search-root` is optional. When it is absent, stale, invalid, or not an exact
-frozen 30-day `freqtrade-lab-retained-search-data-v2` input, only the Search
-card reports `BLOCKED_DATA`; the Console, Codex, and Development capabilities
-remain available according to their own preflight checks. A completed root
-stays read-only at its verified terminal state and cannot be rerun. A valid
-fresh root carries exactly one two-round campaign. Round 1 accepts
-one to three approved mechanism seeds and may select a negative-return parent.
+`--search-root` explicitly selects Profile Search mode; without it, Development follows its own preflight and ignores unrelated historical MANUAL rows. A supplied stale/invalid or cross-source root reports `BLOCKED_DATA`, while impossible trade-count capacity reports `BLOCKED_INSUFFICIENT_CAPACITY`; neither falls back to legacy Development. Console and Codex remain independent. A completed root is read-only. A fresh root has one two-round campaign: Round 1 accepts one or two approved mechanism seeds and may select a negative-return parent.
+
+The legacy path (no `--search-root`) remains the fixed `5m` /
+`POSITIVE_DEVELOPMENT_V1` contract with one rolling 60-day Development window
+followed by one contiguous 30-day Holdout window in
+`freqtrade-lab-okx-window-v2`. Profile mode is separate: it uses the selected
+Profile's `5m` or `1d` timeframe, Profile thresholds, Holdout duration, and
+`PROFILE_DRIVEN_POSITIVE_FINALIST_V1` finalist Gate. These two contracts are
+not interchangeable.
 The page then locks that parent into the existing Codex card: the user generates
 one child at a time, reviews its source, and explicitly approves or rejects it.
-Round 2 accepts one to three approved single-factor children. Both rounds share
-one fixed budget of at most six attempts; there is no third round, automatic
-child loop, Hyperopt, or threshold rescue.
+Round 2 accepts one approved single-factor child. The active budget is three attempts (two plus one), with a fail-closed hard ceiling of six; there is no third round, automatic child loop, Hyperopt, or threshold rescue.
 
 Search completion freezes either a finalist or a no-finalist terminal result;
 neither result proves profitability, robustness, or tradability. Selecting a
 finalist for Development changes only the page selection. Development starts
 only after a separate user click, and Search never automatically opens
-Development, Holdout, Holdout Stress, Release, or trading. Every Search action
-is read-only across all six schema-v1 business tables and creates no
-`ResearchRun`, execution, or Release. The explicitly requested Codex generation
-between rounds retains its existing, separate `generation_runs`/`candidates`
-write contract.
+Development, Holdout, Holdout Stress, Release, or trading. Search creates no `ResearchRun`, execution, or Release; only after a legal terminal does it record one `source=MANUAL` `generation_runs` row containing every executed round contract, ordered attempt (including `INVALID`), terminal outcome, and external evidence pointers. Before terminal all six business tables remain unchanged. A verified finalist enters the real Development preflight through one SHA-256-bound request/terminal/evidence projection frozen into its snapshot and manifest. In explicit Search mode, the ResearchRun API exposes only a Development allowlist; Strategy Library detail/download routes and every later phase remain `SEALED_UNREAD`.
 
 Preflight always probes the public numeric-loopback origin configured by
 `--webserver-base-url` (default `http://127.0.0.1:8080`). A stopped service is
@@ -163,39 +225,48 @@ REJECTED Candidates stay out of the Strategy Library.
 The Development action accepts exactly one browser field: `candidate_id`. At
 the same `BEGIN IMMEDIATE` consumption boundary it rebinds the current approved
 source SHA, completed generation report, frozen Profile/request lineage, and
-the versioned `BOUNDED_CAUSAL_STRATEGY_V1` 5m allowlist. It then creates one
+the versioned `BOUNDED_CAUSAL_STRATEGY_V1` allowlist for the frozen Profile
+timeframe. It then creates one
 `ResearchRun` and exactly one `DEVELOPMENT` execution. The child receives a
 copied physical Development-only data view and no Pilot root, acquisition
 directory, Holdout values, Holdout receipt, Search input, FreqUI path, or
-Release/trading action. The economic Gate is frozen to
-`POSITIVE_DEVELOPMENT_V1`: trades >= 30, profit >= 0.5%, profit factor >= 1.1,
-and max drawdown <= 5%. Failure produces `COMPLETED / REJECTED`; success leaves
-`PENDING` with `verdict = NULL` and
-`next_phase = HOLDOUT_AUTHORIZATION_REQUIRED`. Both Holdout states remain
-`SEALED_UNREAD`, with no later-phase execution rows. A missing or changed Pilot
-root, exact Freqtrade Python, or clean source checkout is reported as
-`BLOCKED_DATA`; the Console and Codex generation remain available.
+Release/trading action. The Profile economic Gate requires strictly positive
+net profit plus the Profile's frozen minimum trades, minimum profit factor, and
+maximum drawdown. The legacy path retains its fixed
+`POSITIVE_DEVELOPMENT_V1` thresholds. Failure produces
+`COMPLETED / REJECTED`; success leaves
+`PENDING` with `verdict = NULL`. The shared Development record may retain
+`next_phase = HOLDOUT_AUTHORIZATION_REQUIRED` as an internal legacy pipeline
+marker, but explicit Profile mode does not expose or consume that action. Both
+Holdout states remain `SEALED_UNREAD`, with no later-phase execution rows. A
+missing or changed Pilot root, exact Freqtrade Python, or clean source checkout
+is reported as `BLOCKED_DATA`; the Console and Codex generation remain
+available.
 
-Here `SEALED_UNREAD` is a market-value I/O boundary, not the absence of all
-metadata. Startup may bind the plan, provenance, config, receipts, and regular
-file metadata, but it does not open or hash later-phase market bytes. The
-Development child receives only its copied physical Development view; the full
-acquisition is opened, hash-checked, and materialized only after explicit
-`AUTHORIZE_HOLDOUT`.
+In explicit Profile Search mode, `SEALED_UNREAD` is a strict code and I/O
+boundary: startup, recovery, status, events, and ResearchRun reads do not call
+the Holdout/Stress loader or reconciler, and do not copy FreqUI results. The
+shared event file is unavailable once a campaign is a Development campaign,
+because later-phase events could otherwise be read and then redacted. The
+Development child receives only its copied physical Development view. This
+Issue #43 path exposes no `AUTHORIZE_HOLDOUT`; later-phase work remains a
+separate, pending gate. The legacy path retains its existing one-shot Holdout
+contract and must not be used to reinterpret the explicit Profile path.
 
-Only that exact `PENDING / PENDING` Run exposes `AUTHORIZE_HOLDOUT`. The POST
-body is exactly `{ "action": "AUTHORIZE_HOLDOUT" }`; browser-supplied paths,
-timeranges, fees, scenarios, thresholds, commands, or output locations are
-rejected. Authorization is consumed once and starts one private child that
-runs `HOLDOUT` and then `HOLDOUT_STRESS` without rerunning Development. The two
-later executions and final Run state are attached in one `BEGIN IMMEDIATE` only
-after both artifacts and the three-scenario contract validate. Success keeps
-`verdict = NULL` for human review and creates no Release. Cancellation,
-timeout, nonzero exit, or restart never retries and never leaves partial
-later-phase metrics or result paths. The page links to the Strategy Library
-detail using the exact Profile, Candidate, and ResearchRun ids.
+On the legacy no-`--search-root` path only, an exact `PENDING / PENDING` Run
+exposes `AUTHORIZE_HOLDOUT`. The POST body is exactly
+`{ "action": "AUTHORIZE_HOLDOUT" }`; browser-supplied paths, timeranges, fees,
+scenarios, thresholds, commands, or output locations are rejected.
+Authorization is consumed once and starts one private child that runs
+`HOLDOUT` and then `HOLDOUT_STRESS` without rerunning Development. The two later
+executions and final Run state are attached in one `BEGIN IMMEDIATE` only after
+both artifacts and the three-scenario contract validate. Success keeps
+`verdict = NULL` for human review and creates no Release. Cancellation, timeout,
+nonzero exit, or restart never retries and never leaves partial later-phase
+metrics or result paths. The page links to the Strategy Library detail using
+the exact Profile, Candidate, and ResearchRun ids.
 
-After all three scenarios complete on that same `ResearchRun`, the Console
+After all three scenarios complete on that same legacy `ResearchRun`, the Console
 revalidates the existing Candidate, Profile, Holdout receipts, Artifact hashes,
 and scenario contract before exposing one terminal human action. `REJECT`
 records the bounded human reason and creates no Release.
@@ -251,12 +322,7 @@ The project intentionally starts without an ORM, migration framework, task queue
 
 ## Low-level Bounded Evolution V1 Search engine
 
-`screen-search` is the Search-only Gate for a new V2 campaign. It accepts one
-30-day Search window and one to three SHA-bound Candidates, runs only the
-existing isolated Freqtrade screen, and emits no database row or later-phase
-authorization. The Console above is the user entrypoint for the two-round
-workflow; this command documents the reused low-level engine and requires an
-already frozen campaign contract:
+`screen-search` executes one frozen round of a Profile-driven V2 campaign against the authorized pair, timeframe, costs, capacity, windows, and finalist Gate. It emits no later-phase authorization; Console is the two-round user entrypoint:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
@@ -266,37 +332,17 @@ PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
   --freqtrade-source /path/to/clean/freqtrade-2026.7
 ```
 
-The campaign root contains `campaign.json`, append-only `trials.jsonl`, retained
-Search result directories, and—when Search terminates—one write-once
-`search-terminal.json`. Temporary runner input and isolation directories are
-removed after each round. The root must stay outside Git. Its `acquisition/`
-input uses `freqtrade-lab-retained-search-data-v2` provenance with only
-`search_timerange`; it freezes the exact dependency versions and SHA/size/row
-receipts for config, snapshots, and Search-only data. A contract containing
-Development, Validation, Holdout, or Stress references is rejected before any
-Candidate screen, as is a source data file containing post-Search rows.
+The public state chain is immutable `campaign-round-1.json` plus current `campaign.json` -> append-only `trials.jsonl` -> one write-once `search-terminal.json`. A blocked terminal freezes the ledger SHA-256; recovery cannot terminalize while a live worker owns the lock. Result directories are artifacts, and temporary inputs are removed after each round. The Git-external root's `freqtrade-lab-retained-search-data-v2` provenance freezes the Profile, Search/Development windows, pre-roll, dependencies, and data receipts. Readable Holdout/Stress values or post-Search rows fail closed. Each valid Search ZIP has exactly one `*_config.json` whose exchange, pair, trading/margin modes, timeframe, dry-run flag, stake currency, tradable-balance ratio, fee, wallet, stake, and max-open values still match the Profile contract.
 
 `campaign.json` freezes `schema=freqtrade-lab-bounded-evolution-search-v2`,
-`campaign_id`, Freqtrade `2026.7`, `round`, the exact 30-day
-`search_timerange`, `data_provenance_sha256`, `budget.maximum_attempts=6`,
-`ranking`, `finalist_gate`, the prior parent/receipt binding, and one to three
-Candidates. Every Candidate
+`campaign_id`, Freqtrade `2026.7`, `round`, Profile snapshot/hash, Search/Development windows, pre-roll/lookbacks, capacity, `active_attempt_limit=3`, `budget.maximum_attempts=6`, data hash, ranking, Profile Gate, prior parent/receipt, and Candidate set. Every Candidate
 binds its id, class, mechanism, relationship, optional changed factor, parent
 SHA, relative strategy path, and strategy SHA-256. Round 1 requires distinct
-`MECHANISM_SEED` mechanisms. After its write-once round receipt, use the printed
-receipt SHA and selected-parent identity to prepare round 2 `campaign.json`
-containing only declared `SINGLE_FACTOR_CHILD` Candidates. There
-is no third round and no more than six total attempts; duplicate source,
+`MECHANISM_SEED` mechanisms and contains at most two Candidates. Its write-once receipt and selected parent bind Round 2; immutable `campaign-round-1.json` remains authoritative while current `campaign.json` contains one `SINGLE_FACTOR_CHILD`. The active budget is three attempts and the hard cap six; duplicate source,
 invalid syntax, and causal-template failure still receive a trial record and
 consume budget.
 
-The frozen ranking is net return after the configured base fee descending,
-drawdown ascending, then Candidate id. PF is shown only as a diagnostic and is
-not a rank or Gate input. A relative parent may have negative Search return and
-is not a finalist. Only after round 2, at most one ranked Candidate becomes the
-Search finalist when trades are at least 30, net return after the base fee is
-strictly positive, and maximum drawdown is at most 10%. These are new V2
-campaign rules; they do not revise any historical ADA/Pilot receipt.
+Ranking is net return after configured fees descending, drawdown ascending, then Candidate id. Profit factor is only a Profile Gate input. A relative parent may be negative and is not a finalist. After Round 2, at most one Candidate qualifies by positive net return plus the Profile's trade-count, profit-factor, and drawdown thresholds. These V2 rules do not revise historical receipts.
 
 Exit `0` means either that round 1 produced a parent brief or that round 2 froze
 a Search finalist. Exit `3` means Search terminated with no parent/finalist;
@@ -307,13 +353,7 @@ path/value.
 
 This command does not initialize SQLite, call the producer/importer, create
 `workspace/` or `selected-input/`, open later-phase receipts, set a verdict, or
-create a Release. Internally the reused low-level runner still calls its
-existing `DEVELOPMENT` enum while using the Search timerange; this is only an
-engine label. Protocol phase B is a separate one-shot Validation that would map
-to the existing database `DEVELOPMENT` scenario, and this Search command never
-enters it. B/C integration is intentionally not implemented by this slice; the
-existing final `run` command and its one-shot later-phase safety boundary remain
-unchanged.
+create a Release. At a legal terminal, Search projects all executed contracts, attempts, and terminal response once into one `source=MANUAL` `generation_runs` row, never a `ResearchRun` or execution. The runner uses `SEARCH` and the frozen Search window; a finalist is a verifiable handoff into separately gated Development. Explicit Search mode exposes no Holdout, Stress, Judge, or Release authorization.
 
 ## Initialize a database
 
@@ -445,42 +485,30 @@ before using the root above. Future public responses may differ from the Issue
 Exact reviewed evidence is documented in
 [`tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md`](tests/fixtures/freqtrade_2026_7/producer/PROVENANCE.md).
 
-#### Rolling 60/30 Pilot window (v2)
+#### Current Profile Search source boundary
 
-The command above without `--window-spec` preserves the short legacy fixture
-workflow; it is not a rolling Console Pilot. For the rolling cohort, save this
-exact `window-spec.json` outside Git:
-
-```json
-{
-  "schema": "freqtrade-lab-okx-window-v2",
-  "data_start_utc": "2026-06-30T22:00:00Z",
-  "development_start_utc": "2026-07-01T00:00:00Z",
-  "holdout_start_utc": "2026-08-30T00:00:00Z",
-  "end_exclusive_utc": "2026-09-29T00:00:00Z"
-}
-```
-
-Run the network acquisition strictly after `2026-09-29T00:00:00Z` (after
-08:00:00 in Asia/Shanghai). The Pilot parent directory must already exist and
-the `acquisition/` output itself must not exist:
+Profile acquisition is a separate current helper; it does not rewrite the
+identity of the historical fixture producer:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 /absolute/private/path/freqtrade-2026.7-venv/bin/python \
-  tests/fixtures/freqtrade_2026_7/producer/fetch_okx_public_data.py \
-  --output-root /absolute/private/path/frozen-pilot/acquisition \
-  --strategy-file /absolute/private/path/SearchFinalist.py \
-  --research-spec /absolute/private/path/SearchFinalist-spec.json \
-  --window-spec /absolute/private/path/frozen-pilot/window-spec.json
+PYTHONDONTWRITEBYTECODE=1 /path/to/freqtrade-2026.7-venv/bin/python \
+  scripts/fetch_okx_profile_data.py \
+  --output-root /path/to/new-complete-source --window-spec /path/to/window.json \
+  --profile-database /path/to/lab.sqlite --profile-id "$PROFILE_ID" \
+  --pre-roll-candles 84
 ```
 
-The matching `pilot-spec.json` must bind
-`development_timerange=20260701-20260830` and
-`holdout_timerange=20260830-20260929`. The v2 acquisition is still only frozen
-technical input: it does not select a Candidate, pass Development, authorize
-Holdout, establish a verdict, or prove profitability or tradability. Legacy
-v1/default fixtures remain available for their existing fixture and importer
-uses; they are not evidence of rolling 60/30 Console compatibility.
+Its `freqtrade-lab-profile-source-window-v1` fields are
+`data_start_utc`, `search_start_utc`, `development_start_utc`, and
+`end_exclusive_utc`. `data_start_utc` must equal Search start minus the Profile
+timeframe step times the pre-roll (`84` means 84 days for a `1d` Profile). The
+helper reads the Profile through the schema-v1 connection, writes its exact
+Search config and `1d`/`5m` Feather series, and prints the hashes consumed by
+both preparation commands. Its provenance records two distinct implementation
+receipts: the current Profile acquisition/validation helper and the historical
+public-OKX transport dependency. The older retained fixture and
+`PROVENANCE.md` continue to attest the historical producer bytes and SHA-256;
+they are never attributed to the current helper.
 
 ## Import one verified backtest artifact
 
@@ -488,7 +516,7 @@ Issue #2 supports only the frozen Freqtrade `2026.7` format verified at commit
 `52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`. The three-member ZIP and its
 same-stem `.meta.json` and `.provenance.json` must already be inside a
 controlled artifact root, and the target `backtest_executions` row must already
-exist:
+exist. The parser accepts only verified `5m` and `1d` candle bounds:
 
 ```bash
 python3 scripts/import_backtest_artifact.py \
@@ -511,16 +539,19 @@ must exist, parse as strict JSON, and match its anchored hash; the importer does
 not reinterpret its business fields. It validates the structured provenance
 `version`, `tag`, and `commit`, not the embedded version-command text. The
 supported boundary is deliberately exact: public unauthenticated `www.okx.com`
-evidence, `okx/futures/isolated`, one or more nonzero trades, `5m`, and the
-pinned Freqtrade version/commit.
+evidence, `okx/futures/isolated`, one or more nonzero trades, supported `5m` or
+`1d` candles, and the pinned Freqtrade version/commit.
 
 The existing Candidate class and source SHA-256, profile pair set and execution
 timerange must match. Each reported trade fee must equal the sanitized config's
 configured fee; the execution must also satisfy
-`fee_rate = profile.taker_fee_rate * fee_multiplier`. Non-stress scenarios use
-multiplier `1.0`; `HOLDOUT_STRESS` uses the profile stress multiplier, which may
-also be `1.0` under schema v1. The timerange/timeframe/fee identity must still
-select exactly one scenario, so an ambiguous same-period artifact fails closed.
+`fee_rate = profile.taker_fee_rate * fee_multiplier`. Schema, Profile runtime,
+parser, and importer all allow a non-negative base fee, including `0`.
+Non-stress scenarios use multiplier `1.0`; `HOLDOUT_STRESS` uses the Profile
+stress multiplier. Scenario, sequence, timerange, timeframe, fee rate, and fee
+multiplier jointly bind the execution identity, so zero fee does not collapse
+Holdout and Holdout Stress into one identity. The same archive bytes still
+cannot be reused for two scenarios.
 
 Only clean `PENDING` executions under a `RUNNING`, no-verdict research run at
 the matching `*_BACKTEST` stage are accepted. `RUNNING`, `FAILED`, and other

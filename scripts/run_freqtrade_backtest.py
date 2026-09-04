@@ -41,7 +41,8 @@ SUPPORTED_DEPENDENCIES = {
     "python": "3.13.13",
 }
 RETAINED_DATA_SCHEMA = "freqtrade-lab-retained-okx-data-v1"
-SUPPORTED_SCENARIOS = ("DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
+SEARCH_DATA_SCHEMA = "freqtrade-lab-retained-search-data-v2"
+SUPPORTED_SCENARIOS = ("SEARCH", "DEVELOPMENT", "HOLDOUT", "HOLDOUT_STRESS")
 MAX_JSON_BYTES = 2 * 1024 * 1024
 MAX_RECEIPT_FILE_BYTES = 64 * 1024 * 1024
 MAX_SOURCE_TREE_BYTES = 64 * 1024 * 1024
@@ -111,6 +112,32 @@ _RUNTIME_CONFIG_KEYS = _BASE_CONFIG_KEYS | {
 _EXCHANGE_CONFIG_KEYS = {"enable_ws", "name", "pair_blacklist", "pair_whitelist"}
 _PRICING_CONFIG_KEYS = {"order_book_top", "price_side", "use_order_book"}
 _TIMEOUT_CONFIG_KEYS = {"entry", "exit", "exit_timeout_count", "unit"}
+_PROFILE_SNAPSHOT_FIELDS = {
+    "id",
+    "name",
+    "domain",
+    "exchange",
+    "trading_mode",
+    "margin_mode",
+    "pairs",
+    "timeframe",
+    "detail_timeframe",
+    "history_start_date",
+    "smoke_days",
+    "holdout_days",
+    "starting_balance",
+    "stake_amount",
+    "max_open_trades",
+    "taker_fee_rate",
+    "stress_fee_multiplier",
+    "max_drawdown_pct",
+    "min_development_trades",
+    "min_holdout_trades",
+    "min_profit_factor",
+    "is_default",
+    "created_at",
+    "updated_at",
+}
 
 
 class OfflineBacktestError(ValueError):
@@ -355,8 +382,12 @@ def _verify_data_provenance(
     data_dir: Path,
     market_snapshot: Path,
     leverage_tiers: Path,
+    timeframe: str = "5m",
 ) -> dict[str, Any]:
-    if provenance.get("schema") != RETAINED_DATA_SCHEMA:
+    expected_schema = (
+        SEARCH_DATA_SCHEMA if scenario == "SEARCH" else RETAINED_DATA_SCHEMA
+    )
+    if provenance.get("schema") != expected_schema:
         raise OfflineBacktestError("data provenance schema is not supported")
 
     source = _mapping(provenance.get("source"), "data provenance source")
@@ -376,11 +407,14 @@ def _verify_data_provenance(
         raise OfflineBacktestError("data provenance does not bind Freqtrade 2026.7")
 
     contract = _mapping(provenance.get("contract"), "data provenance contract")
-    if contract.get("timeframe") != "5m":
-        raise OfflineBacktestError("data provenance timeframe must be 5m")
-    expected_timerange_key = (
-        "development_timerange" if scenario == "DEVELOPMENT" else "holdout_timerange"
-    )
+    if contract.get("timeframe") != timeframe:
+        raise OfflineBacktestError("data provenance timeframe disagrees with loaded config")
+    expected_timerange_key = {
+        "SEARCH": "search_timerange",
+        "DEVELOPMENT": "development_timerange",
+        "HOLDOUT": "holdout_timerange",
+        "HOLDOUT_STRESS": "holdout_timerange",
+    }[scenario]
     if contract.get(expected_timerange_key) != timerange:
         raise OfflineBacktestError("scenario timerange disagrees with data provenance")
 
@@ -459,6 +493,9 @@ def _create_scenario_data_view(
     destination: Path,
     timerange: str,
     expected_sha256: Mapping[str, str],
+    *,
+    timeframe: str = "5m",
+    lower_bounds: Mapping[str, datetime] | None = None,
 ) -> dict[str, Any]:
     """Create a local view whose stop bound is exclusive for scenario isolation."""
     match = _TIMERANGE.fullmatch(timerange)
@@ -531,7 +568,11 @@ def _create_scenario_data_view(
                 f"scenario data view has an invalid date column in {relative.as_posix()}"
             )
         stop_value = pa.scalar(stop, type=dates.type)
-        filtered = table.filter(pc.less(dates, stop_value))
+        mask = pc.less(dates, stop_value)
+        lower = None if lower_bounds is None else lower_bounds.get(relative_name)
+        if lower is not None:
+            mask = pc.and_(pc.greater_equal(dates, pa.scalar(lower, type=dates.type)), mask)
+        filtered = table.filter(mask)
         if filtered.num_rows == 0:
             raise OfflineBacktestError(
                 f"scenario data view is empty for {relative.as_posix()}"
@@ -539,11 +580,12 @@ def _create_scenario_data_view(
         filtered_dates = filtered.column("date")
         if pc.any(pc.greater_equal(filtered_dates, stop_value)).as_py():
             raise OfflineBacktestError("scenario data view crossed its exclusive stop")
-        if relative.name.endswith("-5m-futures.feather"):
-            expected_last = pa.scalar(stop - timedelta(minutes=5), type=dates.type)
+        if relative.name.endswith(f"-{timeframe}-futures.feather"):
+            step = timedelta(minutes=5) if timeframe == "5m" else timedelta(days=1)
+            expected_last = pa.scalar(stop - step, type=dates.type)
             if pc.max(filtered_dates).as_py() != expected_last.as_py():
                 raise OfflineBacktestError(
-                    "scenario 5m data does not end one candle before its exclusive stop"
+                    "scenario base data does not end one candle before its exclusive stop"
                 )
             base_end_seen = True
         try:
@@ -562,7 +604,7 @@ def _create_scenario_data_view(
             "sha256": _sha256(output_bytes),
         }
     if not base_end_seen:
-        raise OfflineBacktestError("scenario data view lacks the selected 5m futures series")
+        raise OfflineBacktestError("scenario data view lacks the selected futures series")
     return {
         "exclusive_stop_utc": stop.isoformat().replace("+00:00", "Z"),
         "files": receipt,
@@ -782,7 +824,7 @@ def _walk_sensitive(value: Any, label: str) -> None:
             _walk_sensitive(child, label)
 
 
-def _validate_raw_config_boundary(config: Mapping[str, Any]) -> None:
+def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
     _walk_sensitive(config, "raw Freqtrade config")
     if "add_config_files" in config:
         raise OfflineBacktestError("raw config add_config_files is outside the single-file boundary")
@@ -797,6 +839,145 @@ def _validate_raw_config_boundary(config: Mapping[str, Any]) -> None:
     _exact_keys(entry_pricing, _PRICING_CONFIG_KEYS, "raw config entry_pricing")
     _exact_keys(exit_pricing, _PRICING_CONFIG_KEYS, "raw config exit_pricing")
     _exact_keys(unfilledtimeout, _TIMEOUT_CONFIG_KEYS, "raw config unfilledtimeout")
+    pairs = exchange.get("pair_whitelist")
+    if (
+        exchange.get("name") != "okx"
+        or config.get("trading_mode") != "futures"
+        or config.get("margin_mode") != "isolated"
+        or config.get("timeframe") not in {"5m", "1d"}
+        or not isinstance(pairs, list)
+        or len(pairs) != 1
+        or not isinstance(pairs[0], str)
+        or config.get("dry_run") is not True
+        or isinstance(config.get("max_open_trades"), bool)
+        or not isinstance(config.get("max_open_trades"), int)
+        or config["max_open_trades"] <= 0
+    ):
+        raise OfflineBacktestError("raw config runtime contract is unsafe")
+    fee = _finite_trade_number(config.get("fee"), "raw config fee")
+    if fee < 0.0:
+        raise OfflineBacktestError("raw config fee must be non-negative")
+    return {
+        "pair": pairs[0],
+        "timeframe": config["timeframe"],
+        "fee": fee,
+        "starting_balance": _finite_trade_number(config.get("dry_run_wallet"), "raw config wallet", positive=True),
+        "stake_amount": _finite_trade_number(config.get("stake_amount"), "raw config stake", positive=True),
+        "max_open_trades": config.get("max_open_trades"),
+    }
+
+
+def _verify_profile_runtime_contract(
+    provenance: Mapping[str, Any], config: Mapping[str, Any]
+) -> None:
+    contract = _mapping(provenance.get("contract"), "data provenance contract")
+    snapshot = contract.get("profile_snapshot")
+    snapshot_sha = contract.get("profile_snapshot_sha256")
+    if snapshot is None and snapshot_sha is None:
+        if provenance.get("schema") == SEARCH_DATA_SCHEMA:
+            raise OfflineBacktestError(
+                "Profile Search provenance lacks its frozen Profile runtime contract"
+            )
+        return
+    if not isinstance(snapshot, dict) or set(snapshot) != _PROFILE_SNAPSHOT_FIELDS:
+        raise OfflineBacktestError("Profile runtime provenance is incomplete")
+    try:
+        snapshot_bytes = (
+            json.dumps(
+                snapshot,
+                allow_nan=False,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError, RecursionError) as exc:
+        raise OfflineBacktestError("Profile runtime provenance is incomplete") from exc
+    if (
+        not isinstance(snapshot_sha, str)
+        or _SHA256.fullmatch(snapshot_sha) is None
+        or not hmac.compare_digest(snapshot_sha, _sha256(snapshot_bytes))
+    ):
+        raise OfflineBacktestError("Profile runtime provenance is incomplete")
+    pairs = snapshot.get("pairs")
+    pair = pairs[0] if isinstance(pairs, list) and len(pairs) == 1 else None
+    if (
+        snapshot.get("domain") != "OKX_CRYPTO_PERP"
+        or snapshot.get("exchange") != "okx"
+        or snapshot.get("trading_mode") != "futures"
+        or snapshot.get("margin_mode") != "isolated"
+        or snapshot.get("detail_timeframe") is not None
+        or snapshot.get("timeframe") not in {"5m", "1d"}
+        or not isinstance(pair, str)
+        or re.fullmatch(
+            r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):\2", pair
+        )
+        is None
+    ):
+        raise OfflineBacktestError(
+            "raw Freqtrade config disagrees with the frozen Profile"
+        )
+    values: dict[str, float] = {}
+    for key in (
+        "starting_balance",
+        "stake_amount",
+        "taker_fee_rate",
+        "stress_fee_multiplier",
+        "max_drawdown_pct",
+        "min_profit_factor",
+    ):
+        value = snapshot.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise OfflineBacktestError("Profile runtime provenance is incomplete")
+        values[key] = float(value)
+        if not math.isfinite(values[key]):
+            raise OfflineBacktestError("Profile runtime provenance is incomplete")
+    if (
+        values["starting_balance"] <= 0
+        or values["stake_amount"] <= 0
+        or values["taker_fee_rate"] < 0
+        or values["stress_fee_multiplier"] < 1
+        or not 0 < values["max_drawdown_pct"] <= 100
+        or values["min_profit_factor"] < 0
+    ):
+        raise OfflineBacktestError("Profile runtime provenance is incomplete")
+    for key, minimum in (
+        ("smoke_days", 1),
+        ("holdout_days", 1),
+        ("max_open_trades", 1),
+        ("min_development_trades", 0),
+        ("min_holdout_trades", 0),
+    ):
+        value = snapshot.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+            raise OfflineBacktestError("Profile runtime provenance is incomplete")
+    runtime = _validate_raw_config_boundary(config)
+    if (
+        runtime["pair"] != pair
+        or runtime["timeframe"] != snapshot["timeframe"]
+        or runtime["max_open_trades"] != snapshot["max_open_trades"]
+        or not math.isclose(
+            runtime["fee"], values["taker_fee_rate"], rel_tol=0.0, abs_tol=1e-15
+        )
+        or not math.isclose(
+            runtime["starting_balance"],
+            values["starting_balance"],
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        )
+        or not math.isclose(
+            runtime["stake_amount"],
+            values["stake_amount"],
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        )
+        or config.get("tradable_balance_ratio") != 0.99
+        or values["stake_amount"] > values["starting_balance"] * 0.99
+    ):
+        raise OfflineBacktestError(
+            "raw Freqtrade config disagrees with the frozen Profile"
+        )
 
 
 def _verify_strategy_input(
@@ -853,6 +1034,7 @@ def _validate_loaded_config(
     user_data_dir: Path,
     strategy_path: Path,
     export_dir: Path,
+    expected: Mapping[str, Any],
 ) -> str:
     _walk_sensitive(config, "loaded Freqtrade config")
     exchange = _mapping(config.get("exchange"), "loaded config exchange")
@@ -866,6 +1048,9 @@ def _validate_loaded_config(
         "margin_mode": _enum_value(config.get("margin_mode")),
         "timeframe": config.get("timeframe"),
         "pairs": pairs,
+        "starting_balance": config.get("dry_run_wallet"),
+        "stake_amount": config.get("stake_amount"),
+        "max_open_trades": config.get("max_open_trades"),
         "strategy": config.get("strategy"),
         "timerange": config.get("timerange"),
         "fee": config.get("fee"),
@@ -880,7 +1065,11 @@ def _validate_loaded_config(
         or actual["exchange"] != "okx"
         or actual["trading_mode"] != "futures"
         or actual["margin_mode"] != "isolated"
-        or actual["timeframe"] != "5m"
+        or actual["timeframe"] != expected["timeframe"]
+        or actual["pairs"] != [expected["pair"]]
+        or actual["starting_balance"] != expected["starting_balance"]
+        or actual["stake_amount"] != expected["stake_amount"]
+        or actual["max_open_trades"] != expected["max_open_trades"]
         or actual["strategy"] != args.strategy
         or actual["timerange"] != args.timerange
         or actual["export"] != "trades"
@@ -897,7 +1086,7 @@ def _validate_loaded_config(
         isinstance(loaded_fee, bool)
         or not isinstance(loaded_fee, (int, float))
         or not math.isfinite(float(loaded_fee))
-        or not math.isclose(float(loaded_fee), args.fee, rel_tol=0.0, abs_tol=1e-15)
+        or not math.isclose(float(loaded_fee), float(expected["fee"]), rel_tol=0.0, abs_tol=1e-15)
     ):
         raise OfflineBacktestError("loaded fee disagrees with the CLI")
 
@@ -1046,7 +1235,9 @@ def _validate_native_zip_infos(infos: Sequence[zipfile.ZipInfo]) -> None:
             raise OfflineBacktestError("native archive compression ratio is unsafe")
 
 
-def _verify_native_exports(export_dir: Path, strategy: str) -> tuple[str, str]:
+def _verify_native_exports(
+    export_dir: Path, strategy: str, timeframe: str = "5m"
+) -> tuple[str, str]:
     pointer = export_dir / ".last_result.json"
     if pointer.exists() or pointer.is_symlink():
         if pointer.is_symlink() or not pointer.is_file():
@@ -1082,8 +1273,8 @@ def _verify_native_exports(export_dir: Path, strategy: str) -> tuple[str, str]:
     if set(metadata_value) != {strategy}:
         raise OfflineBacktestError("native metadata does not select exactly the requested strategy")
     strategy_metadata = _mapping(metadata_value[strategy], "native strategy metadata")
-    if strategy_metadata.get("timeframe") != "5m":
-        raise OfflineBacktestError("native metadata timeframe is not 5m")
+    if strategy_metadata.get("timeframe") != timeframe:
+        raise OfflineBacktestError("native metadata timeframe disagrees with config")
 
     archive_bytes = _read_regular_file(
         archive, "native archive", MAX_NATIVE_ARCHIVE_BYTES
@@ -1121,9 +1312,12 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
         raise OfflineBacktestError("strategy must be a simple Python class name")
     if _TIMERANGE.fullmatch(args.timerange) is None:
         raise OfflineBacktestError("timerange must use YYYYMMDD-YYYYMMDD")
-    if isinstance(args.fee, bool) or not math.isfinite(args.fee) or args.fee <= 0.0:
-        raise OfflineBacktestError("fee must be a positive finite number")
-    if args.scenario == "DEVELOPMENT" and args.scenario_open_receipt is not None:
+    if isinstance(args.fee, bool) or not math.isfinite(args.fee) or args.fee < 0.0:
+        raise OfflineBacktestError("fee must be a non-negative finite number")
+    if (
+        args.scenario in {"SEARCH", "DEVELOPMENT"}
+        and args.scenario_open_receipt is not None
+    ):
         raise OfflineBacktestError(
             "scenario open receipts are limited to Holdout and Holdout Stress"
         )
@@ -1162,10 +1356,15 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     raw_config = _mapping(
         _strict_json(config_bytes, "raw Freqtrade config"), "raw Freqtrade config"
     )
-    _validate_raw_config_boundary(raw_config)
+    runtime_contract = _validate_raw_config_boundary(raw_config)
+    if runtime_contract is not None and not math.isclose(
+        args.fee, runtime_contract["fee"], rel_tol=0.0, abs_tol=1e-15
+    ):
+        raise OfflineBacktestError("fee CLI disagrees with the SHA-bound config")
     provenance = _mapping(
         _strict_json(provenance_bytes, "data provenance"), "data provenance"
     )
+    _verify_profile_runtime_contract(provenance, raw_config)
     _verify_strategy_input(
         strategy_path,
         strategy_file,
@@ -1204,6 +1403,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     cleanup_enabled = True
     try:
         official = _load_official_freqtrade(source_root, args.source_tree_sha256)
+        assert runtime_contract is not None
         _verify_dependency_versions(provenance, official["dependencies"])
         setup_optimize_configuration = official["setup_optimize_configuration"]
         RunMode = official["RunMode"]
@@ -1231,6 +1431,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             user_data_dir=user_data_dir,
             strategy_path=strategy_path,
             export_dir=export_dir,
+            expected=runtime_contract,
         )
 
         receipt_summary = _verify_data_provenance(
@@ -1238,6 +1439,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             scenario=args.scenario,
             timerange=args.timerange,
             pair=pair,
+            timeframe=runtime_contract["timeframe"],
             data_dir=data_dir,
             market_snapshot=market_path,
             leverage_tiers=tiers_path,
@@ -1260,6 +1462,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                 scenario_data_dir,
                 args.timerange,
                 receipt_summary["data_sha256"],
+                timeframe=runtime_contract["timeframe"],
             )
             config["datadir"] = scenario_data_dir
 
@@ -1313,7 +1516,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                 allow_zero_trades=args.allow_zero_trades,
             )
             archive_name, metadata_name = _verify_native_exports(
-                export_dir, args.strategy
+                export_dir, args.strategy, runtime_contract["timeframe"]
             )
             summary = {
                 "scenario": args.scenario,

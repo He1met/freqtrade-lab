@@ -261,7 +261,9 @@ def test_t1_fake_post_create_reaches_single_slot_monitor_terminal(
             *,
             research_run_id: str,
             now: str,
+            search_finalist_binding: Optional[Mapping[str, Any]] = None,
         ) -> development_run.PreparedDevelopmentRun:
+            assert search_finalist_binding is None
             return development_run.PreparedDevelopmentRun(
                 research_run_id, candidate_id, "MANUAL", run_dir
             )
@@ -289,7 +291,7 @@ def test_t1_fake_post_create_reaches_single_slot_monitor_terminal(
             lambda *_args: ("/fake/worker",),
         )
         monkeypatch.setattr(
-            research_console, "load_public_research_run", fake_public
+            research_console, "load_public_holdout_run", fake_public
         )
         monkeypatch.setattr(
             research_console, "finalize_development_gate", fake_finalize

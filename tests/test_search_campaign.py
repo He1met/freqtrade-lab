@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -10,13 +11,21 @@ import pytest
 
 from lab import search_campaign
 from lab.database import get_connection
-from scripts import run_bounded_research_pilot as pilot
-from tests.test_development_run import _approved_candidate_database
+from lab import bounded_research as pilot
+from tests.test_development_run import BOUNDED_SOURCE, _approved_candidate_database
 
 
 def _frozen_capability(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    database: Path,
+    candidate_id: str,
 ) -> search_campaign.FrozenSearchCapability:
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        profile = search_campaign.load_approved_candidate_snapshot(
+            connection, candidate_id
+        ).profile
     root = tmp_path / "search-root"
     (root / "acquisition").mkdir(parents=True)
     root.chmod(0o700)
@@ -28,12 +37,16 @@ def _frozen_capability(
     python_info = python.stat()
     source_info = source.stat()
     acquisition = {
-        "search_timerange": "20260601-20260701",
+        "search_timerange": "20260103-20260205",
         "data_provenance_sha256": "a" * 64,
-        "pair": "ADA/USDT:USDT",
-        "timeframe": "5m",
-        "base_fee": 0.0005,
-        "acquisition_receipts": (),
+        "source_acquisition_sha256": "b" * 64,
+        "pair": profile["pairs"][0],
+        "timeframe": profile["timeframe"],
+        "base_fee": profile["taker_fee_rate"],
+        "profile_snapshot": profile,
+        "profile_snapshot_sha256": pilot.digest(pilot.canonical(profile)),
+        "development_timerange": "20260205-20260307",
+        "pre_roll_candles": 20,
     }
     freqtrade = {
         "freqtrade_python": python,
@@ -47,16 +60,44 @@ def _frozen_capability(
         "source_identity": (source_info.st_dev, source_info.st_ino),
     }
     monkeypatch.setattr(
-        search_campaign, "_acquisition_snapshot", lambda _root: acquisition
+        search_campaign,
+        "_acquisition_snapshot",
+        lambda _root, _database: dict(acquisition),
     )
     monkeypatch.setattr(
         search_campaign,
         "_freqtrade_snapshot",
         lambda _python, _source: freqtrade,
     )
-    capability = search_campaign.freeze_search_capability(root, python, source)
+    monkeypatch.setattr(
+        pilot, "verify_data", lambda *_args, **_kwargs: {"status": "DATA_READY"}
+    )
+    capability = search_campaign.freeze_search_capability(
+        database, root, python, source
+    )
     assert capability.status == "READY"
     return capability
+
+
+def _profile_id(capability: search_campaign.FrozenSearchCapability) -> str:
+    assert capability.profile_snapshot is not None
+    return str(capability.profile_snapshot["id"])
+
+
+def _prepare_round_one(
+    database: Path,
+    capability: search_campaign.FrozenSearchCapability,
+    candidate_ids: list[str],
+    *,
+    campaign_id: str,
+) -> search_campaign.PreparedSearchRound:
+    return search_campaign.prepare_round_one(
+        database,
+        capability,
+        candidate_ids,
+        campaign_id=campaign_id,
+        profile_id=_profile_id(capability),
+    )
 
 
 def _append_records(root: Path, records: list[dict[str, object]]) -> bytes:
@@ -96,37 +137,23 @@ def _round_one_no_parent_receipts(
         "failure_reason": "bounded failure",
         "search_metrics": None,
     }
-    brief = {
-        "campaign": {
-            "campaign_id": plan["campaign_id"],
-            "round": 1,
-            "budget": {
-                "maximum_attempts": 6,
-                "consumed_before_round": 0,
-                "consumed_this_round": 1,
-                "consumed_total": 1,
-                "remaining": 5,
-            },
-        },
-        "candidates": [
-            {
-                key: trial[key]
-                for key in (
-                    "candidate_id",
-                    "class_name",
-                    "mechanism",
-                    "strategy_sha256",
-                    "relationship",
-                    "changed_factor",
-                    "technical_status",
-                    "failure_reason",
-                    "search_metrics",
-                )
-            }
-        ],
-        "frozen_ranking": [],
-        "selected_parent": None,
+    current_result = {
+        key: value
+        for key, value in trial.items()
+        if key
+        not in {
+            "schema",
+            "record_type",
+            "campaign_id",
+            "round",
+            "attempt_number",
+        }
     }
+    brief, status, finalist = pilot._search_round_outcome(
+        plan, [trial], [current_result], 0
+    )
+    assert status == "SEARCH_TERMINATED_NO_PARENT"
+    assert finalist is None
     receipt = {
         "schema": pilot.SEARCH_TRIAL_SCHEMA,
         "record_type": "ROUND_RECEIPT",
@@ -149,7 +176,7 @@ def _round_one_no_parent_receipts(
         "contract_sha256": plan["_contract_sha256"],
         "round": 1,
         "status": "SEARCH_TERMINATED_NO_PARENT",
-        "finalist_gate": pilot.SEARCH_GATE_CONTRACT,
+        "finalist_gate": plan["finalist_gate"],
         "search_finalist": None,
         "round_receipt_sha256": pilot.digest(pilot.canonical(receipt)),
         "trials_sha256": pilot.digest(ledger),
@@ -161,10 +188,26 @@ def _round_one_no_parent_receipts(
 
 
 def test_t0_missing_root_and_unbound_later_phase_file_are_blocked(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    missing = search_campaign.freeze_search_capability(None, None, None)
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    missing = search_campaign.freeze_search_capability(
+        database, None, None, None
+    )
     assert missing.status == "BLOCKED_DATA"
+
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        profile = search_campaign.load_approved_candidate_snapshot(
+            connection, candidate_id
+        ).profile
+    contract = pilot.profile_search_contract(
+        profile,
+        "20260103-20260205",
+        "20260205-20260307",
+        20,
+    )
+    assert contract["search_timerange"] == "20260103-20260205"
 
     acquisition = tmp_path / "root" / "acquisition"
     acquisition.mkdir(parents=True)
@@ -172,7 +215,7 @@ def test_t0_missing_root_and_unbound_later_phase_file_are_blocked(
         "schema": "freqtrade-lab-retained-search-data-v2",
         "source": {},
         "freqtrade": {},
-        "contract": {"search_timerange": "20260601-20260701"},
+        "contract": contract,
         "files": {},
         "local_only_files": {},
     }
@@ -180,17 +223,16 @@ def test_t0_missing_root_and_unbound_later_phase_file_are_blocked(
         pilot.canonical(provenance)
     )
     (acquisition / "holdout-receipt.json").write_text("{}\n", encoding="utf-8")
-    with pytest.raises(search_campaign.SearchCampaignError) as raised:
-        search_campaign._acquisition_snapshot(acquisition.parent)
-    assert raised.value.code == "BLOCKED_DATA"
-
-    provenance["contract"]["search_timerange"] = "20260601-20260630"
-    (acquisition / "retained-data-provenance.json").write_bytes(
-        pilot.canonical(provenance)
+    monkeypatch.setattr(
+        pilot,
+        "_verify_search_data",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            pilot.PilotError("later-phase file is forbidden")
+        ),
     )
     with pytest.raises(search_campaign.SearchCampaignError) as raised:
-        search_campaign._acquisition_snapshot(acquisition.parent)
-    assert "exactly 30 days" in raised.value.message
+        search_campaign._acquisition_snapshot(acquisition.parent, database)
+    assert raised.value.code == "BLOCKED_DATA"
 
 
 @pytest.mark.parametrize("unsafe", ("mode", "git"))
@@ -206,10 +248,14 @@ def test_t0_search_root_is_exact_0700_and_outside_every_git_worktree(
     monkeypatch.setattr(
         search_campaign,
         "_acquisition_snapshot",
-        lambda _root: pytest.fail("unsafe root must be rejected before data reads"),
+        lambda _root, _database: pytest.fail(
+            "unsafe root must be rejected before data reads"
+        ),
     )
 
-    capability = search_campaign.freeze_search_capability(root, None, None)
+    capability = search_campaign.freeze_search_capability(
+        tmp_path / "missing.sqlite", root, None, None
+    )
 
     assert capability.status == "BLOCKED_DATA"
 
@@ -217,8 +263,10 @@ def test_t0_search_root_is_exact_0700_and_outside_every_git_worktree(
 def test_t0_fresh_root_rejects_every_non_acquisition_entry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    database, _ = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
         assert capability.search_root is not None
         (capability.search_root / "unbound-extra.bin").write_bytes(b"unbound")
@@ -230,44 +278,184 @@ def test_t0_fresh_root_rejects_every_non_acquisition_entry(
     finally:
         capability.close()
 
-
 def test_t0_round_one_binds_candidate_and_keeps_six_tables_byte_equal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
         before = search_campaign.business_table_digest(database)
-        prepared = search_campaign.prepare_round_one(
+        prepared = _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-t0"
         )
         after = search_campaign.business_table_digest(database)
 
-        assert prepared.database_digest_before == prepared.database_digest_after
-        assert prepared.database_total_changes == 0
-        assert before == after == prepared.database_digest_before
+        assert before == after
         assert prepared.argv[0] == str(capability.freqtrade_python)
         assert "--campaign-root" in prepared.argv
         assert str(database) not in prepared.argv
         assert capability.search_root is not None
         plan = pilot.load_plan(capability.search_root, pilot.SEARCH_CAMPAIGN)
         assert plan["round"] == 1
+        assert plan["active_attempt_limit"] == 3
+        assert plan["budget"] == {"maximum_attempts": 6}
+        assert len(plan["candidates"]) <= 2
         assert plan["candidates"][0]["mechanism"] == "trend"
         assert plan["candidates"][0]["parent_strategy_sha256"] is None
-        assert (capability.search_root / "campaign-round-1.json").is_file()
+        round_one_path = capability.search_root / search_campaign.ROUND_ONE_CAMPAIGN
+        assert round_one_path.read_bytes() == (
+            capability.search_root / pilot.SEARCH_CAMPAIGN
+        ).read_bytes()
+        round_two_view = {**plan, "round": 2}
+        assert search_campaign._round_one_plan(
+            capability, round_two_view
+        ) == plan
+        with get_connection(database, read_only=True) as connection:
+            assert connection.execute(
+                "SELECT COUNT(*) FROM generation_runs WHERE id=?",
+                (prepared.campaign_id,),
+            ).fetchone()[0] == 0
+
+        with pytest.raises(search_campaign.SearchCampaignError) as raised:
+            search_campaign.prepare_round_two(
+                database,
+                capability,
+                prepared.campaign_id,
+                [
+                    {"candidate_id": candidate_id, "changed_factor": "stoploss"},
+                    {"candidate_id": candidate_id, "changed_factor": "minimal_roi"},
+                ],
+            )
+        assert raised.value.code == "invalid_search_request"
     finally:
         capability.close()
+
+
+LOOKBACK_SOURCE = '''import talib.abstract as ta
+from pandas import DataFrame
+from technical import qtpylib
+from freqtrade.strategy import IStrategy
+
+class DailyTrend84(IStrategy):
+    INTERFACE_VERSION = 3
+    timeframe = "1d"
+    can_short = False
+    startup_candle_count = 84
+    process_only_new_candles = True
+    minimal_roi = {"0": 0.0}
+    stoploss = -0.99
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe["trend_84"] = dataframe["close"].rolling(84).mean()
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe.loc[dataframe["close"] > dataframe["trend_84"], "enter_long"] = 1
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        dataframe.loc[dataframe["close"] < dataframe["trend_84"], "exit_long"] = 1
+        return dataframe
+'''
+
+
+def _lookback_snapshots(tmp_path: Path) -> tuple[object, object]:
+    database, candidate_id = _approved_candidate_database(tmp_path)
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        parent = search_campaign.load_approved_candidate_snapshot(
+            connection, candidate_id
+        )
+    parent = replace(
+        parent,
+        class_name="DailyTrend84",
+        code_text=LOOKBACK_SOURCE,
+    )
+    child = replace(
+        parent,
+        candidate_id="lookback-child",
+        class_name="DailyTrend42",
+        parent_candidate_id=parent.candidate_id,
+        code_text=(
+            LOOKBACK_SOURCE.replace("DailyTrend84", "DailyTrend42")
+            .replace("startup_candle_count = 84", "startup_candle_count = 42")
+            .replace("rolling(84)", "rolling(42)")
+        ),
+    )
+    return parent, child
+
+
+def test_t0_startup_candle_count_binds_matching_rolling_lookback(
+    tmp_path: Path,
+) -> None:
+    parent, child = _lookback_snapshots(tmp_path)
+
+    assert search_campaign._single_literal_factor_change(
+        parent, child, "startup_candle_count"
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    (
+        LOOKBACK_SOURCE.replace("startup_candle_count = 84", "startup_candle_count = 42"),
+        LOOKBACK_SOURCE.replace("rolling(84)", "rolling(42)"),
+        (
+            LOOKBACK_SOURCE.replace("startup_candle_count = 84", "startup_candle_count = 42")
+            .replace("rolling(84)", "rolling(42)")
+            .replace("stoploss = -0.99", "stoploss = -0.50")
+        ),
+        (
+            LOOKBACK_SOURCE.replace("startup_candle_count = 84", "startup_candle_count = 42")
+            .replace("rolling(84)", "rolling(42, 1)")
+        ),
+        (
+            LOOKBACK_SOURCE.replace("startup_candle_count = 84", "startup_candle_count = 42")
+            .replace("rolling(84)", "rolling(window=42)")
+        ),
+        (
+            LOOKBACK_SOURCE.replace("startup_candle_count = 84", "startup_candle_count = 0")
+            .replace("rolling(84)", "rolling(0)")
+        ),
+    ),
+    ids=(
+        "startup-only",
+        "rolling-only",
+        "extra-ast-change",
+        "extra-rolling-argument",
+        "rolling-keyword",
+        "non-positive-lookback",
+    ),
+)
+def test_t0_startup_candle_count_rejects_unbound_or_extra_changes(
+    tmp_path: Path, source: str
+) -> None:
+    parent, child = _lookback_snapshots(tmp_path)
+    child = replace(child, class_name="DailyTrend84", code_text=source)
+
+    assert not search_campaign._single_literal_factor_change(
+        parent, child, "startup_candle_count"
+    )
 
 
 def test_t0_profile_and_safe_mechanism_are_server_bound(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
         object.__setattr__(capability, "pair", "BTC/USDT:USDT")
         with pytest.raises(search_campaign.SearchCampaignError) as raised:
-            search_campaign.prepare_round_one(database, capability, [candidate_id])
+            search_campaign.prepare_round_one(
+                database,
+                capability,
+                [candidate_id],
+                profile_id=_profile_id(capability),
+            )
         assert raised.value.code == "BLOCKED_DATA"
     finally:
         capability.close()
@@ -277,23 +465,21 @@ def test_t0_full_round_one_plan_is_validated_before_root_materialization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        with get_connection(database, read_only=True) as connection:
-            connection.execute("BEGIN")
-            snapshot = search_campaign.load_approved_candidate_snapshot(
-                connection, candidate_id
-            )
-        reserved = replace(snapshot, strategy_family="holdout")
         monkeypatch.setattr(
-            search_campaign,
-            "_bound_candidate",
-            lambda _connection, _candidate_id, _capability: reserved,
+            pilot,
+            "_load_search_campaign",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                pilot.PilotError("invalid full Profile Search plan")
+            ),
         )
         before = search_campaign.business_table_digest(database)
 
         with pytest.raises(search_campaign.SearchCampaignError) as raised:
-            search_campaign.prepare_round_one(
+            _prepare_round_one(
                 database, capability, [candidate_id], campaign_id="reserved-plan"
             )
 
@@ -302,7 +488,7 @@ def test_t0_full_round_one_plan_is_validated_before_root_materialization(
         assert not (capability.search_root / search_campaign.STRATEGIES).exists()
         assert not (capability.search_root / pilot.SEARCH_CAMPAIGN).exists()
         assert not (
-            capability.search_root / search_campaign.ROUND_PLAN.format(round_number=1)
+            capability.search_root / search_campaign.ROUND_ONE_CAMPAIGN
         ).exists()
         assert search_campaign.business_table_digest(database) == before
     finally:
@@ -325,7 +511,9 @@ def test_t0_profile_market_boundary_is_server_bound(
     value: str,
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
         with get_connection(database, read_only=True) as connection:
             connection.execute("BEGIN")
@@ -351,51 +539,31 @@ def test_t0_profile_market_boundary_is_server_bound(
         capability.close()
 
 
-def test_t0_exit_three_is_legal_no_parent_terminal_and_does_not_write_db(
+def test_t0_unprojected_engine_terminal_cannot_be_completed_by_late_cancel(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        before = search_campaign.business_table_digest(database)
-        prepared = search_campaign.prepare_round_one(
-            database, capability, [candidate_id], campaign_id="search-exit-three"
-        )
-        campaign_id = _round_one_no_parent_receipts(capability)
-
-        completed = search_campaign.complete_search_round(
-            capability, campaign_id, 3
-        )
-
-        assert completed["status"] == "SEARCH_TERMINATED_NO_PARENT"
-        assert completed["budget"]["consumed_total"] == 1
-        assert completed["attempts"][0]["technical_status"] == "INVALID"
-        assert search_campaign.business_table_digest(database) == before
-        assert prepared.database_total_changes == 0
-        raw = json.dumps(completed, sort_keys=True)
-        assert str(tmp_path) not in raw
-        assert "argv" not in raw and "stderr" not in raw
-    finally:
-        capability.close()
-
-
-def test_t0_engine_terminal_wins_over_a_late_console_cancel(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
-    try:
-        search_campaign.prepare_round_one(
+        _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-terminal-wins"
         )
         campaign_id = _round_one_no_parent_receipts(capability)
-        search_campaign.record_search_runtime_status(
-            capability, campaign_id, "CANCELLED", 1, error_code="LATE_CANCEL"
+        late = search_campaign.fail_search_campaign(
+            database, capability, campaign_id, "LATE_CANCEL"
         )
 
         state = search_campaign.load_public_search_state(capability)
 
-        assert state["status"] == "SEARCH_TERMINATED_NO_PARENT"
+        assert late["status"] == "INTERRUPTED"
+        assert state["status"] == "INTERRUPTED"
+        assert state["search_finalist"] is None
+        with get_connection(database, read_only=True) as connection:
+            assert connection.execute(
+                "SELECT COUNT(*) FROM generation_runs WHERE id=?", (campaign_id,)
+            ).fetchone()[0] == 0
     finally:
         capability.close()
 
@@ -404,9 +572,11 @@ def test_t0_trial_identity_must_match_its_frozen_plan_candidate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        search_campaign.prepare_round_one(
+        _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-trial-binding"
         )
         _round_one_no_parent_receipts(capability)
@@ -435,9 +605,11 @@ def test_t0_active_partial_ledger_is_running_but_restart_is_interrupted(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        prepared = search_campaign.prepare_round_one(
+        prepared = _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-partial"
         )
         assert capability.search_root is not None
@@ -455,9 +627,7 @@ def test_t0_active_partial_ledger_is_running_but_restart_is_interrupted(
                 }
             ],
         )
-        search_campaign.record_search_runtime_status(
-            capability, prepared.campaign_id, "RUNNING", 1
-        )
+        before_recovery = search_campaign.business_table_digest(database)
 
         def expensive_poll_forbidden(*_args: object) -> object:
             raise AssertionError("GET/poll repeated an expensive frozen-input check")
@@ -468,9 +638,15 @@ def test_t0_active_partial_ledger_is_running_but_restart_is_interrupted(
         assert search_campaign.load_public_search_state(
             capability, active=True
         )["status"] == "RUNNING"
-        recovered = search_campaign.recover_interrupted_search(capability)
-        assert recovered["status"] == "INTERRUPTED"
-        assert search_campaign.load_public_search_state(capability)["status"] == "INTERRUPTED"
+        recovered = search_campaign.recover_interrupted_search(
+            capability, database
+        )
+        assert recovered["status"] == "FAILED"
+        assert search_campaign.load_public_search_state(capability)["status"] == "FAILED"
+        assert (
+            search_campaign.business_table_digest(database, prepared.campaign_id)
+            == before_recovery
+        )
     finally:
         capability.close()
 
@@ -479,9 +655,11 @@ def test_t0_corrupt_search_context_is_locally_blocked(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        search_campaign.prepare_round_one(
+        _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-corrupt"
         )
         assert capability.search_root is not None
@@ -498,13 +676,15 @@ def test_t0_corrupt_search_context_is_locally_blocked(
         capability.close()
 
 
-def test_t0_engine_blocked_terminal_maps_to_failed_without_round_receipt(
+def test_t0_engine_blocked_terminal_requires_failed_database_projection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     database, candidate_id = _approved_candidate_database(tmp_path)
-    capability = _frozen_capability(tmp_path, monkeypatch)
+    capability = _frozen_capability(
+        tmp_path, monkeypatch, database, candidate_id
+    )
     try:
-        prepared = search_campaign.prepare_round_one(
+        prepared = _prepare_round_one(
             database, capability, [candidate_id], campaign_id="search-blocked"
         )
         assert capability.search_root is not None
@@ -517,14 +697,18 @@ def test_t0_engine_blocked_terminal_maps_to_failed_without_round_receipt(
             "round": 1,
             "status": "SEARCH_BLOCKED",
             "error": "bounded Search execution failure",
+            "trials_sha256": pilot.digest(b""),
             "created_at_utc": "2026-09-01T00:00:00.000Z",
         }
         (capability.search_root / pilot.SEARCH_TERMINAL).write_bytes(
             pilot.canonical(blocked)
         )
 
-        state = search_campaign.load_public_search_state(capability)
+        pending = search_campaign.load_public_search_state(capability)
+        state = search_campaign.recover_interrupted_search(capability, database)
 
+        assert pending["status"] == "INTERRUPTED"
+        assert pending["search_finalist"] is None
         assert state["status"] == "FAILED"
         assert state["campaign_id"] == prepared.campaign_id
         assert state["attempts"] == []
