@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import subprocess
 import sys
@@ -186,6 +187,20 @@ class Env:
     control: Path
     codex: Path
     damaged: dict[str, bool]
+
+
+def _request_document(
+    server: Any, path: str
+) -> tuple[int, Mapping[str, str], bytes]:
+    connection = http.client.HTTPConnection(
+        "127.0.0.1", server.server_port, timeout=5
+    )
+    try:
+        connection.request("GET", path)
+        response = connection.getresponse()
+        return response.status, dict(response.getheaders()), response.read()
+    finally:
+        connection.close()
 
 
 def _add_candidate(
@@ -780,6 +795,31 @@ def test_t1_explicit_search_root_seals_later_phase_page_and_http_actions(
             )
         )
 
+        page_status, page_headers, page_raw = _request_document(server, "/console")
+        assert page_status == 200
+        assert page_headers["Content-Type"].startswith("text/html")
+        page = page_raw.decode("utf-8")
+        assert '<script src="/console.js" defer></script>' in page
+        assert 'id="research-holdout" class="danger" disabled' in page
+        assert 'id="manual-reject" class="danger" disabled' in page
+        assert 'id="manual-pass" disabled' in page
+        assert "/private/" not in page
+
+        script_status, script_headers, script_raw = _request_document(
+            server, "/console.js"
+        )
+        assert script_status == 200
+        assert script_headers["Content-Type"].startswith("text/javascript")
+        script = script_raw.decode("utf-8")
+        assert "function renderResearch(value)" in script
+        for metric in (
+            "net_profit_after_base_fees_pct",
+            "average_holding_period_minutes",
+            "roi_exit_count",
+        ):
+            assert metric in script
+        assert "/private/" not in script
+
         status, context, _ = _request(server, "/api/research/context")
         assert status == 200
         sealed_capability = {
@@ -836,16 +876,6 @@ def test_t1_explicit_search_root_seals_later_phase_page_and_http_actions(
         serialized = json.dumps(detail, sort_keys=True)
         assert "/private/" not in serialized
         assert set(detail["boundaries"].values()) == {"SEALED_UNREAD"}
-        assert 'id="research-holdout" class="danger" disabled' in research_console.CONSOLE_HTML
-        assert 'id="manual-reject" class="danger" disabled' in research_console.CONSOLE_HTML
-        assert 'id="manual-pass" disabled' in research_console.CONSOLE_HTML
-        for metric in (
-            "net_profit_after_base_fees_pct",
-            "average_holding_period_minutes",
-            "roi_exit_count",
-        ):
-            assert metric in research_console.CONSOLE_HTML
-
         for path in ("/", "/api/strategies", "/strategy", "/api/strategy", "/download"):
             status, error, raw = _request(server, path)
             assert status == 404 and error["error"] == "SEALED_UNREAD"
