@@ -510,6 +510,29 @@ public-OKX transport dependency. The older retained fixture and
 `PROVENANCE.md` continue to attest the historical producer bytes and SHA-256;
 they are never attributed to the current helper.
 
+Funding windows older than the bounded OKX REST retention use the official,
+unauthenticated monthly funding archive catalog and `static.okx.com` ZIPs.
+Catalog and asset endpoints, redirects, ZIP/CSV shape, instrument, finite rates,
+UTC bounds, duplicates, and the fixed eight-hour series are checked fail closed.
+The receipt records catalog request/response hashes, available HTTP validators,
+and each ZIP/CSV SHA-256. Archive rows are still passed through Freqtrade
+2026.7's `ohlcv_to_dataframe` and Feather datahandler with
+`CandleType.FUNDING_RATE`; no Lab-specific market-data format is introduced.
+
+Issue #45 must use a new, previously nonexistent output root with
+`pre_roll_candles=90` and this exact source window; the failed earlier root is
+not reusable:
+
+```json
+{
+  "schema": "freqtrade-lab-profile-source-window-v1",
+  "data_start_utc": "2024-12-01T00:00:00Z",
+  "search_start_utc": "2025-03-01T00:00:00Z",
+  "development_start_utc": "2025-09-01T00:00:00Z",
+  "end_exclusive_utc": "2026-03-01T00:00:00Z"
+}
+```
+
 ## Import one verified backtest artifact
 
 Issue #2 supports only the frozen Freqtrade `2026.7` format verified at commit
