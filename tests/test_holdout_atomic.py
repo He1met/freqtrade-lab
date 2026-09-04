@@ -104,8 +104,9 @@ def _write_native_export(
     start_text, stop_text = timerange.split("-", 1)
     start = datetime.strptime(start_text, "%Y%m%d").replace(tzinfo=timezone.utc)
     stop = datetime.strptime(stop_text, "%Y%m%d").replace(tzinfo=timezone.utc)
-    end = stop - timedelta(minutes=5)
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    timeframe = config["timeframe"]
+    end = stop - (timedelta(minutes=5) if timeframe == "5m" else timedelta(days=1))
     pair = config["exchange"]["pair_whitelist"][0]
     trades = json.loads(json.dumps(original["trades"]))
     if scenario == "DEVELOPMENT":
@@ -120,6 +121,7 @@ def _write_native_export(
     original.update(
         {
             "strategy_name": strategy,
+            "timeframe": timeframe,
             "timerange": timerange,
             "backtest_start": start.strftime("%Y-%m-%d %H:%M:%S"),
             "backtest_end": end.strftime("%Y-%m-%d %H:%M:%S"),
@@ -171,7 +173,7 @@ def _write_native_export(
                 strategy: {
                     "run_id": f"TEST_ONLY_SYNTHETIC_{scenario}",
                     "backtest_start_time": int(start.timestamp()),
-                    "timeframe": "5m",
+                    "timeframe": timeframe,
                     "timeframe_detail": None,
                     "backtest_start_ts": int(start.timestamp()),
                     "backtest_end_ts": int(end.timestamp()),

@@ -568,6 +568,11 @@ def test_t0_child_invocation_is_one_fixed_argv_and_never_a_shell(
             pilot_root.resolve(),
             server.research_console_controller.config.check_data_python,
         )
+        assert research_console.build_check_data_argv(
+            pilot_root.resolve(),
+            server.research_console_controller.config.check_data_python,
+            profile_development=True,
+        )[2] == "check-development-data"
         status, _, _, created = _post(
             server, "/api/campaigns", {"action": "CHECK_DATA"}
         )
@@ -1630,6 +1635,84 @@ def test_t2_lifecycle_lock_prevents_reap_between_identity_check_and_killpg(
         assert observed_return_codes[0] is None
         assert poll_result == [-signal.SIGTERM]
         assert _wait_terminal(server, created["campaign_id"])["status"] == "FAILED"
+
+
+def test_t2_status_get_waits_for_terminal_receipt_write(
+    database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _serve_console(
+        monkeypatch, database, tmp_path, mode="sleep"
+    ) as (server, marker, _runtime):
+        status, _, _, created = _post(
+            server, "/api/campaigns", {"action": "CHECK_DATA"}
+        )
+        assert status == 202
+        _wait_file(marker)
+        controller = server.research_console_controller
+        job = controller._active
+        assert job is not None
+        receipt_entered = threading.Event()
+        release_receipt = threading.Event()
+        get_entered = threading.Event()
+        result: list[tuple[int, Mapping[str, str], bytes, Any]] = []
+        original_write_status = controller._write_status_at
+        original_get_status = controller.get_status
+
+        def block_terminal_status(
+            campaign_fd: int,
+            status_value: str,
+            message: str,
+            *,
+            status_filename: str = "status.json",
+            **updates: Any,
+        ) -> dict[str, Any]:
+            if status_value == "FAILED":
+                receipt_entered.set()
+                assert release_receipt.wait(timeout=5)
+                original_write_status(
+                    campaign_fd,
+                    status_value,
+                    message,
+                    status_filename=status_filename,
+                    **updates,
+                )
+                raise OSError("injected post-commit receipt error")
+            return original_write_status(
+                campaign_fd,
+                status_value,
+                message,
+                status_filename=status_filename,
+                **updates,
+            )
+
+        def observe_get_status(campaign_id: str) -> dict[str, Any]:
+            get_entered.set()
+            return original_get_status(campaign_id)
+
+        monkeypatch.setattr(
+            controller, "_write_status_at", block_terminal_status
+        )
+        monkeypatch.setattr(controller, "get_status", observe_get_status)
+        os.kill(job.process.pid, signal.SIGTERM)
+        assert receipt_entered.wait(timeout=3)
+        request_thread = threading.Thread(
+            target=lambda: result.append(
+                _request(server, f"/api/campaigns/{created['campaign_id']}")
+            )
+        )
+        request_thread.start()
+        try:
+            assert get_entered.wait(timeout=2)
+            time.sleep(0.05)
+            assert request_thread.is_alive()
+        finally:
+            release_receipt.set()
+            request_thread.join(timeout=3)
+
+        assert not request_thread.is_alive()
+        assert len(result) == 1
+        assert result[0][0] == 200
+        assert result[0][3]["status"] == "FAILED"
 
 
 @pytest.mark.parametrize(

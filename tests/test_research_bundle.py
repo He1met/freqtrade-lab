@@ -113,6 +113,34 @@ def test_validate_real_three_scenario_bundle() -> None:
     assert bundle.candidate.metadata["economic_evidence"] == "NOT_EVALUATED"
 
 
+def test_t0_zero_fee_cross_scenario_identity_accepts_distinct_archives() -> None:
+    bundle = validate_research_bundle(FIXTURE_ROOT, MANIFEST_NAME)
+    artifacts = {
+        scenario: replace(artifact, configured_fee=0.0)
+        for scenario, artifact in bundle.artifacts
+    }
+
+    research_bundle_module._validate_cross_scenario(bundle.profile, artifacts)
+
+
+def test_t0_cross_scenario_rejects_reused_archive_bytes() -> None:
+    bundle = validate_research_bundle(FIXTURE_ROOT, MANIFEST_NAME)
+    artifacts = {
+        scenario: replace(artifact, configured_fee=0.0)
+        for scenario, artifact in bundle.artifacts
+    }
+    artifacts["HOLDOUT_STRESS"] = replace(
+        artifacts["HOLDOUT_STRESS"],
+        archive_sha256=artifacts["HOLDOUT"].archive_sha256,
+    )
+
+    with pytest.raises(
+        ResearchBundleImportError,
+        match="distinct artifact archive bytes",
+    ):
+        research_bundle_module._validate_cross_scenario(bundle.profile, artifacts)
+
+
 def test_real_bundle_import_creates_one_complete_honest_loop(tmp_path: Path) -> None:
     database = _database(tmp_path)
 

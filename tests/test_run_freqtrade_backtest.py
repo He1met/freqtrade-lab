@@ -18,6 +18,7 @@ from scripts.run_freqtrade_backtest import (
     _validate_raw_config_boundary,
     _validate_results,
     _verify_dependency_versions,
+    _verify_profile_runtime_contract,
     _verify_source_snapshot,
 )
 
@@ -119,7 +120,7 @@ def test_holdout_receipt_precedes_any_retained_market_byte_read(
     strategy.write_text("class Strategy: pass\n", encoding="utf-8")
     market.write_text('{"retained":"market"}\n', encoding="utf-8")
     tiers.write_text('{"retained":"tiers"}\n', encoding="utf-8")
-    provenance.write_text("{}\n", encoding="utf-8")
+    provenance.write_text('{"contract":{}}\n', encoding="utf-8")
     receipt = receipts / "HOLDOUT.json"
     runner_sha = hashlib.sha256(Path(runner_module.__file__).read_bytes()).hexdigest()
     args = _parse_args(
@@ -272,6 +273,72 @@ def test_raw_runner_config_accepts_only_the_fixed_runtime_shape() -> None:
     )
 
     _validate_raw_config_boundary(config)
+
+
+def test_profile_runtime_verifier_is_self_contained_and_accepts_zero_fee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = (
+        ROOT / "tests" / "fixtures" / "freqtrade_2026_7" / "producer" / "config.json"
+    )
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config.update(
+        {
+            "fee": 0.0,
+            "config_files": [str(config_path)],
+            "datadir": "/local/data",
+            "export": "trades",
+            "exportdirectory": "/local/output",
+            "strategy_path": "/local/strategies",
+            "timerange": "20260801-20260804",
+            "user_data_dir": "/local/user_data",
+        }
+    )
+    snapshot = {
+        "id": "profile-1",
+        "name": "zero fee profile",
+        "domain": "OKX_CRYPTO_PERP",
+        "exchange": "okx",
+        "trading_mode": "futures",
+        "margin_mode": "isolated",
+        "pairs": ["XRP/USDT:USDT"],
+        "timeframe": "5m",
+        "detail_timeframe": None,
+        "history_start_date": "2026-01-01",
+        "smoke_days": 3,
+        "holdout_days": 30,
+        "starting_balance": 1000.0,
+        "stake_amount": 100.0,
+        "max_open_trades": 1,
+        "taker_fee_rate": 0.0,
+        "stress_fee_multiplier": 2.0,
+        "max_drawdown_pct": 5.0,
+        "min_development_trades": 30,
+        "min_holdout_trades": 30,
+        "min_profit_factor": 1.1,
+        "is_default": 1,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+    snapshot_bytes = (
+        json.dumps(snapshot, separators=(",", ":"), sort_keys=True) + "\n"
+    ).encode()
+    provenance = {
+        "schema": runner_module.SEARCH_DATA_SCHEMA,
+        "contract": {
+            "profile_snapshot": snapshot,
+            "profile_snapshot_sha256": hashlib.sha256(snapshot_bytes).hexdigest(),
+        },
+    }
+    real_import = __import__
+
+    def no_project_import(name, *args, **kwargs):
+        if name == "lab" or name.startswith("lab."):
+            raise AssertionError("sandboxed runner imported application code")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", no_project_import)
+    _verify_profile_runtime_contract(provenance, config)
 
 
 def test_runner_requires_recorded_and_runtime_dependency_versions() -> None:

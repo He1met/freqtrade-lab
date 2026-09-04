@@ -1,7 +1,7 @@
 """One approved Candidate -> one isolated DEVELOPMENT backtest.
 
 This module is intentionally narrower than :mod:`lab.research_candidate`.
-It consumes the already frozen Pilot 5m Development view, creates exactly one
+It consumes one Profile-bound frozen Development view, creates exactly one
 ``DEVELOPMENT`` execution, and never accepts or materializes Holdout inputs.
 """
 
@@ -36,6 +36,7 @@ from lab.bounded_strategy import (
 from lab.codex_generation import (
     GenerationContractError,
     load_approved_candidate_snapshot,
+    load_profile_snapshot,
 )
 from lab.database import get_connection
 from lab.research_candidate import (
@@ -79,8 +80,6 @@ _TIMERANGE = __import__("re").compile(r"^\d{8}-\d{8}$")
 _LEGACY_DEVELOPMENT_TIMERANGE = "20260601-20260731"
 _LEGACY_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v1"
 _STRICT_WINDOW_SCHEMA = "freqtrade-lab-okx-window-v2"
-
-
 class DevelopmentRunError(ValueError):
     """A stable fail-closed error for the Development-only slice."""
 
@@ -102,6 +101,7 @@ class FrozenDevelopmentCapability:
     source_identity: Optional[Tuple[int, int]] = None
     plan_sha256: Optional[str] = None
     source_provenance_sha256: Optional[str] = None
+    source_acquisition_sha256: Optional[str] = None
     development_provenance_sha256: Optional[str] = None
     config_sha256: Optional[str] = None
     runner_sha256: Optional[str] = None
@@ -109,6 +109,13 @@ class FrozenDevelopmentCapability:
     development_timerange: Optional[str] = None
     pair: Optional[str] = None
     instrument_id: Optional[str] = None
+    timeframe: Optional[str] = None
+    starting_balance: Optional[float] = None
+    stake_amount: Optional[float] = None
+    max_open_trades: Optional[int] = None
+    base_fee: Optional[float] = None
+    economic_gate: Optional[Mapping[str, Any]] = None
+    profile_contract: Optional[Mapping[str, Any]] = None
     data_receipts: Tuple[Tuple[str, int, str], ...] = ()
     market_receipt: Optional[Tuple[int, str]] = None
     tiers_receipt: Optional[Tuple[int, str]] = None
@@ -119,13 +126,19 @@ class FrozenDevelopmentCapability:
             "reason": self.reason,
             "pipeline_version": DEVELOPMENT_PIPELINE_VERSION,
             "security_gate_version": BOUNDED_CAUSAL_STRATEGY_V1,
-            "economic_gate": DEVELOPMENT_GATE_VERSION,
+            "economic_gate": (
+                DEVELOPMENT_GATE_VERSION
+                if self.profile_contract is None
+                else None if self.economic_gate is None else self.economic_gate.get("name")
+            ),
             "freqtrade_version": (
                 SUPPORTED_FREQTRADE_VERSION if self.status == "READY" else None
             ),
-            "timeframe": "5m",
+            "timeframe": self.timeframe,
             "development_timerange": self.development_timerange,
-            "thresholds": dict(EXPECTED_GATE),
+            "thresholds": (
+                None if self.economic_gate is None else dict(self.economic_gate)
+            ),
             "holdout": "SEALED_UNREAD",
             "holdout_stress": "SEALED_UNREAD",
         }
@@ -328,21 +341,26 @@ def _timerange_dates(value: Any, label: str) -> Tuple[datetime, datetime]:
 def _development_window(value: Any) -> Tuple[datetime, datetime, str]:
     """Parse the frozen Pilot Development window and derive its exclusive stop."""
     start, stop = _timerange_dates(value, "Development")
-    if stop - start != timedelta(days=60):
+    if stop <= start or stop - start > timedelta(days=366):
         raise DevelopmentRunError(
-            "BLOCKED_DATA", "Pilot Development timerange must span exactly 60 days"
+            "BLOCKED_DATA", "Pilot Development timerange must span 1 to 366 days"
         )
     return start, stop, stop.isoformat().replace("+00:00", "Z")
 
 
 def _strict_rolling_window(
-    pilot: Path,
+    pilot_root: Path,
     plan: Mapping[str, Any],
     development_start: datetime,
     development_stop: datetime,
+    profile_contract: Optional[Mapping[str, Any]] = None,
 ) -> str:
     """Bind the one legacy baseline or an explicit rolling-v2 receipt."""
-    window_bytes = _read_bytes(pilot / "window-spec.json", "window spec", 1024 * 1024)
+    from lab import bounded_research as pilot
+
+    window_bytes = _read_bytes(
+        pilot_root / "window-spec.json", "window spec", 1024 * 1024
+    )
     if (
         not isinstance(plan.get("window_spec_sha256"), str)
         or _SHA256.fullmatch(plan["window_spec_sha256"]) is None
@@ -385,6 +403,41 @@ def _strict_rolling_window(
     except (KeyError, TypeError, ValueError) as exc:
         raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt is invalid") from exc
     holdout_duration = holdout_stop - holdout_start
+    frozen_profile: Optional[dict[str, Any]] = None
+    if profile_contract is not None:
+        try:
+            frozen_profile = pilot.validate_profile_search_contract(profile_contract)
+        except pilot.PilotError as exc:
+            raise DevelopmentRunError(
+                "BLOCKED_PROFILE", "Profile Development contract is invalid"
+            ) from exc
+    if frozen_profile is None:
+        valid_holdout = (
+            holdout_duration == timedelta(days=30)
+            if schema == _STRICT_WINDOW_SCHEMA
+            else holdout_duration > timedelta(0)
+        )
+        valid_pre_roll = (
+            timestamps["data_start_utc"] < development_start
+            and development_start - timestamps["data_start_utc"] <= timedelta(days=1)
+        )
+    else:
+        snapshot = frozen_profile["profile_snapshot"]
+        valid_holdout = holdout_duration == timedelta(days=int(snapshot["holdout_days"]))
+        required_start = development_start - timedelta(
+            seconds=(
+                int(frozen_profile["timeframe_step_seconds"])
+                * int(profile_contract["pre_roll_candles"])
+            )
+        )
+        valid_pre_roll = timestamps["data_start_utc"] == required_start
+    valid_data_start_alignment = frozen_profile is not None or not any(
+        (
+            timestamps["data_start_utc"].minute,
+            timestamps["data_start_utc"].second,
+            timestamps["data_start_utc"].microsecond,
+        )
+    )
     if (
         (
             timestamps["development_start_utc"],
@@ -393,20 +446,9 @@ def _strict_rolling_window(
         )
         != (development_start, development_stop, holdout_stop)
         or holdout_start != development_stop
-        or holdout_duration <= timedelta(0)
-        or (
-            schema == _STRICT_WINDOW_SCHEMA
-            and holdout_duration != timedelta(days=30)
-        )
-        or not timestamps["data_start_utc"] < development_start
-        or development_start - timestamps["data_start_utc"] > timedelta(days=1)
-        or any(
-            (
-                timestamps["data_start_utc"].minute,
-                timestamps["data_start_utc"].second,
-                timestamps["data_start_utc"].microsecond,
-            )
-        )
+        or not valid_holdout
+        or not valid_pre_roll
+        or not valid_data_start_alignment
     ):
         raise DevelopmentRunError("BLOCKED_DATA", "rolling window receipt is invalid")
     return str(schema)
@@ -416,10 +458,27 @@ def freeze_development_capability(
     pilot_root: Optional[PathLike],
     freqtrade_python: Optional[PathLike],
     freqtrade_source: Optional[PathLike],
+    *,
+    profile_contract: Optional[Mapping[str, Any]] = None,
 ) -> FrozenDevelopmentCapability:
     """Freeze the exact local Development capability without mutating Pilot data."""
+    from lab import bounded_research as pilot
+
+    profile_public: dict[str, Any] = (
+        {"profile_contract": {}} if profile_contract is not None else {}
+    )
     try:
-        pilot = _resolve_directory(pilot_root, "Pilot root")
+        frozen_profile = (
+            None
+            if profile_contract is None
+            else pilot.validate_profile_search_contract(profile_contract)
+        )
+        if frozen_profile is not None:
+            profile_public.update(
+                timeframe=str(frozen_profile["timeframe"]),
+                economic_gate=dict(frozen_profile["finalist_gate"]),
+            )
+        root = _resolve_directory(pilot_root, "Pilot root")
         python = _resolve_executable(freqtrade_python)
         source = _resolve_directory(freqtrade_source, "Freqtrade source")
         _verify_python(python)
@@ -432,28 +491,39 @@ def freeze_development_capability(
         ):
             raise DevelopmentRunError("BLOCKED_DATA", "Freqtrade source contract mismatch")
 
-        plan_bytes = _read_bytes(pilot / "pilot-spec.json", "Pilot spec", 1024 * 1024)
+        plan_bytes = _read_bytes(root / "pilot-spec.json", "Pilot spec", 1024 * 1024)
         plan = _json_bytes(plan_bytes, "Pilot spec")
         development_start, development_stop, development_stop_utc = _development_window(
             plan.get("development_timerange")
         )
+        if (
+            frozen_profile is None
+            and development_stop - development_start != timedelta(days=60)
+        ):
+            raise DevelopmentRunError(
+                "BLOCKED_DATA",
+                "Pilot Development timerange must span exactly 60 days",
+            )
         window_schema = _strict_rolling_window(
-            pilot, plan, development_start, development_stop
+            root,
+            plan,
+            development_start,
+            development_stop,
+            profile_contract,
         )
         selection = plan.get("selection")
         if (
             plan.get("freqtrade_version") != SUPPORTED_FREQTRADE_VERSION
             or not isinstance(selection, dict)
             or selection.get("economic_gate") != DEVELOPMENT_GATE_VERSION
-            or any(selection.get(key) != value for key, value in EXPECTED_GATE.items())
             or selection.get("max_selected") != 1
             or selection.get("visibility") != "DEVELOPMENT_ONLY_BLIND"
             or selection.get("candidate_execution_failure") != "STOP"
         ):
             raise DevelopmentRunError("BLOCKED_DATA", "Pilot Development gate contract mismatch")
 
-        acquisition = pilot / "acquisition"
-        isolation = pilot / "development-isolation"
+        acquisition = root / "acquisition"
+        isolation = root / "development-isolation"
         provenance_bytes = _read_bytes(
             isolation / "retained-data-provenance.json", "Development provenance"
         )
@@ -466,7 +536,8 @@ def freeze_development_capability(
         if (
             provenance.get("schema") != "freqtrade-lab-retained-okx-data-v1"
             or not isinstance(contract, dict)
-            or contract.get("timeframe") != "5m"
+            or contract.get("timeframe")
+            != (frozen_profile or {}).get("timeframe", contract.get("timeframe"))
             or contract.get("development_timerange") != plan["development_timerange"]
             or not isinstance(source_value, dict)
             or source_value.get("host") != "www.okx.com"
@@ -495,6 +566,7 @@ def freeze_development_capability(
         acquisition_contract = acquisition_provenance_value.get("contract")
         acquisition_files = acquisition_provenance_value.get("files")
         acquisition_source = acquisition_provenance_value.get("source")
+        source_acquisition = acquisition_provenance_value.get("source_acquisition")
         if (
             not isinstance(acquisition_contract, dict)
             or acquisition_contract.get("config") != "config.json"
@@ -505,6 +577,32 @@ def freeze_development_capability(
             raise DevelopmentRunError(
                 "BLOCKED_DATA", "Pilot config provenance receipt is missing"
             )
+        if frozen_profile is not None:
+            if (
+                not isinstance(source_acquisition, dict)
+                or set(source_acquisition)
+                != {
+                    "provenance_sha256",
+                    "retrieval_receipt_sha256",
+                    "data_sha256",
+                }
+                or _SHA256.fullmatch(
+                    str(source_acquisition.get("provenance_sha256"))
+                )
+                is None
+                or _SHA256.fullmatch(
+                    str(source_acquisition.get("retrieval_receipt_sha256"))
+                )
+                is None
+                or not isinstance(source_acquisition.get("data_sha256"), dict)
+                or any(
+                    not isinstance(value, str) or _SHA256.fullmatch(value) is None
+                    for value in source_acquisition["data_sha256"].values()
+                )
+            ):
+                raise DevelopmentRunError(
+                    "BLOCKED_DATA", "Development source acquisition binding is invalid"
+                )
         config_record = _receipt(acquisition_files["config.json"], "Pilot config")
         config_data = _check_receipt(
             acquisition / "config.json", config_record, "Pilot config"
@@ -514,20 +612,57 @@ def freeze_development_capability(
         validation_config["strategy"] = "DevelopmentCandidate"
         try:
             validated_fee, validated_pairs = _validate_config(
-                validation_config, "DevelopmentCandidate"
+                validation_config,
+                "DevelopmentCandidate",
+                expected_timeframe=str(contract.get("timeframe")),
             )
-        except ResearchCandidateError as exc:
+            if frozen_profile is not None:
+                pilot.validate_profile_runtime_contract(
+                    frozen_profile["profile_snapshot"],
+                    runtime_config=config,
+                    finalist_gate=frozen_profile["finalist_gate"],
+                )
+        except (pilot.PilotError, ResearchCandidateError) as exc:
             raise DevelopmentRunError(
                 "BLOCKED_DATA", "Pilot config contract mismatch"
             ) from exc
+        configured_ratio = config.get("tradable_balance_ratio")
+        provisional_gate = {
+            "version": DEVELOPMENT_GATE_VERSION,
+            **EXPECTED_GATE,
+        }
+        gate = (
+            provisional_gate
+            if frozen_profile is None
+            else dict(frozen_profile["finalist_gate"])
+        )
+        runtime = {
+            "pair": validated_pairs[0],
+            "timeframe": config.get("timeframe"),
+            "fee": validated_fee,
+            "starting_balance": float(config.get("dry_run_wallet")),
+            "stake_amount": float(config.get("stake_amount")),
+            "max_open_trades": int(config.get("max_open_trades")),
+        }
         if (
-            not math.isclose(validated_fee, 0.0005, abs_tol=1e-15)
-            or validated_pairs != (source_value.get("pair"),)
-            or float(config.get("dry_run_wallet")) != 1000.0
-            or float(config.get("stake_amount")) != 100.0
-            or int(config.get("max_open_trades")) != 1
-            or float(config.get("tradable_balance_ratio")) != 0.99
-            or config.get("stake_currency") != "USDT"
+            runtime["pair"] != source_value.get("pair")
+            or runtime["timeframe"] != contract.get("timeframe")
+            or configured_ratio != pilot.PROFILE_TRADABLE_BALANCE_RATIO
+            or runtime["stake_amount"]
+            > runtime["starting_balance"] * pilot.PROFILE_TRADABLE_BALANCE_RATIO
+            or any(
+                selection.get(key) != gate[key]
+                for key in (
+                    "minimum_trades",
+                    "minimum_profit_factor",
+                    "maximum_drawdown_pct",
+                )
+            )
+            or (
+                frozen_profile is None
+                and selection.get("minimum_profit_pct")
+                != EXPECTED_GATE["minimum_profit_pct"]
+            )
             or config.get("cancel_open_orders_on_exit") is not False
             or config.get("disableparamexport") is not True
             or config.get("backtest_cache") != "none"
@@ -579,18 +714,23 @@ def freeze_development_capability(
         if (
             source_value.get("pair") != pair
             or source_value.get("instrument_id") != instrument_id
+            or (
+                frozen_profile is not None
+                and set(source_acquisition["data_sha256"])
+                != set(pilot._search_data_names(pair, str(runtime["timeframe"])).values())
+            )
         ):
             raise DevelopmentRunError(
                 "BLOCKED_DATA", "Development source market identity mismatch"
             )
 
         runner_data = _read_bytes(DEFAULT_RUNNER, "backtest runner", 2 * 1024 * 1024)
-        pilot_info = os.stat(pilot)
+        pilot_info = os.stat(root)
         source_info = os.stat(source)
         return FrozenDevelopmentCapability(
             status="READY",
             reason="Development-only Freqtrade 2026.7 capability is frozen",
-            pilot_root=pilot,
+            pilot_root=root,
             freqtrade_python=python,
             freqtrade_source=source,
             pilot_identity=(pilot_info.st_dev, pilot_info.st_ino),
@@ -598,6 +738,11 @@ def freeze_development_capability(
             source_identity=(source_info.st_dev, source_info.st_ino),
             plan_sha256=_sha256(plan_bytes),
             source_provenance_sha256=_sha256(acquisition_provenance),
+            source_acquisition_sha256=(
+                None
+                if not isinstance(source_acquisition, dict)
+                else _sha256(pilot.canonical(source_acquisition))
+            ),
             development_provenance_sha256=_sha256(provenance_bytes),
             config_sha256=_sha256(config_data),
             runner_sha256=_sha256(runner_data),
@@ -605,15 +750,30 @@ def freeze_development_capability(
             development_timerange=str(plan["development_timerange"]),
             pair=pair,
             instrument_id=instrument_id,
+            timeframe=str(runtime["timeframe"]),
+            starting_balance=float(runtime["starting_balance"]),
+            stake_amount=float(runtime["stake_amount"]),
+            max_open_trades=int(runtime["max_open_trades"]),
+            base_fee=float(runtime["fee"]),
+            economic_gate=gate,
+            profile_contract=(
+                None if profile_contract is None else dict(profile_contract)
+            ),
             data_receipts=tuple(sorted(data_records)),
             market_receipt=market_record,
             tiers_receipt=tiers_record,
         )
     except DevelopmentRunError as exc:
-        return FrozenDevelopmentCapability(status="BLOCKED_DATA", reason=exc.message)
-    except (KeyError, OSError, TypeError, ValueError, sqlite3.Error) as exc:
         return FrozenDevelopmentCapability(
-            status="BLOCKED_DATA", reason="Development capability could not be frozen"
+            status="BLOCKED_DATA",
+            reason=exc.message,
+            **profile_public,
+        )
+    except (KeyError, OSError, TypeError, ValueError, sqlite3.Error, pilot.PilotError) as exc:
+        return FrozenDevelopmentCapability(
+            status="BLOCKED_DATA",
+            reason="Development capability could not be frozen",
+            **profile_public,
         )
 
 
@@ -625,6 +785,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.pilot_root,
         capability.freqtrade_python,
         capability.freqtrade_source,
+        profile_contract=capability.profile_contract,
     )
     frozen = (
         capability.pilot_identity,
@@ -632,6 +793,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.source_identity,
         capability.plan_sha256,
         capability.source_provenance_sha256,
+        capability.source_acquisition_sha256,
         capability.development_provenance_sha256,
         capability.config_sha256,
         capability.runner_sha256,
@@ -642,6 +804,13 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         capability.development_timerange,
         capability.pair,
         capability.instrument_id,
+        capability.timeframe,
+        capability.starting_balance,
+        capability.stake_amount,
+        capability.max_open_trades,
+        capability.base_fee,
+        capability.economic_gate,
+        capability.profile_contract,
     )
     current = (
         refreshed.pilot_identity,
@@ -649,6 +818,7 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.source_identity,
         refreshed.plan_sha256,
         refreshed.source_provenance_sha256,
+        refreshed.source_acquisition_sha256,
         refreshed.development_provenance_sha256,
         refreshed.config_sha256,
         refreshed.runner_sha256,
@@ -659,6 +829,13 @@ def _require_ready(capability: FrozenDevelopmentCapability) -> None:
         refreshed.development_timerange,
         refreshed.pair,
         refreshed.instrument_id,
+        refreshed.timeframe,
+        refreshed.starting_balance,
+        refreshed.stake_amount,
+        refreshed.max_open_trades,
+        refreshed.base_fee,
+        refreshed.economic_gate,
+        refreshed.profile_contract,
     )
     if refreshed.status != "READY" or current != frozen:
         raise DevelopmentRunError("BLOCKED_DATA", "startup-frozen Development inputs changed")
@@ -676,9 +853,13 @@ def _schema_v1(connection: sqlite3.Connection) -> None:
         raise DevelopmentRunError("BLOCKED_DATA", "database must be exact six-table schema v1")
 
 
-def _bound_candidate(connection: sqlite3.Connection, candidate_id: str) -> sqlite3.Row:
+def _bound_candidate(
+    connection: sqlite3.Connection,
+    candidate_id: str,
+    expected_timeframe: Optional[str] = None,
+) -> sqlite3.Row:
     try:
-        load_approved_candidate_snapshot(connection, candidate_id)
+        approved = load_approved_candidate_snapshot(connection, candidate_id)
     except GenerationContractError as exc:
         raise DevelopmentRunError("BLOCKED_SECURITY", exc.message) from exc
     row = connection.execute(
@@ -700,58 +881,156 @@ def _bound_candidate(connection: sqlite3.Connection, candidate_id: str) -> sqlit
     if row is None:
         raise DevelopmentRunError("BLOCKED_SECURITY", "Candidate not found")
     try:
-        validate_bounded_causal_strategy(row["code_text"], row["class_name"])
+        validate_bounded_causal_strategy(
+            row["code_text"],
+            row["class_name"],
+            expected_timeframe=expected_timeframe or approved.timeframe,
+        )
     except BoundedStrategyError as exc:
         raise DevelopmentRunError("BLOCKED_SECURITY", exc.message) from exc
     return row
 
 
-def _profile_gate(row: sqlite3.Row, capability: FrozenDevelopmentCapability) -> None:
-    if (
-        not isinstance(capability.pair, str)
-        or not capability.pair
-    ):
-        raise DevelopmentRunError(
-            "BLOCKED_DATA", "Development market pair is unavailable"
-        )
+def _profile_gate(
+    connection: sqlite3.Connection,
+    row: sqlite3.Row,
+    capability: FrozenDevelopmentCapability,
+) -> dict[str, Any]:
+    from lab import bounded_research as pilot
+
+    if not isinstance(capability.pair, str) or not capability.pair:
+        raise DevelopmentRunError("BLOCKED_DATA", "Development market pair is unavailable")
     try:
-        pairs = json.loads(row["pairs_json"])
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise DevelopmentRunError("BLOCKED_PROFILE", "Profile pairs are invalid") from exc
-    expected = (
-        row["domain"] == "OKX_CRYPTO_PERP"
-        and row["exchange"] == "okx"
-        and row["trading_mode"] == "futures"
-        and row["margin_mode"] == "isolated"
-        and pairs == [capability.pair]
-        and row["timeframe"] == "5m"
-        and row["profile_timeframe"] == "5m"
-        and row["detail_timeframe"] is None
-        and float(row["starting_balance"]) == 1000.0
-        and float(row["stake_amount"]) == 100.0
-        and int(row["max_open_trades"]) == 1
-        and math.isclose(float(row["taker_fee_rate"]), 0.0005, abs_tol=1e-15)
-        and int(row["min_development_trades"]) == EXPECTED_GATE["minimum_trades"]
-        and math.isclose(
-            float(row["min_profit_factor"]),
-            EXPECTED_GATE["minimum_profit_factor"],
-            abs_tol=1e-15,
+        profile_snapshot = load_profile_snapshot(
+            connection, str(row["research_profile_id"])
         )
-        and math.isclose(
-            float(row["max_drawdown_pct"]),
-            EXPECTED_GATE["maximum_drawdown_pct"],
-            abs_tol=1e-15,
+        normalized = pilot.validate_profile_runtime_contract(
+            profile_snapshot,
+            finalist_gate=(
+                capability.economic_gate
+                if capability.profile_contract is not None
+                else None
+            ),
         )
+        frozen = (
+            None
+            if capability.profile_contract is None
+            else pilot.validate_profile_search_contract(capability.profile_contract)
+        )
+    except GenerationContractError as exc:
+        raise DevelopmentRunError("BLOCKED_PROFILE", exc.message) from exc
+    except pilot.PilotError as exc:
+        code = (
+            "BLOCKED_INSUFFICIENT_CAPACITY"
+            if str(exc) == "BLOCKED_INSUFFICIENT_CAPACITY"
+            else "BLOCKED_PROFILE"
+        )
+        raise DevelopmentRunError(code, str(exc)) from exc
+    def close(actual: float, expected: Optional[float], tolerance: float = 1e-09) -> bool:
+        return expected is None or math.isclose(actual, expected, abs_tol=tolerance)
+
+    matches = (
+        row["timeframe"] == row["profile_timeframe"] == normalized["timeframe"]
+        and normalized["pair"] == capability.pair
+        and normalized["timeframe"] == (capability.timeframe or normalized["timeframe"])
+        and close(normalized["starting_balance"], capability.starting_balance)
+        and close(normalized["stake_amount"], capability.stake_amount)
+        and (capability.max_open_trades is None or normalized["max_open_trades"] == capability.max_open_trades)
+        and close(normalized["fee"], capability.base_fee, 1e-15)
+        and (frozen is None or (frozen["profile_snapshot"] == profile_snapshot
+                                and frozen["finalist_gate"] == normalized["finalist_gate"]))
     )
-    if not expected:
+    if frozen is None:
+        matches = matches and (
+            normalized["timeframe"] == "5m"
+            and close(normalized["starting_balance"], 1000.0)
+            and close(normalized["stake_amount"], 100.0)
+            and normalized["max_open_trades"] == 1
+            and close(normalized["fee"], 0.0005, 1e-15)
+            and normalized["minimum_trades"] == EXPECTED_GATE["minimum_trades"]
+            and close(normalized["minimum_profit_factor"], EXPECTED_GATE["minimum_profit_factor"], 1e-15)
+            and close(normalized["maximum_drawdown_pct"], EXPECTED_GATE["maximum_drawdown_pct"], 1e-15)
+        )
+    if not matches:
         raise DevelopmentRunError(
             "BLOCKED_PROFILE", "Profile does not match the frozen Pilot Development contract"
         )
+    return normalized
 
 
-def _snapshot(capability: FrozenDevelopmentCapability, row: sqlite3.Row) -> dict[str, Any]:
+def _verified_search_finalist_binding(
+    connection: sqlite3.Connection,
+    capability: FrozenDevelopmentCapability,
+    row: sqlite3.Row,
+    value: Optional[Mapping[str, Any]],
+    projection_receipt: Optional[Mapping[str, Any]],
+) -> Optional[dict[str, Any]]:
+    if value is None:
+        if capability.profile_contract is not None:
+            raise DevelopmentRunError(
+                "BLOCKED_SECURITY", "Profile Development requires a verified Search finalist binding"
+            )
+        return None
+    message = "Search finalist handoff binding is invalid"
+    if (
+        not isinstance(value, Mapping)
+        or not isinstance(projection_receipt, Mapping)
+        or projection_receipt.get("binding") != value
+    ):
+        raise DevelopmentRunError("BLOCKED_SECURITY", message)
+    binding = dict(value)
+    try:
+        profile = load_profile_snapshot(connection, str(row["research_profile_id"]))
+        projection = connection.execute(
+            "SELECT * FROM generation_runs WHERE id=?",
+            (binding["search_generation_id"],),
+        ).fetchone()
+        projection_values = projection_receipt["projection_values"]
+        document_hashes = projection_receipt["document_hashes"]
+        texts = {
+            "request": projection["request_json"],
+            "terminal": projection["response_json"],
+            "report": projection["parse_report_json"],
+        } if projection is not None else {}
+        if (
+            binding["profile_snapshot"] != profile
+            or not isinstance(capability.profile_contract, Mapping)
+            or dict(capability.profile_contract)
+            != projection_receipt["profile_contract"]
+            or (
+                binding["candidate_id"], binding["generation_run_id"],
+                binding["source_sha256"], binding["profile_id"],
+            ) != (
+                row["id"], row["generation_run_id"], row["code_sha256"],
+                row["research_profile_id"],
+            )
+            or projection is None
+            or any(projection[key] != expected for key, expected in projection_values.items())
+            or not all(isinstance(text, str) for text in texts.values())
+            or any(
+                _sha256(texts[key].encode("utf-8")) != expected
+                for key, expected in document_hashes.items()
+            )
+            or binding["development_timerange"] != capability.development_timerange
+        ):
+            raise ValueError(message)
+    except (KeyError, TypeError, UnicodeError, ValueError, GenerationContractError) as exc:
+        raise DevelopmentRunError("BLOCKED_SECURITY", message) from exc
+    return binding
+
+
+def _snapshot(
+    capability: FrozenDevelopmentCapability,
+    row: sqlite3.Row,
+    profile_contract: Optional[Mapping[str, Any]] = None,
+    search_finalist_binding: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    resolved_profile = profile_contract or {
+        "timeframe": row["profile_timeframe"],
+        "finalist_gate": {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE},
+    }
     _, _, exclusive_stop_utc = _development_window(capability.development_timerange)
-    return {
+    snapshot = {
         "schema": DEVELOPMENT_CONTRACT_SCHEMA,
         "pipeline_version": DEVELOPMENT_PIPELINE_VERSION,
         "candidate_id": row["id"],
@@ -769,13 +1048,22 @@ def _snapshot(capability: FrozenDevelopmentCapability, row: sqlite3.Row) -> dict
         "freqtrade_source_tree": SUPPORTED_FREQTRADE_TREE,
         "freqtrade_python_identity": list(capability.python_identity or ()),
         "scenario": "DEVELOPMENT",
-        "timeframe": "5m",
+        "timeframe": resolved_profile["timeframe"],
         "timerange": capability.development_timerange,
         "exclusive_stop_utc": exclusive_stop_utc,
-        "gate": {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE},
+        "gate": (
+            {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE}
+            if capability.profile_contract is None
+            else dict(resolved_profile["finalist_gate"])
+        ),
         "holdout": "SEALED_UNREAD",
         "holdout_stress": "SEALED_UNREAD",
     }
+    if capability.profile_contract is not None:
+        snapshot["normalized_profile_contract"] = dict(resolved_profile)
+    if search_finalist_binding is not None:
+        snapshot["search_finalist_binding"] = dict(search_finalist_binding)
+    return snapshot
 
 
 def _prior_state(
@@ -914,7 +1202,7 @@ def _materialize_inputs(
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
             "development_timerange": capability.development_timerange,
-            "timeframe": "5m",
+            "timeframe": snapshot["timeframe"],
         },
         "files": {
             strategy_relative: {
@@ -930,6 +1218,14 @@ def _materialize_inputs(
             "holdout_values_present": False,
         },
     }
+    normalized_profile = snapshot.get("normalized_profile_contract")
+    if isinstance(normalized_profile, Mapping):
+        provenance["contract"]["profile_snapshot"] = normalized_profile[
+            "profile_snapshot"
+        ]
+        provenance["contract"]["profile_snapshot_sha256"] = normalized_profile[
+            "profile_snapshot_sha256"
+        ]
     provenance_bytes = _canonical_bytes(provenance)
     _write_exclusive(input_root / "retained-data-provenance.json", provenance_bytes, 0o400)
     input_hashes["retained-data-provenance.json"] = _sha256(provenance_bytes)
@@ -964,6 +1260,7 @@ def prepare_development_run(
     *,
     research_run_id: Optional[str] = None,
     now: Optional[str] = None,
+    search_finalist_binding: Optional[Mapping[str, Any]] = None,
 ) -> PreparedDevelopmentRun:
     """Materialize isolated inputs and atomically consume one Candidate slot."""
     _require_ready(capability)
@@ -973,6 +1270,23 @@ def prepare_development_run(
         raise DevelopmentRunError("BLOCKED_DATA", "Development run directory must be new and empty")
     timestamp = now or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     database = Path(database_path).resolve(strict=True)
+    if capability.profile_contract is not None and search_finalist_binding is None:
+        raise DevelopmentRunError(
+            "BLOCKED_SECURITY",
+            "Profile Development requires a verified Search finalist binding",
+        )
+    projection_receipt: Optional[Mapping[str, Any]] = None
+    if search_finalist_binding is not None:
+        from lab import search_campaign
+
+        try:
+            projection_receipt = search_campaign.verify_persisted_finalist_projection(
+                database, search_finalist_binding
+            )
+        except search_campaign.SearchCampaignError as exc:
+            raise DevelopmentRunError(
+                "BLOCKED_SECURITY", "Search finalist handoff binding is invalid"
+            ) from exc
     try:
         connection = get_connection(database, must_exist=True)
     except (OSError, sqlite3.Error) as exc:
@@ -981,9 +1295,16 @@ def prepare_development_run(
     try:
         connection.execute("BEGIN IMMEDIATE")
         _schema_v1(connection)
-        row = _bound_candidate(connection, candidate_id)
-        _profile_gate(row, capability)
-        snapshot = _snapshot(capability, row)
+        row = _bound_candidate(connection, candidate_id, capability.timeframe)
+        profile_contract = _profile_gate(connection, row, capability)
+        binding = _verified_search_finalist_binding(
+            connection,
+            capability,
+            row,
+            search_finalist_binding,
+            projection_receipt,
+        )
+        snapshot = _snapshot(capability, row, profile_contract, binding)
         materialized = True
         snapshot = _materialize_inputs(directory, capability, row, snapshot)
         trigger = _prior_state(connection, candidate_id, snapshot)
@@ -991,7 +1312,9 @@ def prepare_development_run(
             datetime.strptime(part, "%Y%m%d").replace(tzinfo=timezone.utc)
             for part in str(capability.development_timerange).split("-", 1)
         )
-        execution_end = stop - timedelta(minutes=5)
+        execution_end = stop - timedelta(
+            seconds=int(profile_contract["timeframe_step_seconds"])
+        )
         execution_id = str(uuid4())
         checks = {
             "candidate_binding": "PASSED",
@@ -1028,7 +1351,7 @@ def prepare_development_run(
         command_receipt = {
             "schema": "freqtrade-lab-development-command-v1",
             "scenario": "DEVELOPMENT",
-            "timeframe": "5m",
+            "timeframe": profile_contract["timeframe"],
             "timerange": capability.development_timerange,
             "runner_sha256": capability.runner_sha256,
             "browser_overrides": False,
@@ -1041,14 +1364,15 @@ def prepare_development_run(
                 timerange_start, timerange_end, timeframe, detail_timeframe,
                 fee_rate, fee_multiplier, command_json, config_path,
                 strategy_path, metrics_json, created_at, started_at
-            ) VALUES (?, ?, 'DEVELOPMENT', 'PENDING', 1, ?, ?, '5m', NULL, ?, 1.0, ?, ?, ?, '{}', ?, ?)
+            ) VALUES (?, ?, 'DEVELOPMENT', 'PENDING', 1, ?, ?, ?, NULL, ?, 1.0, ?, ?, ?, '{}', ?, ?)
             """,
             (
                 execution_id,
                 run_id,
                 start.isoformat().replace("+00:00", "Z"),
                 execution_end.isoformat().replace("+00:00", "Z"),
-                float(row["taker_fee_rate"]),
+                profile_contract["timeframe"],
+                float(profile_contract["fee"]),
                 json.dumps(command_receipt, sort_keys=True, separators=(",", ":")),
                 str(directory / "development-input" / "config.json"),
                 str(directory / "development-input" / "strategies" / f"{row['class_name']}.py"),
@@ -1335,6 +1659,44 @@ def execute_development_run(
     return result
 
 
+def _development_gate_contract(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the sole executable Gate encoded by a Development snapshot."""
+    normalized = snapshot.get("normalized_profile_contract")
+    if normalized is None:
+        expected = {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE}
+        if snapshot.get("gate") not in (None, expected):
+            raise DevelopmentRunError(
+                "run_state_conflict", "Development frozen Gate is invalid"
+            )
+        return {**EXPECTED_GATE, "strictly_positive": False}
+    from lab import bounded_research as pilot
+
+    if not isinstance(normalized, Mapping):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development frozen Profile is invalid"
+        )
+    try:
+        verified = pilot.validate_profile_runtime_contract(
+            normalized.get("profile_snapshot"),
+            finalist_gate=snapshot.get("gate"),
+        )
+    except pilot.PilotError as exc:
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development frozen Profile is invalid"
+        ) from exc
+    if dict(normalized) != verified:
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development frozen Profile changed"
+        )
+    return {
+        "minimum_trades": verified["minimum_trades"],
+        "minimum_profit_pct": 0.0,
+        "minimum_profit_factor": verified["minimum_profit_factor"],
+        "maximum_drawdown_pct": verified["maximum_drawdown_pct"],
+        "strictly_positive": True,
+    }
+
+
 def finalize_development_gate(database_path: PathLike, research_run_id: str) -> dict[str, Any]:
     """Idempotently turn imported Development metrics into the fixed gate result."""
     with closing(get_connection(database_path, must_exist=True)) as connection:
@@ -1360,6 +1722,7 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                 ).fetchone()[0]
             )
             snapshot = json.loads(row["input_snapshot_json"])
+            gate_contract = _development_gate_contract(snapshot)
             if (
                 execution_rows != 1
                 or row["pipeline_version"] != DEVELOPMENT_PIPELINE_VERSION
@@ -1368,8 +1731,6 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                 or snapshot.get("pipeline_version") != DEVELOPMENT_PIPELINE_VERSION
                 or snapshot.get("freqtrade_version") != SUPPORTED_FREQTRADE_VERSION
                 or snapshot.get("scenario") != "DEVELOPMENT"
-                or snapshot.get("gate")
-                != {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE}
             ):
                 raise DevelopmentRunError(
                     "run_state_conflict", "Development frozen contract is invalid"
@@ -1425,13 +1786,17 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                 "max_drawdown_pct": row["max_drawdown_pct"],
             }
             reasons: list[str] = []
-            if metrics["total_trades"] < EXPECTED_GATE["minimum_trades"]:
+            if metrics["total_trades"] < gate_contract["minimum_trades"]:
                 reasons.append("MINIMUM_TRADES_NOT_MET")
-            if metrics["profit_pct"] < EXPECTED_GATE["minimum_profit_pct"]:
+            if (
+                metrics["profit_pct"] <= gate_contract["minimum_profit_pct"]
+                if gate_contract["strictly_positive"]
+                else metrics["profit_pct"] < gate_contract["minimum_profit_pct"]
+            ):
                 reasons.append("MINIMUM_PROFIT_PCT_NOT_MET")
-            if metrics["profit_factor"] is None or metrics["profit_factor"] < EXPECTED_GATE["minimum_profit_factor"]:
+            if metrics["profit_factor"] is None or metrics["profit_factor"] < gate_contract["minimum_profit_factor"]:
                 reasons.append("MINIMUM_PROFIT_FACTOR_NOT_MET")
-            if metrics["max_drawdown_pct"] > EXPECTED_GATE["maximum_drawdown_pct"]:
+            if metrics["max_drawdown_pct"] > gate_contract["maximum_drawdown_pct"]:
                 reasons.append("MAXIMUM_DRAWDOWN_EXCEEDED")
             passed = not reasons
             checks = {
@@ -1764,6 +2129,17 @@ def _public_number(
 def _public_gate_results(
     row: Any, execution: Any
 ) -> tuple[list[dict[str, Any]], Optional[list[str]], dict[str, Any]]:
+    try:
+        snapshot = json.loads(row["input_snapshot_json"])
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development frozen contract is invalid"
+        ) from exc
+    if not isinstance(snapshot, dict):
+        raise DevelopmentRunError(
+            "run_state_conflict", "Development frozen contract is invalid"
+        )
+    gate_contract = _development_gate_contract(snapshot)
     actual = {
         "total_trades": _public_number(
             execution["total_trades"], integer=True, minimum=0.0
@@ -1804,15 +2180,20 @@ def _public_gate_results(
     if terminal:
         passed = {
             "minimum_trades": gate_actual["minimum_trades"]
-            >= EXPECTED_GATE["minimum_trades"],
-            "minimum_profit_pct": gate_actual["minimum_profit_pct"]
-            >= EXPECTED_GATE["minimum_profit_pct"],
+            >= gate_contract["minimum_trades"],
+            "minimum_profit_pct": (
+                gate_actual["minimum_profit_pct"]
+                > gate_contract["minimum_profit_pct"]
+                if gate_contract["strictly_positive"]
+                else gate_actual["minimum_profit_pct"]
+                >= gate_contract["minimum_profit_pct"]
+            ),
             "minimum_profit_factor": gate_actual["minimum_profit_factor"]
             is not None
             and gate_actual["minimum_profit_factor"]
-            >= EXPECTED_GATE["minimum_profit_factor"],
+            >= gate_contract["minimum_profit_factor"],
             "maximum_drawdown_pct": gate_actual["maximum_drawdown_pct"]
-            <= EXPECTED_GATE["maximum_drawdown_pct"],
+            <= gate_contract["maximum_drawdown_pct"],
         }
         reasons = []
         for criterion, reason in (
@@ -1826,7 +2207,7 @@ def _public_gate_results(
     gate_results = [
         {
             "criterion": criterion,
-            "threshold": EXPECTED_GATE[criterion],
+            "threshold": gate_contract[criterion],
             "actual": gate_actual[criterion],
             "passed": passed[criterion],
         }
@@ -1964,6 +2345,7 @@ def load_public_research_run(
             """
             SELECT id, candidate_id, trigger_type, status, stage, verdict,
                    pipeline_version, freqtrade_version, checks_json,
+                   input_snapshot_json,
                    rejection_reasons_json, error_stage, error_message,
                    created_at, started_at, finished_at
             FROM research_runs WHERE id=?
@@ -1976,14 +2358,15 @@ def load_public_research_run(
                    max_drawdown_pct, win_rate, profit_factor, scenario_passed,
                    created_at, started_at, finished_at
             FROM backtest_executions
-            WHERE research_run_id=? ORDER BY sequence, id
+            WHERE research_run_id=? AND scenario='DEVELOPMENT'
+            ORDER BY sequence, id
             """,
             (research_run_id,),
         ).fetchall()
         connection.rollback()
     if row is None:
         raise DevelopmentRunError("run_not_found", "Research run not found")
-    if len(executions) != 1 or executions[0]["scenario"] != "DEVELOPMENT":
+    if len(executions) != 1:
         raise DevelopmentRunError(
             "run_state_conflict",
             "Development run must contain exactly one DEVELOPMENT execution",
@@ -2079,11 +2462,13 @@ def research_context(
             state, reason = "READY", "Approved Candidate is ready for one Development run"
             display_name = candidate_id
             try:
-                row = _bound_candidate(connection, candidate_id)
+                row = _bound_candidate(
+                    connection, candidate_id, capability.timeframe
+                )
                 display_name = row["display_name"]
                 if not isinstance(capability.pair, str) or not capability.pair:
                     _require_ready(capability)
-                _profile_gate(row, capability)
+                _profile_gate(connection, row, capability)
                 _require_ready(capability)
                 _prior_state(connection, candidate_id, _snapshot(capability, row))
             except DevelopmentRunError as exc:

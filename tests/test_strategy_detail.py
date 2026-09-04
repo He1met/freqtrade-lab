@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
@@ -38,7 +39,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = PROJECT_ROOT / "tests" / "fixtures" / "freqtrade_2026_7"
 MANIFEST_NAME = "research-bundle-v1.json"
 CLI = PROJECT_ROOT / "scripts" / "serve_strategy_library.py"
-NOW = "2026-09-02T00:00:00.000Z"
+NOW = (
+    datetime.now(timezone.utc) + timedelta(days=1)
+).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 BUSINESS_TABLES = (
     "research_profiles",
     "generation_runs",

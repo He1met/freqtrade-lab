@@ -2,9 +2,15 @@ import importlib.util
 import json
 import sys
 import types
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+
+from lab.database import get_connection
+from lab import bounded_research as pilot
+from tests.test_development_run import _approved_candidate_database
+from tests.test_search_data_producer import _ohlcv_table, _timestamps
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +22,7 @@ HELPER = (
     / "producer"
     / "fetch_okx_public_data.py"
 )
+PROFILE_HELPER = ROOT / "scripts" / "fetch_okx_profile_data.py"
 
 
 def _write_candidate_inputs(
@@ -62,13 +69,13 @@ def _runtime(acquisition_module) -> dict[str, object]:
     }
 
 
-def _write_window_spec(root: Path, **overrides) -> Path:
+def _write_profile_window(root: Path, **overrides) -> Path:
     value = {
-        "schema": "freqtrade-lab-okx-window-v1",
-        "data_start_utc": "2026-05-31T22:00:00Z",
-        "development_start_utc": "2026-06-01T00:00:00Z",
-        "holdout_start_utc": "2026-07-31T00:00:00Z",
-        "end_exclusive_utc": "2026-08-30T00:00:00Z",
+        "schema": "freqtrade-lab-profile-source-window-v1",
+        "data_start_utc": "2026-02-28T22:00:00Z",
+        "search_start_utc": "2026-03-01T00:00:00Z",
+        "development_start_utc": "2026-04-02T00:00:00Z",
+        "end_exclusive_utc": "2026-05-02T00:00:00Z",
     }
     value.update(overrides)
     path = root / "window-spec.json"
@@ -76,14 +83,47 @@ def _write_window_spec(root: Path, **overrides) -> Path:
     return path
 
 
-@pytest.fixture
-def acquisition_module(monkeypatch):
+def _configure_profile_helper(
+    module,
+    tmp_path: Path,
+    *,
+    pair: str = "XRP/USDT:USDT",
+    timeframe: str = "5m",
+    pre_roll_candles: int = 24,
+    **window_overrides,
+) -> tuple[Path, str, dict[str, object], Path]:
+    database, candidate_id = _approved_candidate_database(
+        tmp_path / "profile", pair=pair, timeframe=timeframe
+    )
+    with get_connection(database) as connection:
+        connection.execute(
+            "UPDATE research_profiles SET history_start_date='2025-01-01'"
+        )
+        profile_id = str(
+            connection.execute(
+                "SELECT research_profile_id FROM generation_runs WHERE id="
+                "(SELECT generation_run_id FROM candidates WHERE id=?)",
+                (candidate_id,),
+            ).fetchone()[0]
+        )
+        profile = pilot.load_profile_snapshot(connection, profile_id)
+        connection.commit()
+    window = _write_profile_window(tmp_path, **window_overrides)
+    module.configure_profile_acquisition(
+        database, profile_id, window, pre_roll_candles
+    )
+    return database, profile_id, profile, window
+
+
+def _load_acquisition_module(monkeypatch, request, helper: Path):
+    real_arrow = bool(getattr(request, "param", False))
+    if real_arrow:
+        pytest.importorskip("pyarrow")
+        pytest.importorskip("pyarrow.feather")
     ccxt = types.ModuleType("ccxt")
     ccxt.okx = type("okx", (), {})
     pandas = types.ModuleType("pandas")
     pandas.__version__ = "3.0.3"
-    pyarrow = types.ModuleType("pyarrow")
-    pyarrow.__version__ = "25.0.0"
     freqtrade = types.ModuleType("freqtrade")
     freqtrade.__version__ = "2026.7"
     freqtrade.__file__ = str(ROOT / "freqtrade" / "__init__.py")
@@ -95,23 +135,41 @@ def acquisition_module(monkeypatch):
     enums.CandleType = types.SimpleNamespace(
         FUTURES="futures", MARK="mark", FUNDING_RATE="funding_rate"
     )
-    for name, module in {
+    modules = {
         "ccxt": ccxt,
         "pandas": pandas,
-        "pyarrow": pyarrow,
         "freqtrade": freqtrade,
         "freqtrade.data": types.ModuleType("freqtrade.data"),
         "freqtrade.data.converter": converter,
         "freqtrade.data.history": history,
         "freqtrade.enums": enums,
-    }.items():
+    }
+    if not real_arrow:
+        pyarrow = types.ModuleType("pyarrow")
+        pyarrow.__version__ = "25.0.0"
+        modules["pyarrow"] = pyarrow
+    for name, module in modules.items():
         monkeypatch.setitem(sys.modules, name, module)
 
-    spec = importlib.util.spec_from_file_location("_test_okx_acquisition", HELPER)
+    spec = importlib.util.spec_from_file_location(
+        f"_test_okx_acquisition_{helper.stem}", helper
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    if real_arrow:
+        monkeypatch.delitem(sys.modules, "pandas", raising=False)
     return module
+
+
+@pytest.fixture
+def acquisition_module(monkeypatch, request):
+    return _load_acquisition_module(monkeypatch, request, HELPER)
+
+
+@pytest.fixture
+def profile_acquisition_module(monkeypatch, request):
+    return _load_acquisition_module(monkeypatch, request, PROFILE_HELPER)
 
 
 class _Response:
@@ -156,6 +214,24 @@ class _FundingExchange:
         ]
 
 
+class _CandleExchange:
+    def __init__(self, step_seconds: int):
+        self.step_seconds = step_seconds
+        self.calls = []
+
+    def parse_timeframe(self, timeframe):
+        assert timeframe == "5m"
+        return self.step_seconds
+
+    def fetch_ohlcv(self, symbol, *, timeframe, since, limit, params):
+        self.calls.append((symbol, timeframe, since, limit, dict(params)))
+        step_ms = self.step_seconds * 1000
+        return [
+            [since + index * step_ms, 1.0, 1.2, 0.8, 1.1, 10.0]
+            for index in range(limit)
+        ]
+
+
 def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     acquisition_module,
 ) -> None:
@@ -178,164 +254,255 @@ def test_request_guard_rejects_redirects_and_forbidden_endpoint_before_followup(
     assert len(exchange.session.calls) == call_count
 
 
-def test_window_spec_is_strict_and_updates_the_frozen_contract(
-    acquisition_module, tmp_path: Path
+def test_profile_source_window_derives_5m_warmup_and_contract(
+    profile_acquisition_module, tmp_path: Path
 ) -> None:
-    spec_path = _write_window_spec(tmp_path)
-    acquisition_module.configure_window(spec_path)
-
-    assert acquisition_module.DATA_START.isoformat() == "2026-05-31T22:00:00+00:00"
-    assert acquisition_module.DEVELOPMENT_START.isoformat() == (
-        "2026-06-01T00:00:00+00:00"
+    _, _, _, window = _configure_profile_helper(
+        profile_acquisition_module, tmp_path
     )
-    assert acquisition_module.HOLDOUT_START.isoformat() == "2026-07-31T00:00:00+00:00"
-    assert acquisition_module.DATA_END.isoformat() == "2026-08-30T00:00:00+00:00"
 
-    output_root = tmp_path / "output"
-    receipt = _prepare_generated_root(output_root)
-    provenance_path = acquisition_module.write_local_producer_inputs(
-        output_root, receipt, _runtime(acquisition_module)
+    assert profile_acquisition_module.load_window_spec(window) == (
+        datetime(2026, 2, 28, 22, tzinfo=timezone.utc),
+        datetime(2026, 3, 1, tzinfo=timezone.utc),
+        datetime(2026, 4, 2, tzinfo=timezone.utc),
+        datetime(2026, 5, 2, tzinfo=timezone.utc),
     )
-    contract = json.loads(provenance_path.read_bytes())["contract"]
-    assert contract["development_timerange"] == "20260601-20260731"
-    assert contract["holdout_timerange"] == "20260731-20260830"
-    assert contract["timeframe"] == "5m"
+    assert profile_acquisition_module.PROFILE_ACQUISITION["search_timerange"] == (
+        "20260301-20260402"
+    )
+    assert profile_acquisition_module.PROFILE_ACQUISITION[
+        "development_timerange"
+    ] == "20260402-20260502"
 
 
-def test_window_spec_v2_freezes_exact_rolling_60_30_contract(
-    acquisition_module, tmp_path: Path
+def test_profile_5m_mark_series_floors_non_hour_warmup(
+    profile_acquisition_module, tmp_path: Path
 ) -> None:
-    spec_path = _write_window_spec(
+    _configure_profile_helper(
+        profile_acquisition_module,
         tmp_path,
-        schema="freqtrade-lab-okx-window-v2",
-        data_start_utc="2026-04-30T22:00:00Z",
-        development_start_utc="2026-05-01T00:00:00Z",
-        holdout_start_utc="2026-06-30T00:00:00Z",
-        end_exclusive_utc="2026-07-30T00:00:00Z",
+        pre_roll_candles=20,
+        data_start_utc="2026-02-28T22:20:00Z",
     )
 
-    acquisition_module.configure_window(spec_path)
-
-    assert acquisition_module.WINDOW_SCHEMA_USED == "freqtrade-lab-okx-window-v2"
-    assert acquisition_module.scenario_timerange(
-        acquisition_module.DEVELOPMENT_START, acquisition_module.HOLDOUT_START
-    ) == "20260501-20260630"
-    assert acquisition_module.scenario_timerange(
-        acquisition_module.HOLDOUT_START, acquisition_module.DATA_END
-    ) == "20260630-20260730"
+    assert profile_acquisition_module.DATA_START == datetime(
+        2026, 2, 28, 22, 20, tzinfo=timezone.utc
+    )
+    assert profile_acquisition_module.MARK_START_MS == int(
+        datetime(2026, 2, 28, 22, tzinfo=timezone.utc).timestamp() * 1000
+    )
 
 
-@pytest.mark.parametrize(
-    ("holdout_start", "end_exclusive"),
-    (
-        ("2026-06-29T00:00:00Z", "2026-07-29T00:00:00Z"),
-        ("2026-07-01T00:00:00Z", "2026-07-31T00:00:00Z"),
-        ("2026-06-30T00:00:00Z", "2026-07-29T00:00:00Z"),
-        ("2026-06-30T00:00:00Z", "2026-07-31T00:00:00Z"),
-    ),
-)
-def test_window_spec_v2_rejects_non_exact_development_or_holdout(
-    acquisition_module,
-    tmp_path: Path,
-    holdout_start: str,
-    end_exclusive: str,
+def test_profile_candle_fetch_uses_the_selected_pair_not_historical_xrp(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
 ) -> None:
-    spec_path = _write_window_spec(
+    _configure_profile_helper(
+        profile_acquisition_module,
         tmp_path,
-        schema="freqtrade-lab-okx-window-v2",
-        data_start_utc="2026-04-30T22:00:00Z",
-        development_start_utc="2026-05-01T00:00:00Z",
-        holdout_start_utc=holdout_start,
-        end_exclusive_utc=end_exclusive,
+        pair="BTC/USDT:USDT",
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "request_receipt",
+        lambda exchange, label: {"label": label},
+    )
+    exchange = _CandleExchange(5 * 60)
+    requests = []
+
+    rows = profile_acquisition_module.fetch_profile_candles(
+        exchange,
+        timeframe="5m",
+        start_ms=0,
+        end_ms=10 * 60 * 1000,
+        page_limit=300,
+        price=None,
+        label="futures-5m",
+        requests=requests,
     )
 
-    with pytest.raises(RuntimeError, match="exactly 60 Development days and 30 Holdout"):
-        acquisition_module.load_window_spec(spec_path)
+    assert len(rows) == 2
+    assert exchange.calls[0][0] == "BTC/USDT:USDT"
+    assert profile_acquisition_module.transport.SYMBOL == "XRP/USDT:USDT"
 
 
-def test_window_spec_rejects_duplicate_unknown_and_out_of_bounds_fields(
-    acquisition_module, tmp_path: Path
+@pytest.mark.parametrize("profile_acquisition_module", [True], indirect=True)
+def test_profile_1d_mode_writes_prepare_search_data_source_contract(
+    profile_acquisition_module, tmp_path: Path
+) -> None:
+    import pyarrow as pa
+    import pyarrow.feather as feather
+
+    database, candidate_id = _approved_candidate_database(
+        tmp_path / "profile", pair="XRP/USDT:USDT", timeframe="1d"
+    )
+    with get_connection(database) as connection:
+        connection.execute(
+            "UPDATE research_profiles SET history_start_date='2025-12-01'"
+        )
+        profile_id = connection.execute(
+            "SELECT research_profile_id FROM generation_runs WHERE id="
+            "(SELECT generation_run_id FROM candidates WHERE id=?)",
+            (candidate_id,),
+        ).fetchone()[0]
+        profile = pilot.load_profile_snapshot(connection, profile_id)
+        connection.commit()
+    window = _write_profile_window(
+        tmp_path,
+        data_start_utc="2025-12-06T00:00:00Z",
+        search_start_utc="2026-03-01T00:00:00Z",
+        development_start_utc="2026-04-02T00:00:00Z",
+        end_exclusive_utc="2026-05-02T00:00:00Z",
+    )
+    profile_acquisition_module.configure_profile_acquisition(
+        database, profile_id, window, 85
+    )
+    root = tmp_path / "profile-source"
+    receipt = _prepare_generated_root(root)
+    series = {
+        "XRP_USDT_USDT-1d-futures.feather": (
+            profile_acquisition_module.DATA_START, timedelta(days=1), False
+        ),
+        "XRP_USDT_USDT-1h-mark.feather": (
+            profile_acquisition_module.DATA_START, timedelta(hours=1), True
+        ),
+        "XRP_USDT_USDT-1h-funding_rate.feather": (
+            profile_acquisition_module.SEARCH_START, timedelta(hours=8), False
+        ),
+    }
+    for name, (start, step, missing_volume) in series.items():
+        feather.write_feather(
+            _ohlcv_table(
+                pa,
+                _timestamps(start, profile_acquisition_module.DATA_END, step),
+                missing_volume=missing_volume,
+            ),
+            root / "data" / "okx" / "futures" / name,
+            compression="uncompressed",
+        )
+    (root / "market_snapshot.json").write_bytes(
+        profile_acquisition_module.canonical_bytes(
+            {"id": "XRP-USDT-SWAP", "symbol": "XRP/USDT:USDT"}
+        )
+    )
+    (root / "isolated_tiers_snapshot.json").write_bytes(
+        profile_acquisition_module.canonical_bytes([{"symbol": "XRP/USDT:USDT"}])
+    )
+    receipt.write_bytes(
+        profile_acquisition_module.canonical_bytes(
+            {
+                "host": "www.okx.com",
+                "authentication": "none",
+                "pair": "XRP/USDT:USDT",
+                "instrument_id": "XRP-USDT-SWAP",
+                "data_window": {
+                    "start_utc": profile_acquisition_module.DATA_START.isoformat(),
+                    "end_exclusive_utc": profile_acquisition_module.DATA_END.isoformat(),
+                    "fully_closed_at_fetch": True,
+                    "development_start_utc": (
+                        profile_acquisition_module.SEARCH_START.isoformat()
+                    ),
+                    "holdout_start_utc": (
+                        profile_acquisition_module.DEVELOPMENT_START.isoformat()
+                    ),
+                    "startup_candles_required": 85,
+                },
+            }
+        )
+    )
+
+    provenance_path = profile_acquisition_module.write_profile_provenance(
+        root, receipt, _runtime(profile_acquisition_module)
+    )
+
+    provenance = json.loads(provenance_path.read_bytes())
+    assert json.loads((root / "config.json").read_bytes()) == (
+        pilot.profile_search_config(profile)
+    )
+    assert provenance["source"]["pair"] == "XRP/USDT:USDT"
+    assert provenance["contract"] == {
+        "config": "config.json",
+        "data_dir": "data/okx",
+        "development_timerange": "20260301-20260402",
+        "holdout_timerange": "20260402-20260502",
+        "leverage_tiers": "isolated_tiers_snapshot.json",
+        "market_snapshot": "market_snapshot.json",
+        "profile_acquisition": {
+            key: profile_acquisition_module.PROFILE_ACQUISITION[key]
+            for key in pilot.PROFILE_ACQUISITION_FIELDS
+        },
+        "timeframe": "1d",
+    }
+    assert provenance["files"]["producer/fetch_okx_profile_data.py"]["sha256"] == (
+        pilot.digest(PROFILE_HELPER.read_bytes())
+    )
+    assert provenance["files"][
+        "producer/historical_fetch_okx_public_data.py"
+    ]["sha256"] == "8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f"
+    assert any(name.endswith("-1d-futures.feather") for name in provenance["local_only_files"])
+    prepared = pilot.prepare_search_data(
+        root,
+        tmp_path / "prepared-search",
+        pilot.digest(provenance_path.read_bytes()),
+        pilot.digest(receipt.read_bytes()),
+        database_path=database,
+        profile_id=profile_id,
+        search_timerange="20260301-20260402",
+        development_timerange="20260402-20260502",
+        pre_roll_candles=85,
+    )
+    assert prepared == {
+        "status": "SEARCH_DATA_READY",
+        "search_timerange": "20260301-20260402",
+        "provenance_sha256": prepared["provenance_sha256"],
+        "rows": {
+            "futures_1d": 117,
+            "mark_1h": 2808,
+            "funding_history": 96,
+        },
+    }
+
+
+def test_profile_window_rejects_duplicate_and_unknown_fields(
+    profile_acquisition_module, tmp_path: Path
 ) -> None:
     duplicate = tmp_path / "duplicate.json"
     duplicate.write_text(
-        '{"schema":"freqtrade-lab-okx-window-v1",'
-        '"schema":"freqtrade-lab-okx-window-v1",'
-        '"data_start_utc":"2026-05-31T22:00:00Z",'
-        '"development_start_utc":"2026-06-01T00:00:00Z",'
-        '"holdout_start_utc":"2026-07-31T00:00:00Z",'
-        '"end_exclusive_utc":"2026-08-30T00:00:00Z"}',
+        '{"schema":"freqtrade-lab-profile-source-window-v1",'
+        '"schema":"freqtrade-lab-profile-source-window-v1",'
+        '"data_start_utc":"2026-02-28T22:00:00Z",'
+        '"search_start_utc":"2026-03-01T00:00:00Z",'
+        '"development_start_utc":"2026-04-02T00:00:00Z",'
+        '"end_exclusive_utc":"2026-05-02T00:00:00Z"}',
         encoding="utf-8",
     )
     with pytest.raises(RuntimeError, match="duplicate key"):
-        acquisition_module.load_window_spec(duplicate)
+        profile_acquisition_module.load_window_spec(duplicate)
 
-    unknown = _write_window_spec(tmp_path, pair="BTC/USDT:USDT")
-    with pytest.raises(RuntimeError, match="unknown fields: pair"):
-        acquisition_module.load_window_spec(unknown)
-
-    short = _write_window_spec(
-        tmp_path,
-        holdout_start_utc="2026-07-01T00:00:00Z",
-        end_exclusive_utc="2026-07-30T00:00:00Z",
-    )
-    with pytest.raises(RuntimeError, match="60 to 90"):
-        acquisition_module.load_window_spec(short)
-
-    long_warmup = _write_window_spec(
-        tmp_path,
-        data_start_utc="2026-05-30T23:00:00Z",
-    )
-    with pytest.raises(RuntimeError, match="warmup"):
-        acquisition_module.load_window_spec(long_warmup)
+    unknown = _write_profile_window(tmp_path, pair="BTC/USDT:USDT")
+    with pytest.raises(RuntimeError, match="shape/version"):
+        profile_acquisition_module.load_window_spec(unknown)
 
 
-def test_funding_history_requires_the_complete_fixed_window(acquisition_module) -> None:
-    step = 8 * 60 * 60 * 1000
-    start = int(acquisition_module.DEVELOPMENT_START.timestamp() * 1000)
-    timestamps = list(range(start, acquisition_module.DATA_END_MS, step))
-    complete = [{"timestamp": timestamp, "fundingRate": 0.0001} for timestamp in timestamps]
-
-    assert acquisition_module.validate_funding_history(complete)["rows"] == len(complete)
-    with pytest.raises(RuntimeError, match="every fixed eight-hour timestamp"):
-        acquisition_module.validate_funding_history(complete[:-1])
-
-
-def test_default_funding_history_uses_the_same_single_batch_path(
-    acquisition_module, monkeypatch
+def test_profile_60_30_funding_uses_three_bounded_batches(
+    profile_acquisition_module, monkeypatch, tmp_path: Path
 ) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        data_start_utc="2026-03-31T22:00:00Z",
+        search_start_utc="2026-04-01T00:00:00Z",
+        development_start_utc="2026-05-31T00:00:00Z",
+        end_exclusive_utc="2026-06-30T00:00:00Z",
+    )
     monkeypatch.setattr(
-        acquisition_module,
+        profile_acquisition_module,
         "request_receipt",
         lambda exchange, label: {"label": label},
     )
-    exchange = _FundingExchange(acquisition_module.FUNDING_INTERVAL_MS)
+    exchange = _FundingExchange(profile_acquisition_module.FUNDING_INTERVAL_MS)
     requests = []
 
-    funding = acquisition_module.fetch_funding_history(exchange, requests)
-
-    assert len(funding) == 18
-    assert [call[2] for call in exchange.calls] == [18]
-    assert exchange.calls[0][1] == int(
-        acquisition_module.DEVELOPMENT_START.timestamp() * 1000
-    )
-    assert exchange.calls[0][3] == {"after": acquisition_module.DATA_END_MS}
-    assert requests == [{"label": "funding-history"}]
-    assert acquisition_module.validate_funding_history(funding)["rows"] == 18
-
-
-def test_ninety_day_funding_history_uses_three_bounded_batches(
-    acquisition_module, monkeypatch, tmp_path: Path
-) -> None:
-    acquisition_module.configure_window(_write_window_spec(tmp_path))
-    monkeypatch.setattr(
-        acquisition_module,
-        "request_receipt",
-        lambda exchange, label: {"label": label},
-    )
-    exchange = _FundingExchange(acquisition_module.FUNDING_INTERVAL_MS)
-    requests = []
-
-    funding = acquisition_module.fetch_funding_history(exchange, requests)
+    funding = profile_acquisition_module.fetch_funding_history(exchange, requests)
 
     assert len(funding) == 270
     assert [call[2] for call in exchange.calls] == [100, 100, 70]
@@ -347,16 +514,18 @@ def test_ninety_day_funding_history_uses_three_bounded_batches(
     ]
     for _, since, limit, params in exchange.calls:
         assert params == {
-            "after": since + limit * acquisition_module.FUNDING_INTERVAL_MS
+            "after": since + limit * profile_acquisition_module.FUNDING_INTERVAL_MS
         }
     assert exchange.calls[0][1] == int(
-        acquisition_module.DEVELOPMENT_START.timestamp() * 1000
+        profile_acquisition_module.SEARCH_START.timestamp() * 1000
     )
-    assert exchange.calls[-1][3]["after"] == acquisition_module.DATA_END_MS
+    assert exchange.calls[-1][3]["after"] == profile_acquisition_module.DATA_END_MS
     assert [call[1] for call in exchange.calls[1:]] == [
         call[3]["after"] for call in exchange.calls[:-1]
     ]
-    assert acquisition_module.validate_funding_history(funding)["rows"] == 270
+    assert profile_acquisition_module.validate_funding_history(funding)["rows"] == 270
+    with pytest.raises(RuntimeError, match="every fixed eight-hour timestamp"):
+        profile_acquisition_module.validate_funding_history(funding[:-1])
 
 
 def test_ohlcv_values_reject_corrupt_prices_and_volume(acquisition_module) -> None:

@@ -379,7 +379,9 @@ def test_t0_prompt_serializes_only_bounded_allowlisted_context() -> None:
     assert b"must/not/leak" not in prompt
     assert b"credential" not in prompt
     assert b"from freqtrade.strategy import IStrategy" in prompt
-    assert b"startup_candle_count=20" in prompt
+    assert b"positive-integer startup_candle_count" in prompt
+    assert b"startup_candle_count must cover every static" in prompt
+    assert b"startup_candle_count=20" not in prompt
     assert b"IntParameter" in prompt
     assert b"prompt is guidance and is not a security decision" in prompt
     assert len(prompt) <= codex_generation.MAX_PROMPT_BYTES
@@ -387,6 +389,57 @@ def test_t0_prompt_serializes_only_bounded_allowlisted_context() -> None:
     parent["code_text"] = "x" * codex_generation.MAX_PROMPT_BYTES
     with pytest.raises(codex_generation.GenerationContractError):
         codex_generation.build_prompt(request, profile, parent)
+
+
+def test_t0_prompt_uses_daily_profile_and_source_declared_lookback() -> None:
+    request = codex_generation.validate_generation_request(
+        {
+            **VALID_REQUEST,
+            "profile_id": "profile-daily-trend",
+            "idea": "Test one causal daily long/cash trend hypothesis.",
+        }
+    )
+    profile = {
+        "id": "profile-daily-trend",
+        "name": "Daily trend",
+        "domain": "OKX_CRYPTO_PERP",
+        "exchange": "okx",
+        "trading_mode": "futures",
+        "margin_mode": "isolated",
+        "pairs": ["BTC/USDT:USDT"],
+        "timeframe": "1d",
+        "detail_timeframe": None,
+    }
+
+    prompt = codex_generation.build_prompt(request, profile, None)
+
+    assert b"timeframe=\"1d\"" in prompt
+    assert b"timeframe='5m'" not in prompt
+    assert b"literal boolean can_short" in prompt
+    assert b"rolling(N).mean()" in prompt
+    assert b"startup_candle_count must cover every static" in prompt
+    assert b"startup_candle_count=20" not in prompt
+    assert b"84" not in prompt
+
+
+def test_t0_prompt_rejects_unsupported_profile_timeframe() -> None:
+    request = codex_generation.validate_generation_request(VALID_REQUEST)
+    profile = {
+        "id": VALID_REQUEST["profile_id"],
+        "name": "Unsupported timeframe",
+        "domain": "OKX_CRYPTO_PERP",
+        "exchange": "okx",
+        "trading_mode": "futures",
+        "margin_mode": "isolated",
+        "pairs": ["BTC/USDT:USDT"],
+        "timeframe": "1h",
+        "detail_timeframe": None,
+    }
+
+    with pytest.raises(codex_generation.GenerationContractError) as raised:
+        codex_generation.build_prompt(request, profile, None)
+
+    assert raised.value.code == "prompt_context_invalid"
 
 
 def test_t0_review_transition_is_one_way_and_idempotent() -> None:

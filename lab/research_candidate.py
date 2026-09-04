@@ -486,7 +486,14 @@ def _walk_sensitive(value: Any, label: str) -> None:
             _walk_sensitive(child, label)
 
 
-def _validate_config(config: Mapping[str, Any], strategy: str) -> Tuple[float, Tuple[str, ...]]:
+def _validate_config(
+    config: Mapping[str, Any],
+    strategy: str,
+    *,
+    expected_timeframe: str = "5m",
+) -> Tuple[float, Tuple[str, ...]]:
+    if expected_timeframe not in {"5m", "1d"}:
+        raise ResearchCandidateError("expected timeframe must be 5m or 1d")
     _walk_sensitive(config, "Freqtrade config")
     if "add_config_files" in config:
         raise ResearchCandidateError("config add_config_files is outside the single-file boundary")
@@ -508,9 +515,11 @@ def _validate_config(config: Mapping[str, Any], strategy: str) -> Tuple[float, T
         exchange.get("name") != "okx"
         or config.get("trading_mode") != "futures"
         or config.get("margin_mode") != "isolated"
-        or config.get("timeframe") != "5m"
+        or config.get("timeframe") != expected_timeframe
     ):
-        raise ResearchCandidateError("config must use okx/futures/isolated at 5m")
+        raise ResearchCandidateError(
+            f"config must use okx/futures/isolated at {expected_timeframe}"
+        )
     if config.get("dry_run") is not True:
         raise ResearchCandidateError("config dry_run must be true")
     if exchange.get("enable_ws") not in (None, False):
@@ -524,8 +533,8 @@ def _validate_config(config: Mapping[str, Any], strategy: str) -> Tuple[float, T
     if config.get("db_url") not in (None, ""):
         raise ResearchCandidateError("config db_url is outside the backtest-only boundary")
     fee = _finite_number(config.get("fee"), "config fee")
-    if fee <= 0.0:
-        raise ResearchCandidateError("config fee must be positive")
+    if fee < 0.0:
+        raise ResearchCandidateError("config fee must be non-negative")
     if _finite_number(config.get("dry_run_wallet"), "config dry_run_wallet") <= 0.0:
         raise ResearchCandidateError("config dry_run_wallet must be positive")
     if _finite_number(config.get("stake_amount"), "config stake_amount") <= 0.0:

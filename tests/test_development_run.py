@@ -15,6 +15,7 @@ import pytest
 
 from lab import codex_generation, development_run
 from lab.database import get_connection, init_database
+from lab import bounded_research as pilot
 from scripts import run_freqtrade_backtest as runner_module
 
 
@@ -185,6 +186,7 @@ def _approved_candidate_database(
     min_development_trades: int = 30,
     holdout_days: int = 30,
     pair: str = "ADA/USDT:USDT",
+    timeframe: str = "5m",
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
     init_database(database)
@@ -201,7 +203,7 @@ def _approved_candidate_database(
                 max_drawdown_pct, min_development_trades, min_holdout_trades,
                 min_profit_factor, created_at, updated_at
             ) VALUES (?, ?, 'OKX_CRYPTO_PERP', 'okx', 'futures', 'isolated',
-                      ?, '5m', NULL, '2026-01-01',
+                      ?, ?, NULL, '2026-01-01',
                       7, ?, 1000.0, 100.0, 1, 0.0005, 2.0,
                       5.0, ?, 30, 1.1, ?, ?)
             """,
@@ -209,6 +211,7 @@ def _approved_candidate_database(
                 profile_id,
                 f"approved-profile-{profile_id}",
                 json.dumps([pair], separators=(",", ":")),
+                timeframe,
                 holdout_days,
                 min_development_trades,
                 NOW,
@@ -231,18 +234,19 @@ def _approved_candidate_database(
         model="fixed-test-model",
         started_at=NOW,
     )
+    source = BOUNDED_SOURCE.replace('timeframe = "5m"', f'timeframe = "{timeframe}"')
     output = json.dumps(
         {
             "display_name": "Bounded Candidate",
             "class_name": "BoundedCandidate",
-            "code_text": BOUNDED_SOURCE,
+            "code_text": source,
         },
         separators=(",", ":"),
     ).encode()
     candidate_id = codex_generation.complete_generation(
         database,
         prepared,
-        codex_generation.parse_candidate_output(output, timeframe="5m"),
+        codex_generation.parse_candidate_output(output, timeframe=timeframe),
         raw_output=output,
         jsonl_summary={"event_count": 4, "tool_event_count": 0},
         finished_at=NOW,
@@ -274,12 +278,14 @@ def _frozen_capability_fixture(
     *,
     pair: str = "ADA/USDT:USDT",
     instrument_id: str = "ADA-USDT-SWAP",
+    timeframe: str = "5m",
+    profile_contract: dict[str, object] | None = None,
 ) -> tuple[Path, Path, Path]:
     pilot = tmp_path / "pilot"
     acquisition = pilot / "acquisition"
     isolation = pilot / "development-isolation"
     data_stem = pair.split("/", 1)[0]
-    data_file = isolation / "data" / "okx" / "futures" / f"{data_stem}-5m.feather"
+    data_file = isolation / "data" / "okx" / "futures" / f"{data_stem}-{timeframe}.feather"
     source = tmp_path / "freqtrade-source"
     python = tmp_path / "freqtrade-python"
     acquisition.mkdir(parents=True)
@@ -288,24 +294,57 @@ def _frozen_capability_fixture(
     python.write_text("#!/bin/sh\nexit 0\n")
     python.chmod(0o700)
 
+    if profile_contract is None:
+        profile = None
+        development_timerange = "20260601-20260731"
+        holdout_timerange = "20260731-20260830"
+        data_start = datetime(2026, 5, 31, 22, tzinfo=timezone.utc)
+        window_schema = "freqtrade-lab-okx-window-v1"
+    else:
+        profile = dict(profile_contract["profile_snapshot"])
+        development_timerange = str(profile_contract["development_timerange"])
+        development_start, development_stop = _timerange_datetimes(
+            development_timerange
+        )
+        holdout_stop = development_stop + timedelta(days=int(profile["holdout_days"]))
+        holdout_timerange = (
+            f"{development_stop:%Y%m%d}-{holdout_stop:%Y%m%d}"
+        )
+        step = timedelta(days=1) if timeframe == "1d" else timedelta(minutes=5)
+        data_start = development_start - step * int(profile_contract["pre_roll_candles"])
+        window_schema = "freqtrade-lab-okx-window-v2"
+    development_start, development_stop = _timerange_datetimes(development_timerange)
+    _, holdout_stop = _timerange_datetimes(holdout_timerange)
     window_bytes = _canonical(
         {
-            "schema": "freqtrade-lab-okx-window-v1",
-            "data_start_utc": "2026-05-31T22:00:00Z",
-            "development_start_utc": "2026-06-01T00:00:00Z",
-            "holdout_start_utc": "2026-07-31T00:00:00Z",
-            "end_exclusive_utc": "2026-08-30T00:00:00Z",
+            "schema": window_schema,
+            "data_start_utc": data_start.isoformat().replace("+00:00", "Z"),
+            "development_start_utc": development_start.isoformat().replace("+00:00", "Z"),
+            "holdout_start_utc": development_stop.isoformat().replace("+00:00", "Z"),
+            "end_exclusive_utc": holdout_stop.isoformat().replace("+00:00", "Z"),
         }
     )
     (pilot / "window-spec.json").write_bytes(window_bytes)
     plan = {
         "freqtrade_version": development_run.SUPPORTED_FREQTRADE_VERSION,
         "window_spec_sha256": hashlib.sha256(window_bytes).hexdigest(),
-        "development_timerange": "20260601-20260731",
-        "holdout_timerange": "20260731-20260830",
+        "development_timerange": development_timerange,
+        "holdout_timerange": holdout_timerange,
         "selection": {
             "economic_gate": development_run.DEVELOPMENT_GATE_VERSION,
             **development_run.EXPECTED_GATE,
+            **(
+                {}
+                if profile_contract is None
+                else {
+                    key: profile_contract["finalist_gate"][key]
+                    for key in (
+                        "minimum_trades",
+                        "minimum_profit_factor",
+                        "maximum_drawdown_pct",
+                    )
+                }
+            ),
             "max_selected": 1,
             "visibility": "DEVELOPMENT_ONLY_BLIND",
             "candidate_execution_failure": "STOP",
@@ -313,18 +352,18 @@ def _frozen_capability_fixture(
     }
     (pilot / "pilot-spec.json").write_bytes(_canonical(plan))
     config = {
-        "max_open_trades": 1,
+        "max_open_trades": 1 if profile is None else profile["max_open_trades"],
         "stake_currency": "USDT",
-        "stake_amount": 100.0,
+        "stake_amount": 100.0 if profile is None else profile["stake_amount"],
         "tradable_balance_ratio": 0.99,
         "fiat_display_currency": "USD",
         "dry_run": True,
-        "dry_run_wallet": 1000.0,
+        "dry_run_wallet": 1000.0 if profile is None else profile["starting_balance"],
         "cancel_open_orders_on_exit": False,
         "trading_mode": "futures",
         "margin_mode": "isolated",
-        "timeframe": "5m",
-        "fee": 0.0005,
+        "timeframe": timeframe,
+        "fee": 0.0005 if profile is None else profile["taker_fee_rate"],
         "unfilledtimeout": {
             "entry": 10,
             "exit": 30,
@@ -387,6 +426,20 @@ def _frozen_capability_fixture(
             }
         },
     }
+    if profile_contract is not None:
+        from lab import bounded_research as bounded_pilot
+
+        source_provenance["source_acquisition"] = {
+            "provenance_sha256": "1" * 64,
+            "retrieval_receipt_sha256": "2" * 64,
+            "data_sha256": {
+                name: str(index) * 64
+                for index, name in enumerate(
+                    bounded_pilot._search_data_names(pair, timeframe).values(),
+                    start=3,
+                )
+            },
+        }
     source_provenance_bytes = _canonical(source_provenance)
     (acquisition / "retained-data-provenance.json").write_bytes(
         source_provenance_bytes
@@ -394,8 +447,8 @@ def _frozen_capability_fixture(
     isolation_provenance = {
         "schema": "freqtrade-lab-retained-okx-data-v1",
         "contract": {
-            "timeframe": "5m",
-            "development_timerange": "20260601-20260731",
+            "timeframe": timeframe,
+            "development_timerange": development_timerange,
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
         },
@@ -419,15 +472,15 @@ def _frozen_capability_fixture(
                 "bytes": len(tiers),
                 "sha256": hashlib.sha256(tiers).hexdigest(),
             },
-            f"data/okx/futures/{data_stem}-5m.feather": {
+            f"data/okx/futures/{data_stem}-{timeframe}.feather": {
                 "bytes": len(candles),
                 "sha256": hashlib.sha256(candles).hexdigest(),
             },
         },
         "development_isolation": {
             "holdout_values_present": False,
-            "timerange": "20260601-20260731",
-            "exclusive_stop_utc": "2026-07-31T00:00:00Z",
+            "timerange": development_timerange,
+            "exclusive_stop_utc": development_stop.isoformat().replace("+00:00", "Z"),
             "source_provenance_sha256": hashlib.sha256(
                 source_provenance_bytes
             ).hexdigest(),
@@ -606,6 +659,11 @@ def test_t0_missing_runtime_capability_is_blocked_data() -> None:
     assert public["freqtrade_version"] is None
     assert public["holdout"] == "SEALED_UNREAD"
     assert public["holdout_stress"] == "SEALED_UNREAD"
+
+    profile_capability = development_run.freeze_development_capability(
+        None, None, None, profile_contract={}
+    )
+    assert profile_capability.public()["economic_gate"] is None
 
 
 def test_t0_freeze_binds_pilot_config_to_acquisition_receipt(
@@ -1171,122 +1229,77 @@ def test_t0_context_offers_one_retry_for_same_frozen_contract(
     assert context["candidates"][0]["status"] == "ALREADY_PENDING"
 
 
-def test_t1_prepare_creates_one_development_and_child_has_no_pilot_path(
+def test_t0_profile_development_requires_finalist_binding_before_mutation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    pair = "XRP/USDT:USDT"
-    instrument_id = "XRP-USDT-SWAP"
     database, candidate_id = _approved_candidate_database(
-        tmp_path / "database", pair=pair
+        tmp_path / "database", timeframe="1d"
     )
-    pilot = tmp_path / "pilot"
-    acquisition = pilot / "acquisition"
-    data_root = pilot / "development-isolation" / "data" / "okx"
-    acquisition.mkdir(parents=True)
-    data_root.mkdir(parents=True)
-    config = {"strategy": "OldPilotClass", "timeframe": "5m", "fee": 0.0005}
-    config_bytes = (
-        json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n"
-    ).encode()
-    market = _canonical(
-        {
-            "id": instrument_id,
-            "symbol": pair,
-            "active": True,
-            "contract": True,
-            "swap": True,
-            "linear": True,
-            "inverse": False,
-            "type": "swap",
-        }
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        profile = dict(
+            codex_generation.load_approved_candidate_snapshot(
+                connection, candidate_id
+            ).profile
+        )
+    contract = pilot.profile_search_contract(
+        profile, "20260201-20260313", "20260313-20260512", 20
     )
-    tiers = _canonical([{"symbol": pair}])
-    candles = b"fake-development-only-bytes"
-    (acquisition / "config.json").write_bytes(config_bytes)
-    (acquisition / "market_snapshot.json").write_bytes(market)
-    (acquisition / "isolated_tiers_snapshot.json").write_bytes(tiers)
-    relative = "futures/XRP_USDT_USDT-5m-futures.feather"
-    (data_root / "futures").mkdir()
-    (data_root / relative).write_bytes(candles)
-    capability = development_run.FrozenDevelopmentCapability(
-        status="READY",
-        reason="test-ready",
-        pilot_root=pilot,
-        freqtrade_python=Path(sys.executable),
-        freqtrade_source=tmp_path,
-        plan_sha256="1" * 64,
-        source_provenance_sha256="2" * 64,
-        development_provenance_sha256="3" * 64,
-        config_sha256=hashlib.sha256(config_bytes).hexdigest(),
-        runner_sha256=hashlib.sha256(
-            development_run.DEFAULT_RUNNER.read_bytes()
-        ).hexdigest(),
-        development_timerange="20260601-20260731",
-        pair=pair,
-        instrument_id=instrument_id,
-        data_receipts=(
-            (relative, len(candles), hashlib.sha256(candles).hexdigest()),
-        ),
-        market_receipt=(len(market), hashlib.sha256(market).hexdigest()),
-        tiers_receipt=(len(tiers), hashlib.sha256(tiers).hexdigest()),
+    pilot_root, python, source = _frozen_capability_fixture(
+        tmp_path / "capability",
+        monkeypatch,
+        timeframe="1d",
+        profile_contract=contract,
     )
-    monkeypatch.setattr(development_run, "_require_ready", lambda _capability: None)
+    capability = development_run.freeze_development_capability(
+        pilot_root, python, source, profile_contract=contract
+    )
+    assert capability.status == "READY"
     run_id = str(uuid4())
     run_dir = tmp_path / "runtime" / run_id
     run_dir.mkdir(parents=True)
 
-    prepared = development_run.prepare_development_run(
-        database,
-        run_dir,
-        candidate_id,
-        capability,
-        research_run_id=run_id,
-        now=NOW,
-    )
+    with pytest.raises(development_run.DevelopmentRunError) as raised:
+        development_run.prepare_development_run(
+            database, run_dir, candidate_id, capability,
+            research_run_id=run_id, now=NOW,
+        )
+
+    assert raised.value.code == "BLOCKED_SECURITY"
+    assert not any(run_dir.iterdir())
     with get_connection(database, read_only=True) as connection:
-        run = connection.execute(
-            "SELECT status,stage,verdict,input_snapshot_json FROM research_runs WHERE id=?",
-            (run_id,),
-        ).fetchone()
-        executions = connection.execute(
-            "SELECT scenario,status,sequence FROM backtest_executions WHERE research_run_id=?",
-            (run_id,),
-        ).fetchall()
-    assert (run["status"], run["stage"], run["verdict"]) == (
-        "RUNNING",
-        "DEVELOPMENT_BACKTEST",
-        None,
+        assert connection.execute("SELECT COUNT(*) FROM research_runs").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM backtest_executions").fetchone()[0] == 0
+
+
+def test_t0_profile_development_accepts_exact_non_hour_base_warmup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database, candidate_id = _approved_candidate_database(tmp_path / "database")
+    with get_connection(database, read_only=True) as connection:
+        connection.execute("BEGIN")
+        profile = dict(
+            codex_generation.load_approved_candidate_snapshot(
+                connection, candidate_id
+            ).profile
+        )
+    contract = pilot.profile_search_contract(
+        profile, "20260601-20260701", "20260701-20260731", 25
     )
-    assert [tuple(row) for row in executions] == [("DEVELOPMENT", "PENDING", 1)]
-    snapshot = json.loads(run["input_snapshot_json"])
-    assert snapshot["holdout"] == "SEALED_UNREAD"
-    assert snapshot["holdout_stress"] == "SEALED_UNREAD"
-    provenance = json.loads(
-        (run_dir / "development-input" / "retained-data-provenance.json").read_text()
+    pilot_root, python, source = _frozen_capability_fixture(
+        tmp_path / "capability",
+        monkeypatch,
+        timeframe="5m",
+        profile_contract=contract,
     )
-    assert "holdout_timerange" not in provenance["contract"]
-    assert provenance["source"]["instrument_id"] == instrument_id
-    verified_market, verified_tiers = runner_module._verify_market_inputs(
-        json.loads(
-            (run_dir / "development-input" / "market_snapshot.json").read_text()
-        ),
-        json.loads(
-            (
-                run_dir
-                / "development-input"
-                / "isolated_tiers_snapshot.json"
-            ).read_text()
-        ),
-        pair=pair,
-        provenance=provenance,
+
+    capability = development_run.freeze_development_capability(
+        pilot_root, python, source, profile_contract=contract
     )
-    assert verified_market["id"] == instrument_id
-    assert verified_tiers[0]["symbol"] == pair
-    argv = development_run.development_worker_argv(
-        database, prepared, capability, Path(sys.executable)
-    )
-    assert str(pilot) not in argv
-    assert not any("acquisition" in item or "holdout" in item.lower() for item in argv)
+
+    assert capability.status == "READY"
+    window = json.loads((pilot_root / "window-spec.json").read_bytes())
+    assert window["data_start_utc"] == "2026-06-30T21:55:00Z"
 
 
 def test_t1_child_rejects_replaced_startup_frozen_python(

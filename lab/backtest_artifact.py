@@ -40,6 +40,10 @@ SUPPORTED_EXCHANGE = "okx"
 SUPPORTED_TRADING_MODE = "futures"
 SUPPORTED_MARGIN_MODE = "isolated"
 SUPPORTED_PROFILE_DOMAIN = "OKX_CRYPTO_PERP"
+SUPPORTED_TIMEFRAME_STEPS = {
+    "5m": timedelta(minutes=5),
+    "1d": timedelta(days=1),
+}
 
 MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
 MAX_METADATA_BYTES = 1024 * 1024
@@ -673,8 +677,9 @@ def parse_backtest_artifact(
             "the frozen format boundary requires okx/futures/isolated"
         )
     timeframe = _required_string(config, "timeframe", "config")
-    if timeframe != "5m":
-        raise ArtifactImportError("the frozen format boundary supports only 5m")
+    timeframe_step = SUPPORTED_TIMEFRAME_STEPS.get(timeframe)
+    if timeframe_step is None:
+        raise ArtifactImportError("the frozen format boundary supports only 5m or 1d")
     detail_timeframe = _normalize_detail_timeframe(
         config.get("timeframe_detail"), "config"
     )
@@ -690,13 +695,12 @@ def parse_backtest_artifact(
     assert starting_balance is not None
     assert stake_amount is not None
     if (
-        configured_fee <= 0
-        or starting_balance <= 0
+        starting_balance <= 0
         or stake_amount <= 0
         or max_open_trades <= 0
     ):
         raise ArtifactImportError(
-            "config fee, balance, stake, and max_open_trades must be positive"
+            "config balance, stake, and max_open_trades must be positive"
         )
 
     strategies = _required_mapping(report.get("strategy"), "report strategy")
@@ -737,9 +741,7 @@ def parse_backtest_artifact(
         raise ArtifactImportError(
             "report text and millisecond timeranges disagree"
         )
-    if report_start != timerange_start or report_end != timerange_end_exclusive - timedelta(
-        minutes=5
-    ):
+    if report_start != timerange_start or report_end != timerange_end_exclusive - timeframe_step:
         raise ArtifactImportError("config timerange and report candle bounds disagree")
     backtest_start = _iso_z(report_start)
     backtest_end = _iso_z(report_end)
@@ -993,6 +995,59 @@ def _db_float(value: Any, label: str, *, minimum: Optional[float] = None) -> flo
     return number
 
 
+def _scenario_execution_identity(
+    scenario: Any,
+    sequence: Any,
+    timerange_start: datetime,
+    timerange_end: datetime,
+    timeframe: Any,
+    detail_timeframe: Optional[str],
+    fee_rate: float,
+    fee_multiplier: float,
+) -> Tuple[Any, ...]:
+    """Return the frozen execution identity, including zero-fee discriminators."""
+    if scenario not in SUPPORTED_SCENARIOS:
+        raise ArtifactImportError("scenario execution identity is invalid")
+    if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence <= 0:
+        raise ArtifactImportError("scenario execution sequence is invalid")
+    if not isinstance(timeframe, str) or not timeframe:
+        raise ArtifactImportError("scenario execution timeframe is invalid")
+    return (
+        scenario,
+        sequence,
+        timerange_start,
+        timerange_end,
+        timeframe,
+        detail_timeframe,
+        fee_rate,
+        fee_multiplier,
+    )
+
+
+def _imported_archive_sha256(row: Mapping[str, Any]) -> Optional[str]:
+    """Read the archive identity of an already successful sibling execution."""
+    if row["status"] != "SUCCEEDED":
+        return None
+    metrics = row["metrics_json"]
+    if not isinstance(metrics, str):
+        raise ArtifactImportError("successful sibling execution metrics are invalid")
+    try:
+        payload = _required_mapping(
+            _strict_json(metrics.encode("utf-8", "strict"), "sibling execution metrics"),
+            "sibling execution metrics",
+        )
+    except UnicodeError as exc:
+        raise ArtifactImportError(
+            "successful sibling execution metrics are invalid"
+        ) from exc
+    artifact = _required_mapping(
+        payload.get("artifact"), "sibling execution metrics artifact"
+    )
+    return _required_sha256(
+        artifact, "archive_sha256", "sibling execution metrics artifact"
+    )
+
+
 def import_backtest_execution(
     db_path: PathLike,
     artifact_root: PathLike,
@@ -1164,8 +1219,6 @@ def import_backtest_execution(
                 "research profile stress_fee_multiplier",
                 minimum=1.0,
             )
-            if profile_fee <= 0:
-                raise ArtifactImportError("profile fee must be positive")
             expected_multiplier = stress_multiplier if scenario == "HOLDOUT_STRESS" else 1.0
             if not _same_number(multiplier, expected_multiplier, fee=True):
                 raise ArtifactImportError("execution fee_multiplier does not match scenario")
@@ -1178,14 +1231,26 @@ def import_backtest_execution(
 
             identity_rows = connection.execute(
                 """
-                SELECT scenario, timerange_start, timerange_end, timeframe,
-                       detail_timeframe, fee_rate
+                SELECT id, scenario, status, sequence, timerange_start,
+                       timerange_end, timeframe, detail_timeframe, fee_rate,
+                       fee_multiplier, metrics_json
                 FROM backtest_executions
                 WHERE research_run_id = ?
+                ORDER BY sequence, id
                 """,
                 (research_run_id,),
             ).fetchall()
-            matching_scenarios: List[str] = []
+            expected_identity = _scenario_execution_identity(
+                scenario,
+                row["sequence"],
+                artifact_start,
+                artifact_end,
+                parsed.timeframe,
+                parsed.detail_timeframe,
+                execution_fee,
+                multiplier,
+            )
+            matching_execution_ids: List[str] = []
             for identity in identity_rows:
                 identity_start = _parse_execution_timestamp(
                     identity["timerange_start"], "scenario timerange_start"
@@ -1196,20 +1261,36 @@ def import_backtest_execution(
                 identity_fee = _db_float(
                     identity["fee_rate"], "scenario fee_rate", minimum=0.0
                 )
-                if (
-                    identity_start == artifact_start
-                    and identity_end == artifact_end
-                    and identity["timeframe"] == parsed.timeframe
-                    and _normalize_detail_timeframe(
+                identity_multiplier = _db_float(
+                    identity["fee_multiplier"],
+                    "scenario fee_multiplier",
+                    minimum=1.0,
+                )
+                frozen_identity = _scenario_execution_identity(
+                    identity["scenario"],
+                    identity["sequence"],
+                    identity_start,
+                    identity_end,
+                    identity["timeframe"],
+                    _normalize_detail_timeframe(
                         identity["detail_timeframe"], "scenario"
-                    )
-                    == parsed.detail_timeframe
-                    and _same_number(identity_fee, parsed.configured_fee, fee=True)
-                ):
-                    matching_scenarios.append(identity["scenario"])
-            if matching_scenarios != [scenario]:
+                    ),
+                    identity_fee,
+                    identity_multiplier,
+                )
+                if frozen_identity == expected_identity:
+                    matching_execution_ids.append(identity["id"])
+                if identity["id"] != row["id"]:
+                    sibling_archive_sha256 = _imported_archive_sha256(identity)
+                    if sibling_archive_sha256 is not None and hmac.compare_digest(
+                        sibling_archive_sha256, parsed.archive_sha256
+                    ):
+                        raise ArtifactImportError(
+                            "artifact archive bytes were already imported for another execution"
+                        )
+            if matching_execution_ids != [row["id"]]:
                 raise ArtifactImportError(
-                    "artifact timerange/timeframe/fee identity does not uniquely match scenario"
+                    "artifact does not uniquely match the frozen scenario execution identity"
                 )
 
             existing_version = row["freqtrade_version"]
