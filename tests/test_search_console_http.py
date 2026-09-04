@@ -660,10 +660,26 @@ def test_t1_explicit_search_root_seals_later_phase_page_and_http_actions(
         "research_run_id": research_run_id,
         "candidate_id": "candidate-1",
         "research_profile_id": "profile-1",
-        "status": "PENDING",
-        "stage": "PENDING",
-        "verdict": None,
-        "development": {"status": "SUCCEEDED", "profit_pct": 1.0},
+        "status": "COMPLETED",
+        "stage": "COMPLETED",
+        "verdict": "REJECTED",
+        "rejection_reasons": ["MINIMUM_PROFIT_FACTOR_NOT_MET"],
+        "checks": {
+            "candidate_binding": "PASSED",
+            "security_gate": "PASSED",
+            "development_data": "PHYSICALLY_ISOLATED",
+            "development_gate": "REJECTED",
+            "next_phase": "NONE_REJECTED",
+            "holdout": "SEALED_UNREAD",
+            "holdout_stress": "SEALED_UNREAD",
+        },
+        "development": {
+            "status": "SUCCEEDED",
+            "profit_pct": -0.25,
+            "net_profit_after_base_fees_pct": -0.25,
+            "average_holding_period_minutes": 1440.0,
+            "roi_exit_count": 0,
+        },
         "gate_results": [
             {
                 "criterion": "minimum_profit_pct",
@@ -673,7 +689,7 @@ def test_t1_explicit_search_root_seals_later_phase_page_and_http_actions(
             }
         ],
         "executions": [
-            {"scenario": "DEVELOPMENT", "status": "SUCCEEDED", "profit_pct": 1.0},
+            {"scenario": "DEVELOPMENT", "status": "SUCCEEDED", "profit_pct": -0.25},
         ],
     }
 
@@ -799,23 +815,36 @@ def test_t1_explicit_search_root_seals_later_phase_page_and_http_actions(
             "can_authorize": False,
             "reason": "Explicit Search mode keeps Holdout and Holdout Stress sealed",
         }
-        assert detail["status"] == detail["stage"] == "PENDING"
-        assert detail["development"]["profit_pct"] == 1.0
+        assert detail["status"] == detail["stage"] == "COMPLETED"
+        assert detail["verdict"] == "REJECTED"
+        assert detail["rejection_reasons"] == ["MINIMUM_PROFIT_FACTOR_NOT_MET"]
+        assert detail["development"] == {
+            "status": "SUCCEEDED",
+            "profit_pct": -0.25,
+            "net_profit_after_base_fees_pct": -0.25,
+            "average_holding_period_minutes": 1440.0,
+            "roi_exit_count": 0,
+            "execution_rows": 1,
+        }
         assert [item["scenario"] for item in detail["executions"]] == ["DEVELOPMENT"]
         assert detail["holdout"] == {"status": "SEALED_UNREAD", "execution_rows": 0}
         assert detail["holdout_stress"] == {
             "status": "SEALED_UNREAD", "execution_rows": 0
         }
         assert detail["gate_results"] == development_projection["gate_results"]
-        assert not {
-            "verdict", "release_count", "strategy_detail_url", "manual_review"
-        } & set(detail)
+        assert not {"release_count", "strategy_detail_url", "manual_review"} & set(detail)
         serialized = json.dumps(detail, sort_keys=True)
         assert "/private/" not in serialized
         assert set(detail["boundaries"].values()) == {"SEALED_UNREAD"}
         assert 'id="research-holdout" class="danger" disabled' in research_console.CONSOLE_HTML
         assert 'id="manual-reject" class="danger" disabled' in research_console.CONSOLE_HTML
         assert 'id="manual-pass" disabled' in research_console.CONSOLE_HTML
+        for metric in (
+            "net_profit_after_base_fees_pct",
+            "average_holding_period_minutes",
+            "roi_exit_count",
+        ):
+            assert metric in research_console.CONSOLE_HTML
 
         for path in ("/", "/api/strategies", "/strategy", "/api/strategy", "/download"):
             status, error, raw = _request(server, path)

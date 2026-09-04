@@ -3596,6 +3596,8 @@ class ResearchConsoleController:
             execution_fields = ("scenario", "sequence", "status", "scenario_opened",
                                 "total_trades", "profit_pct", "total_profit_pct",
                                 "max_drawdown_pct", "win_rate", "profit_factor",
+                                "artifact_sha256", "net_profit_after_base_fees_pct",
+                                "average_holding_period_minutes", "roi_exit_count",
                                 "scenario_passed", "started_at", "finished_at")
             executions = payload.get("executions", [])
             development_execution = next((item for item in executions
@@ -3605,28 +3607,25 @@ class ResearchConsoleController:
             development = development if isinstance(development, dict) else development_execution or {}
             development_public = pick(development, execution_fields[1:])
             development_public["execution_rows"] = 1 if development else 0
-            stage = payload.get("stage")
-            later_stage = stage not in {"PENDING", "DEVELOPMENT_BACKTEST"}
             result = pick(payload, ("research_run_id", "candidate_id", "research_profile_id",
                                     "trigger_type", "pipeline_version", "freqtrade_version",
-                                    "created_at", "started_at"))
+                                    "created_at", "started_at", "finished_at"))
             result.update(
-                status="PENDING" if later_stage else payload.get("status"),
-                stage="PENDING" if later_stage else stage,
-                finished_at=development_public.get("finished_at"),
-                checks=pick(payload.get("checks", {}), ("candidate_binding", "security_gate",
-                                                          "development_data", "development_gate")),
-                gate_results=(
-                    []
-                    if later_stage
-                    else [
-                        pick(item, ("criterion", "threshold", "actual", "passed"))
-                        for item in payload.get("gate_results", [])
-                        if isinstance(item, dict)
-                    ]
-                ),
-                error_stage=payload.get("error_stage") if not later_stage else None,
-                error_message=payload.get("error_message") if not later_stage else None,
+                status=payload.get("status"),
+                stage=payload.get("stage"),
+                verdict=payload.get("verdict"),
+                checks=pick(payload.get("checks", {}), (
+                    "candidate_binding", "security_gate", "development_data",
+                    "development_gate", "next_phase", "holdout", "holdout_stress",
+                )),
+                gate_results=[
+                    pick(item, ("criterion", "threshold", "actual", "passed"))
+                    for item in payload.get("gate_results", [])
+                    if isinstance(item, dict)
+                ],
+                rejection_reasons=list(payload.get("rejection_reasons", [])),
+                error_stage=payload.get("error_stage"),
+                error_message=payload.get("error_message"),
                 development=development_public,
                 holdout={"status": "SEALED_UNREAD", "execution_rows": 0},
                 holdout_stress={"status": "SEALED_UNREAD", "execution_rows": 0},
@@ -3635,8 +3634,12 @@ class ResearchConsoleController:
                 boundaries=dict.fromkeys(("holdout", "holdout_stress", "judge", "release"),
                                           "SEALED_UNREAD"),
             )
-            if development_execution is not None:
-                result["executions"] = [pick(development_execution, execution_fields)]
+            result["executions"] = [
+                {
+                    "scenario": "DEVELOPMENT",
+                    **pick(development_public, execution_fields[1:]),
+                }
+            ] if development else []
             return result
         authorization = payload.get("authorization")
         normalized = dict(authorization) if isinstance(authorization, dict) else {}
@@ -4801,7 +4804,8 @@ function renderResearch(value) {
     const openedValue = execution ? execution.scenario_opened : null;
     opened.textContent = `scenario_opened: ${openedValue === true ? 'OPENED' : openedValue === false ? 'NOT_OPENED' : openedValue || 'NOT_OPENED'}`;
     const metrics = document.createElement('div'); metrics.className = 'note';
-    const metricKeys = ['total_trades','profit_pct','profit_factor','max_drawdown_pct'];
+    const metricKeys = ['total_trades','profit_pct','net_profit_after_base_fees_pct',
+      'profit_factor','max_drawdown_pct','average_holding_period_minutes','roi_exit_count'];
     metrics.textContent = execution ? metricKeys.filter(key => execution[key] !== null && execution[key] !== undefined).map(key => `${key}: ${execution[key]}`).join(' · ') || 'metrics: UNKNOWN' : 'metrics: UNKNOWN';
     box.append(title, status, opened, metrics); researchScenarios.append(box);
   });
