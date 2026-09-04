@@ -46,6 +46,8 @@ WINDOW_FIELDS = (
     "end_exclusive_utc",
 )
 FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000
+FUNDING_ARCHIVE_TIMESTAMP_NORMALIZATION = "FLOOR_TO_8H_GRID_V1"
+MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS = 2_000
 MAX_FUNDING_BATCH = 100
 FUNDING_REST_RETENTION = timedelta(days=90)
 ARCHIVE_CATALOG_HOST = "www.okx.com"
@@ -827,16 +829,22 @@ def fetch_archive_funding_history(
         rows, archive_receipt = _parse_funding_archive(
             raw, archive_name=archive_name, csv_name=csv_name
         )
+        normalized_rows: list[dict[str, object]] = []
+        timestamp_drifts: list[int] = []
         for row in rows:
             timestamp = int(row["timestamp"])
             local = datetime.fromtimestamp(timestamp / 1000, UTC).astimezone(
                 ARCHIVE_TIMEZONE
             )
-            if (local.year, local.month) != (
-                year,
-                month,
-            ) or timestamp % FUNDING_INTERVAL_MS != 0:
+            drift = timestamp % FUNDING_INTERVAL_MS
+            if (local.year, local.month) != (year, month) or not (
+                0 <= drift <= MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
+            ):
                 raise RuntimeError(f"funding archive month {label} timestamp drifted")
+            normalized_rows.append(
+                {**row, "timestamp": timestamp - drift}
+            )
+            timestamp_drifts.append(drift)
         requests.append(
             {
                 "label": f"funding-archive-{label}",
@@ -846,10 +854,20 @@ def fetch_archive_funding_history(
                 "response_bytes": len(raw),
                 "response_sha256": sha256(raw),
                 "response_headers": headers,
+                "timestamp_normalization": {
+                    "method": FUNDING_ARCHIVE_TIMESTAMP_NORMALIZATION,
+                    "maximum_allowed_drift_ms": (
+                        MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
+                    ),
+                    "maximum_observed_drift_ms": max(timestamp_drifts),
+                    "normalized_rows": sum(
+                        drift > 0 for drift in timestamp_drifts
+                    ),
+                },
                 **archive_receipt,
             }
         )
-        output.extend(rows)
+        output.extend(normalized_rows)
     all_timestamps = [int(row["timestamp"]) for row in output]
     if len(all_timestamps) != len(set(all_timestamps)):
         raise RuntimeError("funding archive contains duplicate UTC timestamps")

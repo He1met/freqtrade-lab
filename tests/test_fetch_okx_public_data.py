@@ -817,12 +817,12 @@ def test_archive_funding_crosses_okx_local_month_and_records_hashes(
         (2026, 4): [("BTC-USDT-SWAP", "0.0001", str(first - 8 * 60 * 60 * 1000))],
         (2026, 5): [],
     }
-    for timestamp in expected_timestamps:
+    for index, timestamp in enumerate(expected_timestamps):
         local = datetime.fromtimestamp(timestamp / 1000, timezone.utc).astimezone(
             profile_acquisition_module.ARCHIVE_TIMEZONE
         )
         month_rows[(local.year, local.month)].append(
-            ("BTC-USDT-SWAP", "0.0001", str(timestamp))
+            ("BTC-USDT-SWAP", "0.0001", str(timestamp + index % 3 * 1000))
         )
     month_rows[(2026, 5)].append(("BTC-USDT-SWAP", "0.0001", str(stop)))
     archives: dict[str, bytes] = {}
@@ -879,8 +879,75 @@ def test_archive_funding_crosses_okx_local_month_and_records_hashes(
         for receipt in receipts
         if receipt["method"] == "GET"
     )
+    normalizations = [
+        receipt["timestamp_normalization"]
+        for receipt in receipts
+        if receipt["method"] == "GET"
+    ]
+    assert {item["method"] for item in normalizations} == {
+        profile_acquisition_module.FUNDING_ARCHIVE_TIMESTAMP_NORMALIZATION
+    }
+    assert {item["maximum_allowed_drift_ms"] for item in normalizations} == {2000}
+    assert max(item["maximum_observed_drift_ms"] for item in normalizations) == 2000
+    assert sum(item["normalized_rows"] for item in normalizations) > 0
     assert len([call for call in calls if call[0] == "POST"]) == 1
     assert sleeps == [profile_acquisition_module.ARCHIVE_CATALOG_THROTTLE_SECONDS]
+
+
+@pytest.mark.parametrize("drift_ms", (-1, 2001, 3000))
+def test_archive_funding_rejects_timestamp_outside_post_grid_drift_budget(
+    profile_acquisition_module, monkeypatch, tmp_path: Path, drift_ms: int
+) -> None:
+    _configure_profile_helper(
+        profile_acquisition_module,
+        tmp_path,
+        pair="BTC/USDT:USDT",
+        timeframe="1d",
+        pre_roll_candles=1,
+        data_start_utc="2026-03-31T00:00:00Z",
+        search_start_utc="2026-04-01T00:00:00Z",
+        development_start_utc="2026-05-03T00:00:00Z",
+        end_exclusive_utc="2026-05-05T00:00:00Z",
+    )
+    timestamp = int(profile_acquisition_module.SEARCH_START.timestamp() * 1000)
+    _, archive_name, csv_name = profile_acquisition_module._archive_names(2026, 4)
+    archive = _funding_archive_bytes(
+        csv_name,
+        [("BTC-USDT-SWAP", "0.0001", str(timestamp + drift_ms))],
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "_archive_month_groups",
+        lambda: [[(2026, 4)]],
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "_archive_catalog_group",
+        lambda months, requests: [
+            (
+                2026,
+                4,
+                "https://static.okx.com/cdn/okex/traderecords/swaprates/monthly/"
+                f"202604/{archive_name}?v=999",
+                archive_name,
+                csv_name,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        profile_acquisition_module,
+        "archive_http_request",
+        lambda method, url: (
+            archive,
+            {
+                "content-type": "application/zip",
+                "content-length": str(len(archive)),
+            },
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="timestamp drifted"):
+        profile_acquisition_module.fetch_archive_funding_history([])
 
 
 def test_issue_45_archive_uses_6_6_1_groups_and_binds_provenance(
