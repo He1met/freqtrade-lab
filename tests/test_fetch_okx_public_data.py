@@ -1878,15 +1878,71 @@ def test_archive_selected_sequence_and_month_still_fail_closed(
         module.fetch_archive_funding_history([])
 
 
-def test_archive_selected_rate_failure_through_main_cleans_output_and_stderr(
-    profile_acquisition_module, monkeypatch, tmp_path, capsys
+@pytest.mark.parametrize(
+    ("timestamp", "actual_month", "drift", "reasons"),
+    (
+        (1775001602001, "2026-04", 2001, "DRIFT_EXCEEDS_LIMIT"),
+        (1775001603000, "2026-04", 3000, "DRIFT_EXCEEDS_LIMIT"),
+        (1777593600000, "2026-05", 0, "MONTH_MISMATCH"),
+        (1743465600000, "2025-04", 0, "MONTH_MISMATCH"),
+        (1777593602001, "2026-05", 2001, "MONTH_MISMATCH,DRIFT_EXCEEDS_LIMIT"),
+    ),
+)
+def test_archive_timestamp_error_has_safe_context_before_rate_access(
+    profile_acquisition_module, monkeypatch, timestamp, actual_month, drift, reasons
+):
+    # Entirely synthetic rows: no public archive values or retained market data.
+    module = profile_acquisition_module
+    monkeypatch.setattr(module, "INSTRUMENT_ID", "XRP-USDT-SWAP")
+    poison = "PRIVATE_RATE_MUST_NOT_BE_ACCESSED"
+    original_reader = module.csv.reader
+
+    class ProtectedFields(list):
+        def __getitem__(self, index):
+            if index == 1:
+                pytest.fail("rate field accessed before timestamp rejection")
+            return super().__getitem__(index)
+
+    def guarded_reader(*args, **kwargs):
+        reader = original_reader(*args, **kwargs)
+        yield next(reader)
+        for fields in reader:
+            yield ProtectedFields(fields)
+
+    monkeypatch.setattr(module.csv, "reader", guarded_reader)
+    _, archive_name, csv_name = module._archive_names(2026, 4)
+    raw = _funding_archive_bytes(
+        csv_name, [(module.INSTRUMENT_ID, poison, str(timestamp))]
+    )
+    with pytest.raises(RuntimeError, match="funding archive month 2026-04 timestamp drifted") as error:
+        module._parse_funding_archive(
+            raw, archive_name=archive_name, csv_name=csv_name,
+            year=2026, month=4, start_ms=1735689600000, end_exclusive_ms=1798761600000,
+        )
+    message = str(error.value)
+    assert message == (
+        f"funding archive month 2026-04 timestamp drifted: reasons={reasons}; "
+        f"row=2; expected_month=2026-04; actual_month={actual_month}; "
+        f"month_timezone=UTC+08:00; raw_timestamp_ms={timestamp}; "
+        f"normalized_timestamp_ms={timestamp - drift}; drift_ms={drift}; "
+        f"maximum_drift_ms=2000; archive_sha256={hashlib.sha256(raw).hexdigest()}"
+    )
+    assert poison not in ''.join(traceback.format_exception(error.value))
+
+
+@pytest.mark.parametrize("failure", ("rate", "timestamp"))
+def test_archive_selected_failure_through_main_cleans_output_and_stderr(
+    profile_acquisition_module, monkeypatch, tmp_path, capsys, failure
 ):
     module = profile_acquisition_module
     database, profile_id, _, window = _configure_profile_helper(module, tmp_path)
     month_rows, _ = _mock_monthly_archives(module, monkeypatch)
     poison = "PRIVATE_SYNTHETIC_RATE_MARKER"
     instrument, _, timestamp = month_rows[(2026, 3)][1]
+    if failure == "timestamp":
+        timestamp = str(int(timestamp) + 2001)
     month_rows[(2026, 3)][1] = (instrument, poison, timestamp)
+    message = "row 3 rate is invalid" if failure == "rate" else "DRIFT_EXCEEDS_LIMIT"
     output = tmp_path / "failed-source"
     sibling = tmp_path / "unrelated.txt"
     sibling.write_text("keep")
@@ -1914,7 +1970,7 @@ def test_archive_selected_rate_failure_through_main_cleans_output_and_stderr(
     monkeypatch.setattr(module, "fetch_profile_candles", lambda *args, **kwargs: [])
     monkeypatch.setattr(module, "store_profile_market_data", lambda *args: pytest.fail("data published"))
     monkeypatch.setattr(module, "write_profile_provenance", lambda *args: pytest.fail("provenance published"))
-    with pytest.raises(RuntimeError, match="row 3 rate is invalid"):
+    with pytest.raises(RuntimeError, match=message):
         try:
             module.main()
         except RuntimeError:
@@ -1925,6 +1981,6 @@ def test_archive_selected_rate_failure_through_main_cleans_output_and_stderr(
     assert sibling.read_text() == "keep"
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "row 3 rate is invalid" in captured.err
+    assert message in captured.err
     assert poison not in captured.err
     assert "could not convert string to float" not in captured.err
