@@ -167,6 +167,67 @@ def test_t2_exploratory_source_retains_only_search_and_rejects_label_drift(tmp_p
         search_campaign._acquisition_snapshot(output, kwargs['database_path'])
 
 
+@pytest.mark.parametrize('case', ['valid', 'source-nonexploratory', 'target-nonexploratory',
+    'source-sha', 'receipt-sha', 'pair', 'window', 'pre-roll', 'exposure', 'fee', 'gate', 'later-data'])
+def test_shared_exploratory_source_has_a_closed_profile_whitelist(tmp_path, case):
+    from tests.test_search_data_producer import _source_acquisition, _profile_prepare_kwargs
+    source, provenance_sha, receipt_sha = _source_acquisition(
+        tmp_path, exploration=None if case == 'source-nonexploratory' else EXPLORATION)
+    kwargs = _profile_prepare_kwargs(tmp_path)
+    kwargs.update(development_timerange=None, exploration=EXPLORATION)
+    database = kwargs['database_path']
+    with get_connection(database) as con:
+        source_profile = dict(con.execute('SELECT * FROM research_profiles').fetchone())
+        target = {**source_profile, 'id':'different-consumer', 'name':'Different consumer',
+                  'stake_amount':200., 'min_development_trades':12, 'min_holdout_trades':12}
+        if case == 'pair': target['pairs_json'] = '["ETH/USDT:USDT"]'
+        if case == 'fee': target['taker_fee_rate'] = 0.001
+        if case == 'gate': target['min_profit_factor'] = 1.2
+        columns = ','.join(target)
+        con.execute(f'INSERT INTO research_profiles ({columns}) VALUES ({",".join("?" for _ in target)})',tuple(target.values()))
+        con.commit()
+    kwargs['profile_id'] = target['id']
+    if case == 'target-nonexploratory':
+        kwargs.update(exploration=None, development_timerange='20260701-20260801')
+    if case == 'source-sha': provenance_sha = '0'*64
+    if case == 'receipt-sha': receipt_sha = '0'*64
+    if case == 'window': kwargs['search_timerange'] = '20260602-20260701'
+    if case == 'pre-roll': kwargs['pre_roll_candles'] -= 1
+    if case == 'exposure': kwargs['exploration'] = {**EXPLORATION, 'exposure_audit_sha256':'c'*64}
+    if case == 'later-data':
+        import pyarrow as pa
+        import pyarrow.feather as feather
+        from datetime import datetime, timezone
+        path = next((source/'data').rglob('*-5m-futures.feather'))
+        table = feather.read_table(path)
+        extra = table.slice(table.num_rows-1).set_column(0, table.schema.field(0),
+            pa.array([datetime(2026,7,1,tzinfo=timezone.utc)],type=table.schema.field(0).type))
+        feather.write_feather(pa.concat_tables([table,extra]),path)
+    source_hashes = {str(path.relative_to(source)):pilot.digest(path.read_bytes())
+                     for path in source.rglob('*') if path.is_file()}
+    database_hash = pilot.digest(database.read_bytes())
+    output = tmp_path/'consumer'
+    if case == 'valid':
+        pilot.prepare_search_data(source,output,provenance_sha,receipt_sha,**kwargs)
+        public = search_campaign._acquisition_snapshot(output,database)
+        assert public['profile_snapshot']['id'] == target['id']
+        assert public['profile_snapshot']['stake_amount'] == 200.
+        receipt = json.loads((output/'acquisition'/'retained-data-provenance.json').read_bytes())
+        assert receipt['source_acquisition']['provenance_sha256'] == provenance_sha
+        original = json.loads((source/'retained-data-provenance.json').read_bytes())
+        assert original['contract']['profile_acquisition']['profile_snapshot']['id'] == source_profile['id']
+        config = json.loads((output/'acquisition'/'config.json').read_bytes())
+        assert config['stake_amount'] == 200.
+    else:
+        with pytest.raises(pilot.PilotError):
+            pilot.prepare_search_data(source,output,provenance_sha,receipt_sha,**kwargs)
+        assert not output.exists()
+        assert not list(tmp_path.glob('.search-data-*'))
+    assert pilot.digest(database.read_bytes()) == database_hash
+    assert source_hashes == {str(path.relative_to(source)):pilot.digest(path.read_bytes())
+                             for path in source.rglob('*') if path.is_file()}
+
+
 def test_exploratory_plan_limits_and_no_finalist_handoff(tmp_path):
     db, candidate_id = exploratory_candidate(tmp_path)
     with get_connection(db, read_only=True) as con:

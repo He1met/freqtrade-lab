@@ -1851,12 +1851,33 @@ def prepare_search_data(
     profile = validate_profile_search_contract(data_contract)
     timeframe = str(profile["timeframe"])
     pre_roll = int(pre_roll_candles)
+    source_contract = data_contract
+    if exploration is not None:
+        source_document, source_bytes = load_json(source / "retained-data-provenance.json", "source provenance")
+        if digest(source_bytes) != trusted_provenance_sha256:
+            raise PilotError("source provenance trusted SHA mismatch")
+        source_contract = source_document.get("contract", {}).get("profile_acquisition")
+        if not isinstance(source_contract, dict) or "exploration" not in source_contract:
+            raise PilotError("Shared source requires two exploratory contracts")
     frozen = _load_search_source(
         source,
         trusted_provenance_sha256,
         trusted_receipt_sha256,
-        profile_contract=data_contract,
+        profile_contract=source_contract,
     )
+    if exploration is not None:
+        # The original source/config has already passed its own complete verification.
+        source_profile = source_contract["profile_snapshot"]
+        allowed = {"id", "name", "created_at", "updated_at", "starting_balance", "stake_amount",
+                   "min_development_trades", "min_holdout_trades"}
+        if (any(source_profile[key] != data_contract["profile_snapshot"][key]
+                for key in PROFILE_SNAPSHOT_FIELDS - allowed)
+                or source_contract != profile_search_contract(
+                    source_profile, search_timerange, development_timerange, pre_roll,
+                    economic_gate, exploration)):
+            raise PilotError("Shared exploratory source differs outside the Profile identity/capital/sample whitelist")
+        # Source originals and their trusted SHA links remain intact; only this consumer gets its config.
+        frozen["controls"]["config.json"] = canonical(profile_search_config(data_contract["profile_snapshot"]))
     window = _search_window_contract(search_timerange, timeframe=timeframe, pre_roll_candles=pre_roll)
     staging = Path(tempfile.mkdtemp(prefix=".search-data-", dir=output_parent))
     staging.chmod(0o700)

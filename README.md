@@ -360,6 +360,15 @@ Removing or changing its label breaks binding; even a passing exploratory
 finalist cannot enter Development. This mode reuses existing JSON fields and
 the six-table schema. It does not authorize acquisition of protected history.
 
+Two exploratory Profiles may consume the same verified source when only their
+identity, timestamps, capital, or minimum sample counts differ. Source verification
+first uses its original complete Profile/config and trusted hashes; all other
+Profile fields, windows, pre-roll, exposure audit, and economic Gate must match.
+Each consumer then receives its own verified config and provenance. Its
+`source_acquisition.provenance_sha256` still points to the original source and
+original Profile; source files remain unchanged. These are two consumers of one
+historical data source, not independent validation samples.
+
 Session candidates may use only
 `dataframe["date"].dt.tz_convert("America/New_York").dt.hour`, `.minute`, and
 `.dayofweek`; arbitrary datetime accessors remain rejected. The fixed R2 factors
