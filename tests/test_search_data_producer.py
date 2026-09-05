@@ -60,17 +60,17 @@ def _timestamps(start: datetime, stop: datetime, step: timedelta) -> list[dateti
     return [start + index * step for index in range(int((stop - start) / step))]
 
 
-def _ohlcv_table(pa, dates: list[datetime], *, missing_volume: bool = False):
+def _ohlcv_table(pa, dates: list[datetime], *, missing_volume: bool = False, funding: bool = False):
     rows = len(dates)
     return pa.table(
         {
             "date": pa.array(dates, type=pa.timestamp("ms", tz="UTC")),
             "open": pa.array([100.0] * rows, type=pa.float64()),
-            "high": pa.array([101.0] * rows, type=pa.float64()),
-            "low": pa.array([99.0] * rows, type=pa.float64()),
-            "close": pa.array([100.0] * rows, type=pa.float64()),
+            "high": pa.array([0.0 if funding else 101.0] * rows, type=pa.float64()),
+            "low": pa.array([0.0 if funding else 99.0] * rows, type=pa.float64()),
+            "close": pa.array([0.0 if funding else 100.0] * rows, type=pa.float64()),
             "volume": pa.array(
-                [None] * rows if missing_volume else [1.0] * rows,
+                [None] * rows if missing_volume else [0.0 if funding else 1.0] * rows,
                 type=pa.float64(),
             ),
         }
@@ -122,6 +122,7 @@ def _source_acquisition(
                 pa,
                 dates,
                 missing_volume=name.endswith("-1h-mark.feather"),
+                funding=name.endswith("-funding_rate.feather"),
             ),
             path,
             compression="uncompressed",
@@ -438,7 +439,7 @@ def _rewrite_search_window(root: Path, timerange_value: str) -> dict[str, object
         path.chmod(0o600)
         values = _timestamps(window["starts"][series], window["search_stop"], step)
         feather.write_feather(
-            _ohlcv_table(pa, values, missing_volume=series == "mark_1h"),
+            _ohlcv_table(pa, values, missing_volume=series == "mark_1h", funding=series == "funding_history"),
             path,
             compression="uncompressed",
         )

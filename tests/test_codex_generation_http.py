@@ -151,10 +151,17 @@ else:
     else:
         display_name = "Bounded EMA Pullback"
         class_name = "BoundedEmaPullback"
+    if MODE == "synthetic_funding":
+        import ast
+        code_text = business_context["fixed_source"]
+        class_name = next(node.name for node in ast.parse(code_text).body if isinstance(node, ast.ClassDef))
+        display_name = "SYNTHETIC funding test"
+    else:
+        code_text = "from freqtrade.strategy import IStrategy\\n\\nclass " + class_name + "(IStrategy):\\n    timeframe = \\\"5m\\\"\\n"
     output_path.write_text(json.dumps({{
         "display_name": display_name,
         "class_name": class_name,
-        "code_text": "from freqtrade.strategy import IStrategy\\n\\nclass " + class_name + "(IStrategy):\\n    timeframe = \\\"5m\\\"\\n",
+        "code_text": code_text,
     }}, separators=(",", ":")), encoding="utf-8")
 print(json.dumps({{"type":"thread.started","thread_id":"thread-fake"}}), flush=True)
 print(json.dumps({{"type":"turn.started"}}), flush=True)
