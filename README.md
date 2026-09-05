@@ -216,11 +216,22 @@ The page then locks that parent into the existing Codex card: the user generates
 one child at a time, reviews its source, and explicitly approves or rejects it.
 Round 2 accepts one approved single-factor child. The active budget is three attempts (two plus one), with a fail-closed hard ceiling of six; there is no third round, automatic child loop, Hyperopt, or threshold rescue.
 Literal class-setting changes retain their existing exact-AST comparison. The
-versioned `entry_sma_filter_84_v1` factor is the only structural exception: it
+versioned `entry_sma_filter_84_v1` factor is a structural exception: it
 requires exactly one `close.rolling(84).mean()` indicator named
 `entry_sma_84`, adds it with `&` to both long and short entry masks in the
 matching direction, and preserves every other class field, signal, and AST
 node. Partial, reversed, or additional changes fail closed.
+
+`ENTRY_PRIOR_CLOSE_CHANNEL_FILTER_V1` uses the fixed factor slug
+`entry_prior_close_channel_28_10pct_v1`. It appends exactly
+`(dataframe["close"].rolling(28).max().shift(1) / dataframe["close"].rolling(28).min().shift(1)) <= 1.10`
+with `&` to both original entry masks. The channel excludes the current bar;
+on a `1d` Profile it covers the prior 28 daily closes. Removing those two
+conjuncts must restore the complete parent AST except its class name. Changing
+the threshold, window, shift, exits, settings, or shared indicators fails
+closed. This is a fixed causal entry filter, not evidence of a qualified or
+profitable strategy; generation approval and the frozen Search contract still
+apply.
 
 Search completion freezes either a finalist or a no-finalist terminal result;
 neither result proves profitability, robustness, or tradability. Selecting a
