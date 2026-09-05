@@ -68,6 +68,7 @@ CHANGED_FACTOR = re.compile(r"^[a-z][a-z0-9_.-]{0,62}$")
 ENTRY_SMA_FILTER_84_V1 = "entry_sma_filter_84_v1"
 SESSION_PRE_ENTRY_AGREEMENT_V1 = "session_pre_entry_agreement_v1"
 ENTRY_LOW_ACTIVITY_FILTER_72_V1 = "entry_low_activity_filter_72_v1"
+ENTRY_PRIOR_CLOSE_CHANNEL_FILTER_V1 = "entry_prior_close_channel_28_10pct_v1"
 _ENTRY_SMA_FILTER_COLUMN = "entry_sma_84"
 PRIVATE_OUTPUT = re.compile(r"^round-[12]\.(?:stdout|stderr)\.log$")
 PUBLIC_TRIAL_FIELDS = pilot.SEARCH_PUBLIC_TRIAL_FIELDS
@@ -1492,6 +1493,13 @@ def _single_factor_change(
         )
     if changed_factor == ENTRY_SMA_FILTER_84_V1:
         return _single_sma_entry_filter_change_v1(parent, child)
+    if changed_factor == ENTRY_PRIOR_CLOSE_CHANNEL_FILTER_V1:
+        return _single_entry_conjunct_change(
+            parent, child,
+            {signal: '(dataframe["close"].rolling(28).max().shift(1) / '
+             'dataframe["close"].rolling(28).min().shift(1)) <= 1.10'
+             for signal in ("enter_long", "enter_short")},
+        )
     if changed_factor == SESSION_PRE_ENTRY_AGREEMENT_V1:
         return _single_session_agreement_change(parent, child)
     if changed_factor == ENTRY_LOW_ACTIVITY_FILTER_72_V1:
