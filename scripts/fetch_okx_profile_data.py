@@ -823,7 +823,23 @@ def _parse_funding_archive(
             if (local.year, local.month) != (year, month) or not (
                 0 <= drift <= MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS
             ):
-                raise RuntimeError(f"funding archive month {label} timestamp drifted")
+                reasons = []
+                if (local.year, local.month) != (year, month):
+                    reasons.append("MONTH_MISMATCH")
+                if not 0 <= drift <= MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS:
+                    reasons.append("DRIFT_EXCEEDS_LIMIT")
+                # Only validated clock values and byte identity belong in stderr.
+                # Keep the legacy prefix and RuntimeError for existing callers.
+                raise RuntimeError(
+                    f"funding archive month {label} timestamp drifted: "
+                    f"reasons={','.join(reasons)}; row={number}; "
+                    f"expected_month={label}; actual_month={local:%Y-%m}; "
+                    f"month_timezone=UTC+08:00; raw_timestamp_ms={timestamp}; "
+                    f"normalized_timestamp_ms={normalized_timestamp}; "
+                    f"drift_ms={drift}; "
+                    f"maximum_drift_ms={MAX_FUNDING_ARCHIVE_TIMESTAMP_DRIFT_MS}; "
+                    f"archive_sha256={sha256(raw)}"
+                )
             try:
                 rate = float(fields[1])
             except ValueError:
