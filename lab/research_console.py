@@ -656,6 +656,7 @@ class ResearchConsoleController:
         pilot_root: PathLike,
         *,
         search_root: Optional[PathLike] = None,
+        exploration_contract: Optional[Mapping[str, Any]] = None,
         codex_binary: Optional[PathLike] = None,
         codex_model: Optional[str] = None,
         check_data_python: PathLike = sys.executable,
@@ -675,6 +676,12 @@ class ResearchConsoleController:
             raise ResearchConsoleError(
                 "task timeout must be between 0.1 and 86400 seconds"
             )
+        if exploration_contract is not None:
+            from lab.bounded_research import validate_exploration
+            exploration_contract = validate_exploration(exploration_contract)
+            if search_root is None:
+                raise ResearchConsoleError("Exploration requires an explicit Search root")
+        self._exploration_contract = exploration_contract
         runtime, runtime_identity = _resolve_external_directory(
             runtime_root, "runtime root"
         )
@@ -785,6 +792,13 @@ class ResearchConsoleController:
                 freqtrade_python,
                 freqtrade_source,
             )
+            if exploration_contract is not None and self._search_capability.status == "READY" and self._search_capability.exploration != exploration_contract:
+                raise ResearchConsoleError("Exploration acquisition differs from startup-frozen contract")
+            if exploration_contract is not None and self._search_capability.status != "READY":
+                self._search_capability = FrozenSearchCapability(
+                    status=self._search_capability.status, reason=self._search_capability.reason,
+                    exploration=exploration_contract,
+                )
             # Reconcile a complete Round 1 or terminal receipt and fail closed
             # on an interrupted partial ledger. Search recovery remains
             # independent of Console/Codex; only the explicit Search root keeps
@@ -824,7 +838,7 @@ class ResearchConsoleController:
                         development_profile_contract = None
                 if development_profile_contract is None:
                     self._development_capability = FrozenDevelopmentCapability(
-                        status=search_capability.status,
+                        status="EXPLORATORY_ONLY" if search_capability.exploration is not None or exploration_contract is not None else search_capability.status,
                         reason=(
                             "Development requires one frozen valid Search Profile contract"
                         ),
@@ -2415,6 +2429,7 @@ class ResearchConsoleController:
                     request,
                     model=self.config.codex_model,
                     started_at=created,
+                    exploration=self._exploration_contract or (self._search_capability.exploration if self._search_capability is not None else None),
                 )
                 workspace = campaign_dir / "workspace"
                 prompt = build_prompt(request, prepared.profile, prepared.parent)
@@ -4636,7 +4651,7 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 </style><script src="/console.js" defer></script></head>
 <body><main><header><div><h1>Research Console</h1><div class="note">本地单进程 · 固定动作 · 无任意命令入口</div></div><a href="/">策略库</a></header>
 <section><h2>Preflight</h2><div id="overall" class="status">CHECKING</div><div id="checks" class="grid"></div></section>
-<section><h2>Search-only 两轮 Gate</h2><p class="note">Round 1 选择同 Profile 的 APPROVED mechanism seed（Profile 模式最多 2 个）；Round 2 只接受一个 selected-parent child。Profile 主动预算 3 次、协议硬上限 6 次，不做阈值救援或第三轮。</p>
+<section><h2>Search-only 两轮 Gate</h2><p class="note">Round 1 选择同 Profile 的 APPROVED mechanism seed；Round 2 只接受一个 selected-parent child。探索模式每轮一个、最多两次；其他 Profile 主动预算 3 次、协议硬上限 6 次。不做阈值救援或第三轮。</p><p id="search-purpose" class="note"></p>
 <div class="field"><label for="search-seeds">Round 1 seeds（从下方 ResearchProfile 筛选）</label><select id="search-seeds" multiple size="5"></select></div>
 <div id="search-seed-note" class="note">只能选择同 Profile、不同 mechanism 的 root Candidate</div>
 <button id="search-round-1" disabled>运行 Round 1</button><button id="search-cancel" class="secondary" disabled>取消当前 Search</button>
@@ -4829,7 +4844,7 @@ async function loadResearchContext() {
 function selectedSearchSeeds() { return [...searchSeeds.selectedOptions]; }
 function validRoundOneSelection() {
   const selected = selectedSearchSeeds();
-  const maximum = 2;
+  const maximum = searchContext && searchContext.limits ? searchContext.limits.maximum_candidates_per_round : 2;
   return selected.length >= 1 && selected.length <= maximum
     && selected.every(option => option.dataset.profileId === profileSelect.value)
     && new Set(selected.map(option => option.dataset.profileId)).size === 1
@@ -4882,7 +4897,7 @@ function renderSearchChildren(context) {
   if (!state || state.status !== 'SEARCH_ROUND_READY_FOR_CHILDREN' || !selectedParent) {
     searchParentLock.textContent = 'selected parent 由 Round 1 receipt 锁定';
     const note = document.createElement('span'); note.className = 'note';
-    note.textContent = searchIsTerminal(state && state.status) ? 'Search 已终止，不再接受 Round 2' : '等待 Round 1 selected parent';
+    note.textContent = state && !state.campaign_id ? 'Search 尚未开始，等待数据与 Round 1' : searchIsTerminal(state && state.status) ? 'Search 已终止，不再接受 Round 2' : '等待 Round 1 selected parent';
     searchChildren.append(note); return;
   }
   searchParentLock.textContent = `唯一 selected parent（receipt 锁定）: ${selectedParent.display_name || selectedParent.candidate_id} · ${selectedParent.mechanism || 'UNKNOWN'}`;
@@ -4904,6 +4919,7 @@ async function loadSearchContext() {
   if (searchLoadPromise) return searchLoadPromise;
   searchLoadPromise = (async () => { try {
       searchContext = await request('/api/search/context');
+      document.getElementById('search-purpose').textContent = searchContext.capability.research_mode === 'EXPLORATORY' ? 'EXPLORATORY · NOT_INDEPENDENTLY_VALIDATED：已见历史探索，不能作为独立验证或启动 Development / Holdout。' : '';
       renderSearchSeeds(searchContext); renderSearchChildren(searchContext); refreshParents();
       searchStatus.textContent = JSON.stringify({capability:searchContext.capability,state:searchContext.state,generation_run:searchContext.generation_run || null}, null, 2); updateSearchControls();
       if (searchContext.state.status === 'RUNNING' && !searchTimer) searchTimer = setTimeout(pollSearch, 750);
@@ -5729,6 +5745,7 @@ def create_research_console_server(
     artifact_root: Optional[PathLike] = None,
     *,
     search_root: Optional[PathLike] = None,
+    exploration_contract: Optional[Mapping[str, Any]] = None,
     release_root: Optional[PathLike] = None,
     frequi_base_url: Optional[str] = None,
     frequi_results_root: Optional[PathLike] = None,
@@ -5758,6 +5775,7 @@ def create_research_console_server(
             runtime_root,
             pilot_root,
             search_root=search_root,
+            exploration_contract=exploration_contract,
             codex_binary=codex_binary,
             codex_model=codex_model,
             check_data_python=check_data_python,

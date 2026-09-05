@@ -24,6 +24,7 @@ from lab.database import get_connection
 
 
 GENERATION_CONTRACT = "freqtrade-lab-codex-candidate-v1"
+EXPLORATORY_GENERATION_CONTRACT = "freqtrade-lab-exploratory-candidate-v1"
 APPROVED_CANDIDATE_BINDING_CONTRACT = (
     "freqtrade-lab-approved-candidate-binding-v1"
 )
@@ -246,6 +247,7 @@ class ApprovedCandidateSnapshot:
     request: Mapping[str, Optional[str]]
     model: Optional[str]
     review_decided_at: str
+    exploration: Optional[Mapping[str, Any]] = None
 
 
 def _strict_json_object(raw: bytes, label: str) -> Dict[str, Any]:
@@ -509,6 +511,9 @@ def build_prompt(
         "positive-integer startup_candle_count, process_only_new_candles=True, a "
         "literal minimal_roi dict, a literal negative stoploss, and exactly "
         "populate_indicators, populate_entry_trend, and populate_exit_trend methods. "
+        "For session clocks only dataframe['date'].dt.tz_convert('America/New_York').dt.hour, "
+        ".dt.minute and .dt.dayofweek are allowed; no other timezone or attribute chains. "
+        "Positive fixed shifts are causal; shift(N) needs N+1 startup candles. "
         "A causal rolling(N).mean() expression is allowed when N is a fixed integer "
         "literal between 2 and 512 inclusive. startup_candle_count must cover every "
         "static indicator, rolling, and shift lookback in the source. Direct "
@@ -1005,14 +1010,21 @@ def _issue_request_document(
     row: Mapping[str, Any],
 ) -> Tuple[Dict[str, Any], GenerationRequest]:
     document = _database_json_object(row["request_json"], "Generation request")
-    if document.get("contract") != GENERATION_CONTRACT:
+    exploratory = document.get("contract") == EXPLORATORY_GENERATION_CONTRACT
+    if document.get("contract") not in {GENERATION_CONTRACT, EXPLORATORY_GENERATION_CONTRACT}:
         raise GenerationContractError(
             "generation_not_found", "Generation does not exist", status=404
         )
-    if set(document) != _REQUEST_DOCUMENT_FIELDS:
+    if set(document) != _REQUEST_DOCUMENT_FIELDS | ({"exploration"} if exploratory else set()):
         raise GenerationContractError(
             "generation_state_invalid", "Generation request fields are invalid", status=409
         )
+    if exploratory:
+        from lab.bounded_research import PilotError, validate_exploration
+        try:
+            validate_exploration(document["exploration"])
+        except PilotError as exc:
+            raise GenerationContractError("generation_state_invalid", str(exc), status=409) from exc
     input_fields = document.get("input")
     if not isinstance(input_fields, dict) or set(input_fields) != _REQUEST_INPUT_FIELDS:
         raise GenerationContractError(
@@ -1114,6 +1126,8 @@ def _generated_candidate_review(
     generation = metadata.get("generation")
     provenance = metadata.get("provenance")
     review = metadata.get("review")
+    request_document, _ = _issue_request_document(generation_row)
+    exploration = request_document.get("exploration")
     if (
         set(metadata) != _CANDIDATE_METADATA_FIELDS
         or not isinstance(generation, dict)
@@ -1127,8 +1141,9 @@ def _generated_candidate_review(
         or type(candidate_row["source_item_index"]) is not int
         or candidate_row["source_item_index"] != 0
         or not isinstance(provenance, dict)
-        or set(provenance) != _PROVENANCE_METADATA_FIELDS
-        or provenance.get("contract") != GENERATION_CONTRACT
+        or set(provenance) != _PROVENANCE_METADATA_FIELDS | ({"exploration"} if exploration is not None else set())
+        or provenance.get("contract") != request_document["contract"]
+        or provenance.get("exploration") != exploration
         or provenance.get("parent_candidate_id")
         != candidate_row["parent_candidate_id"]
         or not isinstance(review, dict)
@@ -1429,6 +1444,7 @@ def load_approved_candidate_snapshot(
         request=dict(generation_request.public_fields()),
         model=generation_row["model"],
         review_decided_at=decided_at,
+        exploration=request_document.get("exploration"),
     )
 
 
@@ -1439,10 +1455,14 @@ def start_generation(
     *,
     model: Optional[str],
     started_at: str,
+    exploration: Optional[Mapping[str, Any]] = None,
 ) -> PreparedGeneration:
     """Atomically validate frozen inputs and insert one RUNNING GenerationRun."""
     generation_id = _business_id(generation_id, "generation_id")
     selected_model = validate_model_name(model)
+    if exploration is not None:
+        from lab.bounded_research import validate_exploration
+        exploration = validate_exploration(exploration)
     try:
         with closing(get_connection(database, must_exist=True)) as connection:
             try:
@@ -1464,6 +1484,12 @@ def start_generation(
                     "profile_snapshot": profile,
                     "parent_snapshot": _public_parent_snapshot(parent),
                 }
+                if exploration is not None:
+                    request_document.update(contract=EXPLORATORY_GENERATION_CONTRACT, exploration=exploration)
+                if parent is not None:
+                    parent_binding = load_approved_candidate_snapshot(connection, request.parent_candidate_id)
+                    if parent_binding.exploration != exploration:
+                        raise GenerationContractError("research_mode_mismatch", "Parent research purpose differs")
                 connection.execute(
                     """
                     INSERT INTO generation_runs (
@@ -1703,6 +1729,11 @@ def complete_generation(
                         parent_candidate_id=prepared.request.parent_candidate_id,
                         created_at=finished_at,
                     )
+                    if "exploration" in prepared.request_document:
+                        metadata["provenance"].update(
+                            contract=EXPLORATORY_GENERATION_CONTRACT,
+                            exploration=prepared.request_document["exploration"],
+                        )
                     connection.execute(
                         """
                         INSERT INTO candidates (
@@ -1853,6 +1884,9 @@ def load_generation(database: Path, generation_id: str) -> Dict[str, Any]:
             return {
                 "id": row["id"],
                 "profile_id": row["research_profile_id"],
+                "research_mode": "EXPLORATORY" if "exploration" in _request_document else "INDEPENDENT_VALIDATION_REQUIRED",
+                "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
+                "exploration": _request_document.get("exploration"),
                 "source": "CODEX",
                 "model": row["model"],
                 "status": row["status"],
@@ -2007,11 +2041,11 @@ def load_generation_context(database: Path) -> Dict[str, Any]:
                 SELECT id
                 FROM generation_runs
                 WHERE source = 'CODEX'
-                  AND json_extract(request_json, '$.contract') = ?
+                  AND json_extract(request_json, '$.contract') IN (?, ?)
                 ORDER BY created_at DESC, id DESC
                 LIMIT 1
                 """,
-                (GENERATION_CONTRACT,),
+                (GENERATION_CONTRACT, EXPLORATORY_GENERATION_CONTRACT),
             ).fetchone()
             return {
                 "profiles": profiles,
