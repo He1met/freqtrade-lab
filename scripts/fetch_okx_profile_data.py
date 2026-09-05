@@ -18,6 +18,7 @@ import sys
 import time
 import zipfile
 from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from types import ModuleType
@@ -935,6 +936,79 @@ def fetch_archive_funding_history(
     return output
 
 
+class _RestFundingValidationError(RuntimeError):
+    """A funding validation message that contains no response values."""
+
+
+def _validate_rest_funding_response(
+    raw_text: object, response: object, timestamps: list[int], label: str
+) -> dict[int, float]:
+    """Validate the unfiltered response before CCXT can drop any funding events."""
+    def strict_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for key, child in pairs:
+            if key in value:
+                raise ValueError("duplicate JSON key")
+            value[key] = child
+        return value
+
+    def reject_constant(value: str) -> None:
+        raise ValueError("non-finite JSON constant")
+
+    if not isinstance(raw_text, str):
+        raise _RestFundingValidationError(f"{label}: raw response evidence is unavailable")
+    try:
+        raw = json.loads(
+            raw_text, object_pairs_hook=strict_object, parse_constant=reject_constant
+        )
+    except (ValueError, RecursionError):
+        raise _RestFundingValidationError(f"{label}: raw response is not strict JSON") from None
+    if (
+        not isinstance(raw, dict)
+        or raw.get("code") != "0"
+        or raw.get("msg") not in ("", None)
+        or not isinstance(raw.get("data"), list)
+        or raw != response
+    ):
+        raise _RestFundingValidationError(f"{label}: raw response contract changed")
+    rows = raw["data"]
+    if len(rows) != len(timestamps):
+        raise _RestFundingValidationError(f"{label}: raw event count differs from the complete eight-hour grid")
+    expected = set(timestamps)
+    seen: set[int] = set()
+    # Validate every clock and identity before interpreting any actual rate.
+    for row in rows:
+        if not isinstance(row, dict) or row.get("instId") != INSTRUMENT_ID:
+            raise _RestFundingValidationError(f"{label}: raw instrument identity is invalid")
+        timestamp = row.get("fundingTime")
+        if (
+            not isinstance(timestamp, str)
+            or not timestamp.isascii()
+            or not timestamp.isdecimal()
+            or len(timestamp) > 16
+            or str(int(timestamp)) != timestamp
+        ):
+            raise _RestFundingValidationError(f"{label}: raw funding timestamp is invalid")
+        timestamp_ms = int(timestamp)
+        if timestamp_ms not in expected or timestamp_ms in seen:
+            raise _RestFundingValidationError(f"{label}: raw timestamps differ from the complete eight-hour grid")
+        seen.add(timestamp_ms)
+    rates: dict[int, float] = {}
+    for row in rows:
+        value = row.get("realizedRate")
+        if not isinstance(value, str) or not value or value != value.strip():
+            raise _RestFundingValidationError(f"{label}: actual funding rate is invalid")
+        try:
+            actual = Decimal(value)
+            rate = float(actual)
+        except (InvalidOperation, ValueError, OverflowError):
+            raise _RestFundingValidationError(f"{label}: actual funding rate is invalid") from None
+        if not actual.is_finite() or not math.isfinite(rate) or (rate == 0 and actual != 0):
+            raise _RestFundingValidationError(f"{label}: actual funding rate is not representable and finite")
+        rates[int(row["fundingTime"])] = rate
+    return rates
+
+
 def fetch_rest_funding_history(
     exchange: Any, requests: list[dict[str, object]]
 ) -> list[dict]:
@@ -948,21 +1022,63 @@ def fetch_rest_funding_history(
         timestamps = expected[offset : offset + MAX_FUNDING_BATCH]
         batch_start = timestamps[0]
         batch_end = batch_start + len(timestamps) * FUNDING_INTERVAL_MS
-        rows = exchange.fetch_funding_rate_history(
-            SYMBOL,
-            since=batch_start,
-            limit=len(timestamps),
-            params={"after": batch_end},
-        )
         number = offset // MAX_FUNDING_BATCH + 1
+        label = f"funding history batch {number}"
+        # N+1 reveals overflow regardless of API ordering; do not widen the window.
+        limit = len(timestamps) + 1
+        raw_rates: dict[int, float] | None = None
+        endpoint = exchange.publicGetPublicFundingRateHistory
+
+        def checked_endpoint(params: dict) -> object:
+            nonlocal raw_rates
+            if raw_rates is not None or params != {
+                "instId": INSTRUMENT_ID,
+                "before": batch_start - 1,
+                "after": batch_end,
+                "limit": limit,
+            }:
+                raise _RestFundingValidationError(f"{label}: CCXT request contract changed")
+            exchange.last_http_response = None
+            try:
+                response = endpoint(params)
+            except Exception:
+                # CCXT errors may embed an entire response, including protected rates.
+                raise _RestFundingValidationError(f"{label}: public funding request failed") from None
+            raw_rates = _validate_rest_funding_response(
+                exchange.last_http_response, response, timestamps, label
+            )
+            return response
+
+        exchange.publicGetPublicFundingRateHistory = checked_endpoint
+        try:
+            rows = exchange.fetch_funding_rate_history(
+                SYMBOL, since=batch_start, limit=limit, params={"after": batch_end}
+            )
+        except _RestFundingValidationError:
+            raise
+        except Exception:
+            raise RuntimeError(f"{label}: CCXT funding parsing failed") from None
+        finally:
+            exchange.publicGetPublicFundingRateHistory = endpoint
         requests.append(
             request_receipt(
                 exchange,
                 "funding-history" if batches == 1 else f"funding-history-{number}",
             )
         )
-        if not isinstance(rows, list) or len(rows) != len(timestamps):
-            raise RuntimeError(f"funding history batch {number} is incomplete")
+        if raw_rates is None or not isinstance(rows, list) or len(rows) != len(timestamps):
+            raise RuntimeError(f"{label}: CCXT parsed event count differs from raw evidence")
+        for row, timestamp in zip(rows, timestamps):
+            if (
+                not isinstance(row, dict)
+                or type(row.get("timestamp")) is not int
+                or row["timestamp"] != timestamp
+                or row.get("symbol") != SYMBOL
+                or type(row.get("fundingRate")) not in (int, float)
+                or not math.isfinite(row["fundingRate"])
+                or row["fundingRate"] != raw_rates[timestamp]
+            ):
+                raise RuntimeError(f"{label}: CCXT parsed event differs from raw evidence")
         output.extend(rows)
     return output
 

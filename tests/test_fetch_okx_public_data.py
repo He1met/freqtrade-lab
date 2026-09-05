@@ -209,13 +209,29 @@ class _FundingExchange:
     def __init__(self, interval_ms: int):
         self.interval_ms = interval_ms
         self.calls = []
+        self.last_http_response = None
+
+    def publicGetPublicFundingRateHistory(self, params):
+        rows = [
+            {"instId": params["instId"], "fundingTime": str(timestamp),
+             "fundingRate": "0.9", "realizedRate": "0.0001"}
+            for timestamp in range(params["before"] + 1, params["after"], self.interval_ms)
+        ][:params["limit"]]
+        response = {"code": "0", "data": rows}
+        self.last_http_response = json.dumps(response)
+        return response
 
     def fetch_funding_rate_history(self, symbol, *, since, limit, params):
         self.calls.append((symbol, since, limit, dict(params)))
-        return [
-            {"timestamp": timestamp, "fundingRate": 0.0001}
-            for timestamp in range(since, params["after"], self.interval_ms)
-        ]
+        response = self.publicGetPublicFundingRateHistory({
+            "instId": symbol.replace("/", "-").split(":")[0] + "-SWAP",
+            "before": since - 1, "limit": limit, **params,
+        })
+        return sorted([
+            {"timestamp": int(row["fundingTime"]), "fundingRate": float(row["realizedRate"]),
+             "symbol": symbol, "info": row}
+            for row in response["data"]
+        ], key=lambda row: row["timestamp"])[:limit]
 
 
 class _CandleExchange:
@@ -524,6 +540,7 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
                 pa,
                 _timestamps(start, profile_acquisition_module.DATA_END, step),
                 missing_volume=missing_volume,
+                funding=name.endswith("-funding_rate.feather"),
             ),
             root / "data" / "okx" / "futures" / name,
             compression="uncompressed",
@@ -670,8 +687,8 @@ def test_profile_60_30_rest_funding_uses_three_bounded_batches(
     funding = profile_acquisition_module.fetch_rest_funding_history(exchange, requests)
 
     assert len(funding) == 270
-    assert [call[2] for call in exchange.calls] == [100, 100, 70]
-    assert all(call[2] <= 100 for call in exchange.calls)
+    assert [call[2] for call in exchange.calls] == [101, 101, 71]
+    assert all(call[2] <= 101 for call in exchange.calls)
     assert [request["label"] for request in requests] == [
         "funding-history-1",
         "funding-history-2",
@@ -679,7 +696,7 @@ def test_profile_60_30_rest_funding_uses_three_bounded_batches(
     ]
     for _, since, limit, params in exchange.calls:
         assert params == {
-            "after": since + limit * profile_acquisition_module.FUNDING_INTERVAL_MS
+            "after": since + (limit - 1) * profile_acquisition_module.FUNDING_INTERVAL_MS
         }
     assert exchange.calls[0][1] == int(
         profile_acquisition_module.SEARCH_START.timestamp() * 1000
