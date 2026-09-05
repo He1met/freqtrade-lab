@@ -833,6 +833,7 @@ class ResearchConsoleController:
                             search_capability.development_timerange,
                             search_capability.pre_roll_candles,
                             search_capability.economic_gate,
+                            single_baseline=search_capability.single_baseline,
                         )
                     except bounded_pilot.PilotError:
                         development_profile_contract = None
@@ -3775,7 +3776,9 @@ class ResearchConsoleController:
         except (DevelopmentRunError, HoldoutRunError) as exc:
             raise self._holdout_error(exc) from exc
 
-    def create_research_run(self, candidate_id: str) -> Dict[str, Any]:
+    def create_research_run(
+        self, candidate_id: str, protocol_review: Optional[Mapping[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Consume one approved Candidate and start one Development child."""
         with self._lock:
             if self._closed or self._shutting_down:
@@ -3855,6 +3858,7 @@ class ResearchConsoleController:
                     research_run_id=run_id,
                     now=_utc_now(),
                     search_finalist_binding=search_finalist_binding,
+                    **({"protocol_review": protocol_review} if protocol_review is not None else {}),
                 )
             except DevelopmentRunError as exc:
                 shutil.rmtree(campaign_dir, ignore_errors=True)
@@ -4651,7 +4655,7 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;
 </style><script src="/console.js" defer></script></head>
 <body><main><header><div><h1>Research Console</h1><div class="note">本地单进程 · 固定动作 · 无任意命令入口</div></div><a href="/">策略库</a></header>
 <section><h2>Preflight</h2><div id="overall" class="status">CHECKING</div><div id="checks" class="grid"></div></section>
-<section><h2>Search-only 两轮 Gate</h2><p class="note">Round 1 选择同 Profile 的 APPROVED mechanism seed；Round 2 只接受一个 selected-parent child。探索模式每轮一个、最多两次；其他 Profile 主动预算 3 次、协议硬上限 6 次。不做阈值救援或第三轮。</p><p id="search-purpose" class="note"></p>
+<section><h2>Search-only Gate</h2><p class="note">事前 SINGLE_BASELINE_V1 只允许冻结源码的一条 seed、一轮、一次尝试；Development 前须另行提交同一 artifact 的人工协议审阅。默认流程仍为两轮：Round 1 同 Profile 的 APPROVED seeds，Round 2 一个 selected-parent child，主动预算 3 次、协议硬上限 6 次。探索模式每轮一个、最多两次。不重播或调整阈值救援。</p><p id="search-purpose" class="note"></p>
 <div class="field"><label for="search-seeds">Round 1 seeds（从下方 ResearchProfile 筛选）</label><select id="search-seeds" multiple size="5"></select></div>
 <div id="search-seed-note" class="note">只能选择同 Profile、不同 mechanism 的 root Candidate</div>
 <button id="search-round-1" disabled>运行 Round 1</button><button id="search-cancel" class="secondary" disabled>取消当前 Search</button>
@@ -4876,6 +4880,10 @@ function updateSearchControls() {
   searchRoundOne.disabled = !capabilityReady || status !== 'SEARCH_READY' || !validRoundOneSelection();
   searchRoundTwo.disabled = !capabilityReady || status !== 'SEARCH_ROUND_READY_FOR_CHILDREN' || !validRoundTwoSelection();
   searchCancel.disabled = status !== 'RUNNING' || !state.campaign_id;
+  if (state && state.protocol_review_required_before_development) {
+    researchRunButton.disabled = true;
+    researchRunButton.title = '单基线需通过 API 提交绑定同一 artifact 的人工协议审阅；不是自动经济证明';
+  }
 }
 function renderSearchSeeds(context) {
   const selected = new Set(selectedSearchSeeds().map(option => option.value));
@@ -4919,7 +4927,9 @@ async function loadSearchContext() {
   if (searchLoadPromise) return searchLoadPromise;
   searchLoadPromise = (async () => { try {
       searchContext = await request('/api/search/context');
-      document.getElementById('search-purpose').textContent = searchContext.capability.research_mode === 'EXPLORATORY' ? 'EXPLORATORY · NOT_INDEPENDENTLY_VALIDATED：已见历史探索，不能作为独立验证或启动 Development / Holdout。' : '';
+      document.getElementById('search-purpose').textContent = searchContext.capability.single_baseline
+        ? 'SINGLE_BASELINE_V1：一条冻结 seed、一轮、一次 Search。核心门通过后仍需人工协议审阅和单独 Development 授权。'
+        : searchContext.capability.research_mode === 'EXPLORATORY' ? 'EXPLORATORY · NOT_INDEPENDENTLY_VALIDATED：已见历史探索，不能作为独立验证或启动 Development / Holdout。' : '';
       renderSearchSeeds(searchContext); renderSearchChildren(searchContext); refreshParents();
       searchStatus.textContent = JSON.stringify({capability:searchContext.capability,state:searchContext.state,generation_run:searchContext.generation_run || null}, null, 2); updateSearchControls();
       if (searchContext.state.status === 'RUNNING' && !searchTimer) searchTimer = setTimeout(pollSearch, 750);
@@ -5527,15 +5537,18 @@ class ResearchConsoleRequestHandler(StrategyLibraryRequestHandler):
                 payload = self.controller.create_generation(generation_request)
                 response_status = 202
             elif create_research_route:
-                if set(body) != {"candidate_id"} or not isinstance(
+                if set(body) not in ({"candidate_id"}, {"candidate_id", "protocol_review"}) or not isinstance(
                     body.get("candidate_id"), str
                 ):
                     raise ControlRequestError(
                         400,
                         "invalid_research_request",
-                        "只允许 exact candidate_id 请求",
+                        "只允许 exact candidate_id 和可选 protocol_review 请求",
                     )
-                payload = self.controller.create_research_run(body["candidate_id"])
+                payload = self.controller.create_research_run(
+                    body["candidate_id"],
+                    **({"protocol_review": body["protocol_review"]} if "protocol_review" in body else {}),
+                )
                 response_status = 202
             elif create_search_route:
                 candidate_ids = body.get("candidate_ids")

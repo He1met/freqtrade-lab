@@ -1105,6 +1105,8 @@ def _prior_state(
     ).fetchall()
     if not rows:
         return "MANUAL"
+    if "single_baseline" in current_snapshot.get("search_finalist_binding", {}):
+        raise DevelopmentRunError("ALREADY_PENDING", "Single baseline handoff was already consumed")
     if any(row["status"] in {"PENDING", "RUNNING", "COMPLETED"} for row in rows):
         raise DevelopmentRunError("ALREADY_PENDING", "Candidate was already consumed")
     if any(row["trigger_type"] == "RETRY" for row in rows):
@@ -1277,6 +1279,17 @@ def _materialize_inputs(
     return final_snapshot
 
 
+def _discard_development_inputs(directory: Path) -> None:
+    """Roll back only the new input tree, including its frozen directories."""
+    root = directory / "development-input"
+    if root.is_dir() and not root.is_symlink():
+        for child in root.rglob("*"):
+            if child.is_dir() and not child.is_symlink():
+                child.chmod(0o700)
+        root.chmod(0o700)
+    shutil.rmtree(root, ignore_errors=True)
+
+
 def prepare_development_run(
     database_path: PathLike,
     run_dir: PathLike,
@@ -1286,6 +1299,7 @@ def prepare_development_run(
     research_run_id: Optional[str] = None,
     now: Optional[str] = None,
     search_finalist_binding: Optional[Mapping[str, Any]] = None,
+    protocol_review: Optional[Mapping[str, Any]] = None,
 ) -> PreparedDevelopmentRun:
     """Materialize isolated inputs and atomically consume one Candidate slot."""
     _require_ready(capability)
@@ -1312,6 +1326,21 @@ def prepare_development_run(
             raise DevelopmentRunError(
                 "BLOCKED_SECURITY", "Search finalist handoff binding is invalid"
             ) from exc
+    # This is a human attestation about every gate in the frozen protocol, not
+    # an alternate economic engine or permission to reinterpret a legacy R1.
+    review_identity = (projection_receipt.get("protocol_review_identity")
+                       if projection_receipt is not None else None)
+    if review_identity is not None:
+        expected_review = {**review_identity, "all_protocol_gates": "PASSED"}
+        if (not isinstance(protocol_review, Mapping)
+                or dict(protocol_review) != expected_review
+                or type(protocol_review.get("attempt_number")) is not int):
+            raise DevelopmentRunError(
+                "BLOCKED_SECURITY", "Single baseline requires a matching PASSED protocol review"
+            )
+        protocol_review = dict(protocol_review)
+    elif protocol_review is not None:
+        raise DevelopmentRunError("BLOCKED_SECURITY", "Protocol review requires a single baseline finalist")
     try:
         connection = get_connection(database, must_exist=True)
     except (OSError, sqlite3.Error) as exc:
@@ -1330,9 +1359,11 @@ def prepare_development_run(
             projection_receipt,
         )
         snapshot = _snapshot(capability, row, profile_contract, binding)
+        if protocol_review is not None:
+            snapshot["protocol_review"] = protocol_review
+        trigger = _prior_state(connection, candidate_id, snapshot)
         materialized = True
         snapshot = _materialize_inputs(directory, capability, row, snapshot)
-        trigger = _prior_state(connection, candidate_id, snapshot)
         start, stop = (
             datetime.strptime(part, "%Y%m%d").replace(tzinfo=timezone.utc)
             for part in str(capability.development_timerange).split("-", 1)
@@ -1411,13 +1442,13 @@ def prepare_development_run(
         if connection.in_transaction:
             connection.rollback()
         if materialized:
-            shutil.rmtree(directory / "development-input", ignore_errors=True)
+            _discard_development_inputs(directory)
         raise
     except (sqlite3.Error, OSError, ValueError) as exc:
         if connection.in_transaction:
             connection.rollback()
         if materialized:
-            shutil.rmtree(directory / "development-input", ignore_errors=True)
+            _discard_development_inputs(directory)
         raise DevelopmentRunError("BLOCKED_DATA", "Development run could not be created") from exc
     finally:
         connection.close()
