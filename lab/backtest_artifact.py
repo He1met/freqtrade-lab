@@ -675,15 +675,22 @@ def parse_backtest_artifact(
         exchange_config.get("pair_whitelist"), "config exchange pair_whitelist"
     )
     trading_mode = _required_string(config, "trading_mode", "config")
-    margin_mode = _required_string(config, "margin_mode", "config")
+    margin_mode = config.get("margin_mode")
+    from lab.market_contract import valid_market, pair_quote, validate_spot_source
     if (
         exchange != SUPPORTED_EXCHANGE
-        or trading_mode != SUPPORTED_TRADING_MODE
-        or margin_mode != SUPPORTED_MARGIN_MODE
+        or not valid_market(config)
     ):
         raise ArtifactImportError(
-            "the frozen format boundary requires okx/futures/isolated"
+            "the frozen format boundary requires okx/futures/isolated or okx/spot/no-margin"
         )
+    if trading_mode == "spot":
+        try:
+            for pair in pairs:
+                pair_quote(pair, spot=True)
+            validate_spot_source(strategy_text)
+        except ValueError as exc:
+            raise ArtifactImportError(str(exc)) from exc
     timeframe = _required_string(config, "timeframe", "config")
     timeframe_step = SUPPORTED_TIMEFRAME_STEPS.get(timeframe)
     if timeframe_step is None:
@@ -809,7 +816,13 @@ def parse_backtest_artifact(
         is_short = trade.get("is_short")
         if not isinstance(is_short, bool):
             raise ArtifactImportError(f"trade {index} is_short must be boolean")
-        _required_number(trade, "funding_fees", label=f"trade {index}")
+        if trading_mode == "spot":
+            if is_short or leverage != 1:
+                raise ArtifactImportError(f"trade {index} spot must be unlevered and long-only")
+            if trade.get("funding_fees") not in (None, 0, 0.0):
+                raise ArtifactImportError(f"trade {index} spot funding must be N/A")
+        else:
+            _required_number(trade, "funding_fees", label=f"trade {index}")
         duration = _required_number(
             trade, "trade_duration", label=f"trade {index}", minimum=0.0
         )

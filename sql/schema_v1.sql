@@ -1,10 +1,14 @@
 CREATE TABLE IF NOT EXISTS research_profiles (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL UNIQUE,
-    domain TEXT NOT NULL CHECK (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP')),
+    domain TEXT NOT NULL CHECK (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP', 'OKX_CRYPTO_SPOT')),
     exchange TEXT NOT NULL DEFAULT 'okx',
-    trading_mode TEXT NOT NULL DEFAULT 'futures' CHECK (trading_mode = 'futures'),
-    margin_mode TEXT NOT NULL DEFAULT 'isolated' CHECK (margin_mode IN ('isolated', 'cross')),
+    trading_mode TEXT NOT NULL DEFAULT 'futures' CHECK (
+        (domain = 'OKX_CRYPTO_SPOT' AND trading_mode = 'spot') OR
+        (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP') AND trading_mode = 'futures')),
+    margin_mode TEXT NOT NULL DEFAULT 'isolated' CHECK (
+        (trading_mode = 'spot' AND margin_mode = '') OR
+        (trading_mode = 'futures' AND margin_mode IN ('isolated', 'cross'))),
     pairs_json TEXT NOT NULL CHECK (json_valid(pairs_json) AND json_type(pairs_json) = 'array'),
     timeframe TEXT NOT NULL,
     detail_timeframe TEXT,

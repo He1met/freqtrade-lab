@@ -579,15 +579,14 @@ def business_table_digest(
 
 
 def _profile_bound(snapshot: ApprovedCandidateSnapshot, capability: FrozenSearchCapability) -> None:
+    from lab.market_contract import valid_market, validate_spot_source
     profile = snapshot.profile
     frozen = capability.profile_snapshot
     if (
         frozen is None
         or snapshot.exploration != capability.exploration
-        or profile.get("domain") != "OKX_CRYPTO_PERP"
+        or not valid_market(profile, profile=True)
         or profile.get("exchange") != "okx"
-        or profile.get("trading_mode") != "futures"
-        or profile.get("margin_mode") != "isolated"
         or profile.get("pairs") != [capability.pair]
         or snapshot.timeframe != capability.timeframe
         or profile.get("timeframe") != capability.timeframe
@@ -602,6 +601,11 @@ def _profile_bound(snapshot: ApprovedCandidateSnapshot, capability: FrozenSearch
             "candidate_profile_mismatch",
             "Candidate Profile does not match the frozen Search pair/timeframe/base fee",
         )
+    if profile.get("trading_mode") == "spot":
+        try:
+            validate_spot_source(snapshot.code_text)
+        except ValueError as exc:
+            raise SearchCampaignError("BLOCKED_SECURITY", str(exc)) from exc
 
 
 def _bound_candidate(

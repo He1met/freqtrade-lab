@@ -577,22 +577,24 @@ def profile_search_config(profile_snapshot: Mapping[str, Any]) -> dict[str, Any]
     pairs = profile_snapshot.get("pairs")
     if not isinstance(pairs, list) or len(pairs) != 1 or not isinstance(pairs[0], str):
         raise PilotError("Profile Search execution requires exactly one pair")
-    match = re.fullmatch(
-        r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):([A-Za-z0-9-]+)", pairs[0]
-    )
-    if match is None or match.group(2) != match.group(3):
-        raise PilotError("Profile Search pair is outside the linear futures boundary")
+    from lab.market_contract import valid_market, pair_quote
+    if not valid_market(profile_snapshot, profile=True):
+        raise PilotError("Profile Search market contract is invalid")
+    try:
+        quote = pair_quote(pairs[0], spot=profile_snapshot.get("trading_mode") == "spot")
+    except ValueError as exc:
+        raise PilotError(str(exc)) from exc
     return {
         "max_open_trades": profile_snapshot["max_open_trades"],
-        "stake_currency": match.group(2),
+        "stake_currency": quote,
         "stake_amount": profile_snapshot["stake_amount"],
         "tradable_balance_ratio": PROFILE_TRADABLE_BALANCE_RATIO,
         "fiat_display_currency": "USD",
         "dry_run": True,
         "dry_run_wallet": profile_snapshot["starting_balance"],
         "cancel_open_orders_on_exit": False,
-        "trading_mode": "futures",
-        "margin_mode": "isolated",
+        "trading_mode": profile_snapshot["trading_mode"],
+        "margin_mode": profile_snapshot["margin_mode"],
         "timeframe": profile_snapshot["timeframe"],
         "fee": profile_snapshot["taker_fee_rate"],
         "unfilledtimeout": {"entry": 10, "exit": 30, "exit_timeout_count": 0, "unit": "minutes"},
@@ -628,8 +630,8 @@ def validate_profile_runtime_contract(
         raise PilotError("Profile Search snapshot shape is invalid")
     snapshot = dict(profile_snapshot)
     pairs, timeframe = snapshot.get("pairs"), snapshot.get("timeframe")
-    if (snapshot.get("domain") != "OKX_CRYPTO_PERP" or snapshot.get("exchange") != "okx"
-            or snapshot.get("trading_mode") != "futures" or snapshot.get("margin_mode") != "isolated"
+    from lab.market_contract import valid_market
+    if (not valid_market(snapshot, profile=True) or snapshot.get("exchange") != "okx"
             or snapshot.get("detail_timeframe") is not None or timeframe not in PROFILE_TIMEFRAME_STEPS
             or not isinstance(pairs, list) or len(pairs) != 1 or not isinstance(pairs[0], str) or not pairs[0]
             or not isinstance(snapshot.get("id"), str) or SAFE_ID.fullmatch(snapshot["id"]) is None

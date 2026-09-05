@@ -1682,6 +1682,12 @@ def fail_generation(
 
 
 def _validate_funding_candidate_binding(document, candidate):
+    if document.get("profile_snapshot", {}).get("trading_mode") == "spot":
+        from lab.market_contract import validate_spot_source
+        try:
+            validate_spot_source(candidate.code_text)
+        except ValueError as exc:
+            raise GenerationContractError("spot_source_contract", str(exc)) from exc
     from lab.lagged_funding import FAMILY, signal_contract, template_variant
     variant = template_variant(ast.parse(candidate.code_text), candidate.class_name)
     requested = document.get("input", {}).get("strategy_family") == FAMILY
