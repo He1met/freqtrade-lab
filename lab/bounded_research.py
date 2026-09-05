@@ -176,6 +176,7 @@ def _search_terminal_fields(value: Mapping[str, Any]) -> set[str]:
 MARKET_STATE_DEFINITION = "LAST_CLOSED_CLOSE_VS_SMA_N_V1"
 PROFILE_TIMEFRAME_STEPS = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+MECHANISM_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 LOOPBACK_URL = re.compile(r"^http://127\.0\.0\.1:([1-9][0-9]{0,4})$")
@@ -3462,7 +3463,7 @@ def _validate_search_candidates(
         relationship = candidate["relationship"]
         changed_factor = candidate["changed_factor"]
         parent_sha = candidate["parent_strategy_sha256"]
-        if not isinstance(mechanism, str) or SAFE_ID.fullmatch(mechanism) is None:
+        if not isinstance(mechanism, str) or MECHANISM_ID.fullmatch(mechanism) is None:
             reason = "mechanism identity is invalid"
         elif candidate["candidate_id"] in previous_ids:
             reason = "duplicate candidate identity"

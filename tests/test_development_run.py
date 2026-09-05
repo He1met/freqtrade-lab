@@ -187,6 +187,7 @@ def _approved_candidate_database(
     holdout_days: int = 30,
     pair: str = "ADA/USDT:USDT",
     timeframe: str = "5m",
+    strategy_family: str = "trend",
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
     init_database(database)
@@ -223,7 +224,7 @@ def _approved_candidate_database(
         {
             "profile_id": profile_id,
             "idea": "Test one frozen bounded Candidate.",
-            "strategy_family": "trend",
+            "strategy_family": strategy_family,
             "expected_failure_mode": "Sideways markets may whipsaw.",
         }
     )

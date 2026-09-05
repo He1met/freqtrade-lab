@@ -649,7 +649,7 @@ def _load_eligible_candidates(
                 except SearchCampaignError:
                     continue
                 family = snapshot.strategy_family
-                if not isinstance(family, str) or pilot.SAFE_ID.fullmatch(family) is None:
+                if not isinstance(family, str) or pilot.MECHANISM_ID.fullmatch(family) is None:
                     continue
                 if state["status"] == "SEARCH_READY" and snapshot.parent_candidate_id is None:
                     result.append(_candidate_public(snapshot, "MECHANISM_SEED"))
@@ -2179,7 +2179,7 @@ def prepare_round_one(
         profile_ids = {item.profile_id for item in snapshots}
         mechanisms = [item.strategy_family for item in snapshots]
         if (len(profile_ids) != 1 or any(item.parent_candidate_id is not None for item in snapshots)
-                or any(not isinstance(item, str) or pilot.SAFE_ID.fullmatch(item) is None for item in mechanisms)
+                or any(not isinstance(item, str) or pilot.MECHANISM_ID.fullmatch(item) is None for item in mechanisms)
                 or len(set(mechanisms)) != len(mechanisms)):
             raise SearchCampaignError("invalid_seed_set", "Round 1 seeds must share one Profile, have no parent, and use distinct safe mechanisms")
         candidates = [
