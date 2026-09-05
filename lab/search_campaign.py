@@ -1480,6 +1480,16 @@ def _single_factor_change(
     child: ApprovedCandidateSnapshot,
     changed_factor: str,
 ) -> bool:
+    from lab.lagged_funding import FACTOR, template_variant
+    if changed_factor == FACTOR:
+        try:
+            fixed = (template_variant(ast.parse(parent.code_text), parent.class_name) == "R1"
+                     and template_variant(ast.parse(child.code_text), child.class_name) == "R2")
+        except (SyntaxError, ValueError, RecursionError):
+            return False
+        return fixed and _single_entry_conjunct_change(
+            parent, child, {"enter_short": 'dataframe["lagged_funding"] > 0.0001'}
+        )
     if changed_factor == ENTRY_SMA_FILTER_84_V1:
         return _single_sma_entry_filter_change_v1(parent, child)
     if changed_factor == SESSION_PRE_ENTRY_AGREEMENT_V1:

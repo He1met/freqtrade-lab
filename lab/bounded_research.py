@@ -1767,6 +1767,11 @@ def _verify_profile_output_dates(
                     raise PilotError(
                         f"{label} {series} {column_name} values are invalid"
                     )
+                if (series == "funding_history" and column_name != "open"
+                        and not pc.all(pc.equal(column, 0.0)).as_py()):
+                    raise PilotError(
+                        f"{label} funding_history must use native 2026.7 open rates and zero placeholders"
+                    )
             raw_values = dates.to_pylist()
         except PilotError:
             raise

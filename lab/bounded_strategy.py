@@ -979,6 +979,12 @@ def _validate_bounded_causal_strategy(
             "INVALID_PYTHON", f"{class_name} is not valid Python: {exc}"
         ) from exc
     _validate_ast_budget(class_name, tree)
+    from lab.lagged_funding import template_variant
+    if expected_timeframe == "5m" and template_variant(tree, class_name) is not None:
+        # Full module equality includes the imports, shared guards, UTC clocks,
+        # native merge and every parameter. Funding warms up INSIDE Search;
+        # 289 is the separate OHLCV requirement, not three funding candles.
+        return BoundedStrategyAnalysis("5m", 289, 289)
     expected = [ast.parse(value).body[0] for value in EXPECTED_IMPORTS]
     if (
         len(tree.body) != len(expected) + 1
