@@ -84,12 +84,16 @@ def _source_acquisition(
     prefixed_python_dependency: bool = False,
     economic_gate: dict[str, object] | None = None,
     exploration: dict[str, object] | None = None,
+    single_baseline: dict[str, object] | None = None,
 ) -> tuple[Path, str, str]:
     pa, feather = _arrow_modules()
     kwargs = _profile_prepare_kwargs(tmp_path)
     if exploration is not None:
         kwargs['development_timerange'] = None
-    profile_contract = pilot.profile_acquisition_contract(**kwargs, economic_gate=economic_gate, exploration=exploration)
+    profile_contract = pilot.profile_acquisition_contract(
+        **kwargs, economic_gate=economic_gate, exploration=exploration,
+        single_baseline=single_baseline,
+    )
     root = tmp_path / "complete-source-acquisition"
     data_root = root / "data" / "okx" / "futures"
     data_root.mkdir(parents=True)

@@ -80,7 +80,7 @@ FINALIST_BINDING_FIELDS = {
     "trials_sha256", "round_receipt_sha256", "projection_sha256",
     "profile_snapshot",
 }
-FINALIST_BINDING_OPTIONAL_FIELDS = {"economic_gate"}
+FINALIST_BINDING_OPTIONAL_FIELDS = {"economic_gate", "single_baseline"}
 SEARCH_DATABASE_CHANGED = "SEARCH_DATABASE_CHANGED"
 
 
@@ -117,10 +117,13 @@ class FrozenSearchCapability:
     pre_roll_candles: Optional[int] = None
     economic_gate: Optional[Mapping[str, Any]] = None
     exploration: Optional[Mapping[str, Any]] = None
+    single_baseline: Optional[Mapping[str, Any]] = None
     _directory_fd: int = field(default=-1, repr=False, compare=False)
 
     @property
     def active_attempt_limit(self) -> int:
+        if self.single_baseline is not None:
+            return 1
         return 2 if self.exploration is not None else pilot.PROFILE_ACTIVE_ATTEMPTS
 
     def public(self) -> dict[str, Any]:
@@ -142,9 +145,10 @@ class FrozenSearchCapability:
             "research_mode": "EXPLORATORY" if self.exploration is not None else "INDEPENDENT_VALIDATION_REQUIRED",
             "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
             "exploration": self.exploration,
+            "single_baseline": self.single_baseline,
             "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
             "active_attempt_limit": self.active_attempt_limit,
-            "maximum_rounds": pilot.SEARCH_MAX_ROUNDS,
+            "maximum_rounds": 1 if self.single_baseline is not None else pilot.SEARCH_MAX_ROUNDS,
             "ranking": list(pilot.SEARCH_RANKING),
             "finalist_gate": (
                 pilot.profile_search_finalist_gate(profile)
@@ -275,6 +279,8 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
             verification["economic_gate"] = contract["economic_gate"]
         if "exploration" in contract:
             verification["exploration"] = pilot.validate_exploration(contract["exploration"])
+        if "single_baseline" in contract:
+            verification["single_baseline"] = pilot.validate_single_baseline(contract["single_baseline"])
         verified = pilot._verify_search_data(
             acquisition,
             provenance,
@@ -302,6 +308,8 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
             )
         if "exploration" in contract:
             result["exploration"] = pilot.validate_exploration(contract["exploration"])
+        if "single_baseline" in contract:
+            result["single_baseline"] = pilot.validate_single_baseline(contract["single_baseline"])
         return result
     except pilot.PilotError as exc:
         if str(exc) == "BLOCKED_INSUFFICIENT_CAPACITY":
@@ -391,6 +399,7 @@ def freeze_search_capability(
                     "pre_roll_candles",
                     "economic_gate",
                     "exploration",
+                    "single_baseline",
                 )
             },
         )
@@ -473,6 +482,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         capability.pre_roll_candles,
         capability.economic_gate,
         capability.exploration,
+        capability.single_baseline,
     )
     current = (
         current_acquisition["search_timerange"],
@@ -487,6 +497,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         current_acquisition.get("pre_roll_candles"),
         current_acquisition.get("economic_gate"),
         current_acquisition.get("exploration"),
+        current_acquisition.get("single_baseline"),
     )
     if frozen != current:
         raise SearchCampaignError(
@@ -606,6 +617,9 @@ def _bound_candidate(
             expected_timeframe=str(capability.timeframe),
         )
         _profile_bound(snapshot, capability)
+        if (capability.single_baseline is not None
+                and snapshot.code_sha256 != capability.single_baseline["strategy_sha256"]):
+            raise SearchCampaignError("candidate_binding_changed", "Candidate is not the pre-source single baseline")
     except GenerationContractError as exc:
         raise SearchCampaignError(exc.code, exc.message, status=exc.status) from exc
     except BoundedStrategyError as exc:
@@ -714,6 +728,8 @@ def _round_one_plan(
         ) from exc
     if (
         prior["round"] != 1
+        or prior.get("single_baseline") != capability.single_baseline
+        or prior["data_provenance_sha256"] != capability.data_provenance_sha256
         or prior["campaign_id"] != current["campaign_id"]
         or prior["_contract_sha256"] != current["_contract_sha256"]
         or (current["round"] == 1 and prior != current)
@@ -888,6 +904,8 @@ def _base_public_state(capability: FrozenSearchCapability, status_value: str) ->
     return {
         "research_mode": "EXPLORATORY" if capability.exploration is not None else "INDEPENDENT_VALIDATION_REQUIRED",
         "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
+        "single_baseline": capability.single_baseline,
+        "protocol_review_required_before_development": capability.single_baseline is not None,
         "status": status_value, "campaign_id": None, "current_round": None,
         "attempts": [], "frozen_ranking": [],
         "budget": {
@@ -1059,6 +1077,16 @@ def load_public_search_state(
         "FAILED": "Search failed closed; private diagnostics are not returned",
         "INTERRUPTED": "Search state is partial or interrupted; it will not be replayed",
     }
+    if capability.single_baseline is not None:
+        messages["SEARCH_FINALIST_FROZEN"] = (
+            "Single baseline core gates passed in one attempt; Development requires "
+            "a matching manual protocol review and separate authorization"
+        )
+        messages["SEARCH_TERMINATED_NO_FINALIST"] = (
+            "Single baseline ended with no valid technical result; economic outcome is UNKNOWN"
+            if not any(item.get("technical_status") == "VALID" for item in trials)
+            else "Single baseline did not pass the frozen gates; no further attempt is allowed"
+        )
     state["message"] = messages.get(status_value, state["message"])
     return state
 
@@ -1104,7 +1132,7 @@ def _blocked_search_context(
         "candidates": [],
         "codex_parent_lock": None,
         "limits": {
-            "maximum_candidates_per_round": 1 if capability.exploration is not None else 2,
+            "maximum_candidates_per_round": 1 if capability.exploration is not None or capability.single_baseline is not None else 2,
             "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
             "active_attempt_limit": capability.active_attempt_limit,
         },
@@ -1176,7 +1204,7 @@ def load_search_context(
             "candidates": candidates,
             "codex_parent_lock": parent_lock,
             "limits": {
-                "maximum_candidates_per_round": 1 if capability.exploration is not None else 2,
+                "maximum_candidates_per_round": 1 if capability.exploration is not None or capability.single_baseline is not None else 2,
                 "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
                 "active_attempt_limit": capability.active_attempt_limit,
             },
@@ -1587,6 +1615,7 @@ def _search_plan(
             capability.pre_roll_candles,
             capability.economic_gate,
             capability.exploration,
+            capability.single_baseline,
         )
     except pilot.PilotError as exc:
         raise SearchCampaignError(
@@ -1677,7 +1706,7 @@ def _finalist_projection_binding(
         for item in contract["candidates"]
         if item["candidate_id"] == finalist["candidate_id"]
     ]
-    if len(rounds) != 2 or len(candidates) != 1:
+    if len(rounds) != (1 if "single_baseline" in rounds[0] else 2) or len(candidates) != 1:
         raise SearchCampaignError(
             "search_generation_invalid", "Search finalist projection is invalid"
         )
@@ -1705,6 +1734,8 @@ def _finalist_projection_binding(
         binding["economic_gate"] = pilot.validate_profile_economic_gate(
             round_one["economic_gate"]
         )
+    if "single_baseline" in round_one:
+        binding["single_baseline"] = round_one["single_baseline"]
     return binding, candidate
 
 
@@ -1894,6 +1925,7 @@ def parse_finalist_projection(
                 "profile_snapshot", "search_timerange",
                 "development_timerange", "pre_roll_candles")),
             economic_gate=round_one.get("economic_gate"),
+            single_baseline=round_one.get("single_baseline"),
         )
         _, search_stop = pilot.timerange(binding["search_timerange"], "Search")
         development_start, _ = pilot.timerange(binding["development_timerange"], "Development")
@@ -1921,6 +1953,15 @@ def parse_finalist_projection(
         "profile_snapshot": dict(round_one["profile_snapshot"]),
         "profile_contract": profile_contract,
         "timestamp": timestamp,
+        "protocol_review_identity": ({
+            "schema": "freqtrade-lab-single-baseline-review-v1",
+            "protocol_sha256": round_one["single_baseline"]["protocol_sha256"],
+            "data_provenance_sha256": round_one["data_provenance_sha256"],
+            "candidate_id": candidate["candidate_id"],
+            "source_sha256": candidate["strategy_sha256"],
+            "attempt_number": 1,
+            "raw_artifact_sha256": verified["attempts"][0]["evidence"]["archive"]["sha256"],
+        } if "single_baseline" in round_one else None),
     }
 
 
@@ -1931,10 +1972,8 @@ def verify_persisted_finalist_projection(
     """Perform the heavy projection parse before Development opens a write transaction."""
     message = "Search finalist handoff binding is invalid"
     try:
-        if not isinstance(value, Mapping) or set(value) not in (
-            FINALIST_BINDING_FIELDS,
-            FINALIST_BINDING_FIELDS | FINALIST_BINDING_OPTIONAL_FIELDS,
-        ):
+        if (not isinstance(value, Mapping) or not FINALIST_BINDING_FIELDS <= set(value)
+                or set(value) - FINALIST_BINDING_FIELDS - FINALIST_BINDING_OPTIONAL_FIELDS):
             raise ValueError(message)
         binding = dict(value)
         search_id = binding["search_generation_id"]
@@ -1995,6 +2034,7 @@ def verify_persisted_finalist_projection(
         "profile_contract": parsed["profile_contract"],
         "projection_values": projection_values,
         "document_hashes": document_hashes,
+        "protocol_review_identity": parsed["protocol_review_identity"],
     }
 
 
@@ -2099,6 +2139,8 @@ def verified_finalist_binding(
 ) -> Optional[dict[str, Any]]:
     if capability.exploration is not None:
         raise SearchCampaignError("exploratory_only", "Exploration requires independent validation")
+    if capability.single_baseline is not None:
+        _require_ready(capability)
     generation = _terminal_projection(capability)
     if generation is None:
         return None
@@ -2255,6 +2297,8 @@ def prepare_round_two(
     candidates: Sequence[Mapping[str, Any]],
 ) -> PreparedSearchRound:
     _require_ready(capability)
+    if capability.single_baseline is not None:
+        raise SearchCampaignError("campaign_consumed", "Single baseline forbids Round 2")
     if (not isinstance(candidates, Sequence) or isinstance(candidates, (str, bytes))
             or len(candidates) != 1
             or any(not isinstance(item, Mapping) or set(item) != {"candidate_id", "changed_factor"}

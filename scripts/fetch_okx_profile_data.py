@@ -194,6 +194,7 @@ def configure_profile_acquisition(
     window_spec: Path,
     pre_roll_candles: int,
     economic_gate: Any = None,
+    single_baseline: Any = None,
 ) -> dict[str, Any]:
     data_start, search_start, development_start, end_exclusive = load_window_spec(
         window_spec
@@ -207,6 +208,7 @@ def configure_profile_acquisition(
         pre_roll_candles,
         economic_gate,
         exploration,
+        single_baseline,
     )
     step = bounded_research.PROFILE_TIMEFRAME_STEPS[str(contract["timeframe"])]
     if data_start != search_start - step * pre_roll_candles:
@@ -1438,6 +1440,8 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="pre-result PROFILE_DRIVEN_ECONOMIC_GATE_V1 JSON",
     )
+    parser.add_argument("--single-baseline", type=Path,
+                        help="pre-source SINGLE_BASELINE_V1 JSON")
     return parser.parse_args()
 
 
@@ -1455,6 +1459,9 @@ def main() -> None:
         args.window_spec,
         args.pre_roll_candles,
         economic_gate,
+        (None if getattr(args, "single_baseline", None) is None else
+         bounded_research.validate_single_baseline(
+             _strict_json_object(args.single_baseline, "Single baseline"))),
     )
     runtime = validate_runtime()
     implementations = implementation_snapshot()

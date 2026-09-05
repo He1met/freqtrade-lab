@@ -79,7 +79,14 @@ def test_t0_profile_development_cli_parsers_share_prepare_arguments() -> None:
     search = pilot.parse_args(["prepare-search-data", *common])
     development = pilot.parse_args(["prepare-development-data", *common])
 
-    assert vars(search) | {"command": development.command} == vars(development)
+    search_arguments = vars(search).copy()
+    # Exploration is intentionally Search-only; shared acquisition arguments
+    # (including the opt-in single baseline) still have identical defaults.
+    assert search_arguments.pop("exploration_contract") is None
+    assert search_arguments | {"command": development.command} == vars(development)
+    for command in ("prepare-search-data", "prepare-development-data"):
+        parsed = pilot.parse_args([command, *common, "--single-baseline", "/tmp/single.json"])
+        assert parsed.single_baseline == Path("/tmp/single.json")
     assert pilot.parse_args(
         ["check-development-data", "--pilot-root", "/tmp/pilot"]
     ).pilot_root == Path("/tmp/pilot")

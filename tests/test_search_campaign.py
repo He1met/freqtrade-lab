@@ -22,6 +22,7 @@ def _frozen_capability(
     database: Path,
     candidate_id: str,
     economic_gate: dict[str, object] | None = None,
+    single_baseline: dict[str, object] | None = None,
 ) -> search_campaign.FrozenSearchCapability:
     with get_connection(database, read_only=True) as connection:
         connection.execute("BEGIN")
@@ -52,6 +53,8 @@ def _frozen_capability(
     }
     if economic_gate is not None:
         acquisition["economic_gate"] = dict(economic_gate)
+    if single_baseline is not None:
+        acquisition["single_baseline"] = dict(single_baseline)
     freqtrade = {
         "freqtrade_python": python,
         "freqtrade_source": source,
