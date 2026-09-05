@@ -540,6 +540,7 @@ def test_profile_1d_mode_writes_prepare_search_data_source_contract(
                 pa,
                 _timestamps(start, profile_acquisition_module.DATA_END, step),
                 missing_volume=missing_volume,
+                funding=name.endswith("-funding_rate.feather"),
             ),
             root / "data" / "okx" / "futures" / name,
             compression="uncompressed",
