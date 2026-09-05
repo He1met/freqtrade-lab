@@ -394,6 +394,36 @@ def test_t0_maximum_legal_multibyte_business_input_fits_http_limit(
         assert completed["status"] == "COMPLETED"
 
 
+def test_full_frozen_source_reaches_generation_prompt_with_existing_outer_limits(tmp_path):
+    from lab import codex_generation
+    from tests.test_exploratory_session import session_source
+    idea = 'Reproduce this frozen source exactly:\n' + session_source()
+    assert 1200 < len(idea) <= codex_generation.MAX_IDEA_CHARS == 4096
+    assert research_console.MAX_REQUEST_BYTES == 16 * 1024
+    assert codex_generation.MAX_PROMPT_BYTES == 192 * 1024
+    assert codex_generation.MAX_CODE_BYTES == 128 * 1024
+    with _serve(tmp_path, mode='success') as (server, database, _runtime, marker):
+        _, context, _ = _request(server, '/api/generation/context')
+        assert context['limits']['idea_chars'] == 4096
+        status, created, _ = _request(server, '/api/generations', method='POST',
+                                      payload={**VALID_REQUEST, 'idea':idea})
+        assert status == 202
+        _, completed, _ = _wait_generation(server, created['id'])
+        assert completed['status'] == 'COMPLETED'
+        captured = json.loads(marker.read_text())
+        business = json.loads(captured['prompt'].split('BUSINESS_CONTEXT_JSON:\n',1)[1])
+        assert business['request']['idea'] == idea.strip()
+        assert session_source().strip() in business['request']['idea']
+        before = _counts(database)
+        status, _, _ = _request(server, '/api/generations', method='POST',
+                               payload={**VALID_REQUEST, 'idea':'x'*4097})
+        assert status == 400
+        status, error, _ = _request(server, '/api/generations', method='POST',
+                                   payload={**VALID_REQUEST, 'idea':'x'*(16*1024+1)})
+        assert status == 413 and error['error'] == 'body_too_large'
+        assert _counts(database) == before
+
+
 def test_t1_generation_hard_fails_when_frozen_codex_capability_is_missing(
     tmp_path: Path,
 ) -> None:

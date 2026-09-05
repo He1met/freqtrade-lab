@@ -66,6 +66,8 @@ BUSINESS_TABLES = (
 )
 CHANGED_FACTOR = re.compile(r"^[a-z][a-z0-9_.-]{0,62}$")
 ENTRY_SMA_FILTER_84_V1 = "entry_sma_filter_84_v1"
+SESSION_PRE_ENTRY_AGREEMENT_V1 = "session_pre_entry_agreement_v1"
+ENTRY_LOW_ACTIVITY_FILTER_72_V1 = "entry_low_activity_filter_72_v1"
 _ENTRY_SMA_FILTER_COLUMN = "entry_sma_84"
 PRIVATE_OUTPUT = re.compile(r"^round-[12]\.(?:stdout|stderr)\.log$")
 PUBLIC_TRIAL_FIELDS = pilot.SEARCH_PUBLIC_TRIAL_FIELDS
@@ -113,7 +115,12 @@ class FrozenSearchCapability:
     development_timerange: Optional[str] = None
     pre_roll_candles: Optional[int] = None
     economic_gate: Optional[Mapping[str, Any]] = None
+    exploration: Optional[Mapping[str, Any]] = None
     _directory_fd: int = field(default=-1, repr=False, compare=False)
+
+    @property
+    def active_attempt_limit(self) -> int:
+        return 2 if self.exploration is not None else pilot.PROFILE_ACTIVE_ATTEMPTS
 
     def public(self) -> dict[str, Any]:
         profile = self.profile_snapshot
@@ -131,8 +138,11 @@ class FrozenSearchCapability:
             "profile_id": profile.get("id") if profile is not None else None,
             "profile_snapshot_sha256": self.profile_snapshot_sha256,
             "development_timerange": self.development_timerange,
+            "research_mode": "EXPLORATORY" if self.exploration is not None else "INDEPENDENT_VALIDATION_REQUIRED",
+            "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
+            "exploration": self.exploration,
             "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
-            "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
+            "active_attempt_limit": self.active_attempt_limit,
             "maximum_rounds": pilot.SEARCH_MAX_ROUNDS,
             "ranking": list(pilot.SEARCH_RANKING),
             "finalist_gate": (
@@ -262,6 +272,8 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
         }
         if "economic_gate" in contract:
             verification["economic_gate"] = contract["economic_gate"]
+        if "exploration" in contract:
+            verification["exploration"] = pilot.validate_exploration(contract["exploration"])
         verified = pilot._verify_search_data(
             acquisition,
             provenance,
@@ -287,6 +299,8 @@ def _acquisition_snapshot(root: Path, database_path: PathLike) -> dict[str, Any]
             result["economic_gate"] = pilot.validate_profile_economic_gate(
                 contract["economic_gate"]
             )
+        if "exploration" in contract:
+            result["exploration"] = pilot.validate_exploration(contract["exploration"])
         return result
     except pilot.PilotError as exc:
         if str(exc) == "BLOCKED_INSUFFICIENT_CAPACITY":
@@ -375,6 +389,7 @@ def freeze_search_capability(
                     "profile_snapshot_sha256", "development_timerange",
                     "pre_roll_candles",
                     "economic_gate",
+                    "exploration",
                 )
             },
         )
@@ -456,6 +471,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         capability.development_timerange,
         capability.pre_roll_candles,
         capability.economic_gate,
+        capability.exploration,
     )
     current = (
         current_acquisition["search_timerange"],
@@ -469,6 +485,7 @@ def _require_ready(capability: FrozenSearchCapability) -> None:
         current_acquisition.get("development_timerange"),
         current_acquisition.get("pre_roll_candles"),
         current_acquisition.get("economic_gate"),
+        current_acquisition.get("exploration"),
     )
     if frozen != current:
         raise SearchCampaignError(
@@ -554,6 +571,7 @@ def _profile_bound(snapshot: ApprovedCandidateSnapshot, capability: FrozenSearch
     frozen = capability.profile_snapshot
     if (
         frozen is None
+        or snapshot.exploration != capability.exploration
         or profile.get("domain") != "OKX_CRYPTO_PERP"
         or profile.get("exchange") != "okx"
         or profile.get("trading_mode") != "futures"
@@ -631,7 +649,7 @@ def _load_eligible_candidates(
                 except SearchCampaignError:
                     continue
                 family = snapshot.strategy_family
-                if not isinstance(family, str) or pilot.SAFE_ID.fullmatch(family) is None:
+                if not isinstance(family, str) or pilot.MECHANISM_ID.fullmatch(family) is None:
                     continue
                 if state["status"] == "SEARCH_READY" and snapshot.parent_candidate_id is None:
                     result.append(_candidate_public(snapshot, "MECHANISM_SEED"))
@@ -867,13 +885,15 @@ def _public_projection(value: Any, fields: Sequence[str]) -> Optional[dict[str, 
 
 def _base_public_state(capability: FrozenSearchCapability, status_value: str) -> dict[str, Any]:
     return {
+        "research_mode": "EXPLORATORY" if capability.exploration is not None else "INDEPENDENT_VALIDATION_REQUIRED",
+        "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
         "status": status_value, "campaign_id": None, "current_round": None,
         "attempts": [], "frozen_ranking": [],
         "budget": {
             "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
-            "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
+            "active_attempt_limit": capability.active_attempt_limit,
             "consumed_total": 0,
-            "remaining": pilot.PROFILE_ACTIVE_ATTEMPTS,
+            "remaining": capability.active_attempt_limit,
             "hard_remaining": pilot.SEARCH_MAX_ATTEMPTS,
         },
         "selected_parent": None, "search_finalist": None,
@@ -1083,9 +1103,9 @@ def _blocked_search_context(
         "candidates": [],
         "codex_parent_lock": None,
         "limits": {
-            "maximum_candidates_per_round": 2,
+            "maximum_candidates_per_round": 1 if capability.exploration is not None else 2,
             "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
-            "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
+            "active_attempt_limit": capability.active_attempt_limit,
         },
         "boundaries": state["boundaries"],
     }
@@ -1155,9 +1175,9 @@ def load_search_context(
             "candidates": candidates,
             "codex_parent_lock": parent_lock,
             "limits": {
-                "maximum_candidates_per_round": 2,
+                "maximum_candidates_per_round": 1 if capability.exploration is not None else 2,
                 "maximum_attempts": pilot.SEARCH_MAX_ATTEMPTS,
-                "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
+                "active_attempt_limit": capability.active_attempt_limit,
             },
             "boundaries": state["boundaries"],
         }
@@ -1462,7 +1482,65 @@ def _single_factor_change(
 ) -> bool:
     if changed_factor == ENTRY_SMA_FILTER_84_V1:
         return _single_sma_entry_filter_change_v1(parent, child)
+    if changed_factor == SESSION_PRE_ENTRY_AGREEMENT_V1:
+        return _single_session_agreement_change(parent, child)
+    if changed_factor == ENTRY_LOW_ACTIVITY_FILTER_72_V1:
+        return _single_entry_conjunct_change(
+            parent, child,
+            {signal: 'dataframe["volume"] < dataframe["prior_volume_mean"] * 0.5'
+             for signal in ("enter_long", "enter_short")},
+            required_indicator=('prior_volume_mean', 'dataframe["volume"].shift(1).rolling(72).mean()'),
+        )
     return _single_literal_factor_change(parent, child, changed_factor)
+
+
+def _single_session_agreement_change(parent: ApprovedCandidateSnapshot, child: ApprovedCandidateSnapshot) -> bool:
+    """R2 only adds the sign of close/open.shift(5)-1 to each entry mask."""
+    return _single_entry_conjunct_change(parent, child, {
+        signal: f'(dataframe["close"] / dataframe["open"].shift(5) - 1) {operator} 0'
+        for signal, operator in (("enter_long", ">"), ("enter_short", "<"))
+    })
+
+
+def _single_entry_conjunct_change(parent, child, filters, *, required_indicator=None) -> bool:
+    """Remove the two exact added conjuncts, then require whole-source AST equality."""
+    try:
+        parent_tree, child_tree = ast.parse(parent.code_text), ast.parse(child.code_text)
+        parent_class = next(node for node in parent_tree.body if isinstance(node, ast.ClassDef))
+        child_class = next(node for node in child_tree.body if isinstance(node, ast.ClassDef))
+        if required_indicator is not None:
+            column, expression = required_indicator
+            expected_assignment = ast.parse(f'dataframe["{column}"] = {expression}').body[0]
+            indicators = next(node for node in parent_class.body if isinstance(node, ast.FunctionDef) and node.name == "populate_indicators")
+            assignments = [node for node in indicators.body if isinstance(node, ast.Assign)
+                           and any(ast.dump(target) == ast.dump(expected_assignment.targets[0]) for target in node.targets)]
+            if len(assignments) != 1 or ast.dump(assignments[0]) != ast.dump(expected_assignment):
+                return False
+        for signal, expression in filters.items():
+            def target(strategy: ast.ClassDef) -> ast.Tuple:
+                function = next(node for node in strategy.body if isinstance(node, ast.FunctionDef) and node.name == "populate_entry_trend")
+                matches = [node.targets[0].slice for node in function.body
+                           if isinstance(node, ast.Assign) and len(node.targets) == 1
+                           and isinstance(node.targets[0], ast.Subscript)
+                           and isinstance(node.targets[0].slice, ast.Tuple)
+                           and len(node.targets[0].slice.elts) == 2
+                           and isinstance(node.targets[0].slice.elts[1], ast.Constant)
+                           and node.targets[0].slice.elts[1].value == signal]
+                if len(matches) != 1:
+                    raise ValueError("entry signal")
+                return matches[0]
+            old, new = target(parent_class), target(child_class)
+            mask = new.elts[0]
+            expected = ast.parse(expression, mode="eval").body
+            if (not isinstance(mask, ast.BinOp) or not isinstance(mask.op, ast.BitAnd)
+                    or ast.dump(mask.left) != ast.dump(old.elts[0])
+                    or ast.dump(mask.right) != ast.dump(expected)):
+                return False
+            new.elts[0] = old.elts[0]
+        parent_class.name = child_class.name = "FrozenStrategy"
+        return ast.dump(parent_tree) == ast.dump(child_tree)
+    except (SyntaxError, ValueError, StopIteration, AttributeError, TypeError):
+        return False
 
 
 def _search_plan(
@@ -1479,7 +1557,7 @@ def _search_plan(
     if (
         profile is None
         or capability.search_timerange is None
-        or capability.development_timerange is None
+        or (capability.development_timerange is None and capability.exploration is None)
         or capability.pre_roll_candles is None
     ):
         raise SearchCampaignError("BLOCKED_DATA", capability.reason, status=503)
@@ -1490,6 +1568,7 @@ def _search_plan(
             capability.development_timerange,
             capability.pre_roll_candles,
             capability.economic_gate,
+            capability.exploration,
         )
     except pilot.PilotError as exc:
         raise SearchCampaignError(
@@ -1509,7 +1588,7 @@ def _search_plan(
         "parent": parent, "candidates": list(candidates),
         **contract,
         "strategy_analyses": dict(strategy_analyses or {}),
-        "active_attempt_limit": pilot.PROFILE_ACTIVE_ATTEMPTS,
+        "active_attempt_limit": capability.active_attempt_limit,
     }
     return plan
 
@@ -1585,6 +1664,8 @@ def _finalist_projection_binding(
             "search_generation_invalid", "Search finalist projection is invalid"
         )
     round_one, candidate = rounds[0], candidates[0]
+    if "exploration" in round_one:
+        raise SearchCampaignError("exploratory_only", "Exploration cannot produce a Development binding")
     binding = {
             "candidate_id": candidate["candidate_id"],
             "generation_run_id": candidate["generation_run_id"],
@@ -1649,7 +1730,7 @@ def _terminal_projection(
     )
     if terminal_status != "SEARCH_BLOCKED":
         finalist = terminal.get("search_finalist")
-        if isinstance(finalist, Mapping):
+        if isinstance(finalist, Mapping) and capability.exploration is None:
             try:
                 finalist_binding, _ = _finalist_projection_binding(
                     request, terminal, evidence, verified
@@ -1998,6 +2079,8 @@ def _project_terminal_generation(
 def verified_finalist_binding(
     database_path: PathLike, capability: FrozenSearchCapability, candidate_id: str
 ) -> Optional[dict[str, Any]]:
+    if capability.exploration is not None:
+        raise SearchCampaignError("exploratory_only", "Exploration requires independent validation")
     generation = _terminal_projection(capability)
     if generation is None:
         return None
@@ -2073,7 +2156,7 @@ def prepare_round_one(
     _require_ready(capability)
     profile = capability.profile_snapshot
     if (not isinstance(candidate_ids, Sequence) or isinstance(candidate_ids, (str, bytes))
-            or not 1 <= len(candidate_ids) <= 2
+            or not 1 <= len(candidate_ids) <= (1 if capability.exploration is not None else 2)
             or any(not isinstance(value, str) for value in candidate_ids)
             or len(set(candidate_ids)) != len(candidate_ids)
             or profile is None
@@ -2096,7 +2179,7 @@ def prepare_round_one(
         profile_ids = {item.profile_id for item in snapshots}
         mechanisms = [item.strategy_family for item in snapshots]
         if (len(profile_ids) != 1 or any(item.parent_candidate_id is not None for item in snapshots)
-                or any(not isinstance(item, str) or pilot.SAFE_ID.fullmatch(item) is None for item in mechanisms)
+                or any(not isinstance(item, str) or pilot.MECHANISM_ID.fullmatch(item) is None for item in mechanisms)
                 or len(set(mechanisms)) != len(mechanisms)):
             raise SearchCampaignError("invalid_seed_set", "Round 1 seeds must share one Profile, have no parent, and use distinct safe mechanisms")
         candidates = [

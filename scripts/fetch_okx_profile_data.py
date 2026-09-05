@@ -161,15 +161,19 @@ def _utc_z(value: object, label: str) -> datetime:
 
 def load_window_spec(path: Path) -> tuple[datetime, datetime, datetime, datetime]:
     value = _strict_json_object(path, "Profile source window")
+    exploratory = value.get("schema") == "freqtrade-lab-exploratory-source-window-v1"
+    if exploratory:
+        bounded_research.validate_exploration(value.get("exploration"))
     if (
-        set(value) != {"schema", *WINDOW_FIELDS}
-        or value.get("schema") != PROFILE_WINDOW_SCHEMA
+        set(value) != {"schema", *WINDOW_FIELDS} | ({"exploration"} if exploratory else set())
+        or value.get("schema") not in {PROFILE_WINDOW_SCHEMA, "freqtrade-lab-exploratory-source-window-v1"}
     ):
         raise RuntimeError("Profile source window shape/version is not supported")
     data_start, search_start, development_start, end_exclusive = (
         _utc_z(value[field], f"Profile source {field}") for field in WINDOW_FIELDS
     )
-    if not data_start < search_start < development_start < end_exclusive:
+    if not (data_start < search_start < development_start
+            and (development_start == end_exclusive if exploratory else development_start < end_exclusive)):
         raise RuntimeError(
             "Profile source window must satisfy data < Search < Development < stop"
         )
@@ -193,13 +197,15 @@ def configure_profile_acquisition(
     data_start, search_start, development_start, end_exclusive = load_window_spec(
         window_spec
     )
+    exploration = _strict_json_object(window_spec, "Profile source window").get("exploration")
     contract = bounded_research.profile_acquisition_contract(
         database,
         profile_id,
         f"{search_start:%Y%m%d}-{development_start:%Y%m%d}",
-        f"{development_start:%Y%m%d}-{end_exclusive:%Y%m%d}",
+        None if exploration is not None else f"{development_start:%Y%m%d}-{end_exclusive:%Y%m%d}",
         pre_roll_candles,
         economic_gate,
+        exploration,
     )
     step = bounded_research.PROFILE_TIMEFRAME_STEPS[str(contract["timeframe"])]
     if data_start != search_start - step * pre_roll_candles:
@@ -1331,8 +1337,15 @@ def main() -> None:
     try:
         receipt = acquire(output, runtime)
         provenance = write_profile_provenance(output, receipt, runtime, implementations)
-    except BaseException:
-        shutil.rmtree(output)
+    except BaseException as exc:
+        if PROFILE_ACQUISITION is not None and "exploration" in PROFILE_ACQUISITION:
+            (output / "acquisition-failure.json").write_bytes(canonical_bytes({
+                "status": "BLOCKED_DATA", "error_type": type(exc).__name__,
+                "message": str(exc)[:1000], "exploration": PROFILE_ACQUISITION["exploration"],
+                "retry_allowed": False,
+            }))
+        else:
+            shutil.rmtree(output)
         raise
     print(f"Retrieval receipt: {receipt}")
     print(f"Retrieval receipt SHA-256: {sha256(receipt.read_bytes())}")

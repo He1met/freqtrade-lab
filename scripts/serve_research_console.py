@@ -46,6 +46,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="startup-frozen private Search-only campaign root outside Git",
     )
     parser.add_argument("--artifact-root", type=Path)
+    parser.add_argument("--exploration-contract", type=Path, help="frozen exposure contract for pre-data generation and Search-only execution")
     parser.add_argument(
         "--release-root",
         type=Path,
@@ -95,12 +96,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
+    from lab.bounded_research import load_json, validate_exploration
+    exploration = None if args.exploration_contract is None else validate_exploration(load_json(args.exploration_contract, "exploration")[0])
     server = create_research_console_server(
         args.database,
         args.runtime_root,
         args.pilot_root,
         args.port,
         search_root=args.search_root,
+        exploration_contract=exploration,
         artifact_root=args.artifact_root,
         release_root=args.release_root,
         frequi_base_url=args.frequi_base_url,

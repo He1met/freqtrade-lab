@@ -344,6 +344,40 @@ The project intentionally starts without an ORM, migration framework, task queue
 
 ## Low-level Bounded Evolution V1 Search engine
 
+For explicitly reviewed historical exploration, pass the same frozen
+`--exploration-contract` JSON to `prepare-search-data` and
+`serve_research_console.py`. It contains `protocol=EXPLORATORY_SESSION_RESEARCH_V1`,
+`status=NOT_INDEPENDENTLY_VALIDATED`, an `exposure_audit_sha256`, and a nonempty
+`prior_research` reference list. The source window uses
+`freqtrade-lab-exploratory-source-window-v1`, carries the same `exploration`
+object, and sets `development_start_utc=end_exclusive_utc` (the Search stop).
+Omit `--development-timerange`; no Development data or reservation is created.
+Start the Console with an explicit new `--search-root` and exploration contract
+before Candidate generation so the purpose is frozen in both Generation and
+Candidate metadata. Exploratory Search permits exactly one candidate per round,
+at most two attempts, and shows `EXPLORATORY / NOT_INDEPENDENTLY_VALIDATED`.
+Removing or changing its label breaks binding; even a passing exploratory
+finalist cannot enter Development. This mode reuses existing JSON fields and
+the six-table schema. It does not authorize acquisition of protected history.
+
+Two exploratory Profiles may consume the same verified source when only their
+identity, timestamps, capital, or minimum sample counts differ. Source verification
+first uses its original complete Profile/config and trusted hashes; all other
+Profile fields, windows, pre-roll, exposure audit, and economic Gate must match.
+Each consumer then receives its own verified config and provenance. Its
+`source_acquisition.provenance_sha256` still points to the original source and
+original Profile; source files remain unchanged. These are two consumers of one
+historical data source, not independent validation samples.
+
+Session candidates may use only
+`dataframe["date"].dt.tz_convert("America/New_York").dt.hour`, `.minute`, and
+`.dayofweek`; arbitrary datetime accessors remain rejected. The fixed R2 factors
+`session_pre_entry_agreement_v1` and `entry_low_activity_filter_72_v1` accept only
+their exact additional entry conjuncts and preserve the rest of the strategy.
+`tests/native_session_timing.py ROOT R1.py R2.py`, run with the pinned native
+Freqtrade Python and source on `PYTHONPATH`, verifies session timing against
+wholly synthetic data. Its results are technical evidence only.
+
 `screen-search` executes one frozen round of a Profile-driven V2 campaign against the authorized pair, timeframe, costs, capacity, windows, and finalist Gate. It emits no later-phase authorization; Console is the two-round user entrypoint:
 
 ```bash

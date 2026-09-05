@@ -88,6 +88,34 @@ def _profile_id(capability: search_campaign.FrozenSearchCapability) -> str:
     return str(capability.profile_snapshot["id"])
 
 
+@pytest.mark.parametrize("family", ["ny_session_direction", "ny-session-direction"])
+def test_mechanism_label_survives_listing_prepare_and_runner_validation(tmp_path, monkeypatch, family):
+    database, candidate_id = _approved_candidate_database(tmp_path, strategy_family=family)
+    capability = _frozen_capability(tmp_path, monkeypatch, database, candidate_id)
+    try:
+        context = search_campaign.load_search_context(database, capability)
+        assert [item['candidate_id'] for item in context['candidates']] == [candidate_id]
+        before = search_campaign.business_table_digest(database)
+        _prepare_round_one(database, capability, [candidate_id], campaign_id='mechanism-label-test')
+        root = capability.search_root
+        plan = pilot.load_plan(root, pilot.SEARCH_CAMPAIGN)
+        assert plan['candidates'][0]['mechanism'] == family
+        assert plan['candidates'][0]['strategy_file'] == f'strategies/round-1-{candidate_id}.py'
+        valid, failures = pilot._validate_search_candidates(root, plan, [])
+        assert not failures and valid[0]['mechanism'] == family
+        assert search_campaign.business_table_digest(database) == before
+        assert pilot.SAFE_ID.pattern == r'^[a-z0-9][a-z0-9-]{0,62}$'
+        assert pilot.SAFE_ID.fullmatch('ny_session_direction') is None
+        for invalid in ('a/b', '..', 'a\\b', 'a b', 'a\nb', 'a\tb', 'a\x00b',
+                        'a'*64, '_label', '-label', 'Label'):
+            assert pilot.MECHANISM_ID.fullmatch(invalid) is None
+            changed = {**plan, 'candidates': [{**plan['candidates'][0], 'mechanism': invalid}]}
+            valid, failures = pilot._validate_search_candidates(root, changed, [])
+            assert not valid and failures[candidate_id]['failure_reason'] == 'mechanism identity is invalid'
+    finally:
+        capability.close()
+
+
 def _economic_search_trial(**overrides: object) -> dict[str, object]:
     metrics: dict[str, object] = {
         "total_trades": 3,

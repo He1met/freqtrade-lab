@@ -136,6 +136,7 @@ PROFILE_SNAPSHOT_FIELDS = {
     "min_profit_factor", "is_default", "created_at", "updated_at",
 }
 PROFILE_SEARCH_GATE = "PROFILE_DRIVEN_POSITIVE_FINALIST_V1"
+EXPLORATORY_PROTOCOL = "EXPLORATORY_SESSION_RESEARCH_V1"
 PROFILE_ECONOMIC_GATE = "PROFILE_DRIVEN_ECONOMIC_GATE_V1"
 PROFILE_ECONOMIC_GATE_FIELDS = {
     "name",
@@ -175,6 +176,7 @@ def _search_terminal_fields(value: Mapping[str, Any]) -> set[str]:
 MARKET_STATE_DEFINITION = "LAST_CLOSED_CLOSE_VS_SMA_N_V1"
 PROFILE_TIMEFRAME_STEPS = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+MECHANISM_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 LOOPBACK_URL = re.compile(r"^http://127\.0\.0\.1:([1-9][0-9]{0,4})$")
@@ -427,7 +429,24 @@ def _profile_acquisition_contract_fields(value: Mapping[str, Any]) -> tuple[str,
     return (
         *PROFILE_ACQUISITION_FIELDS,
         *(("economic_gate",) if "economic_gate" in value else ()),
+        *(("exploration",) if "exploration" in value else ()),
     )
+
+
+def validate_exploration(value: Any) -> dict[str, Any]:
+    """Frozen exposure audit binding; never an independent validation contract."""
+    if (not isinstance(value, dict)
+            or set(value) != {"protocol", "status", "exposure_audit_sha256", "prior_research"}
+            or value.get("protocol") != EXPLORATORY_PROTOCOL
+            or value.get("status") != "NOT_INDEPENDENTLY_VALIDATED"
+            or not isinstance(value.get("exposure_audit_sha256"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", value["exposure_audit_sha256"]) is None
+            or not isinstance(value.get("prior_research"), list)
+            or not 1 <= len(value["prior_research"]) <= 8
+            or any(not isinstance(item, str) or not 1 <= len(item) <= 256
+                   for item in value["prior_research"])):
+        raise PilotError("Exploration contract is missing or invalid")
+    return dict(value)
 
 
 def timerange(value: Any, label: str) -> tuple[datetime, datetime]:
@@ -658,7 +677,13 @@ def _validated_profile_search_contract(value: Mapping[str, Any]) -> dict[str, An
     if isinstance(pre_roll, bool) or not isinstance(pre_roll, int) or not 1 <= pre_roll <= MAX_STATIC_LOOKBACK:
         raise PilotError("Profile Search pre-roll is invalid")
     search_start, search_stop = timerange(value["search_timerange"], "Search")
-    development_start, _ = timerange(value["development_timerange"], "Development")
+    exploration = validate_exploration(value["exploration"]) if "exploration" in value else None
+    if exploration is not None:
+        if value["development_timerange"] is not None:
+            raise PilotError("Exploration must not reserve a Development window")
+        development_start = search_stop
+    else:
+        development_start, _ = timerange(value["development_timerange"], "Development")
     try:
         history_start = datetime.strptime(snapshot["history_start_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
     except ValueError as exc:
@@ -682,18 +707,20 @@ def validate_profile_search_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
     expected_fields = base | PROFILE_SEARCH_FIELDS
     if "economic_gate" in public:
         expected_fields.add("economic_gate")
+    if "exploration" in public:
+        expected_fields.add("exploration")
     if set(public) != expected_fields:
         raise PilotError("Profile Search plan extension is incomplete or contains extras")
     profile = validate_profile_search_contract(public)
     snapshot = profile["profile_snapshot"]
     candidates = public.get("candidates")
     analyses = public.get("strategy_analyses")
-    if (public.get("active_attempt_limit") != PROFILE_ACTIVE_ATTEMPTS
+    if (public.get("active_attempt_limit") != (2 if "exploration" in public else PROFILE_ACTIVE_ATTEMPTS)
             or public.get("holdout") != "SEALED_UNREAD" or public.get("holdout_stress") != "SEALED_UNREAD"
             or not isinstance(candidates, list) or any(not isinstance(item, dict) for item in candidates)
             or not isinstance(analyses, dict)
             or set(analyses) != {item.get("candidate_id") for item in candidates if isinstance(item, dict)}
-            or len(candidates) > (2 if public.get("round") == 1 else 1)):
+            or len(candidates) > (2 if public.get("round") == 1 and "exploration" not in public else 1)):
         raise PilotError("Profile Search budget, pre-roll, or analyses are invalid")
     for candidate, analysis in zip(candidates, (analyses[item["candidate_id"]] for item in candidates), strict=True):
         candidate_fields = {"candidate_id", "class_name", "mechanism", "relationship", "changed_factor",
@@ -715,9 +742,10 @@ def validate_profile_search_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
 def profile_search_contract(
     profile_snapshot: Mapping[str, Any],
     search_timerange: str,
-    development_timerange: str,
+    development_timerange: Optional[str],
     pre_roll_candles: int,
     economic_gate: Optional[Mapping[str, Any]] = None,
+    exploration: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Freeze the candidate-independent Profile contract used by data and Search."""
     contract = {
@@ -729,6 +757,8 @@ def profile_search_contract(
     }
     if economic_gate is not None:
         contract["economic_gate"] = validate_profile_economic_gate(economic_gate)
+    if exploration is not None:
+        contract["exploration"] = validate_exploration(exploration)
     profile = _validated_profile_search_contract(contract)
     contract.update(capacity=profile["capacity"], finalist_gate=profile["finalist_gate"],
                     holdout="SEALED_UNREAD", holdout_stress="SEALED_UNREAD")
@@ -740,9 +770,10 @@ def profile_acquisition_contract(
     database_path: Path,
     profile_id: str,
     search_timerange: str,
-    development_timerange: str,
+    development_timerange: Optional[str],
     pre_roll_candles: int,
     economic_gate: Optional[Mapping[str, Any]] = None,
+    exploration: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Load one Profile read-only and return its acquisition/runtime contract."""
     try:
@@ -756,6 +787,7 @@ def profile_acquisition_contract(
         development_timerange,
         pre_roll_candles,
         economic_gate,
+        exploration,
     )
     profile = validate_profile_search_contract(contract)
     return {
@@ -794,6 +826,8 @@ def _search_contract(plan: Mapping[str, Any]) -> dict[str, Any]:
         contract["economic_gate"] = validate_profile_economic_gate(
             plan["economic_gate"]
         )
+    if "exploration" in plan:
+        contract["exploration"] = validate_exploration(plan["exploration"])
     return contract
 
 
@@ -817,6 +851,8 @@ def _load_search_campaign(
     expected_fields = required | PROFILE_SEARCH_FIELDS
     if "economic_gate" in plan:
         expected_fields.add("economic_gate")
+    if "exploration" in plan:
+        expected_fields.add("exploration")
     if (
         set(plan) != expected_fields
         or plan.get("schema") != SEARCH_SCHEMA
@@ -1216,6 +1252,8 @@ def _verify_search_data(
         expected_contract["economic_gate"] = validate_profile_economic_gate(
             plan["economic_gate"]
         )
+    if "exploration" in plan:
+        expected_contract["exploration"] = validate_exploration(plan["exploration"])
     if (
         digest(provenance_bytes) != plan["data_provenance_sha256"]
         or provenance.get("schema") != SEARCH_DATA_SCHEMA
@@ -1467,16 +1505,17 @@ def _load_search_source(
     pair = str(profile["pair"])
     timeframe = str(profile["timeframe"])
     search_timerange = str(profile_contract["search_timerange"])
-    development_timerange = str(profile_contract["development_timerange"])
+    development_timerange = profile_contract["development_timerange"]
     pre_roll_candles = profile_contract["pre_roll_candles"]
     source_window = _search_window_contract(
         search_timerange,
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
-    development_start, development_stop = timerange(
-        development_timerange, "Development"
-    )
+    if "exploration" in profile_contract:
+        development_start = development_stop = source_window["search_stop"]
+    else:
+        development_start, development_stop = timerange(development_timerange, "Development")
     expected_acquisition = {
         key: profile_contract[key]
         for key in _profile_acquisition_contract_fields(profile_contract)
@@ -1765,9 +1804,10 @@ def prepare_search_data(
     database_path: Path,
     profile_id: str,
     search_timerange: str,
-    development_timerange: str,
+    development_timerange: Optional[str],
     pre_roll_candles: int,
     economic_gate: Optional[Mapping[str, Any]] = None,
+    exploration: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Publish a fresh root containing only one verified Search acquisition."""
     raw_source = source_root.expanduser()
@@ -1803,6 +1843,7 @@ def prepare_search_data(
         development_timerange,
         pre_roll_candles,
         economic_gate,
+        exploration,
     )
     data_contract = {
         key: acquisition_contract[key]
@@ -1811,12 +1852,33 @@ def prepare_search_data(
     profile = validate_profile_search_contract(data_contract)
     timeframe = str(profile["timeframe"])
     pre_roll = int(pre_roll_candles)
+    source_contract = data_contract
+    if exploration is not None:
+        source_document, source_bytes = load_json(source / "retained-data-provenance.json", "source provenance")
+        if digest(source_bytes) != trusted_provenance_sha256:
+            raise PilotError("source provenance trusted SHA mismatch")
+        source_contract = source_document.get("contract", {}).get("profile_acquisition")
+        if not isinstance(source_contract, dict) or "exploration" not in source_contract:
+            raise PilotError("Shared source requires two exploratory contracts")
     frozen = _load_search_source(
         source,
         trusted_provenance_sha256,
         trusted_receipt_sha256,
-        profile_contract=data_contract,
+        profile_contract=source_contract,
     )
+    if exploration is not None:
+        # The original source/config has already passed its own complete verification.
+        source_profile = source_contract["profile_snapshot"]
+        allowed = {"id", "name", "created_at", "updated_at", "starting_balance", "stake_amount",
+                   "min_development_trades", "min_holdout_trades"}
+        if (any(source_profile[key] != data_contract["profile_snapshot"][key]
+                for key in PROFILE_SNAPSHOT_FIELDS - allowed)
+                or source_contract != profile_search_contract(
+                    source_profile, search_timerange, development_timerange, pre_roll,
+                    economic_gate, exploration)):
+            raise PilotError("Shared exploratory source differs outside the Profile identity/capital/sample whitelist")
+        # Source originals and their trusted SHA links remain intact; only this consumer gets its config.
+        frozen["controls"]["config.json"] = canonical(profile_search_config(data_contract["profile_snapshot"]))
     window = _search_window_contract(search_timerange, timeframe=timeframe, pre_roll_candles=pre_roll)
     staging = Path(tempfile.mkdtemp(prefix=".search-data-", dir=output_parent))
     staging.chmod(0o700)
@@ -3401,7 +3463,7 @@ def _validate_search_candidates(
         relationship = candidate["relationship"]
         changed_factor = candidate["changed_factor"]
         parent_sha = candidate["parent_strategy_sha256"]
-        if not isinstance(mechanism, str) or SAFE_ID.fullmatch(mechanism) is None:
+        if not isinstance(mechanism, str) or MECHANISM_ID.fullmatch(mechanism) is None:
             reason = "mechanism identity is invalid"
         elif candidate["candidate_id"] in previous_ids:
             reason = "duplicate candidate identity"
@@ -3637,7 +3699,7 @@ def _search_round_outcome(
     consumed_before: int,
 ) -> tuple[dict[str, Any], str, Optional[dict[str, Any]]]:
     validate_profile_search_plan(plan)
-    active_limit = PROFILE_ACTIVE_ATTEMPTS
+    active_limit = plan["active_attempt_limit"]
     consumed = consumed_before + len(current_results)
     ranked = _rank_search_results(trials)
     selected_parent = _search_parent(ranked[0] if ranked else None)
@@ -3769,7 +3831,7 @@ def screen_search(
                 or plan["parent"] != _search_identity(prior_parent)
             ):
                 raise PilotError("Search round 2 parent changed after selection")
-        active_limit = PROFILE_ACTIVE_ATTEMPTS
+        active_limit = plan["active_attempt_limit"]
         if len(reserved_numbers) + len(plan["candidates"]) > active_limit:
             raise PilotError(
                 f"Search candidate batch exceeds the {active_limit}-attempt active budget"
@@ -4517,7 +4579,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         command.add_argument("--database", required=True, type=Path)
         command.add_argument("--profile-id", required=True)
         command.add_argument("--search-timerange", required=True)
-        command.add_argument("--development-timerange", required=True)
+        command.add_argument("--development-timerange", required=command is development)
         command.add_argument("--pre-roll-candles", required=True, type=int)
         command.add_argument(
             "--economic-gate",
@@ -4525,6 +4587,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             help="pre-result PROFILE_DRIVEN_ECONOMIC_GATE_V1 JSON",
         )
         command.add_argument("--output-root", required=True, type=Path)
+    prepare.add_argument("--exploration-contract", type=Path, help="frozen exploration exposure contract; Development stays unknown")
     check_development = commands.add_parser(
         "check-development-data",
         help="verify one independent Profile Development pilot root",
@@ -4558,6 +4621,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 development_timerange=args.development_timerange,
                 pre_roll_candles=args.pre_roll_candles,
                 economic_gate=economic_gate,
+                **({"exploration": validate_exploration(load_json(args.exploration_contract, "exploration")[0])}
+                   if args.command == "prepare-search-data" and args.exploration_contract is not None else {}),
             )
         except PilotError:
             raise

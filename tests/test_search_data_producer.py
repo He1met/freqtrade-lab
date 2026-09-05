@@ -83,17 +83,21 @@ def _source_acquisition(
     missing_search_candle: bool = False,
     prefixed_python_dependency: bool = False,
     economic_gate: dict[str, object] | None = None,
+    exploration: dict[str, object] | None = None,
 ) -> tuple[Path, str, str]:
     pa, feather = _arrow_modules()
-    profile_contract = pilot.profile_acquisition_contract(
-        **_profile_prepare_kwargs(tmp_path), economic_gate=economic_gate
-    )
+    kwargs = _profile_prepare_kwargs(tmp_path)
+    if exploration is not None:
+        kwargs['development_timerange'] = None
+    profile_contract = pilot.profile_acquisition_contract(**kwargs, economic_gate=economic_gate, exploration=exploration)
     root = tmp_path / "complete-source-acquisition"
     data_root = root / "data" / "okx" / "futures"
     data_root.mkdir(parents=True)
     source_start = datetime(2026, 5, 31, 22, tzinfo=timezone.utc)
     research_start = datetime(2026, 6, 1, tzinfo=timezone.utc)
     source_stop = datetime(2026, 7, 31, tzinfo=timezone.utc)
+    if exploration is not None:
+        source_stop = datetime(2026, 7, 1, tzinfo=timezone.utc)
     series = {
         "XRP_USDT_USDT-5m-futures.feather": (
             _timestamps(source_start, source_stop, timedelta(minutes=5)),
@@ -223,7 +227,7 @@ def _source_acquisition(
                 "leverage_tiers": "isolated_tiers_snapshot.json",
                 "config": "config.json",
                 "development_timerange": "20260601-20260701",
-                "holdout_timerange": "20260701-20260731",
+                "holdout_timerange": None if exploration is not None else "20260701-20260731",
                 "timeframe": "5m",
                 "profile_acquisition": {
                     key: profile_contract[key]

@@ -303,7 +303,33 @@ def _dataframe_receiver(node: ast.AST) -> bool:
     return any(_is_name(value, "dataframe") for value in ast.walk(node))
 
 
+def _session_clock(node: ast.AST) -> bool:
+    """Only date.dt.tz_convert('America/New_York').dt.{hour,minute,dayofweek}."""
+    if not isinstance(node, ast.Attribute) or node.attr not in {"hour", "minute", "dayofweek"}:
+        return False
+    accessor = node.value
+    if not isinstance(accessor, ast.Attribute) or accessor.attr != "dt":
+        return False
+    return _session_timezone_call(accessor.value)
+
+
+def _session_timezone_call(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Call) or node.keywords or len(node.args) != 1:
+        return False
+    func = node.func
+    return (
+        isinstance(func, ast.Attribute) and func.attr == "tz_convert"
+        and isinstance(func.value, ast.Attribute) and func.value.attr == "dt"
+        and isinstance(func.value.value, ast.Subscript)
+        and _subscript_column(func.value.value) == "date"
+        and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == "America/New_York"
+    )
+
+
 def _validate_call(class_name: str, node: ast.Call) -> None:
+    if _session_timezone_call(node):
+        return
     call_name = _dotted_name(node.func)
     simple_name = node.func.id if isinstance(node.func, ast.Name) else None
     name = node.func.attr if isinstance(node.func, ast.Attribute) else None
@@ -525,6 +551,8 @@ def _dataframe_call_kind(
 def _expression_kind(class_name: str, node: ast.AST, bands_bound: bool) -> str:
     """Return a small semantic kind while recursively enforcing the allowlist."""
 
+    if _session_clock(node):
+        return "series"
     if isinstance(node, ast.Constant):
         return _literal_kind(class_name, node)
     if isinstance(node, ast.Subscript):
@@ -632,6 +660,8 @@ def _expression_lookback(
 ) -> int:
     """Return candles required for an already-validated bounded expression."""
 
+    if _session_clock(node):
+        return 1
     if isinstance(node, ast.Constant):
         return 1
     if isinstance(node, ast.Name) and node.id == "dataframe":

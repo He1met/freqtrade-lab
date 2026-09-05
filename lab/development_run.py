@@ -879,6 +879,8 @@ def _bound_candidate(
 ) -> sqlite3.Row:
     try:
         approved = load_approved_candidate_snapshot(connection, candidate_id)
+        if approved.exploration is not None:
+            raise DevelopmentRunError("EXPLORATORY_ONLY", "Exploratory Candidate requires a separately frozen independent validation protocol")
     except GenerationContractError as exc:
         raise DevelopmentRunError("BLOCKED_SECURITY", exc.message) from exc
     row = connection.execute(
