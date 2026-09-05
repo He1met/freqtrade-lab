@@ -94,14 +94,17 @@ def test_clock_rejects_other_chains_and_future(old, new):
 
 def exploratory_candidate(tmp_path):
     db, prior_id = _approved_candidate_database(tmp_path)
+    # This record must sort after the original fixture, independently of UUIDs.
+    later = '2026-01-02T00:00:00.000Z'
+    assert later > NOW
     with get_connection(db, read_only=True) as con:
         con.execute('BEGIN')
         prior = generation.load_approved_candidate_snapshot(con, prior_id)
     request = generation.validate_generation_request({'profile_id': prior.profile_id, 'idea': 'Synthetic session', 'strategy_family': 'session'})
-    prepared = generation.start_generation(db, 'exploratory-generation', request, model='test', started_at=NOW, exploration=EXPLORATION)
+    prepared = generation.start_generation(db, 'exploratory-generation', request, model='test', started_at=later, exploration=EXPLORATION)
     output = pilot.canonical({'class_name': CLASS_NAME, 'display_name': 'Session', 'code_text': session_source()})
-    candidate_id = generation.complete_generation(db, prepared, generation.parse_candidate_output(output, timeframe='5m'), raw_output=output, jsonl_summary={'event_count':4, 'tool_event_count':0}, finished_at=NOW)
-    generation.review_generation(db, prepared.generation_id, 'APPROVED', decided_at=NOW)
+    candidate_id = generation.complete_generation(db, prepared, generation.parse_candidate_output(output, timeframe='5m'), raw_output=output, jsonl_summary={'event_count':4, 'tool_event_count':0}, finished_at=later)
+    generation.review_generation(db, prepared.generation_id, 'APPROVED', decided_at=later)
     return db, candidate_id
 
 
