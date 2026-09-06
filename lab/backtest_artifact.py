@@ -763,7 +763,7 @@ def parse_backtest_artifact(
 
     if _required_string(result, "trading_mode", "strategy result") != trading_mode:
         raise ArtifactImportError("report and config trading_mode disagree")
-    if _required_string(result, "margin_mode", "strategy result") != margin_mode:
+    if result.get("margin_mode") != margin_mode:
         raise ArtifactImportError("report and config margin_mode disagree")
     report_pairs = _string_list(result.get("pairlist"), "strategy result pairlist")
     if report_pairs != pairs:

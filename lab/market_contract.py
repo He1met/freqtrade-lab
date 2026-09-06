@@ -6,6 +6,8 @@ from typing import Mapping, Any
 
 def valid_market(value: Mapping[str, Any], *, profile: bool = False) -> bool:
     mode = (value.get("trading_mode"), value.get("margin_mode"))
+    if not all(isinstance(item, str) for item in mode):
+        return False
     domains = {("futures", "isolated"): "OKX_CRYPTO_PERP",
                ("spot", ""): "OKX_CRYPTO_SPOT"}
     return mode in domains and (not profile or value.get("domain") == domains[mode])

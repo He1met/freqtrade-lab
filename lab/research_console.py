@@ -4786,7 +4786,7 @@ function refreshParents() {
 }
 async function loadGenerationContext() {
   generationContext = await request('/api/generation/context'); profileSelect.replaceChildren();
-  generationContext.profiles.forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = `${profile.name} · ${profile.timeframe}`; profileSelect.append(option); });
+  generationContext.profiles.forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = `${profile.name} · ${profile.timeframe} · ${profile.trading_mode === 'spot' ? '现货仅做多 / 资金费 N/A' : '永续 / 资金费须验证'}`; profileSelect.append(option); });
   document.getElementById('idea').maxLength = generationContext.limits.idea_chars;
   document.getElementById('family').maxLength = generationContext.limits.strategy_family_chars;
   document.getElementById('failure').maxLength = generationContext.limits.expected_failure_mode_chars;

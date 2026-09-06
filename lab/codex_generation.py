@@ -2075,11 +2075,13 @@ def load_generation_context(database: Path) -> Dict[str, Any]:
                     "id": row["id"],
                     "name": row["name"],
                     "timeframe": row["timeframe"],
+                    "trading_mode": row["trading_mode"],
+                    "funding": "NOT_APPLICABLE" if row["trading_mode"] == "spot" else "REQUIRES_VERIFIED_HISTORY",
                     "is_default": bool(row["is_default"]),
                 }
                 for row in connection.execute(
                     """
-                    SELECT id, name, timeframe, is_default
+                    SELECT id, name, timeframe, is_default, trading_mode
                     FROM research_profiles
                     ORDER BY is_default DESC, name COLLATE NOCASE, id
                     """

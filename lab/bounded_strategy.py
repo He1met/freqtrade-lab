@@ -304,7 +304,7 @@ def _dataframe_receiver(node: ast.AST) -> bool:
 
 
 def _session_clock(node: ast.AST) -> bool:
-    """Only date.dt.tz_convert('America/New_York').dt.{hour,minute,dayofweek}."""
+    """Only the fixed UTC and New York clocks and their calendar components."""
     if not isinstance(node, ast.Attribute) or node.attr not in {"hour", "minute", "dayofweek"}:
         return False
     accessor = node.value
@@ -323,7 +323,7 @@ def _session_timezone_call(node: ast.AST) -> bool:
         and isinstance(func.value.value, ast.Subscript)
         and _subscript_column(func.value.value) == "date"
         and isinstance(node.args[0], ast.Constant)
-        and node.args[0].value == "America/New_York"
+        and node.args[0].value in ("America/New_York", "UTC")
     )
 
 

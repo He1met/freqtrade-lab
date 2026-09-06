@@ -580,7 +580,7 @@ def _create_scenario_data_view(
         filtered_dates = filtered.column("date")
         if pc.any(pc.greater_equal(filtered_dates, stop_value)).as_py():
             raise OfflineBacktestError("scenario data view crossed its exclusive stop")
-        if relative.name.endswith(f"-{timeframe}-futures.feather"):
+        if relative.name.endswith((f"-{timeframe}-futures.feather", f"-{timeframe}.feather")):
             step = timedelta(minutes=5) if timeframe == "5m" else timedelta(days=1)
             expected_last = pa.scalar(stop - step, type=dates.type)
             if pc.max(filtered_dates).as_py() != expected_last.as_py():
@@ -824,6 +824,19 @@ def _walk_sensitive(value: Any, label: str) -> None:
             _walk_sensitive(child, label)
 
 
+def _valid_market(value: Mapping[str, Any], *, profile: bool = False) -> bool:
+    # This copied, sandboxed adapter cannot import application modules.
+    mode = (value.get("trading_mode"), value.get("margin_mode"))
+    return ((mode == ("futures", "isolated") and (not profile or value.get("domain") == "OKX_CRYPTO_PERP"))
+            or (mode == ("spot", "") and (not profile or value.get("domain") == "OKX_CRYPTO_SPOT")))
+
+
+def _validate_market_pair(pair: str, *, spot: bool) -> None:
+    pattern = r"[A-Za-z0-9-]+/USDT" if spot else r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):\2"
+    if re.fullmatch(pattern, pair) is None:
+        raise ValueError("pair is outside the supported market boundary")
+
+
 def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
     _walk_sensitive(config, "raw Freqtrade config")
     if "add_config_files" in config:
@@ -842,8 +855,7 @@ def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
     pairs = exchange.get("pair_whitelist")
     if (
         exchange.get("name") != "okx"
-        or config.get("trading_mode") != "futures"
-        or config.get("margin_mode") != "isolated"
+        or not _valid_market(config)
         or config.get("timeframe") not in {"5m", "1d"}
         or not isinstance(pairs, list)
         or len(pairs) != 1
@@ -854,11 +866,17 @@ def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
         or config["max_open_trades"] <= 0
     ):
         raise OfflineBacktestError("raw config runtime contract is unsafe")
+    try:
+        _validate_market_pair(pairs[0], spot=config["trading_mode"] == "spot")
+    except ValueError as exc:
+        raise OfflineBacktestError(str(exc)) from exc
     fee = _finite_trade_number(config.get("fee"), "raw config fee")
     if fee < 0.0:
         raise OfflineBacktestError("raw config fee must be non-negative")
     return {
         "pair": pairs[0],
+        "trading_mode": config["trading_mode"],
+        "margin_mode": config["margin_mode"],
         "timeframe": config["timeframe"],
         "fee": fee,
         "starting_balance": _finite_trade_number(config.get("dry_run_wallet"), "raw config wallet", positive=True),
@@ -903,21 +921,19 @@ def _verify_profile_runtime_contract(
     pairs = snapshot.get("pairs")
     pair = pairs[0] if isinstance(pairs, list) and len(pairs) == 1 else None
     if (
-        snapshot.get("domain") != "OKX_CRYPTO_PERP"
+        not _valid_market(snapshot, profile=True)
         or snapshot.get("exchange") != "okx"
-        or snapshot.get("trading_mode") != "futures"
-        or snapshot.get("margin_mode") != "isolated"
         or snapshot.get("detail_timeframe") is not None
         or snapshot.get("timeframe") not in {"5m", "1d"}
         or not isinstance(pair, str)
-        or re.fullmatch(
-            r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):\2", pair
-        )
-        is None
     ):
         raise OfflineBacktestError(
             "raw Freqtrade config disagrees with the frozen Profile"
         )
+    try:
+        _validate_market_pair(pair, spot=snapshot["trading_mode"] == "spot")
+    except ValueError as exc:
+        raise OfflineBacktestError(str(exc)) from exc
     values: dict[str, float] = {}
     for key in (
         "starting_balance",
@@ -955,6 +971,8 @@ def _verify_profile_runtime_contract(
     runtime = _validate_raw_config_boundary(config)
     if (
         runtime["pair"] != pair
+        or runtime["trading_mode"] != snapshot["trading_mode"]
+        or runtime["margin_mode"] != snapshot["margin_mode"]
         or runtime["timeframe"] != snapshot["timeframe"]
         or runtime["max_open_trades"] != snapshot["max_open_trades"]
         or not math.isclose(
@@ -1063,8 +1081,8 @@ def _validate_loaded_config(
     if (
         actual["dry_run"] is not True
         or actual["exchange"] != "okx"
-        or actual["trading_mode"] != "futures"
-        or actual["margin_mode"] != "isolated"
+        or actual["trading_mode"] != expected.get("trading_mode", "futures")
+        or actual["margin_mode"] != expected.get("margin_mode", "isolated")
         or actual["timeframe"] != expected["timeframe"]
         or actual["pairs"] != [expected["pair"]]
         or actual["starting_balance"] != expected["starting_balance"]
@@ -1117,6 +1135,14 @@ def _verify_market_inputs(
 ) -> tuple[Mapping[str, Any], list[Mapping[str, Any]]]:
     market = _mapping(market_value, "market snapshot")
     source = _mapping(provenance.get("source"), "data provenance source")
+    if ":" not in pair:
+        if (market.get("symbol") != pair or market.get("id") != pair.replace("/", "-")
+                or market.get("id") != source.get("instrument_id")
+                or market.get("active") is not True or market.get("spot") is not True
+                or market.get("contract") is not False or market.get("type") != "spot"
+                or tiers_value != {"status": "NOT_APPLICABLE", "trading_mode": "spot"}):
+            raise OfflineBacktestError("market snapshot is not the selected unlevered OKX spot")
+        return market, []
     if (
         market.get("symbol") != pair
         or market.get("id") != source.get("instrument_id")
@@ -1180,6 +1206,10 @@ def _validate_results(
             if not math.isclose(actual_fee, fee, rel_tol=0.0, abs_tol=1e-15):
                 raise OfflineBacktestError(f"trade {index} {field} disagrees with config")
         _finite_trade_number(trade.get("leverage"), f"trade {index} leverage", positive=True)
+        if ":" not in pair:
+            if trade.get("is_short") is not False or trade.get("leverage") != 1 or trade.get("funding_fees") not in (None, 0, 0.0):
+                raise OfflineBacktestError(f"trade {index} violates unlevered spot contract")
+            continue
         if "funding_fees" not in trade:
             raise OfflineBacktestError(f"trade {index} lacks funding_fees")
         _finite_trade_number(trade.get("funding_fees"), f"trade {index} funding_fees")

@@ -217,7 +217,8 @@ def configure_profile_acquisition(
         )
     pair = str(contract["pair"])
     base, quote_settle = pair.split("/", 1)
-    quote, settle = quote_settle.split(":", 1)
+    spot = contract["profile_snapshot"]["trading_mode"] == "spot"
+    quote, settle = (quote_settle, quote_settle) if spot else quote_settle.split(":", 1)
     if quote != settle:
         raise RuntimeError("Profile pair is not an OKX linear perpetual")
     global PROFILE_ACQUISITION, DATA_START, SEARCH_START, DEVELOPMENT_START
@@ -232,7 +233,7 @@ def configure_profile_acquisition(
         data_start.replace(minute=0, second=0, microsecond=0).timestamp() * 1000
     )
     SYMBOL = pair
-    INSTRUMENT_ID = f"{base}-{quote}-SWAP"
+    INSTRUMENT_ID = f"{base}-{quote}" + ("" if spot else "-SWAP")
     PAIR_FAMILY = f"{base}-{quote}"
     FUTURES_TIMEFRAME = str(contract["timeframe"])
     return contract
@@ -283,15 +284,42 @@ def fetch_profile_candles(
         }
         if price is not None:
             params["price"] = price
-        rows = exchange.fetch_ohlcv(
-            SYMBOL,
-            timeframe=timeframe,
-            since=cursor,
-            limit=count,
-            params=params,
-        )
+        spot = _configured()["profile_snapshot"]["trading_mode"] == "spot"
+        raw_page = None
+        endpoint = exchange.publicGetMarketHistoryCandles if spot else None
+        def checked_spot_endpoint(actual_params):
+            nonlocal raw_page
+            expected_bar = "1Dutc" if timeframe == "1d" else "5m"
+            if raw_page is not None or actual_params != {"instId": INSTRUMENT_ID, "bar": expected_bar,
+                    "limit": count, "before": cursor-1, "after": until}:
+                raise RuntimeError("spot raw candle request contract changed")
+            exchange.last_http_response = None
+            try:
+                response = endpoint(actual_params)
+                raw_page = json.loads(exchange.last_http_response)
+            except Exception:
+                raise RuntimeError("spot public candle response unavailable") from None
+            _validate_spot_candle_page(raw_page, response, cursor, until, step_ms)
+            return response
+        if spot:
+            exchange.publicGetMarketHistoryCandles = checked_spot_endpoint
+        try:
+            rows = exchange.fetch_ohlcv(SYMBOL, timeframe=timeframe, since=cursor, limit=count, params=params)
+        finally:
+            if spot:
+                exchange.publicGetMarketHistoryCandles = endpoint
+        if spot:
+            if raw_page is None:
+                raise RuntimeError("spot raw candle verifier was bypassed")
+            expected_parsed = sorted([[int(row[0]), *[float(value) for value in row[1:6]]]
+                                      for row in raw_page["data"]])
+            if rows != expected_parsed:
+                raise RuntimeError("spot CCXT OHLCV differs from raw base-volume data")
         page += 1
         requests.append(request_receipt(exchange, f"{label}-{page}"))
+        if spot:
+            requests[-1]["raw_response"] = raw_page
+            requests[-1]["raw_validation"] = "UTC_CONFIRMED_EXACT_SEQUENCE_BASE_VOLUME"
         if len(rows) != count:
             raise RuntimeError(
                 f"{label} page {page}: expected {count} rows, received {len(rows)}"
@@ -304,6 +332,21 @@ def fetch_profile_candles(
         output.extend(rows)
         cursor = until
     return output
+
+
+def _validate_spot_candle_page(raw, response, start_ms, end_ms, step_ms):
+    """Check the raw completion flag before CCXT discards it; no values logged."""
+    if (not isinstance(raw, dict) or raw != response or raw.get("code") != "0"
+            or raw.get("msg") not in (None, "") or not isinstance(raw.get("data"), list)):
+        raise RuntimeError("spot raw candle envelope invalid")
+    clocks = []
+    for row in raw["data"]:
+        if (not isinstance(row, list) or len(row) != 9 or row[8] != "1"
+                or not isinstance(row[0], str) or not row[0].isascii() or not row[0].isdecimal()):
+            raise RuntimeError("spot raw candle must be a confirmed nine-field record")
+        clocks.append(int(row[0]))
+    if sorted(clocks) != list(range(start_ms, end_ms, step_ms)):
+        raise RuntimeError("spot raw candle timestamps are not the exact UTC page")
 
 
 def _archive_months() -> list[tuple[int, int]]:
@@ -1141,6 +1184,11 @@ def store_profile_market_data(
         fill_missing=False,
         drop_incomplete=False,
     )
+    if _configured()["profile_snapshot"]["trading_mode"] == "spot":
+        if mark or funding:
+            raise RuntimeError("spot must not contain mark or funding data")
+        handler.ohlcv_store(SYMBOL, FUTURES_TIMEFRAME, futures_df, transport.CandleType.SPOT)
+        return
     mark_df = transport.ohlcv_to_dataframe(
         mark, "1h", SYMBOL, fill_missing=False, drop_incomplete=False
     )
@@ -1160,6 +1208,8 @@ def store_profile_market_data(
 
 def acquire(root: Path, runtime: dict[str, object]) -> Path:
     contract = _configured()
+    spot = contract["profile_snapshot"]["trading_mode"] == "spot"
+    inst_type = "SPOT" if spot else "SWAP"
     assert all(
         item is not None
         for item in (
@@ -1185,7 +1235,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         {
             "enableRateLimit": True,
             "timeout": 30000,
-            "options": {"defaultType": "swap"},
+            "options": {"defaultType": "spot" if spot else "swap"},
         }
     )
     install_request_guard(exchange)
@@ -1193,7 +1243,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
     try:
         response = assert_okx_response(
             exchange.public_get_public_instruments(
-                {"instType": "SWAP", "instId": INSTRUMENT_ID}
+                {"instType": inst_type, "instId": INSTRUMENT_ID}
             ),
             "instrument",
         )
@@ -1201,10 +1251,14 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         if len(response["data"]) != 1:
             raise RuntimeError("instrument response must contain exactly one market")
         instrument = response["data"][0]
+        if spot:
+            listed = instrument.get("listTime")
+            if not isinstance(listed, str) or not listed.isdecimal() or int(listed) <= 0 or int(listed) > DATA_START_MS:
+                raise RuntimeError("spot listing time does not cover the frozen pre-roll")
         if (
             instrument.get("instId") != INSTRUMENT_ID
-            or instrument.get("instType") != "SWAP"
-            or instrument.get("settleCcy") != SYMBOL.split("/", 1)[1].split(":", 1)[0]
+            or instrument.get("instType") != inst_type
+            or instrument.get("quoteCcy" if spot else "settleCcy") != SYMBOL.split("/", 1)[1].split(":", 1)[0]
             or instrument.get("state") != "live"
         ):
             raise RuntimeError("instrument response does not match the Profile")
@@ -1212,15 +1266,18 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         if (
             market.get("symbol") != SYMBOL
             or market.get("id") != INSTRUMENT_ID
-            or market.get("swap") is not True
-            or market.get("linear") is not True
+            or market.get("spot" if spot else "swap") is not True
+            or (not spot and market.get("linear") is not True)
+            or (spot and market.get("contract") is not False)
         ):
             raise RuntimeError("parsed market does not match the Profile")
         exchange.set_markets([market], {})
-        tiers = exchange.fetch_market_leverage_tiers(SYMBOL, {"marginMode": "isolated"})
-        requests.append(request_receipt(exchange, "isolated-position-tiers"))
-        if not tiers or any(tier.get("symbol") != SYMBOL for tier in tiers):
-            raise RuntimeError("OKX isolated leverage tiers are missing or mismatched")
+        tiers = {"status": "NOT_APPLICABLE", "trading_mode": "spot"}
+        if not spot:
+            tiers = exchange.fetch_market_leverage_tiers(SYMBOL, {"marginMode": "isolated"})
+            requests.append(request_receipt(exchange, "isolated-position-tiers"))
+            if not tiers or any(tier.get("symbol") != SYMBOL for tier in tiers):
+                raise RuntimeError("OKX isolated leverage tiers are missing or mismatched")
         futures = fetch_profile_candles(
             exchange,
             timeframe=FUTURES_TIMEFRAME,
@@ -1228,10 +1285,10 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
             end_ms=DATA_END_MS,
             page_limit=300 if FUTURES_TIMEFRAME == "5m" else 100,
             price=None,
-            label=f"futures-{FUTURES_TIMEFRAME}",
+            label=f"{'spot' if spot else 'futures'}-{FUTURES_TIMEFRAME}",
             requests=requests,
         )
-        mark = fetch_profile_candles(
+        mark = [] if spot else fetch_profile_candles(
             exchange,
             timeframe="1h",
             start_ms=MARK_START_MS,
@@ -1241,7 +1298,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
             label="mark-1h",
             requests=requests,
         )
-        funding = fetch_funding_history(exchange, requests, fetched_at=started)
+        funding = [] if spot else fetch_funding_history(exchange, requests, fetched_at=started)
     finally:
         exchange.close()
     step_ms = int(
@@ -1255,23 +1312,23 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         end_ms=DATA_END_MS,
         step_ms=step_ms,
     )
-    mark_stats = assert_regular_series(
+    mark_stats = None if spot else assert_regular_series(
         mark,
         label="mark-1h",
         start_ms=MARK_START_MS,
         end_ms=DATA_END_MS,
         step_ms=60 * 60 * 1000,
     )
-    funding_stats = validate_funding_history(funding)
+    funding_stats = None if spot else validate_funding_history(funding)
     store_profile_market_data(data_dir, futures, mark, funding)
     market_path = root / "market_snapshot.json"
     tiers_path = root / "isolated_tiers_snapshot.json"
     market_path.write_bytes(canonical_bytes(market))
     tiers_path.write_bytes(canonical_bytes(tiers))
     landed: dict[str, dict[str, object]] = {}
-    feathers = sorted((data_dir / "futures").glob("*.feather"))
-    if len(feathers) != 3:
-        raise RuntimeError("Profile acquisition must land exactly three Feather files")
+    feathers = sorted(data_dir.rglob("*.feather"))
+    if len(feathers) != (1 if spot else 3):
+        raise RuntimeError("Profile acquisition must land the exact market Feather files")
     for path in feathers:
         data = path.read_bytes()
         landed[path.relative_to(root).as_posix()] = {
@@ -1294,7 +1351,7 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
             "startup_candles_required": contract["pre_roll_candles"],
         },
         "requests": requests,
-        "series": {
+        "series": {f"spot_{FUTURES_TIMEFRAME}": futures_stats} if spot else {
             f"futures_{FUTURES_TIMEFRAME}": futures_stats,
             "mark_1h": mark_stats,
             "funding_history": funding_stats,
@@ -1369,7 +1426,9 @@ def write_profile_provenance(
     local_only: dict[str, object] = {}
     for path in sorted((root / "data" / "okx").rglob("*.feather")):
         relative = path.relative_to(root).as_posix()
-        if relative.endswith(f"-{FUTURES_TIMEFRAME}-futures.feather"):
+        if contract["profile_snapshot"]["trading_mode"] == "spot" and relative.endswith(f"-{FUTURES_TIMEFRAME}.feather"):
+            role = "merged_spot_ohlcv"
+        elif relative.endswith(f"-{FUTURES_TIMEFRAME}-futures.feather"):
             role = "merged_futures_ohlcv"
         elif relative.endswith("-1h-mark.feather"):
             role = "merged_mark_ohlcv"

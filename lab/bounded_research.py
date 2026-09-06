@@ -1128,9 +1128,14 @@ def load_plan(root: Path, name: str = PLAN) -> dict[str, Any]:
     return plan
 
 
-def _search_series_contract(timeframe: str) -> tuple[dict[str, timedelta], dict[str, str]]:
+def _search_series_contract(timeframe: str, trading_mode: str = "futures") -> tuple[dict[str, timedelta], dict[str, str]]:
     if timeframe not in PROFILE_TIMEFRAME_STEPS:
         raise PilotError("Search timeframe must be 5m or 1d")
+    if trading_mode == "spot":
+        return ({f"spot_{timeframe}": PROFILE_TIMEFRAME_STEPS[timeframe]},
+                {f"spot_{timeframe}": f"-{timeframe}.feather"})
+    if trading_mode != "futures":
+        raise PilotError("Unsupported market mode")
     base = f"futures_{timeframe}"
     return (
         {base: PROFILE_TIMEFRAME_STEPS[timeframe], "mark_1h": timedelta(hours=1), "funding_history": timedelta(hours=8)},
@@ -1139,11 +1144,12 @@ def _search_series_contract(timeframe: str) -> tuple[dict[str, timedelta], dict[
 
 
 def _search_window_contract(
-    value: Any, *, timeframe: str, pre_roll_candles: int
+    value: Any, *, timeframe: str, pre_roll_candles: int, trading_mode: str = "futures"
 ) -> dict[str, Any]:
     window = _profile_window_contract(
         value,
         phase="Search",
+        trading_mode=trading_mode,
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
@@ -1157,11 +1163,12 @@ def _search_window_contract(
 
 
 def _development_window_contract(
-    value: Any, *, timeframe: str, pre_roll_candles: int
+    value: Any, *, timeframe: str, pre_roll_candles: int, trading_mode: str = "futures"
 ) -> dict[str, Any]:
     window = _profile_window_contract(
         value,
         phase="Development",
+        trading_mode=trading_mode,
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
@@ -1180,12 +1187,13 @@ def _profile_window_contract(
     phase: str,
     timeframe: str,
     pre_roll_candles: int,
+    trading_mode: str = "futures",
 ) -> dict[str, Any]:
     phase_start, phase_stop = timerange(value, phase)
     duration = phase_stop - phase_start
     if not timedelta(days=1) <= duration <= timedelta(days=366):
         raise PilotError(f"{phase} window exceeds its bounded duration")
-    steps, _ = _search_series_contract(timeframe)
+    steps, _ = _search_series_contract(timeframe, trading_mode)
     startup_start = (
         phase_start - PROFILE_TIMEFRAME_STEPS[timeframe] * pre_roll_candles
     )
@@ -1195,6 +1203,8 @@ def _profile_window_contract(
         "mark_1h": mark_start,
         "funding_history": phase_start,
     }
+    if trading_mode == "spot":
+        starts = {f"spot_{timeframe}": startup_start}
     rows: dict[str, int] = {}
     for series, step in steps.items():
         duration = phase_stop - starts[series]
@@ -1248,6 +1258,13 @@ def _verify_search_receipt(
 def _search_data_names(pair: Any, timeframe: str) -> dict[str, str]:
     if not isinstance(pair, str):
         raise PilotError("Search source pair is invalid")
+    if ":" not in pair:
+        from lab.market_contract import pair_quote
+        try:
+            pair_quote(pair, spot=True)
+        except ValueError as exc:
+            raise PilotError(str(exc)) from exc
+        return {f"spot_{timeframe}": pair.replace("/", "_") + f"-{timeframe}.feather"}
     match = re.fullmatch(
         r"([A-Za-z0-9-]+)/([A-Za-z0-9-]+):([A-Za-z0-9-]+)", pair
     )
@@ -1314,6 +1331,7 @@ def _verify_search_data(
     pre_roll = plan["pre_roll_candles"]
     window = _search_window_contract(
         plan["search_timerange"],
+        trading_mode=plan["profile_snapshot"]["trading_mode"],
         timeframe=timeframe,
         pre_roll_candles=pre_roll,
     )
@@ -1552,6 +1570,7 @@ def _load_search_source(
     pre_roll_candles = profile_contract["pre_roll_candles"]
     source_window = _search_window_contract(
         search_timerange,
+        trading_mode=profile_contract["profile_snapshot"]["trading_mode"],
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
@@ -1771,13 +1790,15 @@ def _verify_profile_output_dates(
         raise PilotError("exact PyArrow 25.0.0 is required") from exc
     if pyarrow.__version__ != RUNNER_DEPENDENCIES["pyarrow"]:
         raise PilotError("exact PyArrow 25.0.0 is required")
-    steps, _ = _search_series_contract(timeframe)
+    trading_mode = "spot" if set(data_names) == {f"spot_{timeframe}"} else "futures"
+    steps, _ = _search_series_contract(timeframe, trading_mode)
     label = "Search-only" if phase == "Search" else phase
-    if set(data_names) != set(steps) or len(set(data_names.values())) != 3:
-        raise PilotError(f"{label} output must contain exactly three series")
+    if set(data_names) != set(steps) or len(set(data_names.values())) != len(steps):
+        raise PilotError(f"{label} output must contain the exact market series")
     window = _profile_window_contract(
         phase_timerange,
         phase=phase,
+        trading_mode=trading_mode,
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
@@ -1929,7 +1950,8 @@ def prepare_search_data(
             raise PilotError("Shared exploratory source differs outside the Profile identity/capital/sample whitelist")
         # Source originals and their trusted SHA links remain intact; only this consumer gets its config.
         frozen["controls"]["config.json"] = canonical(profile_search_config(data_contract["profile_snapshot"]))
-    window = _search_window_contract(search_timerange, timeframe=timeframe, pre_roll_candles=pre_roll)
+    window = _search_window_contract(search_timerange, timeframe=timeframe, pre_roll_candles=pre_roll,
+                                     trading_mode=data_contract["profile_snapshot"]["trading_mode"])
     staging = Path(tempfile.mkdtemp(prefix=".search-data-", dir=output_parent))
     staging.chmod(0o700)
     published = False
@@ -2077,6 +2099,7 @@ def _profile_development_window_spec(
 ) -> dict[str, Any]:
     window = _development_window_contract(
         profile_contract["development_timerange"],
+        trading_mode=profile_contract["profile_snapshot"]["trading_mode"],
         timeframe=profile["timeframe"],
         pre_roll_candles=profile_contract["pre_roll_candles"],
     )
@@ -2335,6 +2358,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
 
     window_contract = _development_window_contract(
         profile_contract["development_timerange"],
+        trading_mode=profile_contract["profile_snapshot"]["trading_mode"],
         timeframe=timeframe,
         pre_roll_candles=profile_contract["pre_roll_candles"],
     )
@@ -2441,6 +2465,8 @@ def check_development_data(root: Path) -> dict[str, Any]:
         f"{DEVELOPMENT_ISOLATION}/data/okx",
         f"{DEVELOPMENT_ISOLATION}/data/okx/futures",
     }
+    if profile_contract["profile_snapshot"]["trading_mode"] == "spot":
+        expected_directories.remove(f"{DEVELOPMENT_ISOLATION}/data/okx/futures")
     actual_files, actual_directories = _development_root_entries(resolved_root)
     if actual_files != expected_files or actual_directories != expected_directories:
         raise PilotError("Development pilot root file set is not exact")
@@ -2523,6 +2549,7 @@ def prepare_development_data(
     source_acquisition = _source_acquisition_binding(frozen)
     window_contract = _development_window_contract(
         development_timerange,
+        trading_mode=profile_contract["profile_snapshot"]["trading_mode"],
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
@@ -3198,7 +3225,7 @@ def _screen_candidate(
         pair = config["exchange"]["pair_whitelist"][0]
         timeframe = config["timeframe"]
         data_names = _search_data_names(pair, timeframe)
-        market_data = Path(isolation["data_dir"]) / data_names[f"futures_{timeframe}"]
+        market_data = Path(isolation["data_dir"]) / data_names[next(key for key in data_names if key.endswith(f"_{timeframe}") and key.startswith(("spot_", "futures_")))]
     metrics = report_metrics(
         raw,
         summary["archive"],
