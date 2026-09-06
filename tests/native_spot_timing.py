@@ -2,6 +2,9 @@
 
 Run with the pinned Python and explicit native/repository PYTHONPATH:
   tests/native_spot_timing.py NEW_OUTPUT_ROOT STRATEGY_FILE
+
+The parser call uses Synthetic phase only. It does not exercise the production
+Search Profile binding or prove that the original ZIP passes the full importer.
 """
 import ast
 import json
