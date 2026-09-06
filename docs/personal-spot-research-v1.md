@@ -32,3 +32,26 @@ T0：相关单测。T1：受影响模块回归，纯合成 native 语义检查�
 仅在监督放行后有限采集；事前固定请求/重试边界。D 仅 producer QC，S 全门通过并获内部阶段放行后才读取执行。H/Stress 留封存，用户另行授权；无 Release、Demo、交易权限。技术失败分类网络/数据/合同，不能自动换币换根或救策略。
 
 最终交一份短终态报告与必要原始回执：唯一入口、代码 SHA、DB/artifact 路径、测试与 UI 证据、真实 Search 预算、研究结论及限制。
+
+## 本机关键数据测试命令
+
+指定 native venv 已有 PyArrow/pandas/Freqtrade，无 pytest。以下仅复用 uv 的 pytest 工具依赖，不修改 native 或 venv；测试进程显式绑定本仓库 `tests`，避免 native 的同名包遮盖：
+
+```sh
+FTLAB_TEST_SITE=$(uv run --with pytest python -c 'import pathlib, pytest; print(pathlib.Path(pytest.__file__).parent.parent)')
+PYTHONDONTWRITEBYTECODE=1 \
+PYTHONPATH="/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade:$PWD:$FTLAB_TEST_SITE" \
+/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python - <<'PY'
+import sys, types
+from pathlib import Path
+local_tests = types.ModuleType('tests')
+local_tests.__path__ = [str(Path.cwd() / 'tests')]
+sys.modules['tests'] = local_tests
+import pytest
+raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider', '--disable-warnings',
+    'tests/test_spot_research.py', 'tests/test_search_data_producer.py',
+    'tests/test_run_freqtrade_backtest.py', 'tests/test_fetch_okx_public_data.py']))
+PY
+```
+
+原生纯合成探针 `tests/native_spot_timing.py` 计入最多两次预算，不能当普通回归反复执行。其 `report_metrics` 仅输出 Synthetic 证据；实际 Search 须使用完整 Profile 绑定。独立 Profile 的 H/Stress 接口维持现有封存限制。
