@@ -120,6 +120,7 @@ class ParsedBacktestArtifact:
     net_profit_after_base_fees_pct: float
     average_holding_period_minutes: Optional[float]
     roi_exit_count: int
+    funding_audit: Optional[dict[str, Any]] = None
 
     def metrics_json(self) -> str:
         """Return the deliberately small, deterministic database payload."""
@@ -147,6 +148,8 @@ class ParsedBacktestArtifact:
             "losses": self.losses,
             "wins": self.wins,
         }
+        if self.funding_audit is not None:
+            payload["funding_audit"] = self.funding_audit
         return json.dumps(
             payload,
             allow_nan=False,
@@ -926,8 +929,21 @@ def parse_backtest_artifact(
     if not _same_number(fee_evidence_rate, configured_fee, fee=True):
         raise ArtifactImportError("provenance fee evidence rate disagrees")
     claim = _required_string(fee_evidence, "claim", "provenance fee_evidence")
-    if claim != "not an observed or public OKX account fee rate":
+    expected_claim = f"not an observed or public {'Binance' if exchange == 'binance' else 'OKX'} account fee rate"
+    if claim != expected_claim:
         raise ArtifactImportError("provenance must preserve the configured-fee limitation")
+
+    funding_audit = None
+    if exchange == "binance":
+        from lab.futures_costs import validate_audit, FuturesCostError
+        try:
+            funding_audit = validate_audit(provenance.get("funding_audit"), profit_total*100, starting_balance, total_trades)
+            if funding_audit.get('scoring_timerange') != config_timerange or any(
+                    not isinstance(funding_audit.get(key),str) or re.fullmatch(r'[0-9a-f]{64}',funding_audit[key]) is None
+                    for key in ('source_events_sha256','mark_data_sha256')):
+                raise FuturesCostError('funding audit source/window binding missing')
+        except FuturesCostError as exc:
+            raise ArtifactImportError(str(exc)) from exc
 
     return ParsedBacktestArtifact(
         archive_path=archive_path,
@@ -974,6 +990,7 @@ def parse_backtest_artifact(
             None if total_trades == 0 else holding_period_minutes / total_trades
         ),
         roi_exit_count=roi_exit_count,
+        funding_audit=funding_audit,
     )
 
 

@@ -7,6 +7,8 @@ It consumes one Profile-bound frozen Development view, creates exactly one
 
 from __future__ import annotations
 
+from lab.market_contract import SOURCE_HOSTS
+
 import hashlib
 import json
 import math
@@ -310,10 +312,12 @@ def _verified_market_identity(
     if not isinstance(source, dict):
         raise DevelopmentRunError("BLOCKED_DATA", "source market identity is invalid")
     pair = source.get("pair")
+    source_exchange = source.get('exchange', 'okx')
     instrument_id = source.get("instrument_id")
     market = _json_bytes(market_bytes, "market snapshot")
     if (
-        source.get("host") != "www.okx.com"
+        not isinstance(source_exchange, str)
+        or source.get("host") != SOURCE_HOSTS.get(source_exchange)
         or source.get("authentication") != "none"
         or not isinstance(pair, str)
         or not pair
@@ -488,6 +492,7 @@ def freeze_development_capability(
             if profile_contract is None
             else pilot.validate_profile_search_contract(profile_contract)
         )
+        market_exchange = (frozen_profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
         if frozen_profile is not None:
             profile_public.update(
                 timeframe=str(frozen_profile["timeframe"]),
@@ -560,7 +565,8 @@ def freeze_development_capability(
             != (frozen_profile or {}).get("timeframe", contract.get("timeframe"))
             or contract.get("development_timerange") != plan["development_timerange"]
             or not isinstance(source_value, dict)
-            or source_value.get("host") != "www.okx.com"
+            or source_value.get("host") != SOURCE_HOSTS[market_exchange]
+            or source_value.get("exchange", "okx") != market_exchange
             or source_value.get("authentication") != "none"
             or not isinstance(freqtrade, dict)
             or freqtrade.get("version") != SUPPORTED_FREQTRADE_VERSION
@@ -708,11 +714,11 @@ def freeze_development_capability(
             elif name == contract.get("leverage_tiers"):
                 _check_receipt(acquisition / safe_name, record, "leverage tiers")
                 tiers_record = record
-            elif name.startswith("data/okx/"):
-                relative = name.removeprefix("data/okx/")
+            elif name.startswith(f"data/{market_exchange}/"):
+                relative = name.removeprefix(f"data/{market_exchange}/")
                 safe_relative = _safe_relative(relative, "Development data")
                 _check_receipt(
-                    isolation / "data" / "okx" / safe_relative,
+                    isolation / "data" / market_exchange / safe_relative,
                     record,
                     "Development data",
                 )
@@ -1161,8 +1167,9 @@ def _materialize_inputs(
     assert capability.pilot_root is not None
     _, _, exclusive_stop_utc = _development_window(capability.development_timerange, profile_contract=capability.profile_contract)
     input_root = run_dir / "development-input"
+    market_exchange = (capability.profile_contract or {}).get("profile_snapshot", {}).get("exchange", "okx")
     strategies = input_root / "strategies"
-    data_root = input_root / "data" / "okx"
+    data_root = input_root / "data" / market_exchange
     strategies.mkdir(parents=True)
     data_root.mkdir(parents=True)
     acquisition = capability.pilot_root / "acquisition"
@@ -1210,12 +1217,12 @@ def _materialize_inputs(
     }
     for relative, size, digest in capability.data_receipts:
         _copy_input(
-            isolation / "data" / "okx" / relative,
+            isolation / "data" / market_exchange / relative,
             data_root / relative,
             (size, digest),
         )
-        local_receipts[f"data/okx/{relative}"] = {"bytes": size, "sha256": digest}
-        input_hashes[f"data/okx/{relative}"] = digest
+        local_receipts[f"data/{market_exchange}/{relative}"] = {"bytes": size, "sha256": digest}
+        input_hashes[f"data/{market_exchange}/{relative}"] = digest
     provenance = {
         "schema": "freqtrade-lab-retained-okx-data-v1",
         "portable_retained_fixture": False,
@@ -1234,7 +1241,7 @@ def _materialize_inputs(
         "contract": {
             "config": "config.json",
             "strategy": strategy_relative,
-            "data_dir": "data/okx",
+            "data_dir": f"data/{market_exchange}",
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
             "development_timerange": capability.development_timerange,
@@ -1262,6 +1269,11 @@ def _materialize_inputs(
         provenance["contract"]["profile_snapshot_sha256"] = normalized_profile[
             "profile_snapshot_sha256"
         ]
+    if market_exchange == "binance":
+        source_bytes = _read_bytes(isolation / "retained-data-provenance.json", "Development source")
+        if _sha256(source_bytes) != capability.development_provenance_sha256:
+            raise DevelopmentRunError("BLOCKED_DATA", "Development funding source changed")
+        provenance["source"] = _json_bytes(source_bytes, "Development source")["source"]
     provenance_bytes = _canonical_bytes(provenance)
     _write_exclusive(input_root / "retained-data-provenance.json", provenance_bytes, 0o400)
     input_hashes["retained-data-provenance.json"] = _sha256(provenance_bytes)
@@ -1637,7 +1649,7 @@ def execute_development_run(
             _runtime_config(
                 base_config,
                 config_source=input_root / "config.json",
-                data_dir=input_root / "data" / "okx",
+                data_dir=input_root / "data" / base_config["exchange"]["name"],
                 user_data_dir=user_data,
                 strategy_path=input_root / "strategies",
                 strategy=strategy,
@@ -1659,7 +1671,7 @@ def execute_development_run(
             runner_sha256=runner_sha,
             sandbox_exec=DEFAULT_SANDBOX_EXEC,
             config_path=runtime_config,
-            data_dir=input_root / "data" / "okx",
+            data_dir=input_root / "data" / base_config["exchange"]["name"],
             user_data_dir=user_data,
             strategy_path=input_root / "strategies",
             strategy_file=strategy_file,
@@ -1697,6 +1709,7 @@ def execute_development_run(
             },
             timerange=str(snapshot["timerange"]),
             network_policy="deny-by-default sandbox; network denied; Development-only inputs",
+            funding_data_dir=input_root / "data" / base_config["exchange"]["name"],
             allow_zero_trades=True,
         )
         import_backtest_execution(
@@ -1722,6 +1735,20 @@ def execute_development_run(
     finally:
         shutil.rmtree(runtime, ignore_errors=True)
     return result
+
+
+def _development_funding_gate(snapshot: Mapping[str, Any], execution: Any, gate: Mapping[str, Any]) -> Tuple[dict[str, Any], bool]:
+    from lab.futures_costs import validate_audit, funding_gate_passed, FuturesCostError
+    try:
+        audit=validate_audit(json.loads(execution['metrics_json']).get('funding_audit'),
+                             execution['profit_pct'],snapshot['normalized_profile_contract']['profile_snapshot']['starting_balance'],
+                             execution['total_trades'])
+    except (FuturesCostError,TypeError,ValueError,KeyError) as exc:
+        raise DevelopmentRunError('artifact_invalid','Development funding audit is missing or inconsistent') from exc
+    costs=dict(gate)
+    if gate.get('economic_gate') is not None:
+        costs['minimum_profit_pct']=max(costs['minimum_profit_pct'],gate['economic_gate']['minimum_net_profit_after_base_fees_pct'])
+    return audit, funding_gate_passed(audit,costs)
 
 
 def _development_gate_contract(snapshot: Mapping[str, Any]) -> dict[str, Any]:
@@ -1912,6 +1939,10 @@ def finalize_development_gate(database_path: PathLike, research_run_id: str) -> 
                     or roi_count > economic_gate["maximum_roi_exit_count"]
                 ):
                     reasons.append("MAXIMUM_ROI_EXIT_COUNT_EXCEEDED")
+            if snapshot.get("normalized_profile_contract", {}).get("profile_snapshot", {}).get("exchange") == "binance":
+                _, funding_passed = _development_funding_gate(snapshot,row,gate_contract)
+                if not funding_passed:
+                    reasons.append("CONSERVATIVE_FUNDING_GATE_NOT_MET")
             passed = not reasons
             checks = {
                 "candidate_binding": "PASSED",
@@ -2036,6 +2067,7 @@ _PUBLIC_REJECTION_REASONS = frozenset(
         "MINIMUM_NET_PROFIT_AFTER_BASE_FEES_PCT_NOT_MET",
         "MINIMUM_AVERAGE_HOLDING_PERIOD_MINUTES_NOT_MET",
         "MAXIMUM_ROI_EXIT_COUNT_EXCEEDED",
+        "CONSERVATIVE_FUNDING_GATE_NOT_MET",
     }
 )
 _PUBLIC_ERROR_CODES = frozenset(
@@ -2489,6 +2521,14 @@ def _public_gate_results(
                 "maximum_roi_exit_count",
             )
         )
+    if snapshot.get("normalized_profile_contract", {}).get("profile_snapshot", {}).get("exchange") == "binance":
+        funding = json.loads(execution["metrics_json"] or "{}").get("funding_audit")
+        funding_passed = None
+        if terminal:
+            funding, funding_passed = _development_funding_gate(snapshot,execution,gate_contract)
+        gate_results.append({"criterion":"conservative_funding","threshold":"source-bound net/DD/cash", "actual":funding,"passed":funding_passed})
+        if terminal and funding_passed is not True:
+            reasons.append("CONSERVATIVE_FUNDING_GATE_NOT_MET")
     return gate_results, reasons, actual
 
 

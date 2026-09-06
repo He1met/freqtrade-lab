@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from lab.futures_costs import FuturesCostError, audit_native_trades, validate_events
+from lab.futures_costs import FuturesCostError, audit_native_trades, validate_events, validate_audit
 
 START = 1699228800000  # 2023-11-06 UTC
 HOUR = 3_600_000
@@ -84,6 +84,36 @@ def test_exit_at_half_open_source_end_needs_boundary_data():
     t=trade(False,START+17*HOUR,END)
     with pytest.raises(FuturesCostError,match="scoring window"):
         audit([t])
+
+
+@pytest.mark.parametrize('mutation', [
+    'missing_factor','factor','loss_count','bool_count','negative_deduction',
+    'row_profit','native_total','missing_row_profit','nonfinite','row_shape',
+])
+def test_audit_tampering_fails_closed(mutation):
+    result=audit([trade()])
+    assert validate_audit(result,-0.1,1000,1) is result
+    row=result['trade_adjustments'][0]
+    if mutation=='missing_factor':del result['conservative_profit_factor']
+    elif mutation=='factor':result['conservative_profit_factor']=100
+    elif mutation=='loss_count':result['conservative_loss_count']=0
+    elif mutation=='bool_count':result['conservative_loss_count']=True
+    elif mutation=='negative_deduction':row['funding_deduction_abs']=-1
+    elif mutation=='row_profit':row['conservative_profit_abs']=10
+    elif mutation=='native_total':
+        row['native_profit_abs']+=1
+        row['conservative_profit_abs']+=1
+    elif mutation=='missing_row_profit':del row['conservative_profit_abs']
+    elif mutation=='nonfinite':row['native_profit_abs']=float('nan')
+    else:result['trade_adjustments'][0]=None
+    with pytest.raises(FuturesCostError):validate_audit(result,-0.1,1000,1)
+
+
+def test_no_losses_retains_undefined_factor_and_zero_trade_audit():
+    result=audit([])
+    assert validate_audit(result,0,1000,0) is result
+    result['conservative_profit_factor']=0
+    with pytest.raises(FuturesCostError):validate_audit(result,0,1000,0)
 
 
 def test_missing_associated_mark_fails_before_metrics_even_without_trades():

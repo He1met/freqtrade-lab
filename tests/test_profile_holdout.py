@@ -73,6 +73,30 @@ def test_profile_pf_one_eligible_and_frozen_gate_tamper_rejected(tmp_path, monke
             holdout_run._eligible_row(connection, run_id, parse_artifact=False)
 
 
+def test_binance_missing_associated_mark_fails_before_continuation_write(tmp_path,monkeypatch):
+    pytest.importorskip('pyarrow')
+    from tests.profile_holdout_fixture import passed_profile_development_stub,authorized_artificial_holdout,canonical,record
+    database,run_id,directory,development=passed_profile_development_stub(tmp_path,monkeypatch,binance=True)
+    source=authorized_artificial_holdout(database,run_id,binance=True)
+    path=source/'funding-events.json'
+    events=json.loads(path.read_bytes());events[0]['markPrice']=''
+    path.write_bytes(canonical(events))
+    provenance=json.loads((source/'retained-data-provenance.json').read_bytes())
+    provenance['source']['funding_events_receipt']=record(path)
+    (source/'retained-data-provenance.json').write_bytes(canonical(provenance))
+    capability=holdout_run.freeze_profile_holdout_capability(database,run_id,development)
+    assert capability.status=='READY'  # metadata-only readiness does not read values
+    with get_connection(database,read_only=True) as connection:
+        before=[tuple(row) for row in connection.execute('SELECT status,stage,input_snapshot_json FROM research_runs WHERE id=?',(run_id,))]
+    with pytest.raises(holdout_run.HoldoutRunError,match='funding source is incomplete'):
+        holdout_run.prepare_holdout_continuation(database,directory,run_id,capability)
+    with get_connection(database,read_only=True) as connection:
+        assert [tuple(row) for row in connection.execute('SELECT status,stage,input_snapshot_json FROM research_runs WHERE id=?',(run_id,))]==before
+        assert connection.execute('SELECT COUNT(*) FROM backtest_executions WHERE research_run_id=?',(run_id,)).fetchone()[0]==1
+    assert not (directory/'holdout-input').exists()
+    assert not (directory/'.holdout-input-preparing').exists()
+
+
 def test_spot_daily_development_preparation_keeps_holdout_unopened(tmp_path, monkeypatch):
     pytest.importorskip("pyarrow")
     from tests.profile_holdout_fixture import prepared_profile_development
@@ -86,16 +110,17 @@ def test_spot_daily_development_preparation_keeps_holdout_unopened(tmp_path, mon
     assert capability.timeframe == "1d"
 
 
-def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, monkeypatch):
+@pytest.mark.parametrize('binance',[False,True])
+def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, monkeypatch, binance):
     pytest.importorskip("pyarrow")
     from tests.profile_holdout_fixture import passed_profile_development_stub, authorized_artificial_holdout
-    database, run_id, directory, development = passed_profile_development_stub(tmp_path, monkeypatch)
+    database, run_id, directory, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance)
     with get_connection(database, read_only=True) as connection:
         before = json.loads(connection.execute("SELECT input_snapshot_json FROM research_runs WHERE id=?", (run_id,)).fetchone()[0])
-    source = authorized_artificial_holdout(database, run_id)
+    source = authorized_artificial_holdout(database, run_id,binance=binance)
     original = holdout_run._read_regular
     def metadata_only(path, *args, **kwargs):
-        assert not str(path).endswith((".feather", "market_snapshot.json", "isolated_tiers_snapshot.json"))
+        assert not str(path).endswith((".feather", "market_snapshot.json", "isolated_tiers_snapshot.json", "funding-events.json"))
         return original(path, *args, **kwargs)
     with monkeypatch.context() as unread:
         unread.setattr(holdout_run, "_read_regular", metadata_only)
@@ -112,14 +137,15 @@ def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, m
     assert [row[0] for row in ends] == ["2026-04-30T00:00:00Z", "2026-06-30T00:00:00Z", "2026-06-30T00:00:00Z"]
 
 
-def test_profile_actual_http_entry_authorizes_same_run_and_keeps_release_sealed(tmp_path, monkeypatch):
+@pytest.mark.parametrize('binance',[False,True])
+def test_profile_actual_http_entry_authorizes_same_run_and_keeps_release_sealed(tmp_path, monkeypatch, binance):
     pytest.importorskip("pyarrow")
     import subprocess
     from tests.profile_holdout_fixture import passed_profile_development_stub, authorized_artificial_holdout, profile_console
     from tests.test_development_console_http import _post
     from tests.test_research_console import _request
-    database, run_id, run_dir, development = passed_profile_development_stub(tmp_path, monkeypatch)
-    authorized_artificial_holdout(database, run_id)
+    database, run_id, run_dir, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance)
+    authorized_artificial_holdout(database, run_id,binance=binance)
     original_popen = subprocess.Popen
     workers = []
     def stub_worker(argv, **kwargs):

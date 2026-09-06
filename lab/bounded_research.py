@@ -10,6 +10,9 @@ It never enters the producer/database path or reads later research windows.
 
 from __future__ import annotations
 
+from lab.market_contract import SOURCE_HOSTS
+from lab.binance_source import phase_source, source_fields, validate_source
+
 import argparse
 import fcntl
 import hashlib
@@ -1309,13 +1312,14 @@ def _verify_search_data(
     plan: Mapping[str, Any],
 ) -> dict[str, Any]:
     profile = validate_profile_search_contract(plan)
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     source = provenance.get("source")
     freqtrade = provenance.get("freqtrade")
     contract = provenance.get("contract")
     if not isinstance(source, dict) or not isinstance(freqtrade, dict) or not isinstance(contract, dict):
         raise PilotError("Search data provenance is incomplete")
     expected_contract = {
-        "data_dir": "data/okx",
+        "data_dir": f"data/{market_exchange}",
         "market_snapshot": "market_snapshot.json",
         "leverage_tiers": "isolated_tiers_snapshot.json",
         "config": "config.json",
@@ -1341,7 +1345,8 @@ def _verify_search_data(
     if (
         digest(provenance_bytes) != plan["data_provenance_sha256"]
         or provenance.get("schema") != SEARCH_DATA_SCHEMA
-        or source.get("host") != "www.okx.com"
+        or source.get("host") != SOURCE_HOSTS[market_exchange]
+        or source.get("exchange", "okx") != market_exchange
         or source.get("authentication") != "none"
         or freqtrade.get("version") != "2026.7"
         or freqtrade.get("tag") != "2026.7"
@@ -1422,7 +1427,7 @@ def _verify_search_data(
 
     local = provenance.get("local_only_files")
     expected_local_names = {
-        *(f"data/okx/{name}" for name in data_names.values()),
+        *(f"data/{market_exchange}/{name}" for name in data_names.values()),
         contract["market_snapshot"],
         contract["leverage_tiers"],
     }
@@ -1431,8 +1436,8 @@ def _verify_search_data(
     for series, name in data_names.items():
         _verify_search_receipt(
             data_root,
-            f"data/okx/{name}",
-            local[f"data/okx/{name}"],
+            f"data/{market_exchange}/{name}",
+            local[f"data/{market_exchange}/{name}"],
             f"Search {series} data",
             expected_rows=expected_rows[series],
         )
@@ -1495,6 +1500,7 @@ def _verify_search_data(
     )
     if actual_rows != expected_rows:
         raise PilotError("Search market data rows disagree with provenance")
+    validate_source(source, market_data_root, pair, window["search_start"], window["search_stop"])
     return {
         "status": "DATA_READY",
         "source": {
@@ -1509,6 +1515,7 @@ def _verify_search_data(
         "timeframe": contract["timeframe"],
         "base_fee": fee,
     }
+
 
 
 def verify_data(root: Path, plan: Mapping[str, Any]) -> dict[str, Any]:
@@ -1587,6 +1594,7 @@ def _load_search_source(
 ) -> dict[str, Any]:
     """Adapt one hash-trusted, runner-verified acquisition into Search."""
     profile = validate_profile_search_contract(profile_contract)
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     pair = str(profile["pair"])
     timeframe = str(profile["timeframe"])
     search_timerange = str(profile_contract["search_timerange"])
@@ -1627,9 +1635,10 @@ def _load_search_source(
         or "retrievals" in source
         or source.get("retrieval_receipt") != "retrieval_receipt.json"
         or source.get("pair") != pair
+        or source.get("exchange", "okx") != market_exchange
         or not isinstance(source.get("instrument_id"), str)
         or not source["instrument_id"]
-        or contract.get("data_dir") != "data/okx"
+        or contract.get("data_dir") != f"data/{market_exchange}"
         or contract.get("market_snapshot") != "market_snapshot.json"
         or contract.get("leverage_tiers") != "isolated_tiers_snapshot.json"
         or contract.get("config") != "config.json"
@@ -1641,7 +1650,7 @@ def _load_search_source(
     ):
         raise PilotError("source must be one complete singular Profile acquisition")
     receipt_name = source["retrieval_receipt"]
-    data_dir = source_root / "data" / "okx"
+    data_dir = source_root / "data" / market_exchange
     if (
         (source_root / "data").is_symlink()
         or data_dir.is_symlink()
@@ -1659,6 +1668,13 @@ def _load_search_source(
             "historical_transport_dependency"
         ),
     }
+    if market_exchange == "binance":
+        expected_files = {
+            contract["config"]: "profile_bound_search_config",
+            receipt_name: "local_public_retrieval_receipt",
+            **{f"producer/{name}": "profile_acquisition_and_validation" for name in (
+                "fetch_binance_profile_data.py", "binance_source.py", "futures_costs.py")},
+        }
     if set(files) != set(expected_files):
         raise PilotError("source Profile producer receipts are incomplete")
     tracked_bytes: dict[str, bytes] = {}
@@ -1677,7 +1693,7 @@ def _load_search_source(
             raise PilotError(f"source tracked receipt mismatch: {name}")
     if digest(receipt_bytes) != trusted_receipt_sha256:
         raise PilotError(f"source tracked receipt mismatch: {receipt_name}")
-    if (
+    if market_exchange == "okx" and (
         digest(tracked_bytes["producer/historical_fetch_okx_public_data.py"])
         != "8a9ad34654693bbada15da4a90caacb380364ea8b747f2d5be193633080d843f"
     ):
@@ -1733,7 +1749,7 @@ def _load_search_source(
     if (
         not isinstance(window, dict)
         or window.get("fully_closed_at_fetch") is not True
-        or receipt.get("host") != "www.okx.com"
+        or receipt.get("host") != SOURCE_HOSTS[market_exchange]
         or receipt.get("authentication") != "none"
         or receipt.get("pair") != pair
         or receipt.get("instrument_id") != source["instrument_id"]
@@ -1760,12 +1776,13 @@ def _load_search_source(
         or startup_candles != pre_roll_candles
     ):
         raise PilotError("source acquisition window does not bind the frozen Profile")
+    validate_source(source, data_dir, pair, source_window["search_start"], development_stop)
     return {
         "provenance_sha256": trusted_provenance_sha256,
         "receipt_sha256": trusted_receipt_sha256,
         "source": {
             key: source.get(key)
-            for key in ("host", "authentication", "pair", "instrument_id", "pair_family")
+            for key in source_fields(market_exchange)
         },
         "freqtrade": {
             "version": provenance["freqtrade"]["version"],
@@ -1777,6 +1794,7 @@ def _load_search_source(
         "data_sha256": verified["data_sha256"],
         "controls": control_bytes,
     }
+
 
 
 def _verify_search_output_dates(
@@ -1945,6 +1963,7 @@ def prepare_search_data(
         for key in _profile_acquisition_contract_fields(acquisition_contract)
     }
     profile = validate_profile_search_contract(data_contract)
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     timeframe = str(profile["timeframe"])
     pre_roll = int(pre_roll_candles)
     source_contract = data_contract
@@ -1976,19 +1995,20 @@ def prepare_search_data(
         frozen["controls"]["config.json"] = canonical(profile_search_config(data_contract["profile_snapshot"]))
     window = _search_window_contract(search_timerange, timeframe=timeframe, pre_roll_candles=pre_roll,
                                      trading_mode=data_contract["profile_snapshot"]["trading_mode"])
+    frozen["source"] = phase_source(frozen["source"], window["search_start"], window["search_stop"])
     staging = Path(tempfile.mkdtemp(prefix=".search-data-", dir=output_parent))
     staging.chmod(0o700)
     published = False
     try:
         acquisition = staging / ACQUISITION
-        data_root = acquisition / "data" / "okx"
+        data_root = acquisition / "data" / market_exchange
         data_root.mkdir(parents=True)
         expected = {
             name: frozen["data_sha256"][name]
             for name in frozen["data_names"].values()
         }
         view = _create_scenario_data_view(
-            source / "data" / "okx",
+            source / "data" / market_exchange,
             data_root,
             search_timerange,
             expected,
@@ -2003,7 +2023,7 @@ def prepare_search_data(
         for name, data in frozen["controls"].items():
             (acquisition / name).write_bytes(data)
         local_files = {
-            f"data/okx/{name}": {
+            f"data/{market_exchange}/{name}": {
                 "bytes": (data_root / name).stat().st_size,
                 "sha256": view["files"][name]["sha256"],
                 "rows": window["rows"][series],
@@ -2014,7 +2034,7 @@ def prepare_search_data(
             data = frozen["controls"][name]
             local_files[name] = {"bytes": len(data), "sha256": digest(data)}
         contract = {
-            "data_dir": "data/okx", "market_snapshot": "market_snapshot.json",
+            "data_dir": f"data/{market_exchange}", "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json", "config": "config.json",
             "search_timerange": search_timerange, "timeframe": timeframe,
             **data_contract,
@@ -2074,6 +2094,7 @@ def prepare_search_data(
             shutil.rmtree(staging, ignore_errors=True)
 
 
+
 def _source_acquisition_binding(frozen: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "provenance_sha256": frozen["provenance_sha256"],
@@ -2098,8 +2119,9 @@ def _profile_development_selection(profile: Mapping[str, Any]) -> dict[str, Any]
 def _profile_development_contract(
     profile_contract: Mapping[str, Any], timeframe: str
 ) -> dict[str, Any]:
+    market_exchange = profile_contract["profile_snapshot"]["exchange"]
     contract = {
-        "data_dir": "data/okx",
+        "data_dir": f"data/{market_exchange}",
         "market_snapshot": "market_snapshot.json",
         "leverage_tiers": "isolated_tiers_snapshot.json",
         "config": "config.json",
@@ -2116,6 +2138,7 @@ def _profile_development_contract(
     if "single_baseline" in profile_contract:
         contract["single_baseline"] = validate_single_baseline(profile_contract["single_baseline"])
     return contract
+
 
 
 def _profile_development_window_spec(
@@ -2307,6 +2330,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
     ):
         raise PilotError("Development plan shape/version is invalid")
     profile = validate_profile_search_contract(profile_contract)
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     timeframe = str(profile["timeframe"])
     data_names = _search_data_names(profile["pair"], timeframe)
     source_acquisition = _validate_source_acquisition_binding(
@@ -2343,8 +2367,9 @@ def check_development_data(root: Path) -> dict[str, Any]:
     if (
         not isinstance(source, dict)
         or set(source)
-        != {"host", "authentication", "pair", "instrument_id", "pair_family"}
-        or source.get("host") != "www.okx.com"
+        != source_fields(market_exchange)
+        or source.get("host") != SOURCE_HOSTS[market_exchange]
+        or source.get("exchange", "okx") != market_exchange
         or source.get("authentication") != "none"
         or source.get("pair") != profile["pair"]
         or not isinstance(source.get("instrument_id"), str)
@@ -2391,7 +2416,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
     expected_local_names = {
         "market_snapshot.json",
         "isolated_tiers_snapshot.json",
-        *(f"data/okx/{name}" for name in data_names.values()),
+        *(f"data/{market_exchange}/{name}" for name in data_names.values()),
     }
     if not isinstance(local, dict) or set(local) != expected_local_names:
         raise PilotError("Development input receipt set is not exact")
@@ -2404,7 +2429,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
         )
     view_files: dict[str, Any] = {}
     for series, relative_name in data_names.items():
-        local_name = f"data/okx/{relative_name}"
+        local_name = f"data/{market_exchange}/{relative_name}"
         _verify_search_receipt(
             isolation,
             local_name,
@@ -2417,7 +2442,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
             "sha256": local[local_name]["sha256"],
         }
     actual_rows = _verify_profile_output_dates(
-        isolation / "data" / "okx",
+        isolation / "data" / market_exchange,
         data_names,
         profile_contract["development_timerange"],
         phase="Development",
@@ -2426,6 +2451,8 @@ def check_development_data(root: Path) -> dict[str, Any]:
     )
     if actual_rows != expected_rows:
         raise PilotError("Development data rows disagree with the Profile")
+    validate_source(source, isolation / "data" / market_exchange, profile["pair"],
+                    window_contract["development_start"], window_contract["development_stop"])
 
     market, _ = load_json(
         acquisition / "market_snapshot.json", "Development market snapshot"
@@ -2478,7 +2505,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
         f"{ACQUISITION}/retained-data-provenance.json",
         f"{DEVELOPMENT_ISOLATION}/retained-data-provenance.json",
         *(
-            f"{DEVELOPMENT_ISOLATION}/data/okx/{name}"
+            f"{DEVELOPMENT_ISOLATION}/data/{market_exchange}/{name}"
             for name in data_names.values()
         ),
     }
@@ -2486,11 +2513,11 @@ def check_development_data(root: Path) -> dict[str, Any]:
         ACQUISITION,
         DEVELOPMENT_ISOLATION,
         f"{DEVELOPMENT_ISOLATION}/data",
-        f"{DEVELOPMENT_ISOLATION}/data/okx",
-        f"{DEVELOPMENT_ISOLATION}/data/okx/futures",
+        f"{DEVELOPMENT_ISOLATION}/data/{market_exchange}",
+        f"{DEVELOPMENT_ISOLATION}/data/{market_exchange}/futures",
     }
     if profile_contract["profile_snapshot"]["trading_mode"] == "spot":
-        expected_directories.remove(f"{DEVELOPMENT_ISOLATION}/data/okx/futures")
+        expected_directories.remove(f"{DEVELOPMENT_ISOLATION}/data/{market_exchange}/futures")
     actual_files, actual_directories = _development_root_entries(resolved_root)
     if actual_files != expected_files or actual_directories != expected_directories:
         raise PilotError("Development pilot root file set is not exact")
@@ -2508,6 +2535,7 @@ def check_development_data(root: Path) -> dict[str, Any]:
         "provenance_sha256": digest(development_bytes),
         "source_acquisition_sha256": digest(canonical(source_acquisition)),
     }
+
 
 
 def prepare_development_data(
@@ -2563,6 +2591,7 @@ def prepare_development_data(
         economic_gate,
         single_baseline,
     )
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     timeframe = str(profile["timeframe"])
     frozen = _load_search_source(
         source,
@@ -2577,6 +2606,7 @@ def prepare_development_data(
         timeframe=timeframe,
         pre_roll_candles=pre_roll_candles,
     )
+    frozen["source"] = phase_source(frozen["source"], window_contract["development_start"], window_contract["development_stop"])
     staging = Path(tempfile.mkdtemp(prefix=".development-data-", dir=output_parent))
     staging.chmod(0o700)
     published = False
@@ -2584,7 +2614,7 @@ def prepare_development_data(
         acquisition = staging / ACQUISITION
         acquisition.mkdir()
         isolation = staging / DEVELOPMENT_ISOLATION
-        data_root = isolation / "data" / "okx"
+        data_root = isolation / "data" / market_exchange
         data_root.mkdir(parents=True)
         expected = {
             name: frozen["data_sha256"][name]
@@ -2592,7 +2622,7 @@ def prepare_development_data(
         }
         try:
             view = _create_scenario_data_view(
-                source / "data" / "okx",
+                source / "data" / market_exchange,
                 data_root,
                 development_timerange,
                 expected,
@@ -2627,7 +2657,7 @@ def prepare_development_data(
         )
 
         local_files = {
-            f"data/okx/{name}": _development_receipt(
+            f"data/{market_exchange}/{name}": _development_receipt(
                 data_root / name, rows=window_contract["rows"][series]
             )
             for series, name in frozen["data_names"].items()
@@ -2686,6 +2716,7 @@ def prepare_development_data(
             shutil.rmtree(staging, ignore_errors=True)
 
 
+
 def _search_feather_rows(path: Path) -> int:
     try:
         import pyarrow.feather as feather
@@ -2705,6 +2736,7 @@ def materialize_screening_isolation(
     """Create a physical view containing no candle at/after the screen stop."""
     search_only = plan.get("schema") == SEARCH_SCHEMA
     profile = validate_profile_search_plan(plan) if search_only else None
+    market_exchange = (profile or {}).get("profile_snapshot", {}).get("exchange", "okx")
     phase = "Search" if search_only else "Development"
     timerange_key = "search_timerange" if search_only else "development_timerange"
     directory_name = (
@@ -2715,7 +2747,7 @@ def materialize_screening_isolation(
     isolation_root = root / directory_name
     if isolation_root.exists():
         raise PilotError(f"{phase} isolation already exists; replay is forbidden")
-    data_root = isolation_root / "data" / "okx"
+    data_root = isolation_root / "data" / market_exchange
     data_root.mkdir(parents=True)
     provenance, provenance_bytes = load_json(
         root / ACQUISITION / "retained-data-provenance.json", "data provenance"
@@ -2728,7 +2760,7 @@ def materialize_screening_isolation(
     contract = provenance.get("contract", {})
     prefix = contract.get("data_dir")
     local = provenance.get("local_only_files")
-    if prefix != "data/okx" or not isinstance(local, dict):
+    if prefix != f"data/{market_exchange}" or not isinstance(local, dict):
         raise PilotError(f"data provenance cannot build a {phase}-only view")
     expected: dict[str, str] = {}
     for name, receipt in local.items():
@@ -2744,21 +2776,21 @@ def materialize_screening_isolation(
     if search_only:
         for relative in expected:
             actual_rows = _search_feather_rows(
-                root / ACQUISITION / "data" / "okx" / relative
+                root / ACQUISITION / "data" / market_exchange / relative
             )
             source_rows[relative] = actual_rows
             if actual_rows != local[f"{prefix}/{relative}"].get("rows"):
                 raise PilotError("Search source row receipt mismatch")
     if profile is None:
         view = _create_scenario_data_view(
-            root / ACQUISITION / "data" / "okx",
+            root / ACQUISITION / "data" / market_exchange,
             data_root,
             plan[timerange_key],
             expected,
         )
     else:
         view = _create_scenario_data_view(
-            root / ACQUISITION / "data" / "okx",
+            root / ACQUISITION / "data" / market_exchange,
             data_root,
             plan[timerange_key],
             expected,
@@ -2811,6 +2843,7 @@ def materialize_screening_isolation(
         "provenance": provenance_path,
         "receipt": receipt,
     }
+
 
 
 def materialize_development_isolation(
@@ -3056,6 +3089,9 @@ def report_metrics(
     market_data: Optional[Path] = None,
     market_state_lookback: Optional[int] = None,
     profile_snapshot: Optional[Mapping[str, Any]] = None,
+    funding_source: Optional[Mapping[str, Any]] = None,
+    funding_data_dir: Optional[Path] = None,
+    scoring_timerange: Optional[str] = None,
 ) -> dict[str, Any]:
     archive_path = raw / archive_name
     try:
@@ -3130,6 +3166,10 @@ def report_metrics(
                 roi_exit_count = sum(item == "roi" for item in exit_reasons)
                 shorts = sum(item.get("is_short") is True for item in trades)
                 direction = max(shorts, total - shorts) / total
+        funding_audit = None
+        if funding_source is not None and funding_source.get("exchange") == "binance":
+            from lab.futures_costs import audit_from_source
+            funding_audit = audit_from_source(result, funding_source, funding_data_dir, scoring_timerange)
         return {
             "archive": archive_name,
             "archive_sha256": digest(archive_path.read_bytes()),
@@ -3155,6 +3195,7 @@ def report_metrics(
                 None if market_data is None else MARKET_STATE_DEFINITION
             ),
             "market_state_lookback_candles": market_state_lookback,
+            **({"funding_audit": funding_audit} if funding_audit is not None else {}),
         }
     except PilotError:
         raise
@@ -3259,6 +3300,9 @@ def _screen_candidate(
         market_data=market_data,
         market_state_lookback=market_state_lookback,
         profile_snapshot=profile_snapshot,
+        funding_source=provenance.get("source"),
+        funding_data_dir=Path(isolation["data_dir"]),
+        scoring_timerange=timerange_value,
     )
     if metrics["total_trades"] != summary["total_trades"]:
         raise PilotError("runner/report trade counts disagree")
@@ -3654,6 +3698,8 @@ def _search_result(
         "direction_concentration", "market_state_concentration",
         "market_state_definition", "market_state_lookback_candles",
     )})
+    if "funding_audit" in raw:
+        metrics["funding_audit"] = raw["funding_audit"]
     _validated_search_metrics(metrics)
     result = {
         **_search_identity(candidate),
@@ -3745,8 +3791,10 @@ def _rank_search_results(
     return sorted(
         valid,
         key=lambda item: (
-            -item["search_metrics"]["net_profit_after_base_fees_pct"],
-            item["search_metrics"]["max_drawdown_pct"],
+            -item["search_metrics"].get("funding_audit", {}).get(
+                "conservative_net_profit_pct", item["search_metrics"]["net_profit_after_base_fees_pct"]),
+            item["search_metrics"].get("funding_audit", {}).get(
+                "conservative_mtm_drawdown_pct", item["search_metrics"]["max_drawdown_pct"]),
             item["candidate_id"],
             item["attempt_number"],
         ),
@@ -3794,7 +3842,12 @@ def _search_finalist(
             and metrics["roi_exit_count"]
             <= normalized_economic["maximum_roi_exit_count"]
         )
-        if profile_passed and economic_passed:
+        from lab.futures_costs import funding_gate_passed
+        conservative_gate = dict(gate)
+        if normalized_economic is not None:
+            conservative_gate['minimum_profit_pct'] = normalized_economic['minimum_net_profit_after_base_fees_pct']
+        conservative_passed = "funding_audit" not in metrics or funding_gate_passed(metrics["funding_audit"], conservative_gate)
+        if profile_passed and economic_passed and conservative_passed:
             return _search_parent(item)
     return None
 
@@ -3806,6 +3859,16 @@ def _search_round_outcome(
     consumed_before: int,
 ) -> tuple[dict[str, Any], str, Optional[dict[str, Any]]]:
     validate_profile_search_plan(plan)
+    if plan["profile_snapshot"]["exchange"] == "binance":
+        from lab.futures_costs import validate_audit, FuturesCostError
+        for item in (*trials, *current_results):
+            if item.get("technical_status") == "VALID":
+                metrics = item.get("search_metrics", {})
+                try:
+                    validate_audit(metrics.get('funding_audit'), metrics['net_profit_after_base_fees_pct'],
+                                   plan['profile_snapshot']['starting_balance'], metrics['total_trades'])
+                except (FuturesCostError, KeyError, TypeError) as exc:
+                    raise PilotError("Binance finalist requires reconciled conservative funding audit") from exc
     active_limit = plan["active_attempt_limit"]
     consumed = consumed_before + len(current_results)
     ranked = _rank_search_results(trials)

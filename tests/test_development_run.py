@@ -190,6 +190,7 @@ def _approved_candidate_database(
     strategy_family: str = "trend",
     spot: bool = False,
     source_text: str | None = None,
+    exchange: str = "okx",
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
     init_database(database)
@@ -226,6 +227,8 @@ def _approved_candidate_database(
                 "UPDATE research_profiles SET domain='OKX_CRYPTO_SPOT',trading_mode='spot',margin_mode='' WHERE id=?",
                 (profile_id,),
             )
+        if exchange == 'binance':
+            connection.execute("UPDATE research_profiles SET domain='BINANCE_CRYPTO_PERP',exchange='binance' WHERE id=?", (profile_id,))
         connection.commit()
     request = codex_generation.validate_generation_request(
         {
@@ -295,9 +298,10 @@ def _frozen_capability_fixture(
     acquisition = pilot / "acquisition"
     isolation = pilot / "development-isolation"
     data_stem = pair.split("/", 1)[0]
+    exchange = 'okx' if profile_contract is None else profile_contract['profile_snapshot']['exchange']
     spot = profile_contract is not None and profile_contract["profile_snapshot"]["trading_mode"] == "spot"
-    data_relative = (f"data/okx/{data_stem}_USDT-{timeframe}.feather" if spot
-                     else f"data/okx/futures/{data_stem}-{timeframe}.feather")
+    data_relative = (f"data/{exchange}/{data_stem}_USDT-{timeframe}.feather" if spot
+                     else f"data/{exchange}/futures/{data_stem}-{timeframe}.feather")
     data_file = isolation / data_relative
     source = tmp_path / "freqtrade-source"
     python = tmp_path / "freqtrade-python"
@@ -394,7 +398,7 @@ def _frozen_capability_fixture(
             "order_book_top": 1,
         },
         "exchange": {
-            "name": "okx",
+            "name": exchange,
             "enable_ws": False,
             "pair_whitelist": [pair],
             "pair_blacklist": [],
@@ -439,6 +443,8 @@ def _frozen_capability_fixture(
             }
         },
     }
+    if exchange == 'binance':
+        source_provenance['source'].update(exchange='binance', host='fapi.binance.com')
     if profile_contract is not None:
         from lab import bounded_research as bounded_pilot
 
@@ -499,6 +505,8 @@ def _frozen_capability_fixture(
             ).hexdigest(),
         },
     }
+    if exchange == 'binance':
+        isolation_provenance['source'].update(exchange='binance', host='fapi.binance.com')
     (isolation / "retained-data-provenance.json").write_bytes(
         _canonical(isolation_provenance)
     )

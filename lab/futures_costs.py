@@ -202,12 +202,101 @@ def audit_native_trades(
         details.append({"open_date":trade["open_date"],"close_date":trade["close_date"],
                         "native_profit_abs":native_profit,"funding_deduction_abs":penalty,
                         "conservative_profit_abs":native_profit-penalty})
+    adjusted=[d["conservative_profit_abs"] for d in details]
+    gains=sum(max(v,0) for v in adjusted)
+    losses=-sum(min(v,0) for v in adjusted)
     return {"contract":CONTRACT,"native_artifact_unchanged":True,
             "funding_deduction_abs":total_penalty,"conservative_final_balance":wallet,
             "conservative_net_profit_pct":(wallet/initial-1)*100,
             "conservative_mtm_drawdown_pct":max_dd*100,
             "intrahour_ordering_stress_drawdown_pct":stress_dd*100,
             "minimum_free_cash":min_free,"cash_executable":min_free>=0,
+            "conservative_profit_factor":gains/losses if losses else None,
+            "conservative_loss_count":sum(v<0 for v in adjusted),
             "trade_adjustments":details,
             "risk_model":"confirmed hourly close observations plus fills/costs; partial bars omitted; not continuous MTM",
             "supplemental_stress":"hourly favorable-before-adverse extrema, includes partial-bar risk; not normal DD or native Holdout Stress"}
+
+
+def audit_from_source(result: Mapping[str, Any], source: Mapping[str, Any], data_dir: Any,
+                      timerange: str) -> dict[str, Any]:
+    import hashlib
+    import json
+    import pandas as pd
+    from pathlib import Path
+    if source.get('exchange')!='binance' or source.get('funding_model')!=CONTRACT:
+        raise FuturesCostError('Binance funding audit requires frozen source model')
+    start,stop=[datetime.strptime(s,'%Y%m%d').replace(tzinfo=timezone.utc) for s in timerange.split('-')]
+    path=Path(data_dir)/'futures/BCH_USDT_USDT-1h-mark.feather'
+    raw=path.read_bytes()
+    import io
+    frame=pd.read_feather(io.BytesIO(raw))
+    marks=[[int(r.date.value//1_000_000),r.open,r.high,r.low,r.close] for r in frame.itertuples()]
+    audit=audit_native_trades(result['trades'],source['funding_events'],marks,symbol='BCHUSDT',
+        start_ms=int(start.timestamp()*1000),end_ms=int(stop.timestamp()*1000),starting_balance=result['starting_balance'])
+    audit['source_events_sha256']=hashlib.sha256(json.dumps(source['funding_events'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    audit['mark_data_sha256']=hashlib.sha256(raw).hexdigest()
+    audit['scoring_timerange']=timerange
+    validate_audit(audit,float(result['profit_total'])*100,float(result['starting_balance']),len(result['trades']))
+    return audit
+
+
+def validate_audit(audit: Any, native_profit_pct: float, initial: float, trades: int) -> dict[str, Any]:
+    initial=number(initial,'starting balance',positive=True)
+    native_profit_pct=number(native_profit_pct,'native profit percent')
+    if not isinstance(audit,dict) or audit.get('contract')!=CONTRACT or audit.get('native_artifact_unchanged') is not True:
+        raise FuturesCostError('required conservative funding audit missing')
+    penalty=number(audit.get('funding_deduction_abs'),'funding deduction')
+    final=number(audit.get('conservative_final_balance'),'conservative balance')
+    net=number(audit.get('conservative_net_profit_pct'),'conservative net')
+    dd=number(audit.get('conservative_mtm_drawdown_pct'),'conservative DD')
+    cash=number(audit.get('minimum_free_cash'),'conservative cash')
+    rows=audit.get('trade_adjustments')
+    if (penalty<0 or dd<0 or audit.get('cash_executable') is not (cash>=0)
+            or not isinstance(rows,list) or len(rows)!=trades
+            or not math.isclose(final,initial*(1+native_profit_pct/100)-penalty,abs_tol=1e-6)
+            or not math.isclose(net,(final/initial-1)*100,abs_tol=1e-9)):
+        raise FuturesCostError('funding audit does not reconcile with native result')
+    native_values, deductions, adjusted_values = [], [], []
+    for row in rows:
+        if not isinstance(row,dict):
+            raise FuturesCostError('funding audit trade row invalid')
+        native=number(row.get('native_profit_abs'),'trade native profit')
+        deduction=number(row.get('funding_deduction_abs'),'trade deduction')
+        adjusted=number(row.get('conservative_profit_abs'),'trade conservative profit')
+        if deduction<0 or not math.isclose(native-deduction,adjusted,rel_tol=1e-9,abs_tol=1e-6):
+            raise FuturesCostError('funding audit trade does not reconcile')
+        native_values.append(native)
+        deductions.append(deduction)
+        adjusted_values.append(adjusted)
+    if (not math.isclose(math.fsum(deductions),penalty,rel_tol=1e-9,abs_tol=1e-6)
+            or not math.isclose(math.fsum(native_values),initial*native_profit_pct/100,rel_tol=1e-9,abs_tol=1e-6)
+            or not math.isclose(initial+math.fsum(adjusted_values),final,rel_tol=1e-9,abs_tol=1e-6)):
+        raise FuturesCostError('funding audit trade totals do not reconcile')
+    loss_count=sum(value<0 for value in adjusted_values)
+    stated_count=audit.get('conservative_loss_count')
+    if type(stated_count) is not int or stated_count!=loss_count:
+        raise FuturesCostError('funding audit loss count does not reconcile')
+    if 'conservative_profit_factor' not in audit:
+        raise FuturesCostError('funding audit profit factor missing')
+    losses=-math.fsum(value for value in adjusted_values if value<0)
+    gains=math.fsum(value for value in adjusted_values if value>0)
+    if losses:
+        factor=number(audit['conservative_profit_factor'],'conservative profit factor')
+        if not math.isclose(factor,gains/losses,rel_tol=1e-9,abs_tol=1e-9):
+            raise FuturesCostError('funding audit profit factor does not reconcile')
+    elif audit['conservative_profit_factor'] is not None:
+        raise FuturesCostError('funding audit profit factor must be unknown without losses')
+    return audit
+
+
+def funding_gate_passed(audit: Mapping[str, Any], gate: Mapping[str, Any]) -> bool:
+    factor=audit.get('conservative_profit_factor')
+    factor_pass=(factor is None and audit.get('conservative_loss_count')==0
+                 and audit.get('conservative_net_profit_pct',0)>0) or (
+                     isinstance(factor,(int,float)) and not isinstance(factor,bool)
+                     and math.isfinite(factor) and factor>=gate['minimum_profit_factor'])
+    return (audit.get('contract')==CONTRACT and audit.get('cash_executable') is True
+            and audit['conservative_net_profit_pct']>0
+            and audit['conservative_net_profit_pct']>=gate.get('minimum_profit_pct',0)
+            and audit['conservative_mtm_drawdown_pct']<=gate['maximum_drawdown_pct'] and factor_pass)

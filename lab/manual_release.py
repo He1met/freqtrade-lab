@@ -115,6 +115,7 @@ class EligibleManualReview:
     source_bindings: Mapping[str, Any]
     artifacts: Tuple[Mapping[str, Any], ...]
     binding_sha256: str
+    conservative_gate_passed: bool = True
 
 
 def freeze_release_root(
@@ -282,9 +283,23 @@ def _artifact_binding(
     }
 
 
+def _require_conservative_release_gate(profile: Mapping[str, Any], artifacts: Mapping[str, ParsedBacktestArtifact]) -> None:
+    if profile.get('exchange') != 'binance':
+        return
+    from lab.futures_costs import funding_gate_passed
+    gate = {'minimum_profit_factor': profile['min_profit_factor'],
+            'maximum_drawdown_pct': profile['max_drawdown_pct'],
+            'minimum_profit_pct': 0}
+    if set(artifacts) != {'DEVELOPMENT','HOLDOUT','HOLDOUT_STRESS'} or any(
+            parsed.funding_audit is None or not funding_gate_passed(parsed.funding_audit, gate)
+            for parsed in artifacts.values()):
+        raise ManualReleaseError('review_not_eligible', '保守资金费率成本门槛未通过，不能发布')
+
+
 def _eligible_manual_review(
     connection: sqlite3.Connection,
     research_run_id: str,
+    *, require_cost_gate: bool = False,
 ) -> EligibleManualReview:
     """Revalidate the complete existing Holdout/Artifact/Profile contract."""
     if not connection.in_transaction:
@@ -448,6 +463,13 @@ def _eligible_manual_review(
         )
     )
     profile = dict(approved.profile)
+    conservative_gate_passed = True
+    try:
+        _require_conservative_release_gate(profile, artifacts)
+    except ManualReleaseError:
+        conservative_gate_passed = False
+        if require_cost_gate:
+            raise
     profile_sha = _profile_binding_sha256(
         connection, str(run["research_profile_id"])
     )
@@ -489,6 +511,7 @@ def _eligible_manual_review(
         source_bindings=source_bindings,
         artifacts=artifact_bindings,
         binding_sha256=_sha256(_canonical_bytes(binding)),
+        conservative_gate_passed=conservative_gate_passed,
     )
 
 
@@ -982,7 +1005,9 @@ def pass_and_create_release(
     with closing(get_connection(database, must_exist=True)) as connection:
         connection.execute("BEGIN")
         _release_root_state(connection, release_root)
-        evidence = _eligible_manual_review(connection, research_run_id)
+        evidence = _eligible_manual_review(connection, research_run_id, require_cost_gate=True)
+        if not evidence.conservative_gate_passed:
+            raise ManualReleaseError('review_not_eligible', '保守资金费率成本门槛未通过，不能发布')
         connection.rollback()
     release_id = str(uuid4())
     package = _build_release(
@@ -998,7 +1023,7 @@ def pass_and_create_release(
                     release_root,
                     allow_unregistered=(str(package["directory_name"]),),
                 )
-                locked = _eligible_manual_review(connection, research_run_id)
+                locked = _eligible_manual_review(connection, research_run_id, require_cost_gate=True)
                 if locked.binding_sha256 != evidence.binding_sha256:
                     raise ManualReleaseError(
                         "review_conflict", "ResearchRun binding changed before Release commit"
@@ -1226,7 +1251,7 @@ def inspect_manual_review(
             return stored
         try:
             _release_root_state(connection, release_root)
-            _eligible_manual_review(connection, research_run_id)
+            evidence = _eligible_manual_review(connection, research_run_id)
         except ManualReleaseError as exc:
             connection.rollback()
             return {
@@ -1242,8 +1267,9 @@ def inspect_manual_review(
     return {
         "status": "AVAILABLE",
         "can_reject": True,
-        "can_pass_and_create_release": True,
-        "reason": "同一 ResearchRun 的三场景证据已复验，可进行一次人工终态",
+        "can_pass_and_create_release": evidence.conservative_gate_passed,
+        "reason": ("同一 ResearchRun 的三场景证据已复验，可进行一次人工终态"
+                   if evidence.conservative_gate_passed else "保守资金费率成本门槛未通过，仅可拒绝"),
         "reason_max_chars": MAX_REASON_CHARS,
         "release": None,
         "profitability_claim": "NOT_ESTABLISHED",

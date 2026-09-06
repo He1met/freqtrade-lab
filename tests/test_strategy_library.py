@@ -510,6 +510,29 @@ def test_no_loss_profit_factor_is_not_rendered_as_plain_zero(database: Path) -> 
     assert "Holdout PF</span><strong>0.00" not in page
 
 
+def test_detail_separates_native_and_conservative_funding(database: Path) -> None:
+    from lab.futures_costs import CONTRACT
+    from lab.strategy_library import render_research_run_detail_page
+    imported=_import_real_bundle(database)
+    with get_connection(database) as connection:
+        row=connection.execute("SELECT id,metrics_json,profit_pct FROM backtest_executions WHERE research_run_id=? AND scenario='HOLDOUT'",(imported.research_run_id,)).fetchone()
+        metrics=json.loads(row['metrics_json'])
+        metrics['funding_audit']={'contract':CONTRACT,'funding_deduction_abs':7.,
+            'conservative_net_profit_pct':-1.,'conservative_mtm_drawdown_pct':6.,
+            'conservative_profit_factor':None,'minimum_free_cash':-2.,'cash_executable':False,
+            'intrahour_ordering_stress_drawdown_pct':9.}
+        connection.execute('UPDATE backtest_executions SET metrics_json=? WHERE id=?',(json.dumps(metrics),row['id']))
+        connection.commit()
+    model=load_research_run_detail(database,imported.profile_id,imported.candidate_id,imported.research_run_id)
+    selected=next(item for item in model['scenarios'] if item['scenario']=='HOLDOUT')
+    assert selected['profit_pct']==row['profit_pct']
+    assert selected['funding_audit']['conservative_net_profit_pct']==-1.
+    page=render_research_run_detail_page(model).decode()
+    assert '主表及 FreqUI 保留原生结果' in page
+    assert '保守 PF（无亏损时 UNKNOWN）' in page
+    assert '极值压力不替代原生 Holdout Stress' in page
+
+
 def test_release_marker_only_follows_current_unarchived_summary(database: Path) -> None:
     imported = _import_real_bundle(database)
     candidate_id, profile_id, original_run = _candidate_and_profile(database)

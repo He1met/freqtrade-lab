@@ -55,6 +55,8 @@ python3 scripts/serve_strategy_library.py \
 
 ## Current Profile Quickstart: Search and Development in the Research Console
 
+For the bounded Binance BCH perpetual path, see [native Binance research](docs/native-binance-research-v1.md). It uses the same Profile and Console workflow with exchange-bound sources and separate conservative funding qualification.
+
 The Research Console keeps the Strategy Library routes on the same loopback
 server and adds a small page at `http://127.0.0.1:8765/console`. One fixed
 `CHECK_DATA` child, one bounded Codex Candidate generation, either Search

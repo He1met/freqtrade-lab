@@ -623,7 +623,8 @@ def _validate_data_provenance(
         raise ResearchCandidateError("invalid portable_retained_fixture state")
     source = _mapping(value["source"], "data provenance source")
     from lab.market_contract import SOURCE_HOSTS
-    if source.get("host") != SOURCE_HOSTS.get(source.get("exchange", "okx")) or source.get("authentication") != "none":
+    source_exchange = source.get('exchange', 'okx')
+    if not isinstance(source_exchange, str) or source.get("host") != SOURCE_HOSTS.get(source_exchange) or source.get("authentication") != "none":
         raise ResearchCandidateError("data provenance must attest public unauthenticated www.okx.com")
     bound_config = _strict_json(_read_file(config_path, "config"), "config")
     if source.get("exchange", "okx") != bound_config.get("exchange", {}).get("name"):
@@ -684,7 +685,7 @@ def _validate_data_provenance(
             raise ResearchCandidateError("Profile Holdout provenance is invalid") from exc
         holdout_source = contract.get("holdout_source")
         if (not isinstance(holdout_source, dict)
-                or profile["trading_mode"] != "spot" or profile["timeframe"] != "1d"
+                or profile["timeframe"] != "1d"
                 or normalized["profile_snapshot_sha256"] != contract.get("profile_snapshot_sha256")
                 or holdout_source.get("profile_snapshot") != profile
                 or holdout_source.get("holdout_timerange") != holdout_timerange):
@@ -1699,6 +1700,7 @@ def _sanitize_raw_artifact(
     timerange: str,
     network_policy: str,
     allow_zero_trades: bool = False,
+    funding_data_dir: Optional[Path] = None,
 ) -> ProducedArtifact:
     raw_archive_name, raw_metadata_name, runner_total_trades = _validate_runner_summary(
         runner_summary,
@@ -1745,7 +1747,7 @@ def _sanitize_raw_artifact(
     sanitized_config = _mapping(_remove_sensitive_keys(raw_config), "sanitized config")
     sanitized_config = dict(sanitized_config)
     sanitized_config["config_files"] = ["config.json"]
-    sanitized_config["datadir"] = "data/okx"
+    sanitized_config["datadir"] = f"data/{sanitized_config['exchange']['name']}"
     sanitized_config["exportdirectory"] = "backtest_results"
     sanitized_config["strategy_path"] = "strategies"
     sanitized_config["user_data_dir"] = "user_data"
@@ -1869,7 +1871,7 @@ def _sanitize_raw_artifact(
         "sanitization": {
             "config_path_replacements": {
                 "config_files": ["config.json"],
-                "datadir": "data/okx",
+                "datadir": sanitized_config["datadir"],
                 "exportdirectory": "backtest_results",
                 "strategy_path": "strategies",
                 "user_data_dir": "user_data",
@@ -1887,6 +1889,12 @@ def _sanitize_raw_artifact(
             "source_commit": SUPPORTED_FREQTRADE_COMMIT,
         },
     }
+    if source.get("exchange") == "binance":
+        from lab.futures_costs import audit_from_source
+        if funding_data_dir is None:
+            raise ResearchCandidateError("Binance artifact requires source-bound funding audit")
+        provenance["funding_audit"] = audit_from_source(result, source, funding_data_dir, timerange)
+        provenance["fee_evidence"]["claim"] = "not an observed or public Binance account fee rate"
     provenance_bytes = _canonical_bytes(provenance)
     provenance_name = f"{stem}.provenance.json"
     (bundle_dir / provenance_name).write_bytes(provenance_bytes)
@@ -2176,6 +2184,7 @@ def run_research_candidate(
                     implementation_receipts=implementation_receipts,
                     timerange=timerange,
                     network_policy=network_policy,
+                    funding_data_dir=data_path,
                 )
             )
 

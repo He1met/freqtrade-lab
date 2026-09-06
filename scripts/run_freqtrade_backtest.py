@@ -3,7 +3,7 @@
 """Freqtrade 2026.7 offline adapter for one research scenario.
 
 This adapter calls Freqtrade's GPL-3.0-only internal backtesting APIs directly.
-It is intentionally limited to a single, local OKX futures backtest and must be
+It is intentionally limited to a single, local supported-market backtest and must be
 executed by the pinned Freqtrade 2026.7 Python environment with its source tree
 on ``PYTHONPATH``.
 """
@@ -392,7 +392,7 @@ def _verify_data_provenance(
 
     source = _mapping(provenance.get("source"), "data provenance source")
     source_exchange = source.get("exchange", "okx")
-    if source.get("host") != {"okx": "www.okx.com", "binance": "fapi.binance.com"}.get(source_exchange) or source.get("authentication") != "none":
+    if not isinstance(source_exchange, str) or source.get("host") != {"okx": "www.okx.com", "binance": "fapi.binance.com"}.get(source_exchange) or source.get("authentication") != "none":
         raise OfflineBacktestError(
             "data provenance must attest unauthenticated public www.okx.com data"
         )
@@ -575,8 +575,10 @@ def _create_scenario_data_view(
         if strict_source_window:
             if lower is None or dates.type.tz != "UTC":
                 raise OfflineBacktestError("Profile Holdout requires exact UTC source bounds")
-            step = timedelta(days=1)
-            expected_dates = [lower + index * step for index in range((stop - lower).days)]
+            step = (timedelta(hours=8) if relative.name.endswith('-funding_rate.feather') else
+                    timedelta(hours=1) if relative.name.endswith('-mark.feather') else
+                    timedelta(days=1))
+            expected_dates = [lower + index * step for index in range((stop - lower)//step)]
             if dates.to_pylist() != expected_dates:
                 raise OfflineBacktestError("Profile Holdout source is not the complete frozen daily window")
         if lower is not None:
@@ -1545,7 +1547,8 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                 receipt_summary["data_sha256"],
                 timeframe=runtime_contract["timeframe"],
                 lower_bounds=(
-                    {name: datetime.fromisoformat(provenance["contract"]["holdout_source"]["data_start_utc"])
+                    {name: (datetime.strptime(args.timerange.split('-')[0], '%Y%m%d').replace(tzinfo=timezone.utc)
+                            if name.endswith('-funding_rate.feather') else datetime.fromisoformat(provenance["contract"]["holdout_source"]["data_start_utc"]))
                      for name in receipt_summary["data_sha256"]}
                     if provenance["contract"].get("holdout_source") is not None else None
                 ),

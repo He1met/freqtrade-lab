@@ -132,7 +132,7 @@ def frozen_root(tmp_path: Path) -> Iterator[manual_release.FrozenReleaseRoot]:
         frozen.close()
 
 
-def _fake_eligibility(connection: sqlite3.Connection, run_id: str):
+def _fake_eligibility(connection: sqlite3.Connection, run_id: str, *, require_cost_gate=False):
     row = connection.execute(
         "SELECT verdict,checks_json FROM research_runs WHERE id=?", (run_id,)
     ).fetchone()
@@ -141,6 +141,40 @@ def _fake_eligibility(connection: sqlite3.Connection, run_id: str):
             "review_not_eligible", "TEST_ONLY database state drifted"
         )
     return _evidence()
+
+
+@pytest.mark.parametrize('failure',['missing','net','drawdown','cash','factor','missing_scenario'])
+def test_binance_release_requires_all_conservative_scenarios(failure):
+    from types import SimpleNamespace
+    from lab.futures_costs import CONTRACT
+    audit={'contract':CONTRACT,'cash_executable':True,'conservative_net_profit_pct':1.,
+           'conservative_mtm_drawdown_pct':1.,'conservative_profit_factor':2.,'conservative_loss_count':1}
+    artifacts={name:SimpleNamespace(funding_audit=dict(audit)) for name in ('DEVELOPMENT','HOLDOUT','HOLDOUT_STRESS')}
+    profile={'exchange':'binance','min_profit_factor':1.1,'max_drawdown_pct':5.}
+    manual_release._require_conservative_release_gate(profile,artifacts)
+    target=artifacts['HOLDOUT_STRESS']
+    if failure=='missing':target.funding_audit=None
+    elif failure=='net':target.funding_audit['conservative_net_profit_pct']=-.01
+    elif failure=='drawdown':target.funding_audit['conservative_mtm_drawdown_pct']=5.1
+    elif failure=='cash':target.funding_audit['cash_executable']=False
+    elif failure=='factor':target.funding_audit['conservative_profit_factor']=1.
+    else:del artifacts['HOLDOUT']
+    with pytest.raises(manual_release.ManualReleaseError,match='不能发布'):
+        manual_release._require_conservative_release_gate(profile,artifacts)
+
+
+def test_cost_failed_review_keeps_rejection_available(tmp_path,frozen_root,monkeypatch):
+    from dataclasses import replace
+    database=_seed_database(tmp_path)
+    monkeypatch.setattr(manual_release,'_eligible_manual_review',lambda *args,**kwargs:replace(_evidence(),conservative_gate_passed=False))
+    public=manual_release.inspect_manual_review(database,frozen_root,RUN_ID)
+    assert public['can_reject'] is True
+    assert public['can_pass_and_create_release'] is False
+    with pytest.raises(manual_release.ManualReleaseError,match='不能发布'):
+        manual_release.pass_and_create_release(database,frozen_root,RUN_ID,'cannot override cost failure',now=NOW)
+    assert not list(frozen_root.path.iterdir())
+    with get_connection(database) as connection:
+        assert connection.execute('SELECT COUNT(*) FROM releases').fetchone()[0]==0
 
 
 def test_t0_reason_boundary_and_shell_safe_command(
