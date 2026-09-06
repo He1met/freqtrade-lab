@@ -496,6 +496,7 @@ def _create_scenario_data_view(
     *,
     timeframe: str = "5m",
     lower_bounds: Mapping[str, datetime] | None = None,
+    strict_source_window: bool = False,
 ) -> dict[str, Any]:
     """Create a local view whose stop bound is exclusive for scenario isolation."""
     match = _TIMERANGE.fullmatch(timerange)
@@ -570,6 +571,13 @@ def _create_scenario_data_view(
         stop_value = pa.scalar(stop, type=dates.type)
         mask = pc.less(dates, stop_value)
         lower = None if lower_bounds is None else lower_bounds.get(relative_name)
+        if strict_source_window:
+            if lower is None or dates.type.tz != "UTC":
+                raise OfflineBacktestError("Profile Holdout requires exact UTC source bounds")
+            step = timedelta(days=1)
+            expected_dates = [lower + index * step for index in range((stop - lower).days)]
+            if dates.to_pylist() != expected_dates:
+                raise OfflineBacktestError("Profile Holdout source is not the complete frozen daily window")
         if lower is not None:
             mask = pc.and_(pc.greater_equal(dates, pa.scalar(lower, type=dates.type)), mask)
         filtered = table.filter(mask)
@@ -886,7 +894,7 @@ def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _verify_profile_runtime_contract(
-    provenance: Mapping[str, Any], config: Mapping[str, Any]
+    provenance: Mapping[str, Any], config: Mapping[str, Any], *, scenario: str = "DEVELOPMENT",
 ) -> None:
     contract = _mapping(provenance.get("contract"), "data provenance contract")
     snapshot = contract.get("profile_snapshot")
@@ -969,6 +977,36 @@ def _verify_profile_runtime_contract(
         if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
             raise OfflineBacktestError("Profile runtime provenance is incomplete")
     runtime = _validate_raw_config_boundary(config)
+    expected_fee = values["taker_fee_rate"]
+    holdout_source = contract.get("holdout_source")
+    if scenario in {"HOLDOUT", "HOLDOUT_STRESS"} and holdout_source is None:
+        raise OfflineBacktestError("Profile Holdout requires an explicit stage authorization binding")
+    if holdout_source is not None:
+        if (not isinstance(holdout_source, dict)
+                or holdout_source.get("schema") != "freqtrade-lab-profile-holdout-source-v1"
+                or holdout_source.get("action") != "AUTHORIZE_HOLDOUT_SOURCE"
+                or holdout_source.get("profile_snapshot") != snapshot
+                or holdout_source.get("profile_snapshot_sha256") != snapshot_sha
+                or holdout_source.get("holdout_timerange") != contract.get("holdout_timerange")
+                or snapshot.get("trading_mode") != "spot" or snapshot.get("timeframe") != "1d"
+                or scenario not in {"HOLDOUT", "HOLDOUT_STRESS"}):
+            raise OfflineBacktestError("Profile Holdout stage binding is invalid")
+        if scenario == "HOLDOUT_STRESS":
+            expected_fee *= values["stress_fee_multiplier"]
+        try:
+            period = holdout_source["holdout_timerange"]
+            if not isinstance(period, str) or _TIMERANGE.fullmatch(period) is None:
+                raise ValueError("window")
+            start, stop = [datetime.strptime(value, "%Y%m%d").replace(tzinfo=timezone.utc) for value in period.split("-")]
+            pre_roll = holdout_source["pre_roll_candles"]
+            lower = datetime.fromisoformat(holdout_source["data_start_utc"])
+            end = datetime.fromisoformat(holdout_source["end_exclusive_utc"])
+            if (type(pre_roll) is not int or not 1 <= pre_roll <= 512 or start >= stop
+                    or lower.tzinfo is None or lower.utcoffset() != timedelta(0)
+                    or lower != start - timedelta(days=pre_roll) or end != stop):
+                raise ValueError("bounds")
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise OfflineBacktestError("Profile Holdout source window binding is invalid") from exc
     if (
         runtime["pair"] != pair
         or runtime["trading_mode"] != snapshot["trading_mode"]
@@ -976,7 +1014,7 @@ def _verify_profile_runtime_contract(
         or runtime["timeframe"] != snapshot["timeframe"]
         or runtime["max_open_trades"] != snapshot["max_open_trades"]
         or not math.isclose(
-            runtime["fee"], values["taker_fee_rate"], rel_tol=0.0, abs_tol=1e-15
+            runtime["fee"], expected_fee, rel_tol=0.0, abs_tol=1e-15
         )
         or not math.isclose(
             runtime["starting_balance"],
@@ -1394,7 +1432,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     provenance = _mapping(
         _strict_json(provenance_bytes, "data provenance"), "data provenance"
     )
-    _verify_profile_runtime_contract(provenance, raw_config)
+    _verify_profile_runtime_contract(provenance, raw_config, scenario=args.scenario)
     _verify_strategy_input(
         strategy_path,
         strategy_file,
@@ -1493,6 +1531,12 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                 args.timerange,
                 receipt_summary["data_sha256"],
                 timeframe=runtime_contract["timeframe"],
+                lower_bounds=(
+                    {name: datetime.fromisoformat(provenance["contract"]["holdout_source"]["data_start_utc"])
+                     for name in receipt_summary["data_sha256"]}
+                    if provenance["contract"].get("holdout_source") is not None else None
+                ),
+                strict_source_window=provenance["contract"].get("holdout_source") is not None,
             )
             config["datadir"] = scenario_data_dir
 

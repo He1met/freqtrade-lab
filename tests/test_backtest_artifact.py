@@ -966,6 +966,29 @@ def test_t2_rejects_profile_contract_mismatch(
     assert _snapshot(db_path) == before
 
 
+@pytest.mark.parametrize("domain", ["OKX_CRYPTO_SPOT", "OKX_CRYPTO_PERP"])
+def test_spot_import_domain_binding(tmp_path, monkeypatch, domain):
+    """Exercise importer binding only; native artifact parsing is covered separately."""
+    from dataclasses import replace
+    from lab import backtest_artifact
+
+    db_path = _seed_database(tmp_path)
+    parsed = parse_backtest_artifact(FIXTURE_ROOT, ARCHIVE_NAME, STRATEGY, "2026.7", PROVENANCE_SHA256)
+    parsed = replace(parsed, trading_mode="spot", margin_mode="", pairs=("ADA/USDT",))
+    monkeypatch.setattr(backtest_artifact, "parse_backtest_artifact", lambda *args, **kwargs: parsed)
+    with get_connection(db_path) as connection:
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute("UPDATE research_profiles SET domain=?, trading_mode='spot', margin_mode='', pairs_json='[\"ADA/USDT\"]'", (domain,))
+        connection.commit()
+    before = _snapshot(db_path)
+    if domain == "OKX_CRYPTO_SPOT":
+        assert _import(db_path).trading_mode == "spot"
+    else:
+        with pytest.raises(ArtifactImportError, match="profile domain"):
+            _import(db_path)
+        assert _snapshot(db_path) == before
+
+
 def test_t2_rejects_execution_timerange_mismatch(tmp_path: Path) -> None:
     db_path = _seed_database(tmp_path)
     with get_connection(db_path) as connection:

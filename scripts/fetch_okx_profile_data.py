@@ -257,6 +257,30 @@ def _configured() -> dict[str, Any]:
     return PROFILE_ACQUISITION
 
 
+def configure_holdout_acquisition(database: Path, research_run_id: str) -> Path:
+    """Explicit one-shot H-only action; validate D before all market contact."""
+    from lab.holdout_run import authorize_profile_holdout_source
+    output, authorization = authorize_profile_holdout_source(database, research_run_id)
+    normalized = bounded_research.validate_profile_runtime_contract(authorization["profile_snapshot"])
+    global PROFILE_ACQUISITION, DATA_START, SEARCH_START, DEVELOPMENT_START
+    global DATA_END, DATA_START_MS, DATA_END_MS, MARK_START_MS, SYMBOL, INSTRUMENT_ID
+    global PAIR_FAMILY, FUTURES_TIMEFRAME
+    PROFILE_ACQUISITION = {
+        **normalized, "runtime_config": bounded_research.profile_search_config(authorization["profile_snapshot"]),
+        "pre_roll_candles": authorization["pre_roll_candles"], "holdout_source": authorization,
+    }
+    DATA_START = datetime.fromisoformat(authorization["data_start_utc"])
+    DATA_END = datetime.fromisoformat(authorization["end_exclusive_utc"])
+    SEARCH_START, _ = bounded_research.timerange(authorization["holdout_timerange"], "Holdout")
+    DEVELOPMENT_START = SEARCH_START
+    DATA_START_MS, DATA_END_MS = int(DATA_START.timestamp() * 1000), int(DATA_END.timestamp() * 1000)
+    MARK_START_MS = DATA_START_MS
+    SYMBOL = normalized["pair"]
+    PAIR_FAMILY = SYMBOL.replace("/", "-")
+    INSTRUMENT_ID, FUTURES_TIMEFRAME = PAIR_FAMILY, "1d"
+    return output
+
+
 def fetch_profile_candles(
     exchange: Any,
     *,
@@ -1366,6 +1390,10 @@ def acquire(root: Path, runtime: dict[str, object]) -> Path:
         "finished_at_utc": datetime.now(UTC).isoformat(),
     }
     path = root / "retrieval_receipt.json"
+    if "holdout_source" in contract:
+        receipt["gate"] = "freqtrade-lab-profile-holdout-source-v1"
+        receipt["holdout_source"] = contract["holdout_source"]
+        receipt["data_window"].pop("development_start_utc")
     path.write_bytes(canonical_bytes(receipt))
     return path
 
@@ -1446,9 +1474,8 @@ def write_profile_provenance(
         local_only[name] = file_record(
             root / name, role, status="LOCAL_ONLY_NOT_DISTRIBUTED"
         )
-    acquisition_fields = bounded_research._profile_acquisition_contract_fields(
-        contract
-    )
+    acquisition_fields = (() if "holdout_source" in contract else
+                          bounded_research._profile_acquisition_contract_fields(contract))
     provenance = {
         "schema": "freqtrade-lab-retained-okx-data-v1",
         "portable_retained_fixture": False,
@@ -1474,14 +1501,17 @@ def write_profile_provenance(
             "market_snapshot": "market_snapshot.json",
             "leverage_tiers": "isolated_tiers_snapshot.json",
             "config": "config.json",
-            "development_timerange": contract["search_timerange"],
-            "holdout_timerange": contract["development_timerange"],
+            "development_timerange": contract.get("search_timerange", contract.get("holdout_source", {}).get("development_timerange")),
+            "holdout_timerange": contract.get("development_timerange", contract.get("holdout_source", {}).get("holdout_timerange")),
             "timeframe": FUTURES_TIMEFRAME,
             "profile_acquisition": {key: contract[key] for key in acquisition_fields},
         },
         "files": files,
         "local_only_files": local_only,
     }
+    if "holdout_source" in contract:
+        provenance["contract"].pop("profile_acquisition")
+        provenance["contract"]["holdout_source"] = contract["holdout_source"]
     path = root / "retained-data-provenance.json"
     path.write_bytes(canonical_bytes(provenance))
     return path
@@ -1489,11 +1519,13 @@ def write_profile_provenance(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-root", required=True, type=Path)
-    parser.add_argument("--window-spec", required=True, type=Path)
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--window-spec", type=Path)
     parser.add_argument("--profile-database", required=True, type=Path)
-    parser.add_argument("--profile-id", required=True)
-    parser.add_argument("--pre-roll-candles", required=True, type=int)
+    parser.add_argument("--profile-id")
+    parser.add_argument("--pre-roll-candles", type=int)
+    parser.add_argument("--authorize-holdout-source", metavar="RESEARCH_RUN_ID",
+                        help="explicitly authorize one H-only acquisition for an eligible spot 1d run; no window overrides")
     parser.add_argument(
         "--economic-gate",
         type=Path,
@@ -1512,19 +1544,23 @@ def main() -> None:
         if economic_gate_path is None
         else bounded_research.load_profile_economic_gate(economic_gate_path)
     )
-    configure_profile_acquisition(
-        args.profile_database,
-        args.profile_id,
-        args.window_spec,
-        args.pre_roll_candles,
-        economic_gate,
-        (None if getattr(args, "single_baseline", None) is None else
-         bounded_research.validate_single_baseline(
-             _strict_json_object(args.single_baseline, "Single baseline"))),
-    )
     runtime = validate_runtime()
     implementations = implementation_snapshot()
-    requested = args.output_root.expanduser()
+    holdout_run_id = getattr(args, "authorize_holdout_source", None)
+    if holdout_run_id is not None:
+        if any(getattr(args, key, None) is not None for key in (
+                "output_root", "window_spec", "profile_id", "pre_roll_candles", "economic_gate", "single_baseline")):
+            raise RuntimeError("Holdout source forbids Profile/window/output overrides")
+        requested = configure_holdout_acquisition(args.profile_database, holdout_run_id)
+    else:
+        if any(getattr(args, key, None) is None for key in ("output_root", "window_spec", "profile_id", "pre_roll_candles")):
+            raise RuntimeError("Profile source requires output, window, Profile and pre-roll")
+        configure_profile_acquisition(
+            args.profile_database, args.profile_id, args.window_spec, args.pre_roll_candles, economic_gate,
+            (None if getattr(args, "single_baseline", None) is None else bounded_research.validate_single_baseline(
+                _strict_json_object(args.single_baseline, "Single baseline"))),
+        )
+        requested = args.output_root.expanduser()
     parent = requested.parent.resolve(strict=True)
     if is_same_or_below_existing_directory(parent, REPOSITORY_ROOT):
         raise RuntimeError("output root must stay outside the repository")

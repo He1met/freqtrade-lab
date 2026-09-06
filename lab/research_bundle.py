@@ -552,9 +552,12 @@ def _validate_cross_scenario(
     holdout_start = datetime.fromisoformat(
         holdout.backtest_start.replace("Z", "+00:00")
     )
+    bar_duration = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}.get(holdout.timeframe)
+    if bar_duration is None:
+        raise ResearchBundleImportError("unsupported artifact timeframe for calendar span")
     holdout_end_exclusive = datetime.fromisoformat(
         holdout.backtest_end.replace("Z", "+00:00")
-    ) + timedelta(minutes=5)
+    ) + bar_duration
     holdout_duration = holdout_end_exclusive - holdout_start
     if (
         holdout_duration.total_seconds() % (24 * 60 * 60) != 0

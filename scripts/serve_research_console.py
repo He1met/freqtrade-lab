@@ -45,6 +45,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         type=Path,
         help="startup-frozen private Search-only campaign root outside Git",
     )
+    parser.add_argument("--holdout-research-run-id", help="same-run Profile Holdout continuation with an explicitly authorized source")
     parser.add_argument("--artifact-root", type=Path)
     parser.add_argument("--exploration-contract", type=Path, help="frozen exposure contract for pre-data generation and Search-only execution")
     parser.add_argument(
@@ -104,6 +105,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.pilot_root,
         args.port,
         search_root=args.search_root,
+        holdout_research_run_id=args.holdout_research_run_id,
         exploration_contract=exploration,
         artifact_root=args.artifact_root,
         release_root=args.release_root,
