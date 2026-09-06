@@ -279,7 +279,7 @@ def _profile_holdout_source_contract(
     database_path: PathLike, research_run_id: str,
 ) -> Tuple[Path, dict[str, Any]]:
     """Validate D and derive H boundaries without opening any H input."""
-    from lab.bounded_research import validate_profile_runtime_contract
+    from lab.bounded_research import validate_profile_runtime_contract, _validate_profile_window_resources
     from lab.bounded_strategy import analyze_bounded_causal_strategy
     from lab.codex_generation import load_profile_snapshot
 
@@ -297,6 +297,8 @@ def _profile_holdout_source_contract(
         analysis = analyze_bounded_causal_strategy(row["code_text"], row["class_name"], expected_timeframe="1d")
         _, start = _timerange(snapshot.get("timerange"))
         stop = start + timedelta(days=profile["holdout_days"])
+        _validate_profile_window_resources(start, stop, phase="Holdout", timeframe=profile["timeframe"],
+            trading_mode=profile["trading_mode"], pre_roll_candles=analysis.startup_candle_count)
         if stop >= datetime.now(timezone.utc):
             raise HoldoutRunError("BLOCKED_DATA", "Holdout window is not fully closed")
         directory = Path(str(row["run_dir"])).resolve(strict=True)

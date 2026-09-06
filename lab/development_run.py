@@ -344,10 +344,19 @@ def _timerange_dates(value: Any, label: str) -> Tuple[datetime, datetime]:
     return start, stop
 
 
-def _development_window(value: Any) -> Tuple[datetime, datetime, str]:
+def _development_window(value: Any, *, profile_contract: Optional[Mapping[str, Any]] = None) -> Tuple[datetime, datetime, str]:
     """Parse the frozen Pilot Development window and derive its exclusive stop."""
     start, stop = _timerange_dates(value, "Development")
-    if stop <= start or stop - start > timedelta(days=366):
+    if profile_contract is not None:
+        from lab import bounded_research as pilot
+        try:
+            profile = pilot.validate_profile_search_contract(profile_contract)
+            pilot._validate_profile_window_resources(start, stop, phase="Development",
+                timeframe=profile["timeframe"], trading_mode=profile["profile_snapshot"]["trading_mode"],
+                pre_roll_candles=profile_contract["pre_roll_candles"])
+        except pilot.PilotError as exc:
+            raise DevelopmentRunError("BLOCKED_DATA", str(exc)) from exc
+    elif stop <= start or stop - start > timedelta(days=366):
         raise DevelopmentRunError(
             "BLOCKED_DATA", "Pilot Development timerange must span 1 to 366 days"
         )
@@ -505,7 +514,7 @@ def freeze_development_capability(
         plan_bytes = _read_bytes(root / "pilot-spec.json", "Pilot spec", 1024 * 1024)
         plan = _json_bytes(plan_bytes, "Pilot spec")
         development_start, development_stop, development_stop_utc = _development_window(
-            plan.get("development_timerange")
+            plan.get("development_timerange"), profile_contract=profile_contract
         )
         if (
             frozen_profile is None
@@ -1052,7 +1061,7 @@ def _snapshot(
         "timeframe": row["profile_timeframe"],
         "finalist_gate": {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE},
     }
-    _, _, exclusive_stop_utc = _development_window(capability.development_timerange)
+    _, _, exclusive_stop_utc = _development_window(capability.development_timerange, profile_contract=capability.profile_contract)
     snapshot = {
         "schema": DEVELOPMENT_CONTRACT_SCHEMA,
         "pipeline_version": DEVELOPMENT_PIPELINE_VERSION,
@@ -1150,7 +1159,7 @@ def _materialize_inputs(
     snapshot: Mapping[str, Any],
 ) -> Mapping[str, Any]:
     assert capability.pilot_root is not None
-    _, _, exclusive_stop_utc = _development_window(capability.development_timerange)
+    _, _, exclusive_stop_utc = _development_window(capability.development_timerange, profile_contract=capability.profile_contract)
     input_root = run_dir / "development-input"
     strategies = input_root / "strategies"
     data_root = input_root / "data" / "okx"
