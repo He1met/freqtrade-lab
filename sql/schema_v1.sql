@@ -1,11 +1,13 @@
 CREATE TABLE IF NOT EXISTS research_profiles (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL UNIQUE,
-    domain TEXT NOT NULL CHECK (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP', 'OKX_CRYPTO_SPOT')),
-    exchange TEXT NOT NULL DEFAULT 'okx',
+    domain TEXT NOT NULL CHECK (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP', 'OKX_CRYPTO_SPOT', 'BINANCE_CRYPTO_PERP')),
+    exchange TEXT NOT NULL DEFAULT 'okx' CHECK (
+        (domain = 'BINANCE_CRYPTO_PERP' AND exchange = 'binance') OR
+        (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP', 'OKX_CRYPTO_SPOT') AND exchange = 'okx')),
     trading_mode TEXT NOT NULL DEFAULT 'futures' CHECK (
         (domain = 'OKX_CRYPTO_SPOT' AND trading_mode = 'spot') OR
-        (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP') AND trading_mode = 'futures')),
+        (domain IN ('OKX_CRYPTO_PERP', 'OKX_STOCK_PERP', 'BINANCE_CRYPTO_PERP') AND trading_mode = 'futures')),
     margin_mode TEXT NOT NULL DEFAULT 'isolated' CHECK (
         (trading_mode = 'spot' AND margin_mode = '') OR
         (trading_mode = 'futures' AND margin_mode IN ('isolated', 'cross'))),

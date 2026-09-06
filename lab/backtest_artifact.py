@@ -541,7 +541,7 @@ def _validate_provenance_boundary(provenance: Mapping[str, Any]) -> None:
         provenance.get("acquisition"), "provenance acquisition"
     )
     if (
-        acquisition.get("host") != "www.okx.com"
+        acquisition.get("host") not in {"www.okx.com", "fapi.binance.com"}
         or acquisition.get("authentication") != "none"
     ):
         raise ArtifactImportError(
@@ -678,12 +678,15 @@ def parse_backtest_artifact(
     margin_mode = config.get("margin_mode")
     from lab.market_contract import valid_market, pair_quote, validate_spot_source
     if (
-        exchange != SUPPORTED_EXCHANGE
+        exchange not in {"okx", "binance"}
         or not valid_market(config)
     ):
         raise ArtifactImportError(
             "the frozen format boundary requires okx/futures/isolated or okx/spot/no-margin"
         )
+    from lab.market_contract import SOURCE_HOSTS
+    if provenance["acquisition"]["host"] != SOURCE_HOSTS[exchange]:
+        raise ArtifactImportError("artifact exchange and acquisition host disagree")
     if trading_mode == "spot":
         try:
             for pair in pairs:
@@ -1209,10 +1212,8 @@ def import_backtest_execution(
             if execution_start != artifact_start or execution_end != artifact_end:
                 raise ArtifactImportError("execution timerange does not match artifact")
 
-            expected_domain = {
-                "spot": "OKX_CRYPTO_SPOT",
-                "futures": SUPPORTED_PROFILE_DOMAIN,
-            }.get(parsed.trading_mode)
+            from lab.market_contract import market_domain
+            expected_domain = market_domain(parsed.exchange, parsed.trading_mode)
             if expected_domain is None or row["profile_domain"] != expected_domain:
                 raise ArtifactImportError(
                     "research profile domain does not match the OKX crypto artifact"

@@ -601,7 +601,7 @@ def profile_search_config(profile_snapshot: Mapping[str, Any]) -> dict[str, Any]
         "unfilledtimeout": {"entry": 10, "exit": 30, "exit_timeout_count": 0, "unit": "minutes"},
         "entry_pricing": {"price_side": "same", "use_order_book": True, "order_book_top": 1},
         "exit_pricing": {"price_side": "same", "use_order_book": True, "order_book_top": 1},
-        "exchange": {"name": "okx", "enable_ws": False, "pair_whitelist": pairs, "pair_blacklist": []},
+        "exchange": {"name": profile_snapshot["exchange"], "enable_ws": False, "pair_whitelist": pairs, "pair_blacklist": []},
         "pairlists": [{"method": "StaticPairList"}],
         "strategy": None,
         "dataformat_ohlcv": "feather",
@@ -632,13 +632,16 @@ def validate_profile_runtime_contract(
     snapshot = dict(profile_snapshot)
     pairs, timeframe = snapshot.get("pairs"), snapshot.get("timeframe")
     from lab.market_contract import valid_market
-    if (not valid_market(snapshot, profile=True) or snapshot.get("exchange") != "okx"
+    if (not valid_market(snapshot, profile=True)
             or snapshot.get("detail_timeframe") is not None or timeframe not in PROFILE_TIMEFRAME_STEPS
             or not isinstance(pairs, list) or len(pairs) != 1 or not isinstance(pairs[0], str) or not pairs[0]
             or not isinstance(snapshot.get("id"), str) or SAFE_ID.fullmatch(snapshot["id"]) is None
             or not isinstance(snapshot.get("history_start_date"), str)
             or re.fullmatch(r"\d{4}-\d{2}-\d{2}", snapshot["history_start_date"]) is None):
         raise PilotError("Profile Search snapshot runtime contract is invalid")
+    if snapshot["exchange"] == "binance" and (pairs != ["BCH/USDT:USDT"]
+            or timeframe != "1d" or snapshot.get("max_open_trades") != 1):
+        raise PilotError("Binance V1 requires BCH perpetual, 1d, one position")
     values = {key: finite(snapshot.get(key), f"Profile {key}", 0) for key in (
         "starting_balance", "stake_amount", "taker_fee_rate", "min_profit_factor", "max_drawdown_pct"
     )}

@@ -517,12 +517,12 @@ def _validate_config(
     except ValueError as exc:
         raise ResearchCandidateError(str(exc)) from exc
     if (
-        exchange.get("name") != "okx"
+        exchange.get("name") not in {"okx", "binance"}
         or not valid_market(config)
         or config.get("timeframe") != expected_timeframe
     ):
         raise ResearchCandidateError(
-            f"config must use okx futures/isolated or spot/no-margin at {expected_timeframe}"
+            f"config must use a supported research market at {expected_timeframe}"
         )
     if config.get("dry_run") is not True:
         raise ResearchCandidateError("config dry_run must be true")
@@ -622,8 +622,12 @@ def _validate_data_provenance(
     if value["portable_retained_fixture"] not in ("RETAINED", "BLOCKED_LICENSE"):
         raise ResearchCandidateError("invalid portable_retained_fixture state")
     source = _mapping(value["source"], "data provenance source")
-    if source.get("host") != "www.okx.com" or source.get("authentication") != "none":
+    from lab.market_contract import SOURCE_HOSTS
+    if source.get("host") != SOURCE_HOSTS.get(source.get("exchange", "okx")) or source.get("authentication") != "none":
         raise ResearchCandidateError("data provenance must attest public unauthenticated www.okx.com")
+    bound_config = _strict_json(_read_file(config_path, "config"), "config")
+    if source.get("exchange", "okx") != bound_config.get("exchange", {}).get("name"):
+        raise ResearchCandidateError("source exchange disagrees with config")
     if source.get("pair") != pairs[0]:
         raise ResearchCandidateError("data provenance pair disagrees with config")
     freqtrade = _mapping(value["freqtrade"], "data provenance freqtrade")
@@ -1506,6 +1510,7 @@ def _validate_runner_summary(
     expected_source_tree_sha256: str,
     expected_runner_sha256: str,
     allow_zero_trades: bool = False,
+    exchange_name: str = "okx",
 ) -> Tuple[str, str, int]:
     if not isinstance(allow_zero_trades, bool):
         raise ResearchCandidateError("allow_zero_trades must be boolean")
@@ -1549,7 +1554,11 @@ def _validate_runner_summary(
     if dict(dependencies) != expected_dependencies:
         raise ResearchCandidateError("runner dependencies disagree with the supported build")
     official_core = _mapping(summary["official_core"], "runner official_core")
-    if dict(official_core) != SUPPORTED_OFFICIAL_CORE:
+    expected_core = dict(SUPPORTED_OFFICIAL_CORE)
+    if exchange_name == "binance":
+        expected_core.pop("Okx")
+        expected_core["Binance"] = "freqtrade.exchange.binance"
+    if exchange_name not in {"okx", "binance"} or dict(official_core) != expected_core:
         raise ResearchCandidateError("runner official_core receipt is incomplete or unexpected")
     input_receipts = _mapping(summary["input_receipts"], "runner input_receipts")
     if dict(input_receipts) != dict(expected_input_receipts):
@@ -1700,6 +1709,7 @@ def _sanitize_raw_artifact(
         expected_source_tree_sha256=source_tree_sha256,
         expected_runner_sha256=str(implementation_receipts["runner"]["sha256"]),
         allow_zero_trades=allow_zero_trades,
+        exchange_name=data_provenance["source"].get("exchange", "okx"),
     )
     raw_archive = raw_dir / _relative_member(raw_archive_name, "runner archive")
     raw_metadata = raw_dir / _relative_member(raw_metadata_name, "runner metadata")
@@ -1804,7 +1814,7 @@ def _sanitize_raw_artifact(
     provenance = {
         "schema": "freqtrade-lab-fixture-provenance-v1",
         "acquisition": {
-            "host": "www.okx.com",
+            "host": source["host"],
             "authentication": "none",
             "pair": source.get("pair"),
             "instrument_id": source.get("instrument_id"),

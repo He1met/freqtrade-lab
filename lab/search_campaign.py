@@ -586,7 +586,7 @@ def _profile_bound(snapshot: ApprovedCandidateSnapshot, capability: FrozenSearch
         frozen is None
         or snapshot.exploration != capability.exploration
         or not valid_market(profile, profile=True)
-        or profile.get("exchange") != "okx"
+        or profile.get("exchange") not in {"okx", "binance"}
         or profile.get("pairs") != [capability.pair]
         or snapshot.timeframe != capability.timeframe
         or profile.get("timeframe") != capability.timeframe

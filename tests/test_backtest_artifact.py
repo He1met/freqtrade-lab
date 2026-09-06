@@ -583,7 +583,7 @@ def test_t0_freezes_okx_futures_isolated_boundary(
             config[field] = value
 
     root = _mutate_evidence(tmp_path, config=mutate)
-    with pytest.raises(ArtifactImportError, match="okx/futures/isolated"):
+    with pytest.raises(ArtifactImportError, match="okx/futures/isolated|exchange and acquisition host disagree"):
         _parse(root)
 
 
@@ -934,7 +934,7 @@ def test_t2_recomputes_candidate_code_text_hash(tmp_path: Path) -> None:
     ("column", "value", "message", "ignore_check"),
     [
         ("domain", "OKX_STOCK_PERP", "profile domain", False),
-        ("exchange", "binance", "profile exchange", False),
+        ("exchange", "binance", "profile exchange", True),
         ("trading_mode", "spot", "profile trading_mode", True),
         ("margin_mode", "cross", "profile margin_mode", False),
         ("pairs_json", '["BTC/USDT:USDT"]', "profile pair set", False),

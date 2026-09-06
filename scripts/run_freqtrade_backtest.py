@@ -391,7 +391,8 @@ def _verify_data_provenance(
         raise OfflineBacktestError("data provenance schema is not supported")
 
     source = _mapping(provenance.get("source"), "data provenance source")
-    if source.get("host") != "www.okx.com" or source.get("authentication") != "none":
+    source_exchange = source.get("exchange", "okx")
+    if source.get("host") != {"okx": "www.okx.com", "binance": "fapi.binance.com"}.get(source_exchange) or source.get("authentication") != "none":
         raise OfflineBacktestError(
             "data provenance must attest unauthenticated public www.okx.com data"
         )
@@ -721,7 +722,7 @@ def _verify_dependency_versions(
 
 
 def _load_official_freqtrade(
-    expected_source_root: Path, expected_source_tree_sha256: str
+    expected_source_root: Path, expected_source_tree_sha256: str, exchange_name: str = "okx",
 ) -> dict[str, Any]:
     try:
         import ccxt
@@ -731,6 +732,7 @@ def _load_official_freqtrade(
         from freqtrade.commands.optimize_commands import setup_optimize_configuration
         from freqtrade.enums import RunMode
         from freqtrade.exchange.okx import Okx
+        from freqtrade.exchange.binance import Binance
         from freqtrade.optimize.backtesting import Backtesting
         from freqtrade.optimize.optimize_reports import generate_backtest_stats
         from freqtrade.optimize.optimize_reports.bt_storage import store_backtest_results
@@ -757,9 +759,11 @@ def _load_official_freqtrade(
         source_root, expected_source_tree_sha256
     )
 
+    selected_exchange = {"okx": Okx, "binance": Binance}[exchange_name]
+    exchange_key = selected_exchange.__name__
     official_core = {
         "setup_optimize_configuration": setup_optimize_configuration.__module__,
-        "Okx": Okx.__module__,
+        exchange_key: selected_exchange.__module__,
         "Backtesting.start": Backtesting.start.__module__,
         "Backtesting.backtest_one_strategy": Backtesting.backtest_one_strategy.__module__,
         "Backtesting.backtest": Backtesting.backtest.__module__,
@@ -768,7 +772,7 @@ def _load_official_freqtrade(
     }
     expected_core = {
         "setup_optimize_configuration": "freqtrade.commands.optimize_commands",
-        "Okx": "freqtrade.exchange.okx",
+        exchange_key: f"freqtrade.exchange.{exchange_name}",
         "Backtesting.start": "freqtrade.optimize.backtesting",
         "Backtesting.backtest_one_strategy": "freqtrade.optimize.backtesting",
         "Backtesting.backtest": "freqtrade.optimize.backtesting",
@@ -788,7 +792,7 @@ def _load_official_freqtrade(
         backtesting_module,
         reports_module,
         sys.modules[setup_optimize_configuration.__module__],
-        sys.modules[Okx.__module__],
+        sys.modules[selected_exchange.__module__],
         sys.modules[store_backtest_results.__module__],
     )
     for module in modules:
@@ -807,6 +811,7 @@ def _load_official_freqtrade(
     return {
         "Backtesting": Backtesting,
         "Okx": Okx,
+        "Binance": Binance,
         "RunMode": RunMode,
         "setup_optimize_configuration": setup_optimize_configuration,
         "official_core": official_core,
@@ -835,8 +840,14 @@ def _walk_sensitive(value: Any, label: str) -> None:
 def _valid_market(value: Mapping[str, Any], *, profile: bool = False) -> bool:
     # This copied, sandboxed adapter cannot import application modules.
     mode = (value.get("trading_mode"), value.get("margin_mode"))
-    return ((mode == ("futures", "isolated") and (not profile or value.get("domain") == "OKX_CRYPTO_PERP"))
-            or (mode == ("spot", "") and (not profile or value.get("domain") == "OKX_CRYPTO_SPOT")))
+    exchange = value.get("exchange", "okx")
+    exchange = exchange.get("name") if isinstance(exchange, Mapping) else exchange
+    if not isinstance(exchange, str) or not all(isinstance(v,str) for v in mode):
+        return False
+    domain = {("okx", "futures"): "OKX_CRYPTO_PERP", ("okx", "spot"): "OKX_CRYPTO_SPOT",
+              ("binance", "futures"): "BINANCE_CRYPTO_PERP"}.get((exchange, mode[0]))
+    return (domain is not None and mode in {("futures", "isolated"), ("spot", "")}
+            and (not profile or value.get("domain") == domain))
 
 
 def _validate_market_pair(pair: str, *, spot: bool) -> None:
@@ -862,7 +873,7 @@ def _validate_raw_config_boundary(config: Mapping[str, Any]) -> dict[str, Any]:
     _exact_keys(unfilledtimeout, _TIMEOUT_CONFIG_KEYS, "raw config unfilledtimeout")
     pairs = exchange.get("pair_whitelist")
     if (
-        exchange.get("name") != "okx"
+        exchange.get("name") not in {"okx", "binance"}
         or not _valid_market(config)
         or config.get("timeframe") not in {"5m", "1d"}
         or not isinstance(pairs, list)
@@ -930,7 +941,7 @@ def _verify_profile_runtime_contract(
     pair = pairs[0] if isinstance(pairs, list) and len(pairs) == 1 else None
     if (
         not _valid_market(snapshot, profile=True)
-        or snapshot.get("exchange") != "okx"
+        or snapshot.get("exchange") != config.get("exchange", {}).get("name")
         or snapshot.get("detail_timeframe") is not None
         or snapshot.get("timeframe") not in {"5m", "1d"}
         or not isinstance(pair, str)
@@ -988,7 +999,7 @@ def _verify_profile_runtime_contract(
                 or holdout_source.get("profile_snapshot") != snapshot
                 or holdout_source.get("profile_snapshot_sha256") != snapshot_sha
                 or holdout_source.get("holdout_timerange") != contract.get("holdout_timerange")
-                or snapshot.get("trading_mode") != "spot" or snapshot.get("timeframe") != "1d"
+                or snapshot.get("timeframe") != "1d"
                 or scenario not in {"HOLDOUT", "HOLDOUT_STRESS"}):
             raise OfflineBacktestError("Profile Holdout stage binding is invalid")
         if scenario == "HOLDOUT_STRESS":
@@ -1118,7 +1129,7 @@ def _validate_loaded_config(
     }
     if (
         actual["dry_run"] is not True
-        or actual["exchange"] != "okx"
+        or actual["exchange"] not in {"okx", "binance"}
         or actual["trading_mode"] != expected.get("trading_mode", "futures")
         or actual["margin_mode"] != expected.get("margin_mode", "isolated")
         or actual["timeframe"] != expected["timeframe"]
@@ -1432,6 +1443,8 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
     provenance = _mapping(
         _strict_json(provenance_bytes, "data provenance"), "data provenance"
     )
+    if provenance.get("source", {}).get("exchange", "okx") != raw_config["exchange"]["name"]:
+        raise OfflineBacktestError("source exchange disagrees with runtime config")
     _verify_profile_runtime_contract(provenance, raw_config, scenario=args.scenario)
     _verify_strategy_input(
         strategy_path,
@@ -1470,7 +1483,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
 
     cleanup_enabled = True
     try:
-        official = _load_official_freqtrade(source_root, args.source_tree_sha256)
+        official = _load_official_freqtrade(source_root, args.source_tree_sha256, raw_config["exchange"]["name"])
         assert runtime_contract is not None
         _verify_dependency_versions(provenance, official["dependencies"])
         setup_optimize_configuration = official["setup_optimize_configuration"]
@@ -1540,8 +1553,8 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             )
             config["datadir"] = scenario_data_dir
 
-            Okx = official["Okx"]
-            exchange = Okx(config, validate=False, load_leverage_tiers=False)
+            exchange_class = official[{"okx": "Okx", "binance": "Binance"}[raw_config["exchange"]["name"]]]
+            exchange = exchange_class(config, validate=False, load_leverage_tiers=False)
             exchange._api.set_markets([market], {})
             exchange._api_async.set_markets([market], {})
             exchange._markets = exchange._api.markets
