@@ -3746,6 +3746,23 @@ class ResearchConsoleController:
         )
         holdout_capability = self._public_holdout_capability()
         if self._search_mode_configured:
+            for candidate in payload["candidates"]:
+                if candidate["status"] != "READY":
+                    continue
+                capability = self._search_capability
+                if capability is None or capability.status != "READY" or capability.profile_snapshot is None:
+                    candidate.update(status="BLOCKED_DATA", reason="Search Profile capability is unavailable; Development requires a verified finalist")
+                    continue
+                try:
+                    binding = verified_finalist_binding(
+                        self.config.database_path, capability, candidate["candidate_id"]
+                    )
+                except SearchCampaignError:
+                    binding = None
+                if binding is None:
+                    candidate.update(status="BLOCKED_SECURITY", reason="Candidate is not a verified Search finalist; Development cannot start")
+                elif capability.single_baseline is not None:
+                    candidate["reason"] = "Verified Search finalist; matching protocol review is still required before Development"
             payload["boundaries"] = {
                 "holdout": "SEALED_UNREAD",
                 "holdout_stress": "SEALED_UNREAD",

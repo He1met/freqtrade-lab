@@ -1273,6 +1273,25 @@ def test_t1_round_two_exit_three_is_a_legal_no_finalist_terminal(
         assert final["budget"]["active_attempt_limit"] == 3
         assert final["budget"]["maximum_attempts"] == 6
         _path_free(raw, tmp_path)
+        # Generic candidate eligibility must not bypass the Search projection.
+        monkeypatch.setattr(research_console, "research_context", lambda *_: {
+            "candidates": [{"candidate_id": environment.child, "display_name": "Child", "status": "READY", "reason": "generic eligibility"}],
+            "capability": {"status": "READY"}, "latest_research_run_id": None,
+        })
+        status, context, _ = _request(server, "/api/research/context")
+        assert status == 200
+        assert context["candidates"][0]["status"] == "BLOCKED_SECURITY"
+        assert "not a verified Search finalist" in context["candidates"][0]["reason"]
+        before_rejected_request = _snapshot(environment.database)
+        directories = tuple(environment.runtime.rglob("*"))
+        def forbidden(*args: Any, **kwargs: Any) -> None:
+            pytest.fail("no finalist reached Development directory/prepare/native boundary")
+        monkeypatch.setattr(server.research_console_controller, "_campaign_directory", forbidden)
+        monkeypatch.setattr(research_console, "prepare_development_run", forbidden)
+        status, rejected, _ = _post(server, "/api/research-runs", {"candidate_id": environment.child})
+        assert status == 409 and rejected["error"] == "search_finalist_required"
+        assert _snapshot(environment.database) == before_rejected_request
+        assert tuple(environment.runtime.rglob("*")) == directories
     _assert_only_terminal_projection(
         environment.database, before, campaign_id, status="COMPLETED"
     )
@@ -1636,6 +1655,7 @@ def test_t1_terminal_projection_covers_two_rounds_and_invalid_attempt(
         assert status == 200
         assert research_context["capability"]["timeframe"] == "1d"
         assert research_context["capability"]["economic_gate"] == pilot.PROFILE_SEARCH_GATE
+        assert next(item for item in research_context["candidates"] if item["candidate_id"] == child_id)["status"] == "READY"
 
         with get_connection(environment.database, read_only=True) as connection:
             candidate = connection.execute(
