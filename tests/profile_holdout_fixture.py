@@ -82,16 +82,17 @@ def write_artificial_source(root, start, stop):
         data / "ADA_USDT-1d.feather", root / "market_snapshot.json", root / "isolated_tiers_snapshot.json")}
 
 
-def prepared_profile_development(root, monkeypatch, *, python=None, native_source=None):
+def prepared_profile_development(root, monkeypatch, *, python=None, native_source=None,
+                                 development_stop="2026-05-01", holdout_days=61):
     root.mkdir(parents=True, exist_ok=True)
     database, candidate_id = _approved_candidate_database(
         root, pair="ADA/USDT", timeframe="1d", spot=True, source_text=SOURCE,
-        min_development_trades=1, holdout_days=61,
+        min_development_trades=1, holdout_days=holdout_days,
     )
     with get_connection(database, read_only=True) as connection:
         profile_id = connection.execute("SELECT research_profile_id FROM generation_runs").fetchone()[0]
         profile = load_profile_snapshot(connection, profile_id)
-    contract = pilot.profile_search_contract(profile, "20260125-20260301", "20260301-20260501", 20)
+    contract = pilot.profile_search_contract(profile, "20260125-20260301", "20260301-" + development_stop.replace("-", ""), 20)
     # The old compact helper patches only runtime identity. Real native runs
     # restore those patches before freezing the actual pinned runtime.
     with monkeypatch.context() as fixture_patch:
@@ -100,7 +101,7 @@ def prepared_profile_development(root, monkeypatch, *, python=None, native_sourc
             timeframe="1d", profile_contract=contract,
         )
     isolation = pilot_root / "development-isolation"
-    local = write_artificial_source(isolation, "2026-02-09", "2026-05-01")
+    local = write_artificial_source(isolation, "2026-02-09", development_stop)
     acquisition = pilot_root / "acquisition"
     for name in ("market_snapshot.json", "isolated_tiers_snapshot.json"):
         (acquisition / name).write_bytes((isolation / name).read_bytes())
@@ -146,7 +147,7 @@ def authorized_artificial_holdout(database, run_id):
     return output
 
 
-def passed_profile_development_stub(root, monkeypatch):
+def passed_profile_development_stub(root, monkeypatch, *, holdout_days=61):
     """Only the imported D artifact is a stub; preparation and gates are real."""
     from dataclasses import replace
     from lab.backtest_artifact import execution_result_values
@@ -154,7 +155,7 @@ def passed_profile_development_stub(root, monkeypatch):
     legacy_root = root / "legacy-parser-seed"
     legacy_root.mkdir(parents=True)
     _, _, _, _, template = _eligible_run(legacy_root, monkeypatch)
-    database, run_id, run_dir, capability = prepared_profile_development(root / "profile", monkeypatch)
+    database, run_id, run_dir, capability = prepared_profile_development(root / "profile", monkeypatch, holdout_days=holdout_days)
     evidence = run_dir / "development-evidence"
     evidence.mkdir()
     archive = evidence / "development-01.zip"

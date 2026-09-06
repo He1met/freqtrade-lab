@@ -175,6 +175,7 @@ def _search_terminal_fields(value: Mapping[str, Any]) -> set[str]:
     return fields
 MARKET_STATE_DEFINITION = "LAST_CLOSED_CLOSE_VS_SMA_N_V1"
 PROFILE_TIMEFRAME_STEPS = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}
+PROFILE_SPOT_DAILY_MAX_DAYS = 1830
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MECHANISM_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 CLASS = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -694,6 +695,8 @@ def _validated_profile_search_contract(value: Mapping[str, Any]) -> dict[str, An
     if isinstance(pre_roll, bool) or not isinstance(pre_roll, int) or not 1 <= pre_roll <= MAX_STATIC_LOOKBACK:
         raise PilotError("Profile Search pre-roll is invalid")
     search_start, search_stop = timerange(value["search_timerange"], "Search")
+    _validate_profile_window_resources(search_start, search_stop, phase="Search",
+        timeframe=timeframe, trading_mode=snapshot["trading_mode"], pre_roll_candles=pre_roll)
     exploration = validate_exploration(value["exploration"]) if "exploration" in value else None
     if "single_baseline" in value:
         validate_single_baseline(value["single_baseline"])
@@ -704,7 +707,9 @@ def _validated_profile_search_contract(value: Mapping[str, Any]) -> dict[str, An
             raise PilotError("Exploration must not reserve a Development window")
         development_start = search_stop
     else:
-        development_start, _ = timerange(value["development_timerange"], "Development")
+        development_start, development_stop = timerange(value["development_timerange"], "Development")
+        _validate_profile_window_resources(development_start, development_stop, phase="Development",
+            timeframe=timeframe, trading_mode=snapshot["trading_mode"], pre_roll_candles=pre_roll)
     try:
         history_start = datetime.strptime(snapshot["history_start_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
     except ValueError as exc:
@@ -908,9 +913,8 @@ def _load_search_campaign(
     if isinstance(round_number, bool) or round_number not in {1, 2}:
         raise PilotError("Search round must be 1 or 2")
     start, end = timerange(plan["search_timerange"], "Search")
-    search_days = (end - start).days
-    if search_days < 1 or search_days > 366:
-        raise PilotError("Search window exceeds its bounded duration")
+    _validate_profile_window_resources(start, end, phase="Search", timeframe=profile["timeframe"],
+        trading_mode=profile["profile_snapshot"]["trading_mode"], pre_roll_candles=plan["pre_roll_candles"])
     if (
         not isinstance(plan["data_provenance_sha256"], str)
         or re.fullmatch(r"[0-9a-f]{64}", plan["data_provenance_sha256"]) is None
@@ -1181,6 +1185,24 @@ def _development_window_contract(
     }
 
 
+def _validate_profile_window_resources(
+    start: datetime, stop: datetime, *, phase: str, timeframe: str,
+    trading_mode: str, pre_roll_candles: int,
+) -> None:
+    """Resource bounds for already validated Profile windows, never quality gates."""
+    _search_series_contract(timeframe, trading_mode)
+    if type(pre_roll_candles) is not int or not 1 <= pre_roll_candles <= MAX_STATIC_LOOKBACK:
+        raise PilotError("Profile window pre-roll is invalid")
+    daily_spot = trading_mode == "spot" and timeframe == "1d"
+    maximum_days = PROFILE_SPOT_DAILY_MAX_DAYS if daily_spot else 366
+    duration = stop - start
+    if not timedelta(days=1) <= duration <= timedelta(days=maximum_days):
+        raise PilotError(f"{phase} window exceeds its bounded duration")
+    if daily_spot and (duration % timedelta(days=1)
+            or duration // timedelta(days=1) + pre_roll_candles > PROFILE_SPOT_DAILY_MAX_DAYS + MAX_STATIC_LOOKBACK):
+        raise PilotError(f"{phase} daily source exceeds its bounded rows")
+
+
 def _profile_window_contract(
     value: Any,
     *,
@@ -1190,9 +1212,8 @@ def _profile_window_contract(
     trading_mode: str = "futures",
 ) -> dict[str, Any]:
     phase_start, phase_stop = timerange(value, phase)
-    duration = phase_stop - phase_start
-    if not timedelta(days=1) <= duration <= timedelta(days=366):
-        raise PilotError(f"{phase} window exceeds its bounded duration")
+    _validate_profile_window_resources(phase_start, phase_stop, phase=phase,
+        timeframe=timeframe, trading_mode=trading_mode, pre_roll_candles=pre_roll_candles)
     steps, _ = _search_series_contract(timeframe, trading_mode)
     startup_start = (
         phase_start - PROFILE_TIMEFRAME_STEPS[timeframe] * pre_roll_candles
