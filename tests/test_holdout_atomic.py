@@ -944,7 +944,7 @@ def test_t2_http_controller_worker_parser_sqlite_and_library_chain(
         f"blob {len(schema_bytes)}\0".encode("ascii") + schema_bytes,
         usedforsecurity=False,
     ).hexdigest()
-    assert schema_blob == "2447bf90447a333a703e208a4ec6503fb7c5112b"
+    assert schema_blob == "537cda3c754b9fc4adcfd3e88ca5dceef022f69c"
 
 
 class _FakeLaterCommandRunner:

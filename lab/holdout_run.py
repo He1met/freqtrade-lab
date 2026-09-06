@@ -40,6 +40,7 @@ from lab.development_run import (
     DevelopmentRunError,
     FrozenDevelopmentCapability,
     _bound_candidate,
+    _development_gate_contract,
     _python_identity,
     _profile_gate,
     _require_ready as _require_development_ready,
@@ -190,6 +191,7 @@ class FrozenHoldoutCapability:
     stress_fee_multiplier: Optional[float] = None
     pair: Optional[str] = None
     local_receipts: Tuple[Tuple[str, int, str, Optional[str]], ...] = ()
+    profile_source_authorization: Optional[Mapping[str, Any]] = None
 
     def public(self) -> dict[str, Any]:
         return {
@@ -271,6 +273,127 @@ def _safe_relative(value: Any, label: str) -> Path:
     if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
         raise HoldoutRunError("BLOCKED_DATA", f"{label} path is unsafe")
     return path
+
+
+def _profile_holdout_source_contract(
+    database_path: PathLike, research_run_id: str,
+) -> Tuple[Path, dict[str, Any]]:
+    """Validate D and derive H boundaries without opening any H input."""
+    from lab.bounded_research import validate_profile_runtime_contract
+    from lab.bounded_strategy import analyze_bounded_causal_strategy
+    from lab.codex_generation import load_profile_snapshot
+
+    with closing(get_connection(database_path, read_only=True, must_exist=True)) as connection:
+        connection.execute("BEGIN")
+        _schema_v1(connection)
+        row, parsed, snapshot = _eligible_row(connection, research_run_id, parse_artifact=True)
+        normalized = snapshot.get("normalized_profile_contract")
+        profile = load_profile_snapshot(connection, str(row["research_profile_id"]))
+        if (not isinstance(normalized, dict)
+                or normalized != validate_profile_runtime_contract(profile)
+                or profile["trading_mode"] != "spot" or profile["timeframe"] != "1d"):
+            raise HoldoutRunError("run_not_eligible", "Holdout source requires the unchanged spot 1d Profile")
+        _bound_candidate(connection, str(row["candidate_id"]), "1d")
+        analysis = analyze_bounded_causal_strategy(row["code_text"], row["class_name"], expected_timeframe="1d")
+        _, start = _timerange(snapshot.get("timerange"))
+        stop = start + timedelta(days=profile["holdout_days"])
+        if stop >= datetime.now(timezone.utc):
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout window is not fully closed")
+        directory = Path(str(row["run_dir"])).resolve(strict=True)
+        if directory.name != research_run_id or _residual_authorization(directory):
+            raise HoldoutRunError("already_authorized", "Holdout continuation was already attempted")
+        assert parsed is not None
+        return directory, {
+            "schema": "freqtrade-lab-profile-holdout-source-v1",
+            "action": "AUTHORIZE_HOLDOUT_SOURCE",
+            "research_run_id": research_run_id,
+            "candidate_id": row["candidate_id"],
+            "candidate_code_sha256": row["code_sha256"],
+            "development_snapshot_sha256": hashlib.sha256(row["input_snapshot_json"].encode()).hexdigest(),
+            "development_artifact_sha256": parsed.archive_sha256,
+            "profile_binding_sha256": _profile_binding_sha256(connection, row["research_profile_id"]),
+            "profile_snapshot": profile,
+            "profile_snapshot_sha256": normalized["profile_snapshot_sha256"],
+            "development_timerange": snapshot["timerange"],
+            "holdout_timerange": f"{start:%Y%m%d}-{stop:%Y%m%d}",
+            "pre_roll_candles": analysis.startup_candle_count,
+            "data_start_utc": (start - timedelta(days=analysis.startup_candle_count)).isoformat(),
+            "end_exclusive_utc": stop.isoformat(),
+        }
+
+
+def profile_holdout_source_contract(database_path: PathLike, research_run_id: str) -> Tuple[Path, dict[str, Any]]:
+    from lab.bounded_research import PilotError
+    from lab.bounded_strategy import BoundedStrategyError
+    from lab.codex_generation import GenerationContractError
+    try:
+        return _profile_holdout_source_contract(database_path, research_run_id)
+    except HoldoutRunError:
+        raise
+    except (PilotError, BoundedStrategyError, GenerationContractError, DevelopmentRunError,
+            KeyError, TypeError, ValueError, OverflowError, OSError) as exc:
+        raise HoldoutRunError("run_not_eligible", "Profile Holdout source binding is invalid") from exc
+
+
+def authorize_profile_holdout_source(database_path: PathLike, research_run_id: str) -> Tuple[Path, dict[str, Any]]:
+    """Explicit producer action; O_EXCL receipt precedes all acquisition."""
+    directory, contract = profile_holdout_source_contract(database_path, research_run_id)
+    _write_exclusive(directory / "holdout-source-authorization.json", _canonical_bytes(contract), sync_parent=True)
+    return directory / "holdout-source", contract
+
+
+def freeze_profile_holdout_capability(
+    database_path: PathLike, research_run_id: str, development: FrozenDevelopmentCapability,
+) -> FrozenHoldoutCapability:
+    """Only read control receipts; never read H candles, pre-roll or market snapshots."""
+    try:
+        directory, expected = profile_holdout_source_contract(database_path, research_run_id)
+        authorization = _json_bytes(_read_regular(directory / "holdout-source-authorization.json", "Holdout source authorization"), "Holdout source authorization")
+        if authorization != expected or development.profile_contract is None or development.status != "READY":
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout source authorization disagrees with Development")
+        acquisition = directory / "holdout-source"
+        provenance_bytes = _read_regular(acquisition / "retained-data-provenance.json", "Holdout source provenance")
+        provenance = _json_bytes(provenance_bytes, "Holdout source provenance")
+        if (not isinstance(provenance.get("contract"), dict)
+                or provenance["contract"].get("holdout_source") != expected
+                or not isinstance(provenance.get("local_only_files"), dict)):
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout source contract changed")
+        source = provenance.get("source")
+        if (not isinstance(source, dict) or source.get("host") != "www.okx.com"
+                or source.get("authentication") != "none" or source.get("pair") != development.pair
+                or source.get("instrument_id") != development.instrument_id):
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout source market identity changed")
+        records = []
+        for name, raw in provenance.get("local_only_files", {}).items():
+            relative = _safe_relative(name, "Holdout input")
+            size, digest, role = _receipt_record(raw, "Holdout input")
+            info = (acquisition / relative).stat(follow_symlinks=False)
+            if not stat.S_ISREG(info.st_mode) or info.st_size != size:
+                raise HoldoutRunError("BLOCKED_DATA", "Holdout input envelope changed")
+            records.append((relative.as_posix(), size, digest, role))
+        if len(records) != 3:
+            raise HoldoutRunError("BLOCKED_DATA", "Spot Holdout requires one candle file and two snapshots")
+        if ({name for name, *_ in records if not name.startswith("data/okx/")}
+                != {"market_snapshot.json", "isolated_tiers_snapshot.json"}
+                or sum(name.startswith("data/okx/") and name.endswith("-1d.feather") for name, *_ in records) != 1):
+            raise HoldoutRunError("BLOCKED_DATA", "Spot Holdout source file roles changed")
+        config = _read_regular(acquisition / "config.json", "Holdout config")
+        from lab.bounded_research import profile_search_config
+        if _json_bytes(config, "Holdout config") != profile_search_config(expected["profile_snapshot"]):
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout config differs from Profile")
+        return FrozenHoldoutCapability(
+            status="READY", reason="Profile Holdout source is authorized; native continuation requires explicit action",
+            development=development, pilot_root=directory,
+            freqtrade_python=development.freqtrade_python, freqtrade_source=development.freqtrade_source,
+            plan_sha256=development.plan_sha256,
+            acquisition_provenance_sha256=hashlib.sha256(provenance_bytes).hexdigest(),
+            config_sha256=hashlib.sha256(config).hexdigest(), runner_sha256=development.runner_sha256,
+            development_timerange=expected["development_timerange"], holdout_timerange=expected["holdout_timerange"],
+            stress_fee_multiplier=expected["profile_snapshot"]["stress_fee_multiplier"], pair=development.pair,
+            local_receipts=tuple(sorted(records)), profile_source_authorization=expected,
+        )
+    except (HoldoutRunError, DevelopmentRunError, OSError, ValueError, TypeError, KeyError) as exc:
+        return FrozenHoldoutCapability(status="BLOCKED_DATA", reason="Profile Holdout source is unavailable or unbound", development=development)
 
 
 def freeze_holdout_capability(
@@ -392,6 +515,19 @@ def _require_ready(capability: FrozenHoldoutCapability) -> None:
     try:
         _require_development_ready(capability.development)
         pilot = capability.pilot_root
+        if capability.profile_source_authorization is not None:
+            acquisition = pilot / "holdout-source"
+            if (
+                _json_bytes(_read_regular(pilot / "holdout-source-authorization.json", "Holdout source authorization"), "Holdout source authorization") != capability.profile_source_authorization
+                or hashlib.sha256(_read_regular(acquisition / "retained-data-provenance.json", "Holdout source provenance")).hexdigest() != capability.acquisition_provenance_sha256
+                or hashlib.sha256(_read_regular(acquisition / "config.json", "Holdout config")).hexdigest() != capability.config_sha256
+            ):
+                raise HoldoutRunError("BLOCKED_DATA", "Holdout source control receipts changed")
+            for name, size, digest, _role in capability.local_receipts:
+                data = _read_regular(acquisition / _safe_relative(name, "Holdout input"), "Holdout input")
+                if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+                    raise HoldoutRunError("BLOCKED_DATA", "Holdout source changed")
+            return
         acquisition = pilot / "acquisition"
         fixed = (
             hashlib.sha256(_read_regular(pilot / "pilot-spec.json", "Pilot spec")).hexdigest(),
@@ -557,7 +693,7 @@ def _materialize_holdout_inputs(
     assert capability.development_timerange is not None
     assert capability.holdout_timerange is not None
     assert capability.stress_fee_multiplier is not None
-    acquisition = capability.pilot_root / "acquisition"
+    acquisition = capability.pilot_root / ("holdout-source" if capability.profile_source_authorization is not None else "acquisition")
     staging = run_dir / ".holdout-input-preparing"
     final = run_dir / "holdout-input"
     if staging.exists() or final.exists() or final.is_symlink():
@@ -663,17 +799,24 @@ def _materialize_holdout_inputs(
                 "leverage_tiers": "isolated_tiers_snapshot.json",
                 "development_timerange": capability.development_timerange,
                 "holdout_timerange": capability.holdout_timerange,
-                "timeframe": "5m",
+                "timeframe": capability.development.timeframe,
             },
             "files": tracked,
             "local_only_files": dict(sorted(local_records.items())),
         }
+        if capability.profile_source_authorization is not None:
+            auth = capability.profile_source_authorization
+            provenance["contract"].update(
+                profile_snapshot=auth["profile_snapshot"],
+                profile_snapshot_sha256=auth["profile_snapshot_sha256"],
+                holdout_source=auth,
+            )
         provenance_bytes = _canonical_bytes(provenance)
         _write_exclusive(staging / "retained-data-provenance.json", provenance_bytes)
 
         # Reuse the existing producer's strict validators before the DB action is consumed.
         try:
-            _validate_config(config, str(row["class_name"]))
+            _validate_config(config, str(row["class_name"]), expected_timeframe=str(capability.development.timeframe))
             _validate_research_spec(
                 staging / "research-spec.json",
                 str(row["class_name"]),
@@ -791,6 +934,13 @@ def _authorization_receipt(
         "stress_fee_multiplier",
         "input_manifest_sha256",
     }
+    profile_continuation = snapshot.get("normalized_profile_contract") is not None
+    if profile_continuation:
+        try:
+            _development_gate_contract(snapshot)
+        except DevelopmentRunError as exc:
+            raise HoldoutRunError("BLOCKED_DATA", "Profile Holdout frozen Gate is invalid") from exc
+        required |= {"profile_holdout_source", "development_snapshot_canonical_sha256"}
     if not isinstance(raw, dict) or set(raw) != required:
         raise HoldoutRunError("BLOCKED_DATA", "Holdout authorization receipt is invalid")
     for name in (
@@ -820,6 +970,18 @@ def _authorization_receipt(
     except (TypeError, ValueError, OverflowError) as exc:
         raise HoldoutRunError("BLOCKED_DATA", "Holdout authorization receipt is invalid") from exc
     start, stop = _timerange(raw["holdout_timerange"])
+    if profile_continuation:
+        original_snapshot = {key: value for key, value in snapshot.items() if key != "holdout_authorization"}
+        source = raw["profile_holdout_source"]
+        if (not isinstance(source, dict)
+                or source.get("profile_snapshot") != snapshot["normalized_profile_contract"]["profile_snapshot"]
+                or source.get("candidate_id") != snapshot.get("candidate_id")
+                or source.get("candidate_code_sha256") != candidate_sha256
+                or source.get("profile_binding_sha256") != profile_binding_sha256
+                or source.get("development_timerange") != snapshot.get("timerange")
+                or source.get("holdout_timerange") != raw["holdout_timerange"]
+                or raw["development_snapshot_canonical_sha256"] != hashlib.sha256(_canonical_bytes(original_snapshot)).hexdigest()):
+            raise HoldoutRunError("BLOCKED_DATA", "Profile Holdout appended source drifted")
     expected = (
         raw["schema"] == HOLDOUT_AUTHORIZATION_SCHEMA
         and raw["action"] == "AUTHORIZE_HOLDOUT"
@@ -827,7 +989,7 @@ def _authorization_receipt(
         and raw["research_profile_id"] == profile_id
         and raw["profile_binding_sha256"] == profile_binding_sha256
         and raw["pilot_spec_sha256"] == snapshot.get("pilot_spec_sha256")
-        and raw["data_provenance_sha256"] == snapshot.get("source_provenance_sha256")
+        and (profile_continuation or raw["data_provenance_sha256"] == snapshot.get("source_provenance_sha256"))
         and raw["freqtrade_source_tree"] == snapshot.get("freqtrade_source_tree")
         and python_identity == snapshot.get("freqtrade_python_identity")
         and raw["runner_sha256"] == snapshot.get("runner_sha256")
@@ -928,6 +1090,10 @@ def _eligible_row(
     row = rows[0]
     snapshot = _json_object(row["input_snapshot_json"], "Development snapshot")
     checks = _json_object(row["checks_json"], "Development checks")
+    try:
+        gate = _development_gate_contract(snapshot)
+    except DevelopmentRunError as exc:
+        raise HoldoutRunError("run_not_eligible", "Development frozen Gate is invalid") from exc
     if (
         row["pipeline_version"] != DEVELOPMENT_PIPELINE_VERSION
         or row["freqtrade_version"] != SUPPORTED_FREQTRADE_VERSION
@@ -946,8 +1112,8 @@ def _eligible_row(
         or snapshot.get("schema") != DEVELOPMENT_CONTRACT_SCHEMA
         or snapshot.get("pipeline_version") != DEVELOPMENT_PIPELINE_VERSION
         or snapshot.get("scenario") != "DEVELOPMENT"
-        or snapshot.get("gate")
-        != {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE}
+        or (snapshot.get("normalized_profile_contract") is None
+            and snapshot.get("gate") != {"version": DEVELOPMENT_GATE_VERSION, **EXPECTED_GATE})
         or snapshot.get("holdout") != "SEALED_UNREAD"
         or snapshot.get("holdout_stress") != "SEALED_UNREAD"
         or "holdout_authorization" in snapshot
@@ -961,13 +1127,14 @@ def _eligible_row(
         or __import__("hashlib").sha256(row["code_text"].encode("utf-8")).hexdigest()
         != row["code_sha256"]
         or row["total_trades"] is None
-        or row["total_trades"] < EXPECTED_GATE["minimum_trades"]
+        or row["total_trades"] < gate["minimum_trades"]
         or row["profit_pct"] is None
-        or row["profit_pct"] < EXPECTED_GATE["minimum_profit_pct"]
+        or (row["profit_pct"] <= gate["minimum_profit_pct"] if gate["strictly_positive"]
+            else row["profit_pct"] < gate["minimum_profit_pct"])
         or row["profit_factor"] is None
-        or row["profit_factor"] < EXPECTED_GATE["minimum_profit_factor"]
+        or row["profit_factor"] < gate["minimum_profit_factor"]
         or row["max_drawdown_pct"] is None
-        or row["max_drawdown_pct"] > EXPECTED_GATE["maximum_drawdown_pct"]
+        or row["max_drawdown_pct"] > gate["maximum_drawdown_pct"]
         or connection.execute(
             "SELECT COUNT(*) FROM releases WHERE research_run_id=?",
             (research_run_id,),
@@ -1038,15 +1205,17 @@ def prepare_holdout_continuation(
         if (
             snapshot.get("pilot_spec_sha256") != capability.plan_sha256
             or snapshot.get("source_provenance_sha256")
-            != capability.acquisition_provenance_sha256
-            or snapshot.get("config_sha256") != capability.config_sha256
+            != (capability.development.source_provenance_sha256 if capability.profile_source_authorization is not None else capability.acquisition_provenance_sha256)
+            or snapshot.get("config_sha256") != (
+                capability.development.config_sha256 if capability.profile_source_authorization is not None else capability.config_sha256)
             or snapshot.get("runner_sha256") != capability.runner_sha256
             or snapshot.get("timerange") != capability.development_timerange
             or snapshot.get("exclusive_stop_utc") != exclusive_stop_utc
             or development_stop != holdout_start
             or holdout_duration <= timedelta(0)
             or (
-                capability.development.window_schema == _STRICT_WINDOW_SCHEMA
+                capability.profile_source_authorization is None
+                and capability.development.window_schema == _STRICT_WINDOW_SCHEMA
                 and holdout_duration != timedelta(days=30)
             )
             or snapshot.get("freqtrade_source_tree") != SUPPORTED_FREQTRADE_TREE
@@ -1066,6 +1235,14 @@ def prepare_holdout_continuation(
                 "run_not_eligible",
                 "ResearchRun does not match the startup-frozen Holdout contract",
             )
+        if capability.profile_source_authorization is not None:
+            auth = capability.profile_source_authorization
+            if (auth["research_run_id"] != research_run_id
+                    or auth["development_snapshot_sha256"] != hashlib.sha256(row["input_snapshot_json"].encode()).hexdigest()
+                    or auth["profile_binding_sha256"] != profile_binding_sha256
+                    or auth["development_artifact_sha256"] != parsed.archive_sha256):
+                connection.rollback()
+                raise HoldoutRunError("run_not_eligible", "Holdout appended source no longer matches original Development")
         try:
             database_run_dir = Path(str(row["run_dir"])).resolve(strict=True)
         except (OSError, RuntimeError, ValueError) as exc:
@@ -1128,6 +1305,11 @@ def prepare_holdout_continuation(
         "stress_fee_multiplier": capability.stress_fee_multiplier,
         "input_manifest_sha256": manifest_sha256,
     }
+    if capability.profile_source_authorization is not None:
+        receipt.update(
+            profile_holdout_source=dict(capability.profile_source_authorization),
+            development_snapshot_canonical_sha256=hashlib.sha256(_canonical_bytes(snapshot)).hexdigest(),
+        )
     input_root = directory / "holdout-input"
     _write_exclusive(
         input_root / "authorization.json",
@@ -1178,7 +1360,10 @@ def _authorize_holdout_run(
             )
             run_dir = Path(str(row["run_dir"]))
             start, stop = _timerange(authorization["holdout_timerange"])
-            end = stop - timedelta(minutes=5)
+            bar_duration = {"5m": timedelta(minutes=5), "1d": timedelta(days=1)}.get(snapshot["timeframe"])
+            if bar_duration is None:
+                raise HoldoutRunError("run_state_conflict", "Unsupported Holdout timeframe")
+            end = stop - bar_duration
             holdout_id, stress_id = str(uuid4()), str(uuid4())
             command_base = {
                 "schema": HOLDOUT_COMMAND_SCHEMA,
@@ -1203,7 +1388,7 @@ def _authorize_holdout_run(
                         timerange_start, timerange_end, timeframe, detail_timeframe,
                         fee_rate, fee_multiplier, command_json, config_path,
                         strategy_path, metrics_json, created_at, started_at
-                    ) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, '5m', NULL,
+                    ) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, NULL,
                               ?, ?, ?, ?, ?, '{}', ?, ?)
                     """,
                     (
@@ -1213,6 +1398,7 @@ def _authorize_holdout_run(
                         sequence,
                         start.isoformat().replace("+00:00", "Z"),
                         end.isoformat().replace("+00:00", "Z"),
+                        snapshot["timeframe"],
                         float(row["taker_fee_rate"]) * multiplier,
                         multiplier,
                         _canonical(command),
@@ -1569,7 +1755,7 @@ def execute_holdout_continuation(
     data_path = input_root / "data" / "okx"
     base_config = _json_bytes(_read_regular(config_path, "Holdout config"), "Holdout config")
     try:
-        base_fee, pairs = _validate_config(base_config, strategy)
+        base_fee, pairs = _validate_config(base_config, strategy, expected_timeframe=str(base_config.get("timeframe")))
         _validate_research_spec(
             spec_path,
             strategy,

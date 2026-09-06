@@ -170,6 +170,7 @@ def _eligible_run(
         configured_fee=0.0005,
         total_trades=30,
         profit_pct=0.5,
+        net_profit_after_base_fees_pct=0.5,
         max_drawdown_pct=5.0,
         win_rate=66.6666666667,
         profit_factor=1.1,
@@ -307,7 +308,7 @@ def test_t0_schema_blob_and_six_business_tables_remain_exact(
         f"blob {len(data)}\0".encode("ascii") + data,
         usedforsecurity=False,
     ).hexdigest()
-    assert git_blob == "2447bf90447a333a703e208a4ec6503fb7c5112b"
+    assert git_blob == "537cda3c754b9fc4adcfd3e88ca5dceef022f69c"
 
     database, _, _, _, _ = _eligible_run(tmp_path, monkeypatch)
     with get_connection(database, read_only=True) as connection:
@@ -1855,3 +1856,24 @@ def test_t0_public_payload_recursively_redacts_paths_commands_and_market_values(
     serialized = json.dumps(public, sort_keys=True)
     assert "/private/" not in serialized
     assert "SECRET_" not in serialized
+
+
+def test_legacy_missing_gate_rejected_before_holdout_access(tmp_path, monkeypatch):
+    database, run_id, run_dir, capability, _parsed = _eligible_run(tmp_path, monkeypatch)
+    with get_connection(database) as connection:
+        raw = connection.execute("SELECT input_snapshot_json FROM research_runs WHERE id=?", (run_id,)).fetchone()[0]
+        snapshot = json.loads(raw)
+        snapshot.pop("gate")
+        connection.execute("UPDATE research_runs SET input_snapshot_json=? WHERE id=?", (json.dumps(snapshot), run_id))
+        connection.commit()
+        before = list(connection.iterdump())
+    def forbidden(*args, **kwargs):
+        pytest.fail("H inputs must not be accessed for a missing legacy gate")
+    monkeypatch.setattr(holdout_run, "_require_ready", forbidden)
+    monkeypatch.setattr(holdout_run, "_materialize_holdout_inputs", forbidden)
+    with pytest.raises(holdout_run.HoldoutRunError) as error:
+        holdout_run.prepare_holdout_continuation(database, run_dir, run_id, capability)
+    assert error.value.code == "run_not_eligible"
+    with get_connection(database, read_only=True) as connection:
+        assert list(connection.iterdump()) == before
+    assert not (run_dir / holdout_run.HOLDOUT_ATTEMPT_NAME).exists()

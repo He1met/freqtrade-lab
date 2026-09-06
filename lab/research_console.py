@@ -78,6 +78,7 @@ from lab.holdout_run import (
     fail_holdout_continuation,
     finalize_holdout_continuation,
     freeze_holdout_capability,
+    freeze_profile_holdout_capability,
     holdout_worker_argv,
     load_public_research_run as load_public_holdout_run,
     prepare_holdout_continuation,
@@ -656,6 +657,7 @@ class ResearchConsoleController:
         pilot_root: PathLike,
         *,
         search_root: Optional[PathLike] = None,
+        holdout_research_run_id: Optional[str] = None,
         exploration_contract: Optional[Mapping[str, Any]] = None,
         codex_binary: Optional[PathLike] = None,
         codex_model: Optional[str] = None,
@@ -708,6 +710,9 @@ class ResearchConsoleController:
         # Only an explicitly configured root selects the Profile Search path.
         # A broken explicit capability remains fail closed for this controller,
         # while unrelated database history cannot disable legacy Development.
+        if holdout_research_run_id is not None and (search_root is None or CAMPAIGN_ID.fullmatch(holdout_research_run_id) is None):
+            raise ResearchConsoleError("Profile Holdout requires an explicit Search root and valid ResearchRun id")
+        self._profile_holdout_run_id = holdout_research_run_id
         self._search_mode_configured = search_root is not None
         self._search_capability: Optional[FrozenSearchCapability] = None
         self._release_root: Optional[FrozenReleaseRoot] = None
@@ -884,6 +889,10 @@ class ResearchConsoleController:
                     freqtrade_source,
                 )
             )
+            if holdout_research_run_id is not None:
+                self._holdout_capability = freeze_profile_holdout_capability(
+                    self.config.database_path, holdout_research_run_id, self._development_capability,
+                )
             self._restart_confirmation_required = (
                 self._recover_interrupted_campaigns()
             )
@@ -1163,7 +1172,7 @@ class ResearchConsoleController:
         try:
             loader = (
                 load_public_development_run
-                if self._search_mode_configured
+                if self._search_mode_configured and campaign_id != self._profile_holdout_run_id
                 else load_public_holdout_run
             )
             payload = loader(self.config.database_path, campaign_id)
@@ -1404,7 +1413,7 @@ class ResearchConsoleController:
             campaign_fd: Optional[int] = None
             try:
                 campaign_fd = self._open_campaign_fd(campaign_id)
-                if not self._search_mode_configured:
+                if not self._search_mode_configured or campaign_id == self._profile_holdout_run_id:
                     try:
                         holdout_current = _read_json_object_at(
                             campaign_fd, "holdout-status.json"
@@ -3592,7 +3601,7 @@ class ResearchConsoleController:
         return ControlRequestError(status, exc.code, exc.message)
 
     def _public_holdout_capability(self) -> Dict[str, Any]:
-        if not self._search_mode_configured:
+        if not self._search_mode_configured or self._profile_holdout_run_id is not None:
             return self._holdout_capability.public()
         return {
             "status": "SEALED_UNREAD",
@@ -3608,7 +3617,7 @@ class ResearchConsoleController:
 
     def _decorate_research_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Combine DB eligibility with the controller's one live process slot."""
-        if self._search_mode_configured:
+        if self._search_mode_configured and payload.get("research_run_id") != self._profile_holdout_run_id:
             pick = lambda source, fields: {key: source[key] for key in fields if key in source}
             execution_fields = ("scenario", "sequence", "status", "scenario_opened",
                                 "total_trades", "profit_pct", "total_profit_pct",
@@ -3696,6 +3705,10 @@ class ResearchConsoleController:
                 normalized["reason"] = "Research Console 当前不可授权"
         result = dict(payload)
         result["authorization"] = normalized
+        if self._search_mode_configured:
+            result["manual_review"] = {"status": "UNAVAILABLE", "can_reject": False,
+                "can_pass_and_create_release": False, "reason": "Profile Holdout evidence requires separate review; Release remains sealed", "release": None}
+            return result
         release_root = self._release_root
         executions = payload.get("executions")
         review_candidate = (
@@ -3772,8 +3785,8 @@ class ResearchConsoleController:
         payload["holdout_capability"] = holdout_capability
         return payload
 
-    def _require_later_phases_open(self) -> None:
-        if self._search_mode_configured:
+    def _require_later_phases_open(self, *, holdout_run_id: Optional[str] = None) -> None:
+        if self._search_mode_configured and not (holdout_run_id is not None and holdout_run_id == self._profile_holdout_run_id):
             raise ControlRequestError(
                 409,
                 "SEALED_UNREAD",
@@ -3784,7 +3797,7 @@ class ResearchConsoleController:
         try:
             loader = (
                 load_public_development_run
-                if self._search_mode_configured
+                if self._search_mode_configured and research_run_id != self._profile_holdout_run_id
                 else load_public_holdout_run
             )
             return self._decorate_research_run(
@@ -4062,7 +4075,7 @@ class ResearchConsoleController:
     def authorize_holdout(self, research_run_id: str) -> Dict[str, Any]:
         """Consume the one-shot authorization and start the fixed continuation."""
         with self._lock:
-            self._require_later_phases_open()
+            self._require_later_phases_open(holdout_run_id=research_run_id)
             if self._closed or self._shutting_down:
                 raise ControlRequestError(
                     409, "console_shutting_down", "Research Console 正在关闭"
@@ -5780,6 +5793,7 @@ def create_research_console_server(
     artifact_root: Optional[PathLike] = None,
     *,
     search_root: Optional[PathLike] = None,
+    holdout_research_run_id: Optional[str] = None,
     exploration_contract: Optional[Mapping[str, Any]] = None,
     release_root: Optional[PathLike] = None,
     frequi_base_url: Optional[str] = None,
@@ -5810,6 +5824,7 @@ def create_research_console_server(
             runtime_root,
             pilot_root,
             search_root=search_root,
+            holdout_research_run_id=holdout_research_run_id,
             exploration_contract=exploration_contract,
             codex_binary=codex_binary,
             codex_model=codex_model,

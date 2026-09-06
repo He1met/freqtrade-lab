@@ -141,6 +141,28 @@ def test_t0_cross_scenario_rejects_reused_archive_bytes() -> None:
         research_bundle_module._validate_cross_scenario(bundle.profile, artifacts)
 
 
+@pytest.mark.parametrize("timeframe,end,valid", [
+    ("1d", "2026-06-30T00:00:00Z", True),
+    ("1d", "2026-06-29T00:00:00Z", False),
+    ("1d", "2026-06-30T23:55:00Z", False),
+    ("5m", "2026-06-30T23:55:00Z", True),
+    ("2h", "2026-06-30T22:00:00Z", False),
+])
+def test_cross_scenario_calendar_span_uses_validated_bar(timeframe, end, valid):
+    bundle = validate_research_bundle(FIXTURE_ROOT, MANIFEST_NAME)
+    artifacts = {
+        scenario: replace(artifact, timeframe=timeframe,
+                          backtest_start="2026-05-01T00:00:00Z", backtest_end=end)
+        for scenario, artifact in bundle.artifacts
+    }
+    profile = replace(bundle.profile, holdout_days=61, history_start_date="2026-01-01")
+    if valid:
+        research_bundle_module._validate_cross_scenario(profile, artifacts)
+    else:
+        with pytest.raises(ResearchBundleImportError, match="calendar span"):
+            research_bundle_module._validate_cross_scenario(profile, artifacts)
+
+
 def test_real_bundle_import_creates_one_complete_honest_loop(tmp_path: Path) -> None:
     database = _database(tmp_path)
 

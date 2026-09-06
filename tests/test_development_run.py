@@ -188,6 +188,8 @@ def _approved_candidate_database(
     pair: str = "ADA/USDT:USDT",
     timeframe: str = "5m",
     strategy_family: str = "trend",
+    spot: bool = False,
+    source_text: str | None = None,
 ) -> tuple[Path, str]:
     database = tmp_path / f"approved-{uuid4()}.sqlite"
     init_database(database)
@@ -219,6 +221,11 @@ def _approved_candidate_database(
                 NOW,
             ),
         )
+        if spot:
+            connection.execute(
+                "UPDATE research_profiles SET domain='OKX_CRYPTO_SPOT',trading_mode='spot',margin_mode='' WHERE id=?",
+                (profile_id,),
+            )
         connection.commit()
     request = codex_generation.validate_generation_request(
         {
@@ -235,7 +242,9 @@ def _approved_candidate_database(
         model="fixed-test-model",
         started_at=NOW,
     )
-    source = BOUNDED_SOURCE.replace('timeframe = "5m"', f'timeframe = "{timeframe}"')
+    source = source_text or BOUNDED_SOURCE.replace('timeframe = "5m"', f'timeframe = "{timeframe}"')
+    if spot:
+        source = source.replace("can_short = True", "can_short = False")
     output = json.dumps(
         {
             "display_name": "Bounded Candidate",
@@ -286,7 +295,10 @@ def _frozen_capability_fixture(
     acquisition = pilot / "acquisition"
     isolation = pilot / "development-isolation"
     data_stem = pair.split("/", 1)[0]
-    data_file = isolation / "data" / "okx" / "futures" / f"{data_stem}-{timeframe}.feather"
+    spot = profile_contract is not None and profile_contract["profile_snapshot"]["trading_mode"] == "spot"
+    data_relative = (f"data/okx/{data_stem}_USDT-{timeframe}.feather" if spot
+                     else f"data/okx/futures/{data_stem}-{timeframe}.feather")
+    data_file = isolation / data_relative
     source = tmp_path / "freqtrade-source"
     python = tmp_path / "freqtrade-python"
     acquisition.mkdir(parents=True)
@@ -361,8 +373,8 @@ def _frozen_capability_fixture(
         "dry_run": True,
         "dry_run_wallet": 1000.0 if profile is None else profile["starting_balance"],
         "cancel_open_orders_on_exit": False,
-        "trading_mode": "futures",
-        "margin_mode": "isolated",
+        "trading_mode": "spot" if spot else "futures",
+        "margin_mode": "" if spot else "isolated",
         "timeframe": timeframe,
         "fee": 0.0005 if profile is None else profile["taker_fee_rate"],
         "unfilledtimeout": {
@@ -473,7 +485,7 @@ def _frozen_capability_fixture(
                 "bytes": len(tiers),
                 "sha256": hashlib.sha256(tiers).hexdigest(),
             },
-            f"data/okx/futures/{data_stem}-{timeframe}.feather": {
+            data_relative: {
                 "bytes": len(candles),
                 "sha256": hashlib.sha256(candles).hexdigest(),
             },

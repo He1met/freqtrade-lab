@@ -1209,7 +1209,11 @@ def import_backtest_execution(
             if execution_start != artifact_start or execution_end != artifact_end:
                 raise ArtifactImportError("execution timerange does not match artifact")
 
-            if row["profile_domain"] != SUPPORTED_PROFILE_DOMAIN:
+            expected_domain = {
+                "spot": "OKX_CRYPTO_SPOT",
+                "futures": SUPPORTED_PROFILE_DOMAIN,
+            }.get(parsed.trading_mode)
+            if expected_domain is None or row["profile_domain"] != expected_domain:
                 raise ArtifactImportError(
                     "research profile domain does not match the OKX crypto artifact"
                 )

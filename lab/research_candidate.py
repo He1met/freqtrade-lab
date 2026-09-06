@@ -671,11 +671,26 @@ def _validate_data_provenance(
         "holdout_timerange",
         "timeframe",
     )
+    profile = contract.get("profile_snapshot")
+    if profile is not None:
+        from lab.bounded_research import PilotError, validate_profile_runtime_contract
+        try:
+            normalized = validate_profile_runtime_contract(profile)
+        except (PilotError, TypeError, KeyError) as exc:
+            raise ResearchCandidateError("Profile Holdout provenance is invalid") from exc
+        holdout_source = contract.get("holdout_source")
+        if (not isinstance(holdout_source, dict)
+                or profile["trading_mode"] != "spot" or profile["timeframe"] != "1d"
+                or normalized["profile_snapshot_sha256"] != contract.get("profile_snapshot_sha256")
+                or holdout_source.get("profile_snapshot") != profile
+                or holdout_source.get("holdout_timerange") != holdout_timerange):
+            raise ResearchCandidateError("Profile Holdout provenance is invalid")
+        contract_keys += ("profile_snapshot", "profile_snapshot_sha256", "holdout_source")
     _exact_keys(contract, contract_keys, "data provenance contract")
     if (
         contract["development_timerange"] != development_timerange
         or contract["holdout_timerange"] != holdout_timerange
-        or contract["timeframe"] != "5m"
+        or contract["timeframe"] != ("1d" if profile is not None else "5m")
     ):
         raise ResearchCandidateError("data provenance scenario contract disagrees with CLI")
 
