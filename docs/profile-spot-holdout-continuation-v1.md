@@ -12,6 +12,27 @@ database and pinned Freqtrade 2026.7 environment. First inspect the Development
 run and obtain authorization to acquire its Holdout plus required warmup. The
 following command is the acquisition action, not a read-only preview:
 
+Set the environment explicitly first. This local example uses the native source
+and Python verified by the Issue88 synthetic batch; use the reviewed project
+checkout containing this change. Native source must precede site-packages and
+the project on the import path so Freqtrade retains its pinned Git identity.
+
+```sh
+export FTLAB_PROJECT_ROOT=/Users/shenjianpeng/.codex/worktrees/7183/freqtrade-lab
+export FTLAB_NATIVE_SOURCE=/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade
+export FTLAB_PYTHON=/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python
+cd "$FTLAB_PROJECT_ROOT"
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$FTLAB_NATIVE_SOURCE:$FTLAB_PROJECT_ROOT"
+```
+
+Set `FTLAB_DATABASE` to the existing approved run database,
+`FTLAB_RESEARCH_RUN_ID` to its eligible Development UUID, `FTLAB_RUNTIME_ROOT`
+to the original Console runtime root, `FTLAB_PILOT_ROOT` to its frozen
+Development pilot and `FTLAB_SEARCH_ROOT` to its verified Search root. These
+must be the original run's paths; do not substitute the artificial test DB for
+a real research run. The executable alone does not establish this environment.
+
 ```sh
 "$FTLAB_PYTHON" scripts/fetch_okx_profile_data.py \
   --profile-database "$FTLAB_DATABASE" \
