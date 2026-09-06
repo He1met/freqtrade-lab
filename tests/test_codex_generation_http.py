@@ -283,6 +283,8 @@ def test_t2_real_http_generate_preview_approve_and_library_visibility(
                 "is_default": True,
                 "name": "BTC 5m",
                 "timeframe": "5m",
+                "trading_mode": "futures",
+                "funding": "REQUIRES_VERIFIED_HISTORY",
             }
         ]
         assert context["approved_parents"] == []

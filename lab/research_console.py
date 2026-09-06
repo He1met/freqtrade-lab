@@ -3746,6 +3746,23 @@ class ResearchConsoleController:
         )
         holdout_capability = self._public_holdout_capability()
         if self._search_mode_configured:
+            for candidate in payload["candidates"]:
+                if candidate["status"] != "READY":
+                    continue
+                capability = self._search_capability
+                if capability is None or capability.status != "READY" or capability.profile_snapshot is None:
+                    candidate.update(status="BLOCKED_DATA", reason="Search Profile capability is unavailable; Development requires a verified finalist")
+                    continue
+                try:
+                    binding = verified_finalist_binding(
+                        self.config.database_path, capability, candidate["candidate_id"]
+                    )
+                except SearchCampaignError:
+                    binding = None
+                if binding is None:
+                    candidate.update(status="BLOCKED_SECURITY", reason="Candidate is not a verified Search finalist; Development cannot start")
+                elif capability.single_baseline is not None:
+                    candidate["reason"] = "Verified Search finalist; matching protocol review is still required before Development"
             payload["boundaries"] = {
                 "holdout": "SEALED_UNREAD",
                 "holdout_stress": "SEALED_UNREAD",
@@ -4786,7 +4803,7 @@ function refreshParents() {
 }
 async function loadGenerationContext() {
   generationContext = await request('/api/generation/context'); profileSelect.replaceChildren();
-  generationContext.profiles.forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = `${profile.name} · ${profile.timeframe}`; profileSelect.append(option); });
+  generationContext.profiles.forEach(profile => { const option = document.createElement('option'); option.value = profile.id; option.textContent = `${profile.name} · ${profile.timeframe} · ${profile.trading_mode === 'spot' ? '现货仅做多 / 资金费 N/A' : '永续 / 资金费须验证'}`; profileSelect.append(option); });
   document.getElementById('idea').maxLength = generationContext.limits.idea_chars;
   document.getElementById('family').maxLength = generationContext.limits.strategy_family_chars;
   document.getElementById('failure').maxLength = generationContext.limits.expected_failure_mode_chars;
@@ -4984,6 +5001,11 @@ async function generationAction(action) {
 }
 generateButton.addEventListener('click', async () => {
   const payload = {profile_id:profileSelect.value,idea:document.getElementById('idea').value};
+  const selectedProfile = generationContext.profiles.find(profile => profile.id === profileSelect.value);
+  if (selectedProfile && selectedProfile.trading_mode === 'spot' && !/^[a-z0-9][a-z0-9_-]{0,62}$/.test(document.getElementById('family').value.trim())) {
+    generationStatus.textContent = '现货策略族必须为小写 Search 标识（字母、数字、下划线或连字符，最多63字符）';
+    return;
+  }
   const parent = parentSelect.value, family = document.getElementById('family').value.trim(), failure = document.getElementById('failure').value.trim();
   const lock = searchContext && searchContext.codex_parent_lock;
   if (lock) {

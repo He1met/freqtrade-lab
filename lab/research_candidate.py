@@ -511,14 +511,18 @@ def _validate_config(
     pairs = exchange.get("pair_whitelist")
     if not isinstance(pairs, list) or len(pairs) != 1 or not isinstance(pairs[0], str) or not pairs[0]:
         raise ResearchCandidateError("config must select exactly one non-empty pair")
+    from lab.market_contract import valid_market, pair_quote
+    try:
+        pair_quote(pairs[0], spot=config.get("trading_mode") == "spot")
+    except ValueError as exc:
+        raise ResearchCandidateError(str(exc)) from exc
     if (
         exchange.get("name") != "okx"
-        or config.get("trading_mode") != "futures"
-        or config.get("margin_mode") != "isolated"
+        or not valid_market(config)
         or config.get("timeframe") != expected_timeframe
     ):
         raise ResearchCandidateError(
-            f"config must use okx/futures/isolated at {expected_timeframe}"
+            f"config must use okx futures/isolated or spot/no-margin at {expected_timeframe}"
         )
     if config.get("dry_run") is not True:
         raise ResearchCandidateError("config dry_run must be true")

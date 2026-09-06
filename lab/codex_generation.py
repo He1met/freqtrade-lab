@@ -1513,6 +1513,10 @@ def start_generation(
                 connection.execute("BEGIN IMMEDIATE")
                 _check_schema(connection)
                 profile = load_profile_snapshot(connection, request.profile_id)
+                if profile.get("trading_mode") == "spot":
+                    from lab.bounded_research import MECHANISM_ID
+                    if not isinstance(request.strategy_family, str) or MECHANISM_ID.fullmatch(request.strategy_family) is None:
+                        raise GenerationContractError("invalid_spot_family", "Spot strategy family must be a lowercase safe Search mechanism id")
                 parent = (
                     None
                     if request.parent_candidate_id is None
@@ -1682,6 +1686,12 @@ def fail_generation(
 
 
 def _validate_funding_candidate_binding(document, candidate):
+    if document.get("profile_snapshot", {}).get("trading_mode") == "spot":
+        from lab.market_contract import validate_spot_source
+        try:
+            validate_spot_source(candidate.code_text)
+        except ValueError as exc:
+            raise GenerationContractError("spot_source_contract", str(exc)) from exc
     from lab.lagged_funding import FAMILY, signal_contract, template_variant
     variant = template_variant(ast.parse(candidate.code_text), candidate.class_name)
     requested = document.get("input", {}).get("strategy_family") == FAMILY
@@ -2069,11 +2079,13 @@ def load_generation_context(database: Path) -> Dict[str, Any]:
                     "id": row["id"],
                     "name": row["name"],
                     "timeframe": row["timeframe"],
+                    "trading_mode": row["trading_mode"],
+                    "funding": "NOT_APPLICABLE" if row["trading_mode"] == "spot" else "REQUIRES_VERIFIED_HISTORY",
                     "is_default": bool(row["is_default"]),
                 }
                 for row in connection.execute(
                     """
-                    SELECT id, name, timeframe, is_default
+                    SELECT id, name, timeframe, is_default, trading_mode
                     FROM research_profiles
                     ORDER BY is_default DESC, name COLLATE NOCASE, id
                     """
