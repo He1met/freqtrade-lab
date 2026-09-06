@@ -4984,6 +4984,11 @@ async function generationAction(action) {
 }
 generateButton.addEventListener('click', async () => {
   const payload = {profile_id:profileSelect.value,idea:document.getElementById('idea').value};
+  const selectedProfile = generationContext.profiles.find(profile => profile.id === profileSelect.value);
+  if (selectedProfile && selectedProfile.trading_mode === 'spot' && !/^[a-z0-9][a-z0-9_-]{0,62}$/.test(document.getElementById('family').value.trim())) {
+    generationStatus.textContent = '现货策略族必须为小写 Search 标识（字母、数字、下划线或连字符，最多63字符）';
+    return;
+  }
   const parent = parentSelect.value, family = document.getElementById('family').value.trim(), failure = document.getElementById('failure').value.trim();
   const lock = searchContext && searchContext.codex_parent_lock;
   if (lock) {

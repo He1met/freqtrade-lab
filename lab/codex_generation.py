@@ -1513,6 +1513,10 @@ def start_generation(
                 connection.execute("BEGIN IMMEDIATE")
                 _check_schema(connection)
                 profile = load_profile_snapshot(connection, request.profile_id)
+                if profile.get("trading_mode") == "spot":
+                    from lab.bounded_research import MECHANISM_ID
+                    if not isinstance(request.strategy_family, str) or MECHANISM_ID.fullmatch(request.strategy_family) is None:
+                        raise GenerationContractError("invalid_spot_family", "Spot strategy family must be a lowercase safe Search mechanism id")
                 parent = (
                     None
                     if request.parent_candidate_id is None

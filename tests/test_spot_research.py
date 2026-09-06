@@ -53,6 +53,55 @@ def test_spot_source_accepts_long_only():
     validate_spot_source("class SpotStrategy:\n    can_short = False\n")
 
 
+@pytest.mark.parametrize("family", ["UPPER_CASE", None, "unsafe space"])
+def test_spot_generation_rejects_bad_family_before_insert(tmp_path, family):
+    from lab import codex_generation as generation
+    database, profile = spot_profile(tmp_path)
+    with get_connection(database) as conn:
+        conn.execute("UPDATE research_profiles SET domain='OKX_CRYPTO_SPOT', trading_mode='spot', margin_mode='', pairs_json='[\"ADA/USDT\"]'")
+        before = conn.execute("SELECT count(*) FROM generation_runs").fetchone()[0]
+        conn.commit()
+    request = generation.validate_generation_request(dict(profile_id=profile["id"], idea="Synthetic contract check", strategy_family=family))
+    with pytest.raises(generation.GenerationContractError, match="lowercase"):
+        generation.start_generation(database, "spot-bad-family", request, model=None, started_at="2026-01-01T00:00:00Z")
+    with get_connection(database, read_only=True) as conn:
+        assert conn.execute("SELECT count(*) FROM generation_runs").fetchone()[0] == before
+
+
+def test_real_ccxt_spot_raw_roundtrip_without_network(monkeypatch):
+    pytest.importorskip("freqtrade")
+    import ccxt
+    import json
+    from requests import Response
+    from urllib.parse import urlparse, parse_qs
+    from scripts import fetch_okx_profile_data as producer
+    monkeypatch.setattr(producer, "_configured", lambda: {"profile_snapshot":{"trading_mode":"spot"}})
+    monkeypatch.setattr(producer, "SYMBOL", "ETC/USDT")
+    monkeypatch.setattr(producer, "INSTRUMENT_ID", "ETC-USDT")
+    exchange = ccxt.okx({"options":{"defaultType":"spot"}, "enableRateLimit":False})
+    exchange.set_markets([dict(id="ETC-USDT",symbol="ETC/USDT",base="ETC",quote="USDT",spot=True,contract=False,
+                              swap=False,type="spot",active=True,precision={},limits={},info={})], {})
+    calls=[]
+    def http(method, url, **kwargs):
+        parsed=urlparse(url); query=parse_qs(parsed.query)
+        assert method == "GET" and parsed.path == "/api/v5/market/history-candles"
+        assert query == {"instId":["ETC-USDT"],"bar":["1Dutc"],"limit":["2"],"before":["1704067199999"],"after":["1704240000000"]}
+        calls.append(url)
+        raw={"code":"0","msg":"","data":[[str(ts),"10","11","9","10.5","7","7","73.5","1"] for ts in (1704153600000,1704067200000)]}
+        response=Response();response.status_code=200;response._content=json.dumps(raw).encode();response.url=url;response.encoding="utf-8"
+        return response
+    monkeypatch.setattr(exchange.session, "request", http)
+    producer.install_request_guard(exchange)
+    receipts=[]
+    try:
+        rows=producer.fetch_profile_candles(exchange,timeframe="1d",start_ms=1704067200000,end_ms=1704240000000,
+                                            page_limit=100,price=None,label="spot-1d",requests=receipts)
+    finally: exchange.close()
+    assert len(calls)==1 and len(rows)==2 and rows[0][5]==7
+    assert receipts[0]["raw_validation"]=="UTC_CONFIRMED_EXACT_SEQUENCE_BASE_VOLUME"
+    assert receipts[0]["raw_response"]["data"][0][-1]=="1"
+
+
 @pytest.mark.parametrize("mutation", ["unconfirmed", "duplicate", "wrong_clock", "wrong_shape"])
 def test_spot_raw_candle_gate_rejects_before_parsing(mutation):
     pytest.importorskip("freqtrade")
