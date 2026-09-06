@@ -8,6 +8,8 @@ ResearchRun and never runs Development.
 
 from __future__ import annotations
 
+from lab.market_contract import SOURCE_HOSTS
+
 import hashlib
 import json
 import math
@@ -291,8 +293,8 @@ def _profile_holdout_source_contract(
         profile = load_profile_snapshot(connection, str(row["research_profile_id"]))
         if (not isinstance(normalized, dict)
                 or normalized != validate_profile_runtime_contract(profile)
-                or profile["trading_mode"] != "spot" or profile["timeframe"] != "1d"):
-            raise HoldoutRunError("run_not_eligible", "Holdout source requires the unchanged spot 1d Profile")
+                or profile["timeframe"] != "1d"):
+            raise HoldoutRunError("run_not_eligible", "Holdout source requires the unchanged daily Profile")
         _bound_candidate(connection, str(row["candidate_id"]), "1d")
         analysis = analyze_bounded_causal_strategy(row["code_text"], row["class_name"], expected_timeframe="1d")
         _, start = _timerange(snapshot.get("timerange"))
@@ -361,10 +363,20 @@ def freeze_profile_holdout_capability(
                 or not isinstance(provenance.get("local_only_files"), dict)):
             raise HoldoutRunError("BLOCKED_DATA", "Holdout source contract changed")
         source = provenance.get("source")
-        if (not isinstance(source, dict) or source.get("host") != "www.okx.com"
+        market_exchange = expected["profile_snapshot"]["exchange"]
+        if (not isinstance(source, dict) or source.get("host") != SOURCE_HOSTS[market_exchange]
+                or source.get("exchange", "okx") != market_exchange
                 or source.get("authentication") != "none" or source.get("pair") != development.pair
                 or source.get("instrument_id") != development.instrument_id):
             raise HoldoutRunError("BLOCKED_DATA", "Holdout source market identity changed")
+        if market_exchange == 'binance':
+            from lab.futures_costs import CONTRACT
+            if source.get('funding_model') != CONTRACT or 'funding_events' in source:
+                raise HoldoutRunError('BLOCKED_DATA', 'Holdout funding values must remain separately sealed')
+            size, _, _ = _receipt_record(source.get('funding_events_receipt'), 'Holdout funding receipt')
+            info = (acquisition/'funding-events.json').stat(follow_symlinks=False)
+            if not stat.S_ISREG(info.st_mode) or info.st_size != size:
+                raise HoldoutRunError('BLOCKED_DATA', 'Holdout funding envelope changed')
         records = []
         for name, raw in provenance.get("local_only_files", {}).items():
             relative = _safe_relative(name, "Holdout input")
@@ -373,12 +385,11 @@ def freeze_profile_holdout_capability(
             if not stat.S_ISREG(info.st_mode) or info.st_size != size:
                 raise HoldoutRunError("BLOCKED_DATA", "Holdout input envelope changed")
             records.append((relative.as_posix(), size, digest, role))
-        if len(records) != 3:
-            raise HoldoutRunError("BLOCKED_DATA", "Spot Holdout requires one candle file and two snapshots")
-        if ({name for name, *_ in records if not name.startswith("data/okx/")}
-                != {"market_snapshot.json", "isolated_tiers_snapshot.json"}
-                or sum(name.startswith("data/okx/") and name.endswith("-1d.feather") for name, *_ in records) != 1):
-            raise HoldoutRunError("BLOCKED_DATA", "Spot Holdout source file roles changed")
+        from lab.bounded_research import _search_data_names
+        required_names={"market_snapshot.json","isolated_tiers_snapshot.json",
+                        *(f"data/{market_exchange}/{name}" for name in _search_data_names(development.pair,"1d").values())}
+        if {name for name,*_ in records} != required_names:
+            raise HoldoutRunError("BLOCKED_DATA", "Holdout source file roles changed")
         config = _read_regular(acquisition / "config.json", "Holdout config")
         from lab.bounded_research import profile_search_config
         if _json_bytes(config, "Holdout config") != profile_search_config(expected["profile_snapshot"]):
@@ -716,6 +727,7 @@ def _materialize_holdout_inputs(
             raise HoldoutRunError("BLOCKED_DATA", "startup-frozen Pilot config changed")
         source_config_value = _json_bytes(source_config, "Pilot config")
         config = dict(source_config_value)
+        market_exchange = config["exchange"]["name"]
         config["strategy"] = row["class_name"]
         config_bytes = _canonical_bytes(config)
         _write_exclusive(staging / "config.json", config_bytes)
@@ -796,7 +808,7 @@ def _materialize_holdout_inputs(
             "contract": {
                 "config": "config.json",
                 "strategy": strategy_relative,
-                "data_dir": "data/okx",
+                "data_dir": f"data/{market_exchange}",
                 "market_snapshot": "market_snapshot.json",
                 "leverage_tiers": "isolated_tiers_snapshot.json",
                 "development_timerange": capability.development_timerange,
@@ -813,6 +825,27 @@ def _materialize_holdout_inputs(
                 profile_snapshot_sha256=auth["profile_snapshot_sha256"],
                 holdout_source=auth,
             )
+        if market_exchange == "binance":
+            source_bytes = _read_regular(acquisition / "retained-data-provenance.json", "Holdout source")
+            if hashlib.sha256(source_bytes).hexdigest() != capability.acquisition_provenance_sha256:
+                raise HoldoutRunError("BLOCKED_DATA", "Holdout funding source changed")
+            provenance["source"] = _json_bytes(source_bytes, "Holdout source")["source"]
+            funding_receipt = provenance['source'].pop('funding_events_receipt', None)
+            size, digest, _ = _receipt_record(funding_receipt, 'Holdout funding receipt')
+            funding_bytes = _read_regular(acquisition/'funding-events.json', 'authorized Holdout funding events')
+            if len(funding_bytes) != size or hashlib.sha256(funding_bytes).hexdigest() != digest:
+                raise HoldoutRunError('BLOCKED_DATA', 'Holdout funding source digest changed')
+            events = json.loads(funding_bytes)
+            if not isinstance(events, list):
+                raise HoldoutRunError('BLOCKED_DATA', 'Holdout funding events invalid')
+            provenance['source']['funding_events'] = events
+            from lab.binance_source import validate_source
+            from lab.bounded_research import timerange
+            start, stop = timerange(capability.holdout_timerange, 'Holdout')
+            try:
+                validate_source(provenance['source'], staging/'data/binance', str(capability.pair), start, stop)
+            except (ValueError, OSError) as exc:
+                raise HoldoutRunError('BLOCKED_DATA', 'Holdout funding source is incomplete') from exc
         provenance_bytes = _canonical_bytes(provenance)
         _write_exclusive(staging / "retained-data-provenance.json", provenance_bytes)
 
@@ -831,7 +864,7 @@ def _materialize_holdout_inputs(
                 (staging / "config.json").resolve(strict=True),
                 (staging / "research-spec.json").resolve(strict=True),
                 (staging / strategy_relative).resolve(strict=True),
-                (staging / "data" / "okx").resolve(strict=True),
+                (staging / "data" / market_exchange).resolve(strict=True),
                 (staging / "market_snapshot.json").resolve(strict=True),
                 (staging / "isolated_tiers_snapshot.json").resolve(strict=True),
                 (str(capability.pair),),
@@ -1147,6 +1180,11 @@ def _eligible_row(
             "run_not_eligible", "ResearchRun is not eligible for Holdout authorization"
         )
     parsed = _parsed_development(row) if parse_artifact else None
+    if parsed is not None and parsed.exchange == 'binance':
+        from lab.development_run import _development_funding_gate
+        _, funding_passed = _development_funding_gate(snapshot,row,gate)
+        if not funding_passed:
+            raise HoldoutRunError('run_not_eligible', 'Development conservative funding gate failed')
     return row, parsed, snapshot
 
 
@@ -1652,7 +1690,7 @@ def _load_holdout_input(
         if relative.as_posix() not in {
             "market_snapshot.json",
             "isolated_tiers_snapshot.json",
-        } and not relative.as_posix().startswith("data/okx/"):
+        } and not relative.as_posix().startswith(("data/okx/", "data/binance/")):
             data = _read_regular(root / relative, f"Holdout input {name!r}")
             if hashlib.sha256(data).hexdigest() != digest:
                 raise HoldoutRunError(
@@ -1754,8 +1792,8 @@ def execute_holdout_continuation(
     provenance_path = input_root / "retained-data-provenance.json"
     market_path = input_root / "market_snapshot.json"
     tiers_path = input_root / "isolated_tiers_snapshot.json"
-    data_path = input_root / "data" / "okx"
     base_config = _json_bytes(_read_regular(config_path, "Holdout config"), "Holdout config")
+    data_path = input_root / "data" / base_config["exchange"]["name"]
     try:
         base_fee, pairs = _validate_config(base_config, strategy, expected_timeframe=str(base_config.get("timeframe")))
         _validate_research_spec(
@@ -1927,6 +1965,7 @@ def execute_holdout_continuation(
                 implementation_receipts=implementation_receipts,
                 timerange=str(manifest["holdout_timerange"]),
                 network_policy=network_policy,
+                funding_data_dir=data_path,
             )
             produced.append((artifact, open_sha))
         if scenario_views["HOLDOUT"] != scenario_views["HOLDOUT_STRESS"]:

@@ -677,11 +677,12 @@ def _resolve_database(path_value: PathLike) -> Path:
 
 
 def _profile_contract(bundle: ValidatedResearchBundle) -> Dict[str, Any]:
+    from lab.market_contract import market_domain
     first = bundle.artifacts[0][1]
     profile = bundle.profile
     return {
         "name": profile.name,
-        "domain": "OKX_CRYPTO_PERP",
+        "domain": market_domain(first.exchange, first.trading_mode),
         "exchange": first.exchange,
         "trading_mode": first.trading_mode,
         "margin_mode": first.margin_mode,

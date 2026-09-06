@@ -95,10 +95,12 @@ def test_t0_profile_development_cli_parsers_share_prepare_arguments() -> None:
 def test_t0_profile_development_window_records_exact_base_warmup() -> None:
     profile_snapshot = {
         "holdout_days": 30,
+        "trading_mode": "futures",
     }
     profile_contract = {
         "development_timerange": PROFILE_DEVELOPMENT_TIMERANGE,
         "pre_roll_candles": 25,
+        "profile_snapshot": profile_snapshot,
     }
 
     window = pilot._profile_development_window_spec(

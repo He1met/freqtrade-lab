@@ -517,12 +517,12 @@ def _validate_config(
     except ValueError as exc:
         raise ResearchCandidateError(str(exc)) from exc
     if (
-        exchange.get("name") != "okx"
+        exchange.get("name") not in {"okx", "binance"}
         or not valid_market(config)
         or config.get("timeframe") != expected_timeframe
     ):
         raise ResearchCandidateError(
-            f"config must use okx futures/isolated or spot/no-margin at {expected_timeframe}"
+            f"config must use a supported research market at {expected_timeframe}"
         )
     if config.get("dry_run") is not True:
         raise ResearchCandidateError("config dry_run must be true")
@@ -622,8 +622,13 @@ def _validate_data_provenance(
     if value["portable_retained_fixture"] not in ("RETAINED", "BLOCKED_LICENSE"):
         raise ResearchCandidateError("invalid portable_retained_fixture state")
     source = _mapping(value["source"], "data provenance source")
-    if source.get("host") != "www.okx.com" or source.get("authentication") != "none":
+    from lab.market_contract import SOURCE_HOSTS
+    source_exchange = source.get('exchange', 'okx')
+    if not isinstance(source_exchange, str) or source.get("host") != SOURCE_HOSTS.get(source_exchange) or source.get("authentication") != "none":
         raise ResearchCandidateError("data provenance must attest public unauthenticated www.okx.com")
+    bound_config = _strict_json(_read_file(config_path, "config"), "config")
+    if source.get("exchange", "okx") != bound_config.get("exchange", {}).get("name"):
+        raise ResearchCandidateError("source exchange disagrees with config")
     if source.get("pair") != pairs[0]:
         raise ResearchCandidateError("data provenance pair disagrees with config")
     freqtrade = _mapping(value["freqtrade"], "data provenance freqtrade")
@@ -680,7 +685,7 @@ def _validate_data_provenance(
             raise ResearchCandidateError("Profile Holdout provenance is invalid") from exc
         holdout_source = contract.get("holdout_source")
         if (not isinstance(holdout_source, dict)
-                or profile["trading_mode"] != "spot" or profile["timeframe"] != "1d"
+                or profile["timeframe"] != "1d"
                 or normalized["profile_snapshot_sha256"] != contract.get("profile_snapshot_sha256")
                 or holdout_source.get("profile_snapshot") != profile
                 or holdout_source.get("holdout_timerange") != holdout_timerange):
@@ -1506,6 +1511,7 @@ def _validate_runner_summary(
     expected_source_tree_sha256: str,
     expected_runner_sha256: str,
     allow_zero_trades: bool = False,
+    exchange_name: str = "okx",
 ) -> Tuple[str, str, int]:
     if not isinstance(allow_zero_trades, bool):
         raise ResearchCandidateError("allow_zero_trades must be boolean")
@@ -1549,7 +1555,11 @@ def _validate_runner_summary(
     if dict(dependencies) != expected_dependencies:
         raise ResearchCandidateError("runner dependencies disagree with the supported build")
     official_core = _mapping(summary["official_core"], "runner official_core")
-    if dict(official_core) != SUPPORTED_OFFICIAL_CORE:
+    expected_core = dict(SUPPORTED_OFFICIAL_CORE)
+    if exchange_name == "binance":
+        expected_core.pop("Okx")
+        expected_core["Binance"] = "freqtrade.exchange.binance"
+    if exchange_name not in {"okx", "binance"} or dict(official_core) != expected_core:
         raise ResearchCandidateError("runner official_core receipt is incomplete or unexpected")
     input_receipts = _mapping(summary["input_receipts"], "runner input_receipts")
     if dict(input_receipts) != dict(expected_input_receipts):
@@ -1690,6 +1700,7 @@ def _sanitize_raw_artifact(
     timerange: str,
     network_policy: str,
     allow_zero_trades: bool = False,
+    funding_data_dir: Optional[Path] = None,
 ) -> ProducedArtifact:
     raw_archive_name, raw_metadata_name, runner_total_trades = _validate_runner_summary(
         runner_summary,
@@ -1700,6 +1711,7 @@ def _sanitize_raw_artifact(
         expected_source_tree_sha256=source_tree_sha256,
         expected_runner_sha256=str(implementation_receipts["runner"]["sha256"]),
         allow_zero_trades=allow_zero_trades,
+        exchange_name=data_provenance["source"].get("exchange", "okx"),
     )
     raw_archive = raw_dir / _relative_member(raw_archive_name, "runner archive")
     raw_metadata = raw_dir / _relative_member(raw_metadata_name, "runner metadata")
@@ -1735,7 +1747,7 @@ def _sanitize_raw_artifact(
     sanitized_config = _mapping(_remove_sensitive_keys(raw_config), "sanitized config")
     sanitized_config = dict(sanitized_config)
     sanitized_config["config_files"] = ["config.json"]
-    sanitized_config["datadir"] = "data/okx"
+    sanitized_config["datadir"] = f"data/{sanitized_config['exchange']['name']}"
     sanitized_config["exportdirectory"] = "backtest_results"
     sanitized_config["strategy_path"] = "strategies"
     sanitized_config["user_data_dir"] = "user_data"
@@ -1804,7 +1816,7 @@ def _sanitize_raw_artifact(
     provenance = {
         "schema": "freqtrade-lab-fixture-provenance-v1",
         "acquisition": {
-            "host": "www.okx.com",
+            "host": source["host"],
             "authentication": "none",
             "pair": source.get("pair"),
             "instrument_id": source.get("instrument_id"),
@@ -1859,7 +1871,7 @@ def _sanitize_raw_artifact(
         "sanitization": {
             "config_path_replacements": {
                 "config_files": ["config.json"],
-                "datadir": "data/okx",
+                "datadir": sanitized_config["datadir"],
                 "exportdirectory": "backtest_results",
                 "strategy_path": "strategies",
                 "user_data_dir": "user_data",
@@ -1877,6 +1889,12 @@ def _sanitize_raw_artifact(
             "source_commit": SUPPORTED_FREQTRADE_COMMIT,
         },
     }
+    if source.get("exchange") == "binance":
+        from lab.futures_costs import audit_from_source
+        if funding_data_dir is None:
+            raise ResearchCandidateError("Binance artifact requires source-bound funding audit")
+        provenance["funding_audit"] = audit_from_source(result, source, funding_data_dir, timerange)
+        provenance["fee_evidence"]["claim"] = "not an observed or public Binance account fee rate"
     provenance_bytes = _canonical_bytes(provenance)
     provenance_name = f"{stem}.provenance.json"
     (bundle_dir / provenance_name).write_bytes(provenance_bytes)
@@ -2166,6 +2184,7 @@ def run_research_candidate(
                     implementation_receipts=implementation_receipts,
                     timerange=timerange,
                     network_policy=network_policy,
+                    funding_data_dir=data_path,
                 )
             )
 

@@ -1,16 +1,33 @@
-"""The two narrowly supported OKX research market identities."""
+"""The narrowly supported OKX and Binance research market identities."""
 import ast
 import re
 from typing import Mapping, Any
+
+SOURCE_HOSTS = {"okx": "www.okx.com", "binance": "fapi.binance.com"}
+
+
+def exchange_name(value: Mapping[str, Any]) -> str:
+    exchange = value.get("exchange", "okx")
+    return exchange.get("name", "") if isinstance(exchange, Mapping) else exchange
+
+
+def market_domain(exchange: str, mode: str) -> str | None:
+    if not isinstance(exchange, str) or not isinstance(mode, str):
+        return None
+    return {("okx", "futures"): "OKX_CRYPTO_PERP",
+            ("okx", "spot"): "OKX_CRYPTO_SPOT",
+            ("binance", "futures"): "BINANCE_CRYPTO_PERP"}.get((exchange, mode))
 
 
 def valid_market(value: Mapping[str, Any], *, profile: bool = False) -> bool:
     mode = (value.get("trading_mode"), value.get("margin_mode"))
     if not all(isinstance(item, str) for item in mode):
         return False
-    domains = {("futures", "isolated"): "OKX_CRYPTO_PERP",
-               ("spot", ""): "OKX_CRYPTO_SPOT"}
-    return mode in domains and (not profile or value.get("domain") == domains[mode])
+    exchange = exchange_name(value)
+    domain = market_domain(exchange, mode[0])
+    return (domain is not None
+            and mode in {("futures", "isolated"), ("spot", "")}
+            and (not profile or value.get("domain") == domain))
 
 
 def pair_quote(pair: str, *, spot: bool) -> str:

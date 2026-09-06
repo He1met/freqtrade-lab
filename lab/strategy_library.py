@@ -558,6 +558,24 @@ def _metrics_counts(raw_metrics: Any) -> Dict[str, Optional[int]]:
     }
 
 
+def _funding_projection(raw_metrics: Any) -> Optional[Dict[str, Any]]:
+    parsed = json.loads(raw_metrics)
+    audit = parsed.get('funding_audit') if isinstance(parsed, dict) else None
+    if audit is None:
+        return None
+    from lab.futures_costs import CONTRACT
+    if not isinstance(audit, dict) or audit.get('contract') != CONTRACT:
+        raise StrategyLibraryError('database returned invalid funding audit')
+    result = {key: _optional_finite_float(audit.get(key), key) for key in (
+        'funding_deduction_abs', 'conservative_net_profit_pct',
+        'conservative_mtm_drawdown_pct', 'conservative_profit_factor',
+        'minimum_free_cash', 'intrahour_ordering_stress_drawdown_pct')}
+    result['cash_executable'] = audit.get('cash_executable')
+    if type(result['cash_executable']) is not bool:
+        raise StrategyLibraryError('database returned invalid funding cash flag')
+    return result
+
+
 def _card_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     latest_status = None
     if row["latest_status_run_id"] is not None:
@@ -763,6 +781,7 @@ def _scenario_model(
             "frequi": no_execution_frequi(frequi_probe),
         }
     counts = _metrics_counts(row["metrics_json"])
+    funding_projection = _funding_projection(row['metrics_json'])
     profit_factor = _optional_finite_float(
         row["profit_factor"], f"{scenario} profit factor"
     )
@@ -809,6 +828,7 @@ def _scenario_model(
         ),
         "profit_factor": profit_factor,
         "profit_factor_interpretation": profit_factor_interpretation,
+        "funding_audit": funding_projection,
         "sharpe": _optional_finite_float(row["sharpe"], f"{scenario} sharpe"),
         "sortino": _optional_finite_float(row["sortino"], f"{scenario} sortino"),
         "calmar": _optional_finite_float(row["calmar"], f"{scenario} calmar"),
@@ -1486,6 +1506,18 @@ def _render_scenario_evidence(scenario: Mapping[str, Any]) -> str:
         + _evidence_item("Short 收益", _optional_percentage(scenario["short_profit_pct"]))
         + explicit_counts
     )
+    funding = scenario.get('funding_audit')
+    if funding is not None:
+        items += ''.join(_evidence_item(label, funding[key]) for label, key in (
+            ('保守资金费率额外扣减 (USDT)', 'funding_deduction_abs'),
+            ('保守净收益 (%)', 'conservative_net_profit_pct'),
+            ('保守小时收盘 MTM 回撤 (%)', 'conservative_mtm_drawdown_pct'),
+            ('保守 PF（无亏损时 UNKNOWN）', 'conservative_profit_factor'),
+            ('最低可用现金 (USDT)', 'minimum_free_cash'),
+            ('现金约束通过', 'cash_executable'),
+            ('附加小时极值压力回撤 (%)', 'intrahour_ordering_stress_drawdown_pct'),
+        ))
+        pf_note += '<p class="caveat">主表及 FreqUI 保留原生结果；保守结果额外计入资金费率不确定成本。小时收盘 MTM 不代表连续路径；极值压力不替代原生 Holdout Stress。</p>'
     error = (
         f'<p class="error-note">Execution 错误：{_escape(scenario["error_message"])}</p>'
         if scenario["error_message"]
