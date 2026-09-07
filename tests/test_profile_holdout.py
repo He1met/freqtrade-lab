@@ -73,7 +73,7 @@ def test_profile_pf_one_eligible_and_frozen_gate_tamper_rejected(tmp_path, monke
             holdout_run._eligible_row(connection, run_id, parse_artifact=False)
 
 
-@pytest.mark.parametrize('binance_pair', ['BCH/USDT:USDT', 'ADA/USDT:USDT'])
+@pytest.mark.parametrize('binance_pair', ['BCH/USDT:USDT', 'ADA/USDT:USDT', 'BNB/USDT:USDT'])
 def test_binance_missing_associated_mark_fails_before_continuation_write(tmp_path,monkeypatch,binance_pair):
     pytest.importorskip('pyarrow')
     from tests.profile_holdout_fixture import passed_profile_development_stub,authorized_artificial_holdout,canonical,record
@@ -111,7 +111,7 @@ def test_spot_daily_development_preparation_keeps_holdout_unopened(tmp_path, mon
     assert capability.timeframe == "1d"
 
 
-@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT'),(True,'ADA/USDT:USDT')])
+@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT'),(True,'ADA/USDT:USDT'),(True,'BNB/USDT:USDT')])
 def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, monkeypatch, binance, binance_pair):
     pytest.importorskip("pyarrow")
     from tests.profile_holdout_fixture import passed_profile_development_stub, authorized_artificial_holdout
@@ -138,7 +138,7 @@ def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, m
     assert [row[0] for row in ends] == ["2026-04-30T00:00:00Z", "2026-06-30T00:00:00Z", "2026-06-30T00:00:00Z"]
 
 
-@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT'),(True,'ADA/USDT:USDT')])
+@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT'),(True,'ADA/USDT:USDT'),(True,'BNB/USDT:USDT')])
 def test_profile_actual_http_entry_authorizes_same_run_and_keeps_release_sealed(tmp_path, monkeypatch, binance, binance_pair):
     pytest.importorskip("pyarrow")
     import subprocess
