@@ -37,11 +37,11 @@ def run_native(root,manifest):
     for name in ('user','exports'):(root/name).mkdir()
     config_path=root/'config.json';config_path.write_bytes(encoded(manifest['config']))
     config=setup_optimize_configuration(dict(command='backtesting',config=[str(config_path)],
-        datadir=str(PREPARED/'data'),user_data_dir=str(root/'user'),strategy_path=str(ROOT/'lab'),
+        datadir=str(Path(manifest['prepared_root'])/'data'),user_data_dir=str(root/'user'),strategy_path=str(ROOT/'lab'),
         strategy='PortfolioObserved',timerange=manifest['native_timerange'],fee=manifest['config']['fee'],
         export='trades',exportdirectory=str(root/'exports'),dataformat_ohlcv='feather',
         disableparamexport=True,backtest_cache='none'),RunMode.BACKTEST)
-    assembly=json.loads((PREPARED/'assembly.json').read_bytes())
+    assembly=json.loads((Path(manifest['prepared_root'])/'assembly.json').read_bytes())
     exchange=Binance(config,validate=False,load_leverage_tiers=False)
     def deny(*a,**k):raise SourceError('native exchange request prohibited')
     exchange._api.fetch=deny;exchange._api_async.fetch=deny
