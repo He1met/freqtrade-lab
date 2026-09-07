@@ -288,19 +288,20 @@ def qc_summary(data, start, end):
                 market_native_calls=0, economic_result=None)
 
 
-def register(contract, snapshot, ledger_path, manifest_sha):
+def register(contract, snapshot, ledger_path, manifest_sha, *, issue=119):
     with exclusive(str(ledger_path) + '.lock'):
         raw = Path(ledger_path).read_bytes()
         check_scope(contract, snapshot, raw)
         registration = dict(record_type='PORTFOLIO_EXPLORATORY_SOURCE_REGISTERED',
                             registered_at_utc=dt.datetime.now(dt.timezone.utc).isoformat(),
-                            issue=119, exchange=contract['exchange'], instrument_type=contract['instrument_type'],
+                            issue=issue, exchange=contract['exchange'], instrument_type=contract['instrument_type'],
                             symbols=contract['symbols'], source_window=[contract['start'],contract['end_exclusive']],
                             training_window=[contract['training_start'],contract['end_exclusive']],
                             purpose='EXPLORATORY_TRAINING', independent_evidence=False,
                             source_contract_sha256=digest(json.dumps(contract, sort_keys=True).encode()),
                             launch_manifest_sha256=manifest_sha, prior_ledger_sha256=digest(raw),
-                            native_authorized=False, authorization=contract['authorization'])
+                            native_authorized=False, authorization=contract['authorization'],
+                            parent_budget_sha256=contract.get('parent_budget_sha256'))
         with Path(ledger_path).open('ab') as f:
             if raw and not raw.endswith(b'\n'):
                 raise SourceError('ledger lacks final newline')
