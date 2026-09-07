@@ -1,0 +1,31 @@
+{
+  "schema": "issue115-recovery-final-receipt-v1",
+  "audit_status": "FAILED",
+  "audit_failure": {
+    "error_type": "ValueError",
+    "halt_liquidation": null,
+    "reason": "unexecuted risk reduction requires explicit review"
+  },
+  "original_budget_status": "FAILED",
+  "budget_events_for_synthetic6": [
+    "RESERVED",
+    "FAILED",
+    "AUDIT_RECOVERED"
+  ],
+  "audit_evidence_sha256": "4c57957fed82a0c6aa21facc0664cbfc32006608caf35933b32e3df2c11341c6",
+  "recovery_commit": "49b1fb4b87019f7e31d6cc4737f3e60992e87191",
+  "recovery_code_sha256": "e398697142a75aae25fc7a29ebc2911151ca45f33e2ffe85987f07da635ec16d",
+  "original_artifacts_unchanged": true,
+  "budget_sha256": "4813b776b6d23c44615fd0aaf7141fe407e00ed421ba1a8e5d1b491efc960d72",
+  "consumed_slots": 7,
+  "actual_native_calls_total": 6,
+  "additional_native_calls_recovery": 0,
+  "control_verdict": "FAILED_UNEXECUTABLE_REDUCTIONS",
+  "risk_limit_satisfied": false,
+  "cash_insufficiency": "NOT_COVERED_NATIVE",
+  "funding_real_settlement": "UNVERIFIED",
+  "market_execution_allowed": false,
+  "economic_result": null,
+  "native_replay_of_completed_synthetic6": "PROHIBITED",
+  "retry_authorized": false
+}

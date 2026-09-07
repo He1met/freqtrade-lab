@@ -21,3 +21,16 @@
 
 监督允许先推无native后处理修复与恢复计划，再用原ZIP+trace跑相同完整审计。
 恢复只新增独立audit-evidence及恢复记录，保留原FAILED及所有原始字节；不放宽任何断言。
+
+## 已完成无native恢复
+
+先推送49b1fb4b87019f7e31d6cc4737f3e60992e87191修复及计划，再执行恢复入口。
+完整原审计仍FAILED：`unexecuted risk reduction requires explicit review`。
+独立audit-evidence SHA256为
+`4c57957fed82a0c6aa21facc0664cbfc32006608caf35933b32e3df2c11341c6`。
+原ZIP/trace/log/bindings/FAILED evidence逐一复核SHA不变，恢复新增native为0。
+预算仅附加AUDIT_RECOVERED（证据取回，不是通过），原FAILED保持，已完成调用禁止native重放。
+最终ledger SHA及恢复代码SHA见issue115-recovery-final-receipt.json。
+
+95项非原生测试通过，包括strategy:null、重复payload和损坏内容拒绝。没有放宽原控制断言。
+当前应提交监督终审；无法执行减仓的策略/执行处理仍须另行明确，不能直接开放市场训练。
