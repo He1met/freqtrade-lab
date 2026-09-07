@@ -1,0 +1,31 @@
+{
+  "schema": "issue119-bounded-source-v1",
+  "authorization": "https://github.com/He1met/freqtrade-lab/pull/118#issuecomment-5574136863",
+  "exchange": "binance",
+  "instrument_type": "USDT_PERPETUAL",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "start": "2020-04-02T00:00:00Z",
+  "training_start": "2021-01-01T00:00:00Z",
+  "end_exclusive": "2023-01-01T00:00:00Z",
+  "purpose": "EXPLORATORY_TRAINING",
+  "independent_evidence": false,
+  "registry": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl",
+  "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source",
+  "budget_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json",
+  "limits": {
+    "gets": 122,
+    "total_bytes": 67108864,
+    "response_bytes": 5242880,
+    "seconds": 1800,
+    "request_seconds": 20,
+    "workers": 1,
+    "requests_per_second": 1,
+    "retries": 0
+  },
+  "historical_interval_evidence": "UNKNOWN",
+  "executable_source_publication": "FORBIDDEN_UNTIL_COMPLETE_QC_AND_HISTORICAL_INTERVAL_EVIDENCE",
+  "native_authorized": false
+}
