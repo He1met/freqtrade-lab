@@ -1174,7 +1174,7 @@ def _generated_candidate_review(
     signal = request_document.get("signal_contract")
     if (
         (not _CANDIDATE_METADATA_FIELDS <= set(metadata)
-         or set(metadata) - _CANDIDATE_METADATA_FIELDS - {"prefilter_evidence", "search_protocol_rejection"})
+         or set(metadata) - _CANDIDATE_METADATA_FIELDS - {"prefilter_evidence", "search_protocol_rejection", "cost_comparisons"})
         or not isinstance(generation, dict)
         or set(generation) != _GENERATION_METADATA_FIELDS
         or generation.get("source") != "CODEX"
@@ -1232,6 +1232,12 @@ def _generated_candidate_review(
                 raise SearchCampaignError("invalid_protocol_rejection", "Rejection Profile snapshot changed")
         except SearchCampaignError as exc:
             raise GenerationContractError(exc.code, exc.message, status=409) from exc
+    if "cost_comparisons" in metadata:
+        from lab.research_comparison import validate_comparisons, ComparisonError
+        try:
+            validate_comparisons(metadata["cost_comparisons"], candidate_row)
+        except (ComparisonError, ValueError, TypeError, KeyError) as exc:
+            raise GenerationContractError("invalid_cost_comparison", "Invalid comparison attachment", status=409) from exc
     return review
 
 
@@ -2118,6 +2124,8 @@ def load_generation(database: Path, generation_id: str) -> Dict[str, Any]:
                 }
                 if "prefilter_evidence" in metadata:
                     candidate_public["prefilter_evidence"] = metadata["prefilter_evidence"]
+                if "cost_comparisons" in metadata:
+                    candidate_public["cost_comparisons"] = metadata["cost_comparisons"]
                 if "search_protocol_rejection" in metadata:
                     from lab.search_campaign import protocol_rejection, SearchCampaignError
                     try:

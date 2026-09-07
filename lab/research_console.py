@@ -4798,6 +4798,11 @@ function renderGeneration(value) {
   const code = safe.candidate ? safe.candidate.code_text : null;
   if (safe.candidate) delete safe.candidate.code_text;
   generationStatus.textContent = JSON.stringify(safe, null, 2);
+  if (safe.candidate && safe.candidate.cost_comparisons) {
+    const comparisons = Object.values(safe.candidate.cost_comparisons).map(v =>
+      `${v.stage} 同成本比较 ${v.verdict}：主策略 ${v.primary.net_pct}% / 基准 ${v.benchmark.net_pct}%；这是诊断比较，不是完整策略资格。`);
+    generationStatus.textContent += '\n' + comparisons.join('\n');
+  }
   candidateCode.textContent = code || '暂无源码';
   const runtimeActive = value.runtime_status !== null && !terminal(value.runtime_status);
   const running = value.status === 'RUNNING' || runtimeActive;
