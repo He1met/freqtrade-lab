@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 PROTOCOL_PATH = Path(__file__).resolve().parents[1] / "docs/protocols/btc-eth-portfolio-v1.json"
-PROTOCOL_SHA256 = "4e3d107e3d0533bff1f05df6af893aab477cffbf8b9a8317503e0d7480c2de93"
+PROTOCOL_SHA256 = "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85"
 SYMBOLS = ("BTCUSDT", "ETHUSDT")
 MAX_JSON_BYTES = 2 * 1024 * 1024
 

@@ -44,6 +44,24 @@ def test_budget_unique_jobs_and_no_pair_double_counting():
     assert report()["budget"]["maximum"] == len(jobs)+4
 
 
+def test_frozen_selection_does_not_reintroduce_all_fold_profit_or_degenerate_C():
+    """Contract regression; not a fabricated implementation of economic tests.
+
+    Native statistics are a later slice. Binding BOTH comparators and strict
+    positive increments ensures the future evaluator cannot pass C == B solely
+    on half-risk-B. Calendar means prevent weighting overlap dates four times.
+    """
+    p = load_protocol()
+    selection = p["selection"]
+    assert selection["final_parameters"] == "UNIQUE_DATE_MEAN_TRAINING_RETURN_CHAIN_NET_GE_ZERO_THEN_UTILITY"
+    assert selection["final_training_risk_gate"] == "EACH_FOLD_DD_LE_20_SOURCE_CAUSAL_COST_VALID"
+    assert selection["training_overlap_weight"] == "EQUAL_MEAN_OF_AVAILABLE_FOLD_RETURNS_PER_UTC_DATE_THEN_EACH_DATE_ONCE"
+    assert selection["C_required_comparators"] == ["B", "half-risk-B"]
+    assert selection["C_adoption"] == "POSITIVE_PAIRED_42_DAY_BLOCK_UTILITY_INCREMENT_VS_EACH_REQUIRED_COMPARATOR_CI_LOW_GT_ZERO"
+    assert selection["half_risk_B_label"] == "FIXED_LOWER_RISK_CONTROL_NOT_REALIZED_RISK_MATCH"
+    assert "risk_matched_B_multiplier" not in p["signals"]
+
+
 def test_metadata_success_never_promotes_data_economics_or_execution():
     r = report()
     assert r["status"] == "METADATA_VALIDATED_ONLY"

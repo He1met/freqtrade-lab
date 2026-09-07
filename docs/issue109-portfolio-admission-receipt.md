@@ -9,7 +9,7 @@
 
 | 层 | 证据 | 状态 |
 | --- | --- | --- |
-| 版本化新合同 | JSON SHA `4e3d107e3d0533bff1f05df6af893aab477cffbf8b9a8317503e0d7480c2de93`及同提交规则文档 | 工程冻结 |
+| 版本化新合同 | JSON SHA `e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85`及同提交规则文档 | 工程冻结 |
 | 原生预算 | 92固定key+4技术备用；每次两币；旧Search未改 | 计划可运行生成，持久预约待实现 |
 | 匿名交易所规则 | 2026-09-07T15:33:33.163057Z 一次exchangeInfo GET | 当前规则已核对 |
 | 实际 CLI | 固定协议+上述归一化规则；未绑定registry | `BLOCKED_DATA`，退出2 |
@@ -92,12 +92,33 @@ KEEP六表/原生来源和成本边界；SIMPLIFY薄入口与固定合同；无�
 首切片之后继续受控共享资金模板和原生合成证明，再完成机器成本审计与登记来源；
 长时确认只能等待真实日历，不能把工程完成冒充总体研究目标完成。
 
-## 文件身份（提交前校验）
+## 固定SHA监督复查修正
+
+初版a460dea的工程协议SHA为
+`4e3d107e3d0533bff1f05df6af893aab477cffbf8b9a8317503e0d7480c2de93`。
+监督固定SHA检查独立35项通过，但指出两个研究合同问题，已在首次评分前纠正：
+
+- 最终参数不再要求每折net>=0。每UTC日期对可用训练折日收益等权平均，
+  每日期只计一次，复利训练选择净额>=0后按效用排名；来源/因果/成本及各折DD硬门不变。
+  这是重叠训练的选择统计量，不是实际共享账户路径。各折亏损与样本保留。
+- C必须同时相对原B和半风险B具有正效用增量且各95%区间下界>0；半风险B仅较低风险对照。
+  C=B时必因vs原B差0不晋级，不能用胜过0.5B伪造动态能力。
+
+新JSON、文档、源码固定hash与合同防退化回归同步；没有新增市场/统计引擎或扩大96调用。
+当前协议SHA见上表，36项新模块/真实CLI回归通过（0.16s）；原相邻SingleBaseline逻辑未再修改。
+
+下一依赖源码定位：官方安装包Freqtrade2026.7，`freqtrade/optimize/backtesting.py`
+共享wallet初始化307–308、策略绑定343，position调整715起，stake回调1099起，
+`freqtrade/wallets.py`已实现收益汇总118–122、stake权益计算292起。
+本地隔离包位置由import只读查得，后续原生执行仍需核对锁定Git源码commit，不用安装包路径冒充Git身份。
+这一步仅import/读接口，没有Backtesting实例化或start调用。
+
+## 文件身份（修正后提交前校验）
 
 | 路径 | SHA-256 |
 | --- | --- |
-| `docs/portfolio-pilot-v1.md` | `17b8c98cad651eb45a105c6caebc7c3d5d675ad73945a600d498fb287b7fa5f7` |
-| `docs/protocols/btc-eth-portfolio-v1.json` | `4e3d107e3d0533bff1f05df6af893aab477cffbf8b9a8317503e0d7480c2de93` |
-| `lab/portfolio_preflight.py` | `020b99c4b60fad8103ba7c163f9a3c580d5cd0a7cad2bc330e968a5a71f0d4ff` |
+| `docs/portfolio-pilot-v1.md` | `3ce2f9647ba970366310a3df24ccdfa4ea874db757b6b7c0a0ab396b3996aa87` |
+| `docs/protocols/btc-eth-portfolio-v1.json` | `e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85` |
+| `lab/portfolio_preflight.py` | `06a3288d223c5b5122b9b26af69a48f061ba3cd0efac966ca6b480b6f6be181a` |
 | `scripts/check_portfolio_pilot.py` | `a7cfbf0946deca0837d8ad1cebbf31482d254cd6ccb130c5e3f8dd266362b5dc` |
-| `tests/test_portfolio_preflight.py` | `ab1a7e1e546413f00f0d80c41ff7a1d13106c60f65f1fe503c686de828ed816a` |
+| `tests/test_portfolio_preflight.py` | `7baa05f061bb1a365f92dd99298b030b412bd76c789de29b66a5d79ff1cdd7e2` |

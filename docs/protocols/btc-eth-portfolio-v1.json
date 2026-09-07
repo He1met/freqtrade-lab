@@ -59,7 +59,7 @@
     "return_volatility": "SAMPLE_STD_LOG_RETURNS_DDOF_1",
     "volatility_multiplier": "MIN_1_PRIOR_252_MEDIAN_SIGMA20_OVER_CURRENT_SIGMA20",
     "C_recovery_max_multiplier_step": "0.1",
-    "risk_matched_B_multiplier": "0.5"
+    "half_risk_B_multiplier": "0.5"
   },
   "cost": {
     "taker_rate_each_side": "0.0006",
@@ -103,13 +103,20 @@
   },
   "selection": {
     "within_fold": "BASE_COST_TRAINING_ONLY_NET_GE_ZERO_DD_LE_20_THEN_UTILITY",
-    "final_parameters": "MEAN_OF_FOUR_TRAINING_UTILITIES_ELIGIBLE_IN_ALL_TRAIN_FOLDS",
+    "final_parameters": "UNIQUE_DATE_MEAN_TRAINING_RETURN_CHAIN_NET_GE_ZERO_THEN_UTILITY",
     "tie_break": "CENTRAL_PARAMETER_THEN_ASCENDING",
     "validation_used_for_parameter_choice": false,
     "no_eligible_family": "CASH_FOR_THAT_FAMILY_NO_REALLOCATION",
-    "C_adoption": "POSITIVE_PAIRED_42_DAY_BLOCK_UTILITY_INCREMENT_VS_HALF_RISK_B_CI_LOW_GT_ZERO",
+    "C_adoption": "POSITIVE_PAIRED_42_DAY_BLOCK_UTILITY_INCREMENT_VS_EACH_REQUIRED_COMPARATOR_CI_LOW_GT_ZERO",
     "default_portfolio": "B",
-    "diagnostic_changes_selection": false
+    "diagnostic_changes_selection": false,
+    "final_training_risk_gate": "EACH_FOLD_DD_LE_20_SOURCE_CAUSAL_COST_VALID",
+    "training_overlap_weight": "EQUAL_MEAN_OF_AVAILABLE_FOLD_RETURNS_PER_UTC_DATE_THEN_EACH_DATE_ONCE",
+    "C_required_comparators": [
+      "B",
+      "half-risk-B"
+    ],
+    "half_risk_B_label": "FIXED_LOWER_RISK_CONTROL_NOT_REALIZED_RISK_MATCH"
   },
   "budget": {
     "max_native_calls": 96,
