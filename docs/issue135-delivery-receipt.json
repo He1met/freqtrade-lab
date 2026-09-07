@@ -1,0 +1,67 @@
+{
+  "schema": "issue135-delivery-v1",
+  "status": "KNOWLEDGE_ONLY_EXECUTION_BLOCKED",
+  "freeze_commit": "25e2121",
+  "protocol_sha256": "7ee118f0749957f0fa6fde8eec098238f84a3160d0c2de6d3afde41d0b991501",
+  "batch_sha256": "eb9fc1c4c0f3dcb9aa0277c55b7f2baeceabb13e9f734fc6f19826d69b74b26a",
+  "module_sha256": "efd28cd94a36febcf3f5bb6cd0728ebe8d7742cd653453f079fd8a23fe132e34",
+  "result_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue135-literature-discovery/result-v1.json",
+  "result_sha256": "2c192f77a8360ccf16e9f0da2f6e76173b9913f16ac70b07d942c0046622e97a",
+  "repeat_sha256": "2c192f77a8360ccf16e9f0da2f6e76173b9913f16ac70b07d942c0046622e97a",
+  "repeat_identical": true,
+  "queries": 3,
+  "registered_sources": 5,
+  "page_attempts": 5,
+  "readable_sources": 2,
+  "failed_attempts": 3,
+  "knowledge_cards": 2,
+  "current_executable_cards": 0,
+  "precheck_statuses": [
+    "NEEDS_EVIDENCE",
+    "NEEDS_EVIDENCE"
+  ],
+  "applicability": "BOTH_BLOCKED_CURRENT_EXECUTION_DOMAIN",
+  "qualified_return": null,
+  "expected_trades": null,
+  "new_market_gets": 0,
+  "native_calls": 0,
+  "database_writes": 0,
+  "generation_calls": 0,
+  "ui_imported": false,
+  "tests": "49 passed: tests/test_literature_discovery.py tests/test_mechanism_precheck.py",
+  "source_validation": "TASK_MODEL_REVIEW_OF_OFFICIAL_EXTRACTS_NOT_EXPERT_VALIDATION",
+  "cache_identity": "TOOL_TEXT_OR_FETCH_ERROR_NOT_FULL_HTML_OR_PDF",
+  "controls": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": {
+      "expected": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+      "actual": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+      "unchanged": true
+    },
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": {
+      "expected": "692c595eb32e928332d4d7759aabcf726e28f1d5ddda07a74a2a5a3a420d7439",
+      "actual": "692c595eb32e928332d4d7759aabcf726e28f1d5ddda07a74a2a5a3a420d7439",
+      "unchanged": true
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json": {
+      "expected": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+      "actual": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+      "unchanged": true
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": {
+      "expected": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+      "actual": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+      "unchanged": true
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": {
+      "expected": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+      "actual": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+      "unchanged": true
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-activation.json": {
+      "expected": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "actual": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "unchanged": true
+    }
+  },
+  "next_dependency": "STATIC_CARD_TO_EXISTING_PROFILE_COMPATIBILITY_REVIEW_NO_GENERATION"
+}

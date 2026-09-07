@@ -1,0 +1,254 @@
+{
+  "schema": "literature-discovery-batch-v1",
+  "batch_id": "PUBLIC_RESEARCH_DISCOVERY_135_V1",
+  "protocol_sha256": "7ee118f0749957f0fa6fde8eec098238f84a3160d0c2de6d3afde41d0b991501",
+  "queries": [
+    {
+      "id": "q1",
+      "query": "site:nber.org Risks and Returns of Cryptocurrency momentum",
+      "status": "COMPLETED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "id": "q2",
+      "query": "site:bis.org Crypto carry",
+      "status": "COMPLETED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "id": "q3",
+      "query": "site:mit.edu Makarov Schoar cryptocurrency arbitrage trading",
+      "status": "COMPLETED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    }
+  ],
+  "page_attempts": [
+    {
+      "source_id": "s1",
+      "status": "FETCH_FAILED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "source_id": "s2",
+      "status": "READABLE",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "source_id": "s3",
+      "status": "READABLE",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "source_id": "s4",
+      "status": "FETCH_FAILED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    },
+    {
+      "source_id": "s5",
+      "status": "FETCH_FAILED",
+      "recorded_at_utc": "2026-09-07T21:51:26Z"
+    }
+  ],
+  "search_log": {
+    "cache_file": "search-log.txt",
+    "sha256": "78cfffcf888314b0d045c57e0770f9d8448d1abf9cef4e65c2b2b6b73c4778cc",
+    "counted_queries": 3
+  },
+  "sources": [
+    {
+      "id": "s1",
+      "canonical_url": "https://www.nber.org/papers/w24877",
+      "title": "Risks and Returns of Cryptocurrency",
+      "authors_or_institution": [
+        "Yukun Liu",
+        "Aleh Tsyvinski"
+      ],
+      "publication_date": "2018-08",
+      "accessed_at_utc": "2026-09-07T21:51:26Z",
+      "access_time_basis": "CAPTURED_AFTER_WEB_TOOL_BATCH_COMPLETED",
+      "query_ids": [
+        "q1"
+      ],
+      "scope": "Historical crypto research; not current quotes, executable strategy or net-return proof.",
+      "content_sha256": "4b3517a67b6436b4f62535167066adb2192f4dd4c261b00f3b69f4e998c19a7d",
+      "content_kind": "WEB_TOOL_FETCH_ERROR_NOT_PAPER_CONTENT",
+      "cache_file": "page-1.txt",
+      "status": "FETCH_FAILED",
+      "summary": "NBER检索记录，页面403；未据此生成动量卡。",
+      "support_locator": "403; only search metadata available, not usable full-page support."
+    },
+    {
+      "id": "s2",
+      "canonical_url": "https://www.bis.org/publications/working-paper-1087-crypto-carry",
+      "title": "Crypto carry",
+      "authors_or_institution": [
+        "Maik Schmeling",
+        "Andreas Schrimpf",
+        "Karamfil Todorov"
+      ],
+      "publication_date": "2023-04-04",
+      "accessed_at_utc": "2026-09-07T21:51:26Z",
+      "access_time_basis": "CAPTURED_AFTER_WEB_TOOL_BATCH_COMPLETED",
+      "query_ids": [
+        "q2"
+      ],
+      "scope": "Historical crypto research; not current quotes, executable strategy or net-return proof.",
+      "content_sha256": "d7231c6acba8ca09cbfa0b6c97ea9c7f681e2c853c72d4419b7a6fcabbdd52dc",
+      "content_kind": "WEB_TOOL_EXTRACT_NOT_FULL_HTML",
+      "cache_file": "page-2.txt",
+      "status": "READABLE",
+      "summary": "官方页面将现货多头/期货空头基差与杠杆需求和有限套利资本联系，并强调保证金及清算风险。",
+      "support_locator": "Focus / Findings / Abstract, retained extract L533-L545; author list L553-L559."
+    },
+    {
+      "id": "s3",
+      "canonical_url": "https://mitsloan.mit.edu/cfi/trading-and-arbitrage-cryptocurrency-markets",
+      "title": "Trading and Arbitrage in Cryptocurrency Markets",
+      "authors_or_institution": [
+        "Igor Makarov",
+        "Antoinette Schoar"
+      ],
+      "publication_date": "2020",
+      "accessed_at_utc": "2026-09-07T21:51:26Z",
+      "access_time_basis": "CAPTURED_AFTER_WEB_TOOL_BATCH_COMPLETED",
+      "query_ids": [
+        "q3"
+      ],
+      "scope": "Historical crypto research; not current quotes, executable strategy or net-return proof.",
+      "content_sha256": "031cfd942ed9217d029734549599e773ab62440673c9bf8b6f43bc893b5b2bff",
+      "content_kind": "WEB_TOOL_EXTRACT_NOT_FULL_HTML",
+      "cache_file": "page-3.txt",
+      "status": "READABLE",
+      "summary": "作者机构页面报告跨交易所、跨国价格偏离，强调资本流动限制和市场分割。",
+      "support_locator": "MIT CFI research summary L64-L80; publication citation gives year only."
+    },
+    {
+      "id": "s4",
+      "canonical_url": "https://www.nber.org/papers/w24877.pdf",
+      "title": "Risks and Returns of Cryptocurrency (PDF)",
+      "authors_or_institution": [
+        "Yukun Liu",
+        "Aleh Tsyvinski"
+      ],
+      "publication_date": null,
+      "accessed_at_utc": "2026-09-07T21:51:26Z",
+      "access_time_basis": "CAPTURED_AFTER_WEB_TOOL_BATCH_COMPLETED",
+      "query_ids": [
+        "q1"
+      ],
+      "scope": "Historical crypto research; not current quotes, executable strategy or net-return proof.",
+      "content_sha256": "21cea1136fb45a1be597220dd6f559f6cda674ef40439ebd2fa6c305a6e15a83",
+      "content_kind": "WEB_TOOL_FETCH_ERROR_NOT_PAPER_CONTENT",
+      "cache_file": "page-4.txt",
+      "status": "FETCH_FAILED",
+      "summary": "PDF读取403，失败计数保留，不使用索引摘要替代全文。",
+      "support_locator": "403; PDF text not read."
+    },
+    {
+      "id": "s5",
+      "canonical_url": "https://www.bis.org/publ/work1087.pdf",
+      "title": "Crypto carry (PDF)",
+      "authors_or_institution": [
+        "Bank for International Settlements"
+      ],
+      "publication_date": null,
+      "accessed_at_utc": "2026-09-07T21:51:26Z",
+      "access_time_basis": "CAPTURED_AFTER_WEB_TOOL_BATCH_COMPLETED",
+      "query_ids": [
+        "q2"
+      ],
+      "scope": "Historical crypto research; not current quotes, executable strategy or net-return proof.",
+      "content_sha256": "adfbceaff6e21513f213ae2d1b7b93023cd6f27dd520e75f1a9aeabbbac0dc45",
+      "content_kind": "WEB_TOOL_FETCH_ERROR_NOT_PAPER_CONTENT",
+      "cache_file": "page-5.txt",
+      "status": "FETCH_FAILED",
+      "summary": "PDF读取404，不能将搜索索引的其他版本内容混入已读取页面。",
+      "support_locator": "404; search-indexed later version not verified or used."
+    }
+  ],
+  "proposals": [
+    {
+      "id": "crypto-basis-carry",
+      "family": "funding",
+      "classification_basis": "MODEL_INFERENCE_NEEDS_REVIEW",
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "parameters": {},
+      "economic_explanation": "杠杆多头对期货的需求与受约束的套利资本可能维持正基差；对冲现货多头和期货空头尝试收取收敛补偿。",
+      "signal": "同资产可交割期货相对现货的基差，必须另扣融资、交易与库存成本。",
+      "direction": "DELTA_NEUTRAL_LONG_SPOT_SHORT_FUTURE",
+      "holding_scale": "MULTI_WEEK_OR_EXPIRY",
+      "execution_cost_dependencies": [
+        "双腿同步执行",
+        "融资及保证金缓冲",
+        "费用滑点与展期",
+        "清算及对手方风险"
+      ],
+      "falsification": "若可执行基差不足以覆盖全成本和资本占用，或极端保证金需求使对冲无法持续，则机制不可用。",
+      "source_support": [
+        {
+          "source_id": "s2",
+          "claim": "支持基差、杠杆需求与套利资本约束这一经济解释。",
+          "locator": "Focus / Findings / Abstract, retained extract L533-L545; author list L553-L559."
+        }
+      ],
+      "source_does_not_support": [
+        "未证明1000USDT可执行或有成本后利润",
+        "未证明本项目单一永续引擎支持现货/交割期货双腿",
+        "未证明当前有可用基差或足够独立样本"
+      ],
+      "unknowns": [
+        "待冻结交易场所及合约身份",
+        "真实最小量、全成本和保证金路径",
+        "当前Profile兼容性",
+        "样本数及独立窗口"
+      ],
+      "prior_family_comparison": "与旧资金费过滤家族相关，但该文是现货/期货基差对冲，不等同于旧方向性短仓；关系为模型推断，不认证独立。"
+    },
+    {
+      "id": "segmented-venue-spread",
+      "family": "relative_value",
+      "classification_basis": "MODEL_INFERENCE_NEEDS_REVIEW",
+      "assets": [
+        "BTC"
+      ],
+      "parameters": {},
+      "economic_explanation": "跨场所资本流动和库存调整受限可形成持续价格偏离；预置双边库存的价差收敛提案需要承担这些摩擦。",
+      "signal": "相同资产在可比交易场所的可执行价差，需先扣兑换、调拨和交易成本。",
+      "direction": "HEDGED_BUY_CHEAP_SELL_EXPENSIVE",
+      "holding_scale": "MULTI_DAY",
+      "execution_cost_dependencies": [
+        "双场所库存和同步成交",
+        "资金跨境或跨平台流动限制",
+        "手续费滑点与转账延迟",
+        "对手方与提现风险"
+      ],
+      "falsification": "若可执行价差被成本吞没、转账或再平衡不可完成，或偏离在可承受持仓期间不收敛，则不能实施。",
+      "source_support": [
+        {
+          "source_id": "s3",
+          "claim": "支持价格分割与资本流动障碍，不支持无摩擦套利。",
+          "locator": "MIT CFI research summary L64-L80; publication citation gives year only."
+        }
+      ],
+      "source_does_not_support": [
+        "官方摘要未给出可直接实施的低频规则",
+        "未证明任何当下场所价差或扣全成本后的收益",
+        "未证明1000USDT可维持双场所库存"
+      ],
+      "unknowns": [
+        "低频化本身是待证推断",
+        "场所及结算身份",
+        "实际可用库存和成本",
+        "现有Profile/执行器支持情况",
+        "独立数据和样本数量"
+      ],
+      "prior_family_comparison": "与旧趋势/反转或资金费过滤的表面信号不同，但与carry同属资本约束相关价值解释；并未建立经济或统计独立性。"
+    }
+  ],
+  "stopping_reason": "TWO_SUPPORTABLE_OFFICIAL_SUMMARIES; NO_FOURTH_QUERY_OR_SIXTH_PAGE_TO_FILL_CARDS",
+  "source_review": "TASK_MODEL_COMPARED_CLAIMS_WITH_RETAINED_OFFICIAL_EXTRACTS; NOT_HUMAN_EXPERT_VALIDATION",
+  "network_dependency": "CURRENT_TASK_WEB_TOOL_ONLY; OFFLINE_CLI_HAS_NO_NETWORK_OR_LLM"
+}
