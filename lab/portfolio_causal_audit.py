@@ -1,0 +1,52 @@
+"""Post-native assertions; absence of evidence fails, never fills gaps with zero."""
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal
+from lab.portfolio_causal import PAIRS
+from lab.portfolio_execution import fill_equity, dec
+
+
+def audit_causal(result,trace,start):
+    def require(condition,message):
+        if not condition: raise ValueError(message)
+    require(trace and not any("fatal_error" in p for p in trace),"missing/failed causal trace")
+    require(trace[0]["time"]==start.isoformat(),"first closed daily boundary missed")
+    trades=result["trades"]
+    require(trades and {t["pair"] for t in trades}==set(PAIRS),"both pairs must actually trade")
+    fills=[]
+    for trade in trades:
+        require(trade["leverage"]==1 and trade["fee_open"]==trade["fee_close"]==.0006,"native leverage/fee mismatch")
+        for o in trade["orders"]:
+            fills.append(dict(pair=trade["pair"],side=o["ft_order_side"],amount=o["amount"],price=o["safe_price"],
+                              time=o["order_filled_timestamp"],is_entry=o["ft_is_entry"]))
+    require(all(t["funding_fees"] is not None for t in trades),"missing native funding accrual")
+    funding=sum(t["funding_fees"] for t in trades)
+    # Final native force exits must leave no inventory; marks then irrelevant.
+    reconciled=fill_equity(fills,{p:1 for p in PAIRS},funding=funding,slippage="0.0006")
+    require(all(abs(q)<Decimal("0.00000001") for q in reconciled["inventory"].values()),"final inventory remains")
+    slip=sum(dec(o["amount"])*dec(o["price"])*Decimal("0.0006") for o in fills)
+    expected=Decimal(1000)+sum((dec(t["profit_abs"]) for t in trades),Decimal(0))-slip
+    require(abs(reconciled["equity"]-expected)<Decimal("0.00001"),"native net equity minus actual-fill slippage reconciliation")
+    require(any(p["daily_decision"] and len(p["episodes"])==4 for p in trace),"real family decision absent")
+    require(any(any(f=="reversal" and why=="stop" for _,f,why in p["family_exits"]) and
+                any(e["family"]=="trend" for e in p["episodes"]) for p in trace),"short family stop with surviving trend absent")
+    gap_time=(start+timedelta(hours=5)).isoformat()
+    require(any(p["time"]==gap_time and any(f=="trend" and why=="stop" for _,f,why in p["family_exits"]) for p in trace),"gap logical exit absent")
+    for pair in PAIRS:
+        early_short=[t for t in trades if t["pair"]==pair and t["is_short"] and t["open_timestamp"]<int((start+timedelta(hours=2)).timestamp()*1000)]
+        early_long=[t for t in trades if t["pair"]==pair and not t["is_short"] and t["open_timestamp"]<int((start+timedelta(hours=5)).timestamp()*1000)]
+        require(early_short and early_long,"actual short to long cycle absent")
+        require(min(t["open_timestamp"] for t in early_long)>=max(t["close_timestamp"] for t in early_short)+3600000,"flip lacks one-hour real flat wait")
+        require(any(t["close_timestamp"]==int((start+timedelta(hours=5)).timestamp()*1000) for t in early_long),"gap did not actually close long")
+    halted=[p for p in trace if p["halted"]]
+    require(halted,"no actual marked-equity halt")
+    halt_ms=int(datetime.fromisoformat(halted[0]["time"]).timestamp()*1000)
+    require(not any(o["is_entry"] and o["time"]>=halt_ms for o in fills),"entry after halt")
+    require(any(dec(p["slippage_paid"])>0 and dec(p["costs"])>dec(p["slippage_paid"]) for p in trace),"costs absent from control account")
+    require(all(not p["unexecutable_reductions"] for p in trace),"unexecuted risk reduction requires explicit review")
+    return dict(status="SYNTHETIC_CONTROL_PASS",actual_orders=len(fills),
+                fee_and_slippage=str(reconciled["costs"]),slippage=str(slip),
+                final_net_equity_synthetic_only=str(reconciled["equity"]),
+                max_drawdown=max((p["max_drawdown"] for p in trace),key=Decimal),
+                risk_limit_satisfied=max(Decimal(p["max_drawdown"]) for p in trace)<=Decimal("0.20"),
+                cash_insufficiency="NOT_COVERED_NATIVE",funding_settlement="UNVERIFIED",
+                market_execution_allowed=False,economic_result=None)
