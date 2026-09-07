@@ -1,0 +1,1997 @@
+{
+  "schema": "issue127-readonly-delivery-v1",
+  "issue": 127,
+  "freeze_commit": "85bf5312c51226186bc10b589baacb768b076fea",
+  "freeze_publication": "https://github.com/He1met/freqtrade-lab/issues/127#issuecomment-5575185344",
+  "protocol_sha256": "e60fcfb8423e2e2484bf02c0d78a6b06191e8393373afcadc24553ab74dc3274",
+  "input_manifest_sha256": "fc7fe8ce635ed0bf5aa5cd2b8d3ef9fef297e70e5462feeb4d6442bc5cb8fb3d",
+  "source_execution_commit": "fe01a6b543e26512aa8180c7226d2678eb80a93d",
+  "diagnostic_script_sha256": "671aa085894cf58a0e3fe47d2d83a612e9f8926b545516ffd902ea65d2d1cc4c",
+  "final_output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue127-readonly-diagnosis-final-v2",
+  "final_summary_sha256": "72c65b5191fc041735908b9a99ecc36fbddab7120b97dc2a2d2c5e3c6725f81d",
+  "detail_files": {
+    "activation-diagnostics.json": "9d87a30546e0b2e4e46e3fec4681f43ae6c406b9edc03808929914187dabca40",
+    "hourly-diagnostics.jsonl": "eac96de0840afe439d84c841f604aa9e137d7cbd2c3e920568690c6d1c29d753"
+  },
+  "preserved_diagnostic_attempts": [
+    {
+      "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue127-readonly-diagnosis",
+      "summary_sha256": "991c6247ea1d387ec9a1cb509c0b64dd74bfbeafc55a3c77b03f7e08f95373b6",
+      "diagnostic_code_sha256": "62a47b91b73b053069467249a24a5c0a193879f09361e72d88417f1ac36a5385",
+      "disposition": "SUPERSEDED: CAP comparison used a Decimal conversion last-digit difference; cap flag not reliable",
+      "native_calls": 0,
+      "new_gets": 0
+    },
+    {
+      "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue127-readonly-diagnosis-v2",
+      "summary_sha256": "d2537a0e81d0bb1e19420056229eb7a814546f403681ce7d7bf0e7317e1f90d4",
+      "diagnostic_code_sha256": "3ff61eb2f4912c4a5be1acd0b6dc1ccb44f35e6dd79579fe6c6d7fb078f9bddf",
+      "disposition": "SUPERSEDED: CAP inequalities corrected; reserve arithmetic diagnostic not yet restricted to original per-hour call branches",
+      "native_calls": 0,
+      "new_gets": 0
+    },
+    {
+      "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue127-readonly-diagnosis-final",
+      "summary_sha256": "b1d2bd249bf8a99d7bde0982f4c41a0c7d3cb4437e8eebd8fbccacccac3ba878",
+      "diagnostic_code_sha256": "8f31ed64277488d5b5548e924fdc5bd4f0ce9a010dcd73690ab21b303b87383e",
+      "disposition": "SUPERSEDED: excluded 01/funding/control/reduction branches and used recorded core risk targets; final phase hour still needed exclusion",
+      "native_calls": 0,
+      "new_gets": 0
+    },
+    {
+      "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue127-readonly-diagnosis-final-v2",
+      "summary_sha256": "72c65b5191fc041735908b9a99ecc36fbddab7120b97dc2a2d2c5e3c6725f81d",
+      "diagnostic_code_sha256": "671aa085894cf58a0e3fe47d2d83a612e9f8926b545516ffd902ea65d2d1cc4c",
+      "disposition": "FINAL: full original call-branch applicability including phase-end exclusion; original execution code and count rules unchanged",
+      "native_calls": 0,
+      "new_gets": 0
+    }
+  ],
+  "natural_counts_identical_across_diagnostic_classification_corrections": true,
+  "jobs": [
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 3,
+            "max": "108.276962356501457073846915962590671935914053570353411392906",
+            "median": "72.3992681514792521670255758171192202436852494698027214081489",
+            "min": "63.5050113293422278219706959960237692508599562303429948201350"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1123,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 46,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 46,
+            "RECORDED_FRESH_ENTRY_TARGET": 46,
+            "RECORDED_TARGET_CHANGED": 92,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 937,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 937,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 937,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 1,
+            "stop": 2
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1777.6500000000003",
+            "median": "1509.8760000000006",
+            "min": "1229.94599999999964"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 3,
+            "max": "108.276962356501457073846915962590671935914053570353411392906",
+            "median": "72.3992681514792521670255758171192202436852494698027214081489",
+            "min": "63.5050113293422278219706959960237692508599562303429948201350"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 1,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 1,
+            "max": "62.0196432867694419005737807439996893679710395014958923574864",
+            "median": "62.0196432867694419005737807439996893679710395014958923574864",
+            "min": "62.0196432867694419005737807439996893679710395014958923574864"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1008,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 1007,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1007,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 126,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1007,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 2,
+            "RECORDED_FRESH_ENTRY_TARGET": 1,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 2,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "expiry": 1
+          },
+          "necessary_equity_bound": {
+            "count": 1,
+            "max": "375.741599999999856",
+            "median": "375.741599999999856",
+            "min": "375.741599999999856"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 1,
+            "max": "62.0196432867694419005737807439996893679710395014958923574864",
+            "median": "62.0196432867694419005737807439996893679710395014958923574864",
+            "min": "62.0196432867694419005737807439996893679710395014958923574864"
+          }
+        }
+      },
+      "cost": "base",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "mode": "A-trend",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 0,
+          "attribution": "NOT_ENABLED",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": false,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 0,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": null,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "NOT_QUALIFIED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 3,
+            "max": "166.941907014523963979506705272586095157259184754689330003321",
+            "median": "105.224832800446666981941661025079624087879589583016013070707",
+            "min": "93.3008746071830485443418062916132618667788460015325343566419"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 173,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 46,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 46,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 20,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 46,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 1,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 6,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 12,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 105,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 105,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 105,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 1,
+            "expiry": 1,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1304.65199999999988",
+            "median": "1057.88200000000016",
+            "min": "860.58800000000012"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "166.941907014523963979506705272586095157259184754689330003321",
+            "median": "105.224832800446666981941661025079624087879589583016013070707",
+            "min": "93.3008746071830485443418062916132618667788460015325343566419"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 2,
+          "actual_closed_cycles": 2,
+          "actual_increase_fills": 2,
+          "actual_orders": 4,
+          "effective_notional": {
+            "count": 2,
+            "max": "96.2596345455550746595328843620864436141744374785235480090826",
+            "median": "82.8981494143156775777625518594498527899396151820446738512267",
+            "min": "69.5366642830762804959922193568132619657047928855657996933709"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 161,
+            "ACTUAL_FILL_HOUR": 4,
+            "BELOW_MIN_QTY_RECOMPUTED": 159,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 159,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 20,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 159,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 2,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 4,
+            "RECORDED_FRESH_ENTRY_TARGET": 2,
+            "RECORDED_REDUCE_TARGET": 2,
+            "RECORDED_TARGET_CHANGED": 4,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 2,
+          "natural_exit_reasons": {
+            "expiry": 1,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 2,
+            "max": "325.873799999999892",
+            "median": "285.983699999999882",
+            "min": "246.093599999999872"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 2,
+            "max": "96.2596345455550746595328843620864436141744374785235480090826",
+            "median": "82.8981494143156775777625518594498527899396151820446738512267",
+            "min": "69.5366642830762804959922193568132619657047928855657996933709"
+          }
+        }
+      },
+      "cost": "base",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "mode": "A-reversal",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 2,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 2,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 2,
+          "proven_cluster_upper_bound": 2,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 0,
+          "attribution": "NOT_ENABLED",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": false,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 0,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": null,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "NOT_QUALIFIED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "83.9650983200030891365596237684342607761729745103216717630772",
+            "median": "49.8163565002097417824657717422107753257961693049603561272221",
+            "min": "31.4244988498988910577445734145263030836373727348516721001256"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1009,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1009,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1009,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 5,
+            "RECORDED_TARGET_CHANGED": 10,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 100,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 100,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 100,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "3555.3000000000006",
+            "median": "2534.59799999999952",
+            "min": "1721.17600000000024"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.9650983200030891365596237684342607761729745103216717630772",
+            "median": "49.8163565002097417824657717422107753257961693049603561272221",
+            "min": "31.4244988498988910577445734145263030836373727348516721001256"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 3,
+          "actual_increase_fills": 3,
+          "actual_orders": 6,
+          "effective_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9779020566114267883434092094365768008603165371082133418343",
+            "min": "30.9786574640905358539288530975467261696731105811242844362401"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 6,
+            "BELOW_MIN_QTY_RECOMPUTED": 862,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1010,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 127,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 862,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 3,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 6,
+            "RECORDED_FRESH_ENTRY_TARGET": 3,
+            "RECORDED_REDUCE_TARGET": 20,
+            "RECORDED_TARGET_CHANGED": 7,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 1,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 1,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 3,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "751.483199999999712",
+            "median": "651.747599999999784",
+            "min": "492.187199999999744"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9779020566114267883434092094365768008603165371082133418343",
+            "min": "30.9786574640905358539288530975467261696731105811242844362401"
+          }
+        }
+      },
+      "cost": "base",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "mode": "B",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "83.7847340731202056224933903047396957670722383198888526813431",
+            "median": "44.2044831872497587346118505390267943486374607297277181408553",
+            "min": "29.6416486894499399625834631396735908023617326796178996379941"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1129,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1129,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1129,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "3839.51588098347029974917786713867726895985760872714520698478",
+            "median": "2745.16162693660538448316529343725943257976534915252917650495",
+            "min": "1721.17600000000024"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.7847340731202056224933903047396957670722383198888526813431",
+            "median": "49.8052645887906032607133556401952662505766795048460693626963",
+            "min": "31.3927366611391386062932960640499637791529158073922685872502"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 3,
+          "actual_increase_fills": 3,
+          "actual_orders": 6,
+          "effective_notional": {
+            "count": 3,
+            "max": "41.8407722024334792048181745136213953419606919624833956306405",
+            "median": "26.9737797656837776151130589961908202476368638752752307961332",
+            "min": "26.2044083601128110201959251291958500530371449105506663254661"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 6,
+            "BELOW_MIN_QTY_RECOMPUTED": 261,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1003,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 126,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 261,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 3,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 6,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 8,
+            "RECORDED_REDUCE_TARGET": 20,
+            "RECORDED_TARGET_CHANGED": 10,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 5,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 5,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 3,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "869.079800089155032364010004603168677834351292404560829865382",
+            "median": "863.220949179418325387001399963957559053310637627612613703404",
+            "min": "566.167371036766942751010030641701389890357535507957527304626"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9425482795202194866320811098765981071959754563656101753666",
+            "min": "30.9845007477081955594959850865066858911066873004287210129593"
+          }
+        }
+      },
+      "cost": "base",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "mode": "C",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "41.9184379505499770347926706554155482354849490698617825740147",
+            "median": "24.9384144455116299465860224445229922538026411762465079934519",
+            "min": "15.7200070977706965922046318166067686769670379534606907489599"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1129,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1129,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1129,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "7110.6000000000012",
+            "median": "5069.19599999999904",
+            "min": "3442.35200000000048"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.8368759010999540695853413108310964709698981397235651480294",
+            "median": "49.8768288910232598931720448890459845076052823524930159869037",
+            "min": "31.4400141955413931844092636332135373539340759069213814979198"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 3,
+            "max": "24.0649086363887686648832210905216109035436093696308870022707",
+            "median": "17.4975859192366734340417201308013435768870468461874084501456",
+            "min": "15.4971197768688142010539358673866427134146575829680576537457"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 23,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1030,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 127,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 23,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 2,
+            "RECORDED_FRESH_ENTRY_TARGET": 1,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 2,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1502.966399999999424",
+            "median": "1303.495199999999568",
+            "min": "984.374399999999488"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9951718384733468680834402616026871537740936923748169002911",
+            "min": "30.9942395537376284021078717347732854268293151659361153074915"
+          }
+        }
+      },
+      "cost": "base",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+      "mode": "half-risk-B",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 0,
+          "minimum_required": 30,
+          "natural_clusters": 0,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": 0,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 3,
+            "max": "108.262564166982588436375556873010552573202786369319406179623",
+            "median": "72.3940286042589188437220252819759329685251178338090140415037",
+            "min": "63.5003856110057741901464986011125603780555338037475805604812"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1123,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 46,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 46,
+            "RECORDED_FRESH_ENTRY_TARGET": 46,
+            "RECORDED_TARGET_CHANGED": 92,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 937,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 937,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 937,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 1,
+            "stop": 2
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1777.6500000000003",
+            "median": "1509.8760000000006",
+            "min": "1229.94599999999964"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 3,
+            "max": "108.262564166982588436375556873010552573202786369319406179623",
+            "median": "72.3940286042589188437220252819759329685251178338090140415037",
+            "min": "63.5003856110057741901464986011125603780555338037475805604812"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 1,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 1,
+            "max": "62.0196432867694419005737807439996893679710395014958923574864",
+            "median": "62.0196432867694419005737807439996893679710395014958923574864",
+            "min": "62.0196432867694419005737807439996893679710395014958923574864"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1008,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 1007,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1007,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 126,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1007,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 2,
+            "RECORDED_FRESH_ENTRY_TARGET": 1,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 2,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "expiry": 1
+          },
+          "necessary_equity_bound": {
+            "count": 1,
+            "max": "375.741599999999856",
+            "median": "375.741599999999856",
+            "min": "375.741599999999856"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 1,
+            "max": "62.0196432867694419005737807439996893679710395014958923574864",
+            "median": "62.0196432867694419005737807439996893679710395014958923574864",
+            "min": "62.0196432867694419005737807439996893679710395014958923574864"
+          }
+        }
+      },
+      "cost": "stress",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "mode": "A-trend",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 0,
+          "attribution": "NOT_ENABLED",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": false,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 0,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": null,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "NOT_QUALIFIED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 3,
+            "max": "166.877274493604609314737852476965612152920680702178675102974",
+            "median": "105.201763458689276274557562119135967972600026220547399789386",
+            "min": "93.2727694681874543143305721238265205738148217756018224459691"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 173,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 46,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 46,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 20,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 46,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 1,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 6,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 12,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 105,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 105,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 105,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 1,
+            "expiry": 1,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1304.65199999999988",
+            "median": "1057.88200000000016",
+            "min": "860.58800000000012"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "166.877274493604609314737852476965612152920680702178675102974",
+            "median": "105.201763458689276274557562119135967972600026220547399789386",
+            "min": "93.2727694681874543143305721238265205738148217756018224459691"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 2,
+          "actual_closed_cycles": 2,
+          "actual_increase_fills": 2,
+          "actual_orders": 4,
+          "effective_notional": {
+            "count": 2,
+            "max": "96.2596345455550746595328843620864436141744374785235480090826",
+            "median": "82.8905268549334381929969265981313498765801238010305676456187",
+            "min": "69.5214191643118017264609688341762561389858101235375872821549"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 161,
+            "ACTUAL_FILL_HOUR": 4,
+            "BELOW_MIN_QTY_RECOMPUTED": 159,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 159,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 20,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 159,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 2,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 4,
+            "RECORDED_FRESH_ENTRY_TARGET": 2,
+            "RECORDED_REDUCE_TARGET": 2,
+            "RECORDED_TARGET_CHANGED": 4,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 2,
+          "natural_exit_reasons": {
+            "expiry": 1,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 2,
+            "max": "325.873799999999892",
+            "median": "285.983699999999882",
+            "min": "246.093599999999872"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 2,
+            "max": "96.2596345455550746595328843620864436141744374785235480090826",
+            "median": "82.8905268549334381929969265981313498765801238010305676456187",
+            "min": "69.5214191643118017264609688341762561389858101235375872821549"
+          }
+        }
+      },
+      "cost": "stress",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "mode": "A-reversal",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 2,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 2,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 2,
+          "proven_cluster_upper_bound": 2,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 0,
+          "attribution": "NOT_ENABLED",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": false,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 0,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": null,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "NOT_QUALIFIED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "83.9461042992896927172268913640869660427208330926809052339799",
+            "median": "49.8088085281813614030258161708969366676865030915962817621425",
+            "min": "31.4201464003551813293423203630892477131628223065427311625761"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1009,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1009,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1009,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 5,
+            "RECORDED_TARGET_CHANGED": 10,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 100,
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET": 100,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 100,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "3555.3000000000006",
+            "median": "2534.59799999999952",
+            "min": "1721.17600000000024"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.9461042992896927172268913640869660427208330926809052339799",
+            "median": "49.8088085281813614030258161708969366676865030915962817621425",
+            "min": "31.4201464003551813293423203630892477131628223065427311625761"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 3,
+          "actual_increase_fills": 3,
+          "actual_orders": 6,
+          "effective_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9730574430322762075872445022761278121236081140054944869753",
+            "min": "30.9768944530255801496526335004788970664393404109664130010224"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 6,
+            "BELOW_MIN_QTY_RECOMPUTED": 862,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1010,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 127,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 862,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 3,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 6,
+            "RECORDED_FRESH_ENTRY_TARGET": 3,
+            "RECORDED_REDUCE_TARGET": 20,
+            "RECORDED_TARGET_CHANGED": 7,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 1,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 1,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 3,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "751.483199999999712",
+            "median": "651.747599999999784",
+            "min": "492.187199999999744"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9730574430322762075872445022761278121236081140054944869753",
+            "min": "30.9768944530255801496526335004788970664393404109664130010224"
+          }
+        }
+      },
+      "cost": "stress",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "mode": "B",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "83.7682360510141455821253659454960214933929900724590870344944",
+            "median": "44.1991130097436055612855746540200796286286679133290857893151",
+            "min": "29.6382101705113710263301946837862118897414400270786898869677"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1129,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1129,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1129,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "3839.51588098347029974917786713867726895985760872714520698478",
+            "median": "2745.16162693660538448316529343725943257976534915252917650495",
+            "min": "1721.17600000000024"
+          },
+          "quantity_downscaled_at01": 2,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.7682360510141455821253659454960214933929900724590870344944",
+            "median": "49.7995681462802013072211587262018211893146378995532833274885",
+            "min": "31.3890950108155095460691209435755835959067965726239255353760"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 3,
+          "actual_increase_fills": 3,
+          "actual_orders": 6,
+          "effective_notional": {
+            "count": 3,
+            "max": "41.8407722024334792048181745136213953419606919624833956306405",
+            "median": "26.9725327390987937275424514857075311729975864846599069989920",
+            "min": "26.2013685712210307860644062800400563494499411868216645234863"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 6,
+            "BELOW_MIN_QTY_RECOMPUTED": 261,
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED": 5,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1003,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 126,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 261,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 3,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 6,
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN": 5,
+            "RECORDED_FRESH_ENTRY_TARGET": 8,
+            "RECORDED_REDUCE_TARGET": 20,
+            "RECORDED_TARGET_CHANGED": 10,
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET": 5,
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS": 5,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 3,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "869.079800089155032364010004603168677834351292404560829865382",
+            "median": "863.220949179418325387001399963957559053310637627612613703404",
+            "min": "566.167371036766942751010030641701389890357535507957527304626"
+          },
+          "quantity_downscaled_at01": 1,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9384948405472465123157310102948544194069885699441848223294",
+            "min": "30.9830683012179190497715566638890747447292490371754504718452"
+          }
+        }
+      },
+      "cost": "stress",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "mode": "C",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 1,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "natural_clusters": 1,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    },
+    {
+      "actual_native_rejection_reasons": null,
+      "assets": {
+        "BTC/USDT:USDT": {
+          "activated_episodes": 6,
+          "actual_closed_cycles": 0,
+          "actual_increase_fills": 0,
+          "actual_orders": 0,
+          "effective_notional": {
+            "count": 6,
+            "max": "41.9161553086475196455122217394358770265602021730430319883334",
+            "median": "24.9370564399995608444514949143536523132331071157030153799004",
+            "min": "15.7191510747731166412901137164599373402896436655240333660208"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1129,
+            "BELOW_MIN_QTY_RECOMPUTED": 1129,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1129,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 138,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 1129,
+            "PARTIAL_NET_CANCELLATION": 47,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 0,
+          "natural_exit_reasons": {
+            "PHASE_END_NOT_NATURAL_EXIT": 2,
+            "expiry": 1,
+            "stop": 3
+          },
+          "necessary_equity_bound": {
+            "count": 6,
+            "max": "7110.6000000000012",
+            "median": "5069.19599999999904",
+            "min": "3442.35200000000048"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 6,
+            "max": "83.8323106172950392910244434788717540531204043460860639766668",
+            "median": "49.8741128799991216889029898287073046264662142314060307598008",
+            "min": "31.4383021495462332825802274329198746805792873310480667320416"
+          }
+        },
+        "ETH/USDT:USDT": {
+          "activated_episodes": 3,
+          "actual_closed_cycles": 1,
+          "actual_increase_fills": 1,
+          "actual_orders": 2,
+          "effective_notional": {
+            "count": 3,
+            "max": "24.0649086363887686648832210905216109035436093696308870022707",
+            "median": "17.4966330993138935109460169731365307127171104235606451744446",
+            "min": "15.4966790241025752749848809681196854376062150404285897949414"
+          },
+          "hour_counts": {
+            "ACTIVE_RAW_FAMILY_INTENTION": 1032,
+            "ACTUAL_FILL_HOUR": 2,
+            "BELOW_MIN_QTY_RECOMPUTED": 23,
+            "BELOW_RAW_MIN_NOTIONAL_RECOMPUTED": 1030,
+            "FUNDING_HOUR_NO_ADD_RULE_DIAGNOSIS": 127,
+            "LOT_FLOOR_ZERO_RECOMPUTED": 23,
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED": 1,
+            "PARTIAL_NET_CANCELLATION": 137,
+            "RECORDED_ACTUAL_QUANTITY_CHANGED": 2,
+            "RECORDED_FRESH_ENTRY_TARGET": 1,
+            "RECORDED_REDUCE_TARGET": 1,
+            "RECORDED_TARGET_CHANGED": 2,
+            "hours": 2208
+          },
+          "isolated_1000_cell_minimum_passes": 1,
+          "natural_exit_reasons": {
+            "expiry": 2,
+            "stop": 1
+          },
+          "necessary_equity_bound": {
+            "count": 3,
+            "max": "1502.966399999999424",
+            "median": "1303.495199999999568",
+            "min": "984.374399999999488"
+          },
+          "quantity_downscaled_at01": 0,
+          "raw_notional": {
+            "count": 3,
+            "max": "48.1298172727775373297664421810432218070872187392617740045414",
+            "median": "34.9932661986277870218920339462730614254342208471212903488892",
+            "min": "30.9933580482051505499697619362393708752124300808571795898828"
+          }
+        }
+      },
+      "cost": "stress",
+      "family_pnl": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+      "mode": "half-risk-B",
+      "preactivation_candidate_count": null,
+      "preactivation_candidate_reason": "NOT_RECORDED_NOT_REPLAYED",
+      "samples": {
+        "reversal": {
+          "activated_episodes": 5,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "natural_clusters": null,
+          "natural_exit_episodes": 4,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 1,
+          "proven_cluster_upper_bound": 1,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        },
+        "trend": {
+          "activated_episodes": 4,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "certified_episodes": 0,
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "enabled": true,
+          "increase_fill_upper_bound": 0,
+          "minimum_required": 30,
+          "natural_clusters": 0,
+          "natural_exit_episodes": 3,
+          "original_full_logical_intervals_preserved": true,
+          "possible_supported_episodes": 0,
+          "proven_cluster_upper_bound": 0,
+          "statistical_independence": "UNKNOWN",
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_mapping_verified": true,
+          "verdict": "UNDERPOWERED"
+        }
+      }
+    }
+  ],
+  "affected_recorded_positions": [
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 937,
+      "native_padding_hours": 46,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-06 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "56010.1",
+          "recorded_target": "-0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "58.810605"
+        },
+        {
+          "time": "2024-08-06 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "55689.9",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "58.474395"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 105,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-05 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "56141.9",
+          "recorded_target": "0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "58.948995"
+        },
+        {
+          "time": "2024-08-05 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "54389.6",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "57.10908"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "pair": "ETH/USDT:USDT",
+      "reserve_hours": 1,
+      "native_padding_hours": 0,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [],
+      "examples": [
+        {
+          "time": "2024-08-04 19:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED",
+            "ACTUAL_FILL_HOUR",
+            "RECORDED_TARGET_CHANGED",
+            "RECORDED_ACTUAL_QUANTITY_CHANGED"
+          ],
+          "original_open": "2728.17",
+          "recorded_target": "-0.009",
+          "actual_order_ids": [
+            "2:3"
+          ],
+          "original_reserve_grid_quantity_before": "0.01",
+          "original_reserve_grid_quantity_after": "0.009",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        }
+      ],
+      "same_episode_overlap_ids": [],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 100,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-09 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "61187",
+          "recorded_target": "-0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "64.24635"
+        },
+        {
+          "time": "2024-08-09 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "61366.7",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "64.435035"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "pair": "ETH/USDT:USDT",
+      "reserve_hours": 5,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 5,
+      "reserve_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-04 19:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED",
+            "RECORDED_ACTUAL_QUANTITY_CHANGED"
+          ],
+          "original_open": "2728.17",
+          "recorded_target": "-0.008",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.009",
+          "original_reserve_grid_quantity_after": "0.008",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        },
+        {
+          "time": "2024-08-04 20:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN"
+          ],
+          "original_open": "2755.84",
+          "recorded_target": "-0.008",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.009",
+          "original_reserve_grid_quantity_after": "0.008",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 937,
+      "native_padding_hours": 46,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-06 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "56010.1",
+          "recorded_target": "-0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "58.810605"
+        },
+        {
+          "time": "2024-08-06 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "55689.9",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "58.474395"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-09-07T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/1/2024-10-15T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 105,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-05 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "56141.9",
+          "recorded_target": "0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "58.948995"
+        },
+        {
+          "time": "2024-08-05 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "54389.6",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "57.10908"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/reversal/1/2024-08-05T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "pair": "ETH/USDT:USDT",
+      "reserve_hours": 1,
+      "native_padding_hours": 0,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [],
+      "examples": [
+        {
+          "time": "2024-08-04 19:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "NATIVE_ENTRY_MIN_PASSES_RECOMPUTED",
+            "ACTUAL_FILL_HOUR",
+            "RECORDED_TARGET_CHANGED",
+            "RECORDED_ACTUAL_QUANTITY_CHANGED"
+          ],
+          "original_open": "2728.17",
+          "recorded_target": "-0.009",
+          "actual_order_ids": [
+            "2:3"
+          ],
+          "original_reserve_grid_quantity_before": "0.01",
+          "original_reserve_grid_quantity_after": "0.009",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        }
+      ],
+      "same_episode_overlap_ids": [],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "pair": "BTC/USDT:USDT",
+      "reserve_hours": 100,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 0,
+      "reserve_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-09 01:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "61187",
+          "recorded_target": "-0.001",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": null,
+          "original_reserve_grid_quantity_after": null,
+          "native_entry_min": "64.24635"
+        },
+        {
+          "time": "2024-08-09 02:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RESERVE_LOSS_TO_ZERO_MATCHES_RECORDED_ZERO_TARGET",
+            "RECORDED_TARGET_CHANGED"
+          ],
+          "original_open": "61366.7",
+          "recorded_target": "0",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.001",
+          "original_reserve_grid_quantity_after": "0",
+          "native_entry_min": "64.435035"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "BTC/USDT:USDT/reversal/-1/2024-08-09T01:00:00+00:00",
+        "BTC/USDT:USDT/trend/-1/2024-08-06T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "pair": "ETH/USDT:USDT",
+      "reserve_hours": 5,
+      "native_padding_hours": 5,
+      "same_hour_overlap": 5,
+      "reserve_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "padding_episode_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "examples": [
+        {
+          "time": "2024-08-04 19:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN",
+            "RECORDED_TARGET_CHANGED",
+            "RECORDED_ACTUAL_QUANTITY_CHANGED"
+          ],
+          "original_open": "2728.17",
+          "recorded_target": "-0.008",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.009",
+          "original_reserve_grid_quantity_after": "0.008",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        },
+        {
+          "time": "2024-08-04 20:00:00+00:00",
+          "flags": [
+            "ACTIVE_RAW_FAMILY_INTENTION",
+            "VALID_GRID_TARGET_LOSES_LOT_IN_ORIGINAL_RESERVE_DIAGNOSIS",
+            "RESERVE_LOSS_MATCHES_RECORDED_FINAL_TARGET",
+            "RECORDED_FRESH_ENTRY_TARGET",
+            "BELOW_NATIVE_ENTRY_PADDING_RECOMPUTED",
+            "RECORDED_ENTRY_TARGET_WITHOUT_ACTUAL_FILL_REASON_UNKNOWN"
+          ],
+          "original_open": "2755.84",
+          "recorded_target": "-0.008",
+          "actual_order_ids": [],
+          "original_reserve_grid_quantity_before": "0.009",
+          "original_reserve_grid_quantity_after": "0.008",
+          "native_entry_min": "22.1052631578947368421052631578947368421052631578947368421053"
+        }
+      ],
+      "same_episode_overlap_ids": [
+        "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+      ],
+      "episode_membership_is_not_family_PnL_attribution": true
+    }
+  ],
+  "endpoint_reproduction": {
+    "precision28": "0.001 BTC",
+    "precision60": "0 BTC",
+    "desired": "0.001 BTC",
+    "equity": "1000",
+    "price": "60000",
+    "mode": "A-trend/base",
+    "real_executed_precision": 60,
+    "existing_tests_missed_decimal60_valid_lot_endpoint": true
+  },
+  "execution_fidelity": "CONFIRMED_DECIMAL60_ENDPOINT_LOT_DEFECT; OLD_RUN_INTEGRITY_PASS_DOES_NOT_PROVE_APPROVED_RULE_FIDELITY",
+  "old_model_results": "PRESERVED_IMPLEMENTATION_AFFECTED_EXECUTED_PATHS_NOT_UNDEFECTIVE_RULE_ECONOMICS",
+  "natural_count_bounds_scope": "OLD_EXECUTED_PATHS_ONLY; FULL_ORIGINAL_LOGICAL_INTERVALS; NOT_STATISTICAL_INDEPENDENCE_OR_REPAIRED_PATH_FORECAST",
+  "unchanged_controls": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "aa790cd64c8baee3ded17c641fc4c4d6ccef3a7d72d182f67005e96369a00d40",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "a38fb7f477ebd7c79f0cf16eb62aa728d78529846ea454574d64d41e1f1afa78",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897"
+  },
+  "budget_consumed": 18,
+  "budget_total": 96,
+  "reserved_jobs_still_sealed": 10,
+  "new_gets": 0,
+  "native_constructors": 0,
+  "native_starts": 0,
+  "new_fills": 0,
+  "new_returns": null,
+  "family_pnl": null,
+  "economic_qualification": "UNKNOWN_NO_REAL_ECONOMIC_QUALIFICATION",
+  "tests_passed": 15,
+  "recommendation": "ONLY_SEPARATE_FIXED_PACKAGE_REVIEW_OF_MINIMAL_RESERVE_ENDPOINT_AND_MAXIMAL_LEGAL_GRID_FIX",
+  "proposed_fix": "If complete desired is valid, preserve it through correct lot quantization. Only when reduction is needed choose maximum legal grid target within original post-cost caps; no epsilon, upward opening inflation or min-lot padding waiver.",
+  "proposed_tests": [
+    "Decimal60",
+    "one_lot",
+    "multiple_lots",
+    "shorts",
+    "existing_positions",
+    "binding_post_cost_cap_boundaries"
+  ],
+  "no_authorization_for_fix_or_market_execution": true,
+  "no_replay_of_consumed_keys": true,
+  "ui_imported": false,
+  "new_diagnostic_tests_passed": 9,
+  "display_values_are_not_gate_arithmetic": "Full exact values and interval proof remain in the SHA-bound Git-external summary and detail files."
+}
