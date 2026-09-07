@@ -1234,7 +1234,8 @@ def _validate_prefilter_evidence(value: Any, generation: Mapping, candidate: Map
                   "profile_id", "profile_snapshot_sha256", "code_sha256", "protocol_sha256",
                   "source_provenance_sha256", "source_receipt_sha256", "search_source_provenance_sha256",
                   "search_ohlcv_sha256", "report_sha256", "entry_boundary_report_sha256", "counts",
-                  "required_total", "native_search_runs", "pnl", "recorded_at_utc", "experiment_name"}
+                  "required_total", "native_search_runs", "pnl", "recorded_at_utc", "experiment_name",
+                  "scoring_start_utc", "scoring_end_exclusive_utc"}
         valid = (isinstance(value, dict) and set(value) == fields
                  and value["contract"] == "FROZEN_SIGNAL_CAPACITY_EVIDENCE_V1"
                  and value["stage"] == "PRE_SEARCH" and value["status"] == "UNDERPOWERED"
@@ -1264,6 +1265,10 @@ def _validate_prefilter_evidence(value: Any, generation: Mapping, candidate: Map
         stamp = datetime.fromisoformat(value["recorded_at_utc"])
         if stamp.utcoffset() != timezone.utc.utcoffset(stamp):
             raise ValueError("UTC required")
+        start, end = (datetime.fromisoformat(value[k]) for k in
+                      ("scoring_start_utc", "scoring_end_exclusive_utc"))
+        if any(d.utcoffset() != timezone.utc.utcoffset(d) for d in (start, end)) or start >= end:
+            raise ValueError("positive UTC scoring window required")
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise GenerationContractError("invalid_prefilter_evidence", "Invalid capacity evidence", status=409) from exc
 
@@ -1276,7 +1281,7 @@ def attach_prefilter_evidence(database: Path, candidate_id: str, evidence_root: 
     sample gate comes from the immutable Generation Profile, never CLI numbers.
     Direction-only failures are deliberately outside this narrow total-capacity importer.
     """
-    from lab.bounded_research import canonical
+    from lab.bounded_research import canonical, timerange
     from lab.holdout_run import _read_regular_relative_at, HoldoutRunError
     try:
         root = Path(evidence_root)
@@ -1306,6 +1311,15 @@ def attach_prefilter_evidence(database: Path, candidate_id: str, evidence_root: 
                 protocol_sha = hashlib.sha256(read("final-protocol.md")).hexdigest()
             finally:
                 os.close(root_fd)
+            scoring_start, scoring_end = timerange(contract["search_timerange"], "Search")
+            blocks = [(datetime.fromisoformat(b["start"]), datetime.fromisoformat(b["end_exclusive"]))
+                      for b in cap["blocks"]]
+            if (not blocks or blocks[0][0] != scoring_start or blocks[-1][1] != scoring_end
+                    or any(a.utcoffset() != timezone.utc.utcoffset(a)
+                           or b.utcoffset() != timezone.utc.utcoffset(b) or a >= b for a, b in blocks)
+                    or any(left[1] != right[0] for left, right in zip(blocks, blocks[1:]))
+                    or provenance["contract"]["profile_acquisition"]["search_timerange"] != contract["search_timerange"]):
+                raise ValueError("frozen scoring window mismatch")
             if (terminal["status"] != "UNDERPOWERED" or terminal["candidate_id"] != candidate_id or terminal["generation_id"] != frozen.generation_run_id
                     or terminal["strategy_sha256"] != frozen.code_sha256
                     or terminal["protocol_sha256"] != protocol_sha
@@ -1347,6 +1361,7 @@ def attach_prefilter_evidence(database: Path, candidate_id: str, evidence_root: 
                          entry_boundary_report_sha256=boundary_sha256,
                          counts={"total": boundary["in_S_entry_upper_bound"], "long": boundary["long_upper_bound"], "short": boundary["short_upper_bound"]},
                          required_total=frozen.profile["min_development_trades"], native_search_runs=0, pnl=None,
+                         scoring_start_utc=scoring_start.isoformat(), scoring_end_exclusive_utc=scoring_end.isoformat(),
                          recorded_at_utc=datetime.now(timezone.utc).isoformat(), experiment_name=frozen.strategy_family)
             candidate = connection.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
             generation = connection.execute("SELECT * FROM generation_runs WHERE id=?", (frozen.generation_run_id,)).fetchone()

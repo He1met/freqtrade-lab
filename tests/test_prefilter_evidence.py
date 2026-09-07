@@ -3,6 +3,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,7 @@ def fixture(tmp_path):
         snap = cg.load_approved_candidate_snapshot(c, cid)
     (root / 'final-protocol.md').write_bytes(b'synthetic frozen protocol')
     protocol = hashlib.sha256((root / 'final-protocol.md').read_bytes()).hexdigest()
-    contract = dict(profile_snapshot=snap.profile, single_baseline=dict(protocol_sha256=protocol, strategy_sha256=snap.code_sha256))
+    contract = dict(search_timerange='20230101-20240101', profile_snapshot=snap.profile, single_baseline=dict(protocol_sha256=protocol, strategy_sha256=snap.code_sha256))
     put(root, 'profile-contract.json', contract)
     source_sha = put(root, 'complete-source/retained-data-provenance.json', dict(contract={'profile_acquisition':contract}, files={'retrieval_receipt.json':dict(sha256='b'*64)}))
     search_sha = put(root, 'search-campaign/acquisition/retained-data-provenance.json', dict(local_only_files={'synthetic-futures.feather':dict(sha256='d'*64)}))
@@ -34,6 +35,7 @@ def fixture(tmp_path):
     qc = dict(status='SOURCE_QC_PASS', phase_qc=[dict(stage='S+D', provenance_sha256=source_sha), dict(stage='S', provenance_sha256=search_sha)])
     put(root, 'source-publication.json', source); put(root, 'source-aggregation-qc.json', qc)
     cap = dict(status='UNDERPOWERED', exposure='S_SIGNAL_EXPOSED', strategy_sha256=snap.code_sha256, source_sha256='d'*64,
+               blocks=[dict(start='2023-01-01T00:00:00+00:00', end_exclusive='2024-01-01T00:00:00+00:00')],
                thresholds=dict(natural_total=snap.profile['min_development_trades']), PnL_or_future_returns_computed=False, native_backtests=0)
     cap_sha = put(root, 'signal-capacity.json', cap)
     terminal = dict(status='UNDERPOWERED', candidate_id=cid, generation_id=gid, strategy_sha256=snap.code_sha256,
@@ -62,6 +64,23 @@ def test_cli_roundtrip_preserves_history_and_public_projection(tmp_path):
     public = cg.load_generation(db, gid)
     assert public['status'] == 'COMPLETED' and public['candidate']['review_status'] == 'APPROVED'
     assert public['candidate']['prefilter_evidence'] == receipt and receipt['pnl'] is None
+    assert receipt['scoring_start_utc'] == '2023-01-01T00:00:00+00:00'
+    assert receipt['scoring_end_exclusive_utc'] == '2024-01-01T00:00:00+00:00'
+    from lab.research_console import create_research_console_server
+    from tests.test_research_console import _request
+    (tmp_path/'runtime').mkdir(); (tmp_path/'pilot').mkdir()
+    server = create_research_console_server(db, tmp_path/'runtime', tmp_path/'pilot', port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    try:
+        status, _, _, payload = _request(server, '/api/generations/'+gid)
+        assert status == 200 and payload['candidate']['prefilter_evidence'] == receipt
+        status, _, html, _ = _request(server, '/console')
+        assert status == 200 and b'/console.js' in html
+        status, _, script, _ = _request(server, '/console.js')
+        assert status == 200 and b'generationStatus.textContent = JSON.stringify(safe, null, 2)' in script
+    finally:
+        server.research_console_controller.shutdown()
+        server.shutdown(); server.server_close(); thread.join(timeout=5)
     after = state(db)
     assert {k:v for k,v in before.items() if k != 'candidates'} == {k:v for k,v in after.items() if k != 'candidates'}
     with get_connection(db, read_only=True) as c:
@@ -75,11 +94,15 @@ def test_cli_roundtrip_preserves_history_and_public_projection(tmp_path):
     assert 'generationStatus.textContent = JSON.stringify(safe, null, 2)' in console
 
 
-@pytest.mark.parametrize('field', ['candidate_id','generation_id','strategy_sha256','protocol_sha256','native_Search_runs','source','receipt','profile','threshold','report_hash'])
+@pytest.mark.parametrize('field', ['candidate_id','generation_id','strategy_sha256','protocol_sha256','native_Search_runs','source','receipt','profile','threshold','report_hash','window','window_timezone','window_reverse'])
 def test_binding_failures_are_atomic(tmp_path, field):
     db, gid, cid, root, args = fixture(tmp_path); before = state(db)
     path = root/'capacity-terminal-receipt.json'; value = json.loads(path.read_bytes())
-    if field == 'profile':
+    if field.startswith('window'):
+        p = json.loads((root/'signal-capacity.json').read_bytes())
+        p['blocks'][0]['start'] = {'window':'2023-01-02T00:00:00+00:00', 'window_timezone':'2023-01-01T01:00:00+01:00', 'window_reverse':'2025-01-01T00:00:00+00:00'}[field]
+        put(root,'signal-capacity.json',p)
+    elif field == 'profile':
         p = json.loads((root/'profile-contract.json').read_bytes()); p['profile_snapshot']['name']='tampered'; put(root,'profile-contract.json',p)
     elif field == 'threshold':
         p = json.loads((root/'signal-capacity.json').read_bytes()); p['thresholds']['natural_total']=999; put(root,'signal-capacity.json',p)
