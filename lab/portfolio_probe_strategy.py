@@ -116,6 +116,9 @@ class PortfolioSyntheticProbe(IStrategy):
         return desired
 
     def confirm_trade_entry(self, pair, order_type, amount, rate, time_in_force, current_time, entry_tag, side, **kwargs):
+        closed = Trade.get_trades_proxy(pair=pair, is_open=False)
+        if any(t.close_date_utc >= current_time for t in closed):
+            return False
         desired = abs(self._target(pair, current_time))
         existing = sum(t.amount for t in Trade.get_trades_proxy(pair=pair, is_open=True))
         return amount+existing <= desired+1e-9

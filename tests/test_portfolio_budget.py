@@ -70,3 +70,4 @@ def test_postprocessing_recovery_preserves_failed_terminal_and_consumption(tmp_p
     with NativeBudget(tmp_path).locked() as b:
         assert [r["event"] for r in b.events] == ["RESERVED","FAILED","AUDIT_RECOVERED"]
         with pytest.raises(BudgetError): reserve(b)
+        with pytest.raises(BudgetError): reserve(b,"retry/1",retry_of="synthetic/1")

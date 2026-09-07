@@ -138,7 +138,7 @@ class LockedBudget:
         elif key in {f"retry/{n}" for n in range(1, 5)}:
             parent = next((r for r in self.events if r["key"] == retry_of and r["event"] == "RESERVED"), None)
             terminal = next((r for r in self.events if r["key"] == retry_of and r["event"] in {"FAILED", "INTERRUPTED"}), None)
-            if parent is None or terminal is None or parent["input_sha256"] != input_sha256 or parent["source_sha256"] != source_sha256:
+            if parent is None or terminal is None or any(r["key"]==retry_of and r["event"]=="AUDIT_RECOVERED" for r in self.events) or parent["input_sha256"] != input_sha256 or parent["source_sha256"] != source_sha256:
                 raise BudgetError("retry requires failed same-input/source parent")
             if any(r.get("retry_of") == retry_of for r in self.events):
                 raise BudgetError("retry chain must reference its latest failed attempt")
