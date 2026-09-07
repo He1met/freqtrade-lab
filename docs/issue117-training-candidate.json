@@ -1,0 +1,892 @@
+{
+  "schema": "issue117-training-candidate-v1",
+  "status": "CANDIDATE_NOT_REGISTERED",
+  "exchange": "binance",
+  "instrument_type": "USDT_PERPETUAL",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "purpose": "EXPLORATORY_TRAINING",
+  "independent_evidence": false,
+  "pool": {
+    "start": "2021-01-01T00:00:00Z",
+    "end_exclusive": "2023-01-01T00:00:00Z",
+    "warmup_start": "2020-04-02T00:00:00Z"
+  },
+  "expected_hourly_rows_per_symbol": 24096,
+  "acquisition_authorized": false,
+  "native_authorized": false,
+  "max_acquisition_gets": 122,
+  "max_native_calls": 96,
+  "consumed_slots": 8,
+  "remaining_slots": 88,
+  "remaining_jobs": [
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-42",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-63",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-84",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-1.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-42",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-63",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-84",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-1.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/stress/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/trend-42",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/trend-63",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/trend-84",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/reversal-1.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/reversal-2",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/train/reversal-2.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/base/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-3/validate/stress/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/trend-42",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/trend-63",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/trend-84",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/reversal-1.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/reversal-2",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/train/reversal-2.5",
+      "role": "TRAINING",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/base/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/A-trend",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/A-reversal",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/C",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/market-exposure",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/fold-4/validate/stress/half-risk-B",
+      "role": "VALIDATION",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/A-trend",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/A-reversal",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/B",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/C",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/market-exposure",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/base/half-risk-B",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/A-trend",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/A-reversal",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/B",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/C",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/market-exposure",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/final/stress/half-risk-B",
+      "role": "FINAL_DIAGNOSTIC",
+      "native_calls": 1,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/synthetic/8",
+      "role": "SYNTHETIC",
+      "native_calls": 1,
+      "status": "UNBOUND_NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/retry/2",
+      "role": "RETRY",
+      "native_calls": 1,
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/retry/3",
+      "role": "RETRY",
+      "native_calls": 1,
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "key": "BTC_ETH_PORTFOLIO_V1/retry/4",
+      "role": "RETRY",
+      "native_calls": 1,
+      "status": "NOT_AUTHORIZED"
+    }
+  ],
+  "scope_policy": "MATCH_EXPLICIT_GLOBAL_OR_EXCHANGE_INSTRUMENT_PAIR_SOURCE_SCOPE_THEN_HALF_OPEN_OVERLAP_INCLUDING_WARMUP",
+  "scope_adjudication_thread": "01a07c6a-d535-7030-814c-7775d0f27f99"
+}

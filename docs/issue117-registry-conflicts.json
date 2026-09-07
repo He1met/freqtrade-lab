@@ -1,0 +1,327 @@
+{
+  "ledger_sha256": "b395c63a777eebbb453ec73e2a71cd3c4ead194ed4a71f23ff9854720c362b15",
+  "records": [
+    {
+      "line": 59,
+      "record_id": "line-sha256:7da0da0e6987208847e6ea2ffb7ba639433e07854ac0b88e0f7512e1bcc4953f",
+      "fields": {
+        "record_type": "COHORT_PREREGISTERED",
+        "recorded_at_utc": "UNKNOWN",
+        "registered_at_utc": "2026-09-02T10:55:22Z",
+        "status": "READY_FOR_FROZEN_SEARCH",
+        "schema": "UNKNOWN",
+        "cohort_id": "volatility-managed-btc-eth-2022-v1",
+        "direction": "UNKNOWN",
+        "window": "UNKNOWN",
+        "training_window": "UNKNOWN",
+        "search_window": "2022-01-01T00:00:00Z/2023-01-01T00:00:00Z",
+        "reserved_development_window": "2023-01-01T00:00:00Z/2024-01-01T00:00:00Z",
+        "purpose": "UNKNOWN",
+        "claim_boundary": "UNKNOWN",
+        "protocol_sha256": "UNKNOWN",
+        "preregistration_sha256": "cf460f6583301deba6bcf4df51e2ca083d7bcad8f064fadbb36e6fe625b3f96e",
+        "seal_receipt_sha256": "UNKNOWN",
+        "source_receipt_sha256": "UNKNOWN",
+        "development_source_opened": false,
+        "exploratory_access_allowed": "UNKNOWN",
+        "supersedes": "UNKNOWN",
+        "issuer": "UNKNOWN",
+        "authorization": "UNKNOWN",
+        "exchange": "UNKNOWN",
+        "domain": "UNKNOWN",
+        "pair": "UNKNOWN",
+        "symbols": "UNKNOWN"
+      }
+    },
+    {
+      "line": 63,
+      "record_id": "line-sha256:ec7d7cef80a2c8a67150759faf2c7508102d0725b156628736aa38a5d670da23",
+      "fields": {
+        "record_type": "COHORT_PREREGISTERED",
+        "recorded_at_utc": "UNKNOWN",
+        "registered_at_utc": "2026-09-02T11:03:07Z",
+        "status": "READY_FOR_FROZEN_SEARCH",
+        "schema": "UNKNOWN",
+        "cohort_id": "volatility-managed-btc-eth-2020-v2",
+        "direction": "UNKNOWN",
+        "window": "UNKNOWN",
+        "training_window": "UNKNOWN",
+        "search_window": "2020-01-01T00:00:00Z/2021-01-01T00:00:00Z",
+        "reserved_development_window": "2021-01-01T00:00:00Z/2022-01-01T00:00:00Z",
+        "purpose": "UNKNOWN",
+        "claim_boundary": "UNKNOWN",
+        "protocol_sha256": "UNKNOWN",
+        "preregistration_sha256": "2befedfabbcc63a6af84a8b01dcf7a99e7c654425f97271ad33dd6558c6d601e",
+        "seal_receipt_sha256": "UNKNOWN",
+        "source_receipt_sha256": "UNKNOWN",
+        "development_source_opened": false,
+        "exploratory_access_allowed": "UNKNOWN",
+        "supersedes": "UNKNOWN",
+        "issuer": "UNKNOWN",
+        "authorization": "UNKNOWN",
+        "exchange": "UNKNOWN",
+        "domain": "UNKNOWN",
+        "pair": "UNKNOWN",
+        "symbols": "UNKNOWN"
+      }
+    },
+    {
+      "line": 67,
+      "record_id": "line-sha256:a72b80abb743d57c78c78ef34557b3416ad81deae82bfb603903834c3e875da6",
+      "fields": {
+        "record_type": "OUTER_VALIDATION_SEALED",
+        "recorded_at_utc": "2026-09-02T11:40:30Z",
+        "registered_at_utc": "UNKNOWN",
+        "status": "SEALED_UNREAD",
+        "schema": "UNKNOWN",
+        "cohort_id": "UNKNOWN",
+        "direction": "UNKNOWN",
+        "window": "2025-01-01T00:00:00Z/2026-01-01T00:00:00Z",
+        "training_window": "UNKNOWN",
+        "search_window": "UNKNOWN",
+        "reserved_development_window": "UNKNOWN",
+        "purpose": "UNIQUE_OUTER_VALIDATION_ONLY",
+        "claim_boundary": "UNKNOWN",
+        "protocol_sha256": "UNKNOWN",
+        "preregistration_sha256": "UNKNOWN",
+        "seal_receipt_sha256": "9b75af365a67e2555ba7c0006d5828796557f932a0ead2038a99b84a89523216",
+        "source_receipt_sha256": "193d7f2db03b3804ed41dbe922421c7e454d92d9a2721b5432b9cbd6108cef93",
+        "development_source_opened": "UNKNOWN",
+        "exploratory_access_allowed": false,
+        "supersedes": "UNKNOWN",
+        "issuer": "UNKNOWN",
+        "authorization": "UNKNOWN",
+        "exchange": "UNKNOWN",
+        "domain": "UNKNOWN",
+        "pair": "UNKNOWN",
+        "symbols": "UNKNOWN"
+      }
+    },
+    {
+      "line": 68,
+      "record_id": "line-sha256:c481c320ac30b4d980d142fd7ee910869eb02da50ac68071970845c134177446",
+      "fields": {
+        "record_type": "EXPLORATORY_TRAINING_PROTOCOL",
+        "recorded_at_utc": "2026-09-02T11:52:00Z",
+        "registered_at_utc": "UNKNOWN",
+        "status": "PROTOCOL_FROZEN_BEFORE_ECONOMIC_RUN",
+        "schema": "EXPLORATORY_TRAINING_SANDBOX_V1",
+        "cohort_id": "UNKNOWN",
+        "direction": "UNKNOWN",
+        "window": "UNKNOWN",
+        "training_window": "2020-01-01T00:00:00Z/2025-01-01T00:00:00Z",
+        "search_window": "UNKNOWN",
+        "reserved_development_window": "UNKNOWN",
+        "purpose": "UNKNOWN",
+        "claim_boundary": "NO_UNBIASED_ECONOMIC_CLAIM",
+        "protocol_sha256": "d050d0383b3d54489b63587ff31bf80998cd6bc14f4a3bbc54ccb1fd7c77523c",
+        "preregistration_sha256": "UNKNOWN",
+        "seal_receipt_sha256": "UNKNOWN",
+        "source_receipt_sha256": "UNKNOWN",
+        "development_source_opened": "UNKNOWN",
+        "exploratory_access_allowed": "UNKNOWN",
+        "supersedes": "UNKNOWN",
+        "issuer": "UNKNOWN",
+        "authorization": "UNKNOWN",
+        "exchange": "UNKNOWN",
+        "domain": "UNKNOWN",
+        "pair": "UNKNOWN",
+        "symbols": "UNKNOWN"
+      }
+    },
+    {
+      "line": 73,
+      "record_id": "line-sha256:bbe7f94e8d0f2e000b9bebc9ebc8561aab73aef9ceffa3803e3ac93a4de66e36",
+      "fields": {
+        "record_type": "OUTER_VALIDATION_SEAL_REVERIFIED",
+        "recorded_at_utc": "2026-09-02T12:25:00Z",
+        "registered_at_utc": "UNKNOWN",
+        "status": "SEALED_UNREAD",
+        "schema": "UNKNOWN",
+        "cohort_id": "UNKNOWN",
+        "direction": "UNKNOWN",
+        "window": "2025-01-01T00:00:00Z/2026-01-01T00:00:00Z",
+        "training_window": "UNKNOWN",
+        "search_window": "UNKNOWN",
+        "reserved_development_window": "UNKNOWN",
+        "purpose": "UNKNOWN",
+        "claim_boundary": "UNKNOWN",
+        "protocol_sha256": "UNKNOWN",
+        "preregistration_sha256": "UNKNOWN",
+        "seal_receipt_sha256": "9b75af365a67e2555ba7c0006d5828796557f932a0ead2038a99b84a89523216",
+        "source_receipt_sha256": "193d7f2db03b3804ed41dbe922421c7e454d92d9a2721b5432b9cbd6108cef93",
+        "development_source_opened": "UNKNOWN",
+        "exploratory_access_allowed": "UNKNOWN",
+        "supersedes": "UNKNOWN",
+        "issuer": "UNKNOWN",
+        "authorization": "UNKNOWN",
+        "exchange": "UNKNOWN",
+        "domain": "UNKNOWN",
+        "pair": "UNKNOWN",
+        "symbols": "UNKNOWN"
+      }
+    }
+  ],
+  "scope_evidence": [
+    {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/volatility-managed-search-2020-v2/master-contract.json",
+      "sha256": "57a2b350bf240d7769b56f28347802747f85273b511cc2e9056c22f1f567ffc7",
+      "schema": "volatility-managed-master-contract-v1",
+      "universe": {
+        "venue": "OKX",
+        "assets": [
+          "BTC-USDT",
+          "ETH-USDT"
+        ],
+        "cash": "USDT_ZERO_YIELD",
+        "selection": "FIXED_EX_ANTE_LONG_HISTORY_UNIVERSE",
+        "shorting": false,
+        "leverage_cap": "1"
+      },
+      "source_receipts": null,
+      "explicit_cross_domain_authorization": "UNKNOWN",
+      "explicit_supersedes": "UNKNOWN",
+      "exact_scope_fields": {
+        "universe": {
+          "venue": "OKX",
+          "assets": [
+            "BTC-USDT",
+            "ETH-USDT"
+          ],
+          "cash": "USDT_ZERO_YIELD",
+          "selection": "FIXED_EX_ANTE_LONG_HISTORY_UNIVERSE",
+          "shorting": false,
+          "leverage_cap": "1"
+        },
+        "windows": {
+          "selection_rule": "latest two complete adjacent unused years immediately before the technically consumed 2022 Search year",
+          "search": "2020-01-01T00:00:00Z/2021-01-01T00:00:00Z",
+          "search_source_receipt_sha256": "3812084be10b3fb100cf52da85fb8b850a24c14c95c42aee911f0ac6a47592ea",
+          "reserved_development": "2021-01-01T00:00:00Z/2022-01-01T00:00:00Z",
+          "development_source_receipt_sha256": "16ec67637d8f96041f3ff6b652abc8ea23c98331b91a4a29c22333d898662768",
+          "global_ledger_collision_check": "PASS_NO_PRIOR_2020_OR_2021_WINDOW_RECORD",
+          "holdout": "SEALED_UNREAD"
+        },
+        "execution": {
+          "entry_exit_price_kind": "SIMULATED_DAILY_OPEN_REFERENCE_NOT_REAL_FILL",
+          "spot_fee_per_fill": "0.001",
+          "cash_return": "0"
+        }
+      }
+    },
+    {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/volatility-managed-search-2022-v1/master-contract.json",
+      "sha256": "a36c2598fead6e2cfeef3ac7bc7c578166beb1185caacb814090767206cd90a7",
+      "schema": "volatility-managed-master-contract-v1",
+      "universe": {
+        "venue": "OKX",
+        "assets": [
+          "BTC-USDT",
+          "ETH-USDT"
+        ],
+        "cash": "USDT_ZERO_YIELD",
+        "selection": "FIXED_EX_ANTE_LONG_HISTORY_UNIVERSE",
+        "shorting": false,
+        "leverage_cap": "1"
+      },
+      "source_receipts": null,
+      "explicit_cross_domain_authorization": "UNKNOWN",
+      "explicit_supersedes": "UNKNOWN",
+      "exact_scope_fields": {
+        "universe": {
+          "venue": "OKX",
+          "assets": [
+            "BTC-USDT",
+            "ETH-USDT"
+          ],
+          "cash": "USDT_ZERO_YIELD",
+          "selection": "FIXED_EX_ANTE_LONG_HISTORY_UNIVERSE",
+          "shorting": false,
+          "leverage_cap": "1"
+        },
+        "windows": {
+          "selection_rule": "latest two complete adjacent unused years immediately before the already-consumed 2024 Search year",
+          "search": "2022-01-01T00:00:00Z/2023-01-01T00:00:00Z",
+          "search_source_receipt_sha256": "3f809ccbcafa02dda987a747574317e4162a4ecc5e63aba0dffe093368905441",
+          "reserved_development": "2023-01-01T00:00:00Z/2024-01-01T00:00:00Z",
+          "development_source_receipt_sha256": "5045ccf23ff7f3a0d4c5d08e881d9ebf5fd884935002ce8bb97d36d043b2d769",
+          "global_ledger_collision_check": "PASS_NO_PRIOR_2022_OR_2023_RECORD",
+          "holdout": "SEALED_UNREAD"
+        },
+        "execution": {
+          "entry_exit_price_kind": "SIMULATED_DAILY_OPEN_REFERENCE_NOT_REAL_FILL",
+          "spot_fee_per_fill": "0.001",
+          "cash_return": "0"
+        }
+      }
+    },
+    {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/exploratory-training-sandbox-v1/protocol.json",
+      "sha256": "d050d0383b3d54489b63587ff31bf80998cd6bc14f4a3bbc54ccb1fd7c77523c",
+      "schema": "EXPLORATORY_TRAINING_SANDBOX_V1",
+      "universe": null,
+      "source_receipts": {
+        "2020": "3812084be10b3fb100cf52da85fb8b850a24c14c95c42aee911f0ac6a47592ea",
+        "2021": "16ec67637d8f96041f3ff6b652abc8ea23c98331b91a4a29c22333d898662768",
+        "2022": "3f809ccbcafa02dda987a747574317e4162a4ecc5e63aba0dffe093368905441",
+        "2023": "5045ccf23ff7f3a0d4c5d08e881d9ebf5fd884935002ce8bb97d36d043b2d769",
+        "2024": "7c3a3316e3daf07803d23b6733a4e795c84b320335f5ec73f1f633f900522f49"
+      },
+      "explicit_cross_domain_authorization": "UNKNOWN",
+      "explicit_supersedes": "UNKNOWN",
+      "exact_scope_fields": {
+        "source_receipts": {
+          "2020": "3812084be10b3fb100cf52da85fb8b850a24c14c95c42aee911f0ac6a47592ea",
+          "2021": "16ec67637d8f96041f3ff6b652abc8ea23c98331b91a4a29c22333d898662768",
+          "2022": "3f809ccbcafa02dda987a747574317e4162a4ecc5e63aba0dffe093368905441",
+          "2023": "5045ccf23ff7f3a0d4c5d08e881d9ebf5fd884935002ce8bb97d36d043b2d769",
+          "2024": "7c3a3316e3daf07803d23b6733a4e795c84b320335f5ec73f1f633f900522f49"
+        },
+        "family": {
+          "universe": [
+            "BTC-USDT",
+            "ETH-USDT",
+            "USDT_ZERO_YIELD_CASH"
+          ],
+          "execution_asset": "BTC-USDT_ONLY",
+          "timeframe": "1Dutc",
+          "decision_frequency_days": 7,
+          "trend_lookback_days": 84,
+          "embargo": "one full daily bar between signal close and simulated next open reference",
+          "candidate_a": "Hold BTC when BTC signal close is strictly above the mean of the prior 84 daily closes; otherwise cash.",
+          "candidate_b": "Same rule plus ETH signal close must also be strictly above its prior-84-day mean; ETH is breadth information only and is never held.",
+          "relationship": "BASELINE_PLUS_ONE_INFORMATION_INCREMENT"
+        },
+        "execution": {
+          "price_kind": "SIMULATED_DAILY_OPEN_REFERENCE_NOT_REAL_FILL",
+          "spot_fee_per_fill": "0.001",
+          "cash_return": "0"
+        }
+      }
+    },
+    {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/volatility-managed-source-development-2021/retrieval-receipt.json",
+      "sha256": "16ec67637d8f96041f3ff6b652abc8ea23c98331b91a4a29c22333d898662768",
+      "schema": "okx-public-dual-spot-daily-source-v1",
+      "universe": null,
+      "source_receipts": null,
+      "explicit_cross_domain_authorization": "UNKNOWN",
+      "explicit_supersedes": "UNKNOWN",
+      "exact_scope_fields": {}
+    },
+    {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/volatility-managed-source-development-2023/retrieval-receipt.json",
+      "sha256": "5045ccf23ff7f3a0d4c5d08e881d9ebf5fd884935002ce8bb97d36d043b2d769",
+      "schema": "okx-public-dual-spot-daily-source-v1",
+      "universe": null,
+      "source_receipts": null,
+      "explicit_cross_domain_authorization": "UNKNOWN",
+      "explicit_supersedes": "UNKNOWN",
+      "exact_scope_fields": {}
+    }
+  ],
+  "conclusion": "Supervisor resolved scope: rows59/63 protect specified OKX spot sources, not Binance USDT perpetual calendars. Row68 does not establish supersession and is not relied upon. Candidate is in authorized exploratory research scope; registration/acquisition/native remain pending fixed-package review.",
+  "supervisor_thread_id": "01a07c6a-d535-7030-814c-7775d0f27f99",
+  "physical_lines": 175,
+  "json_records": 173
+}
