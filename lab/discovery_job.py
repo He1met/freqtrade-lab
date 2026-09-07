@@ -138,7 +138,7 @@ def bounded_process(argv, *, cwd, seconds, cap, stdin=b'', output_file=None):
 
 def overrides():
     values = ['web_search="disabled"', 'mcp_servers={}', 'forced_login_method="chatgpt"',
-              'model_provider="openai"', 'model_providers.openai.request_max_retries=0',
+              'model_provider="openai"', 'model_reasoning_effort="medium"', 'model_providers.openai.request_max_retries=0',
               'model_providers.openai.stream_max_retries=0']
     result = ['--ignore-user-config', '--ignore-rules']
     for value in values: result += ['-c', value]
@@ -147,9 +147,19 @@ def overrides():
     return result
 
 
+def require_tool_isolation():
+    # Pinned CLI feature flags do not establish a pre-request allowlist covering
+    # apply_patch, file readers and deployment-controlled command tools. Neither
+    # read-only sandbox nor post-response event rejection proves that boundary.
+    raise PrecheckError('BLOCKED_TOOL_ISOLATION')
+
+
 class CodexProvider:
     def __init__(self, manifest): self.manifest = manifest
     def preflight(self, workspace):
+        require_tool_isolation()  # Before auth status, HTTP or model invocation.
+        return self._auth_feature_diagnostics(workspace)
+    def _auth_feature_diagnostics(self, workspace):
         binary = Path(self.manifest['codex_binary'])
         require(sha(binary.read_bytes()) == self.manifest['codex_binary_sha256'], 'BLOCKED_CLI_DRIFT')
         # Status only: do not initiate login, print credentials, or force logout.
@@ -164,8 +174,9 @@ class CodexProvider:
                   if len(p := line.split()) >= 3}
         require(code == 0 and states.get('skip_host_skill_discovery') == 'true' and all(states.get(f) == 'false' for f in DISABLED if f != 'unified_exec'),
                 'BLOCKED_TOOL_ISOLATION')
-        return {'auth_mode': 'CHATGPT', 'tool_gates': 'VERIFIED_FALSE', 'binary_sha256': self.manifest['codex_binary_sha256']}
+        return {'auth_mode': 'CHATGPT', 'required_feature_states': {f: states.get(f) for f in DISABLED}, 'unified_exec_exception': states.get('unified_exec'), 'pre_request_tool_isolation': 'NOT_ESTABLISHED', 'binary_sha256': self.manifest['codex_binary_sha256']}
     def __call__(self, prompt, workspace, seconds, cap):
+        require_tool_isolation()  # Direct adapter calls cannot bypass preflight.
         schema_path = ROOT / 'docs/protocols/issue137-proposals-schema-v1.json'
         require(sha(schema_path.read_bytes()) == self.manifest['proposal_schema_sha256'], 'SCHEMA_DRIFT')
         output = workspace / 'final.json'
@@ -188,6 +199,7 @@ def check_manifest(m):
             m.get('provider_seconds') == 180 and m.get('provider_calls') == 1 and
             m.get('output_bytes') == 1048576 and m.get('prompt_bytes') == 196608, 'UNREVIEWED_LIMITS')
     utc(m.get('deadline_utc'))
+    require(m.get('model_reasoning_effort') == 'medium', 'UNREVIEWED_REASONING_EFFORT')
     require(m.get('auth') == 'CHATGPT_ONLY_NO_API_KEY_FALLBACK', 'BLOCKED_AUTH_MODE')
     for key in ('titles', 'institutions'):
         require(isinstance(m.get(key), list) and len(m[key]) == 2 and all(isinstance(v, str) and v for v in m[key]), 'INVALID_SOURCE_METADATA')

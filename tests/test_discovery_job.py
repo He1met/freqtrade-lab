@@ -179,7 +179,7 @@ def test_real_adapter_rejects_non_chatgpt_without_model(tmp_path, monkeypatch, s
         calls.append(argv); return 0, status, b''
     monkeypatch.setattr(module, 'bounded_process', process)
     with pytest.raises(PrecheckError, match='BLOCKED_AUTH_MODE'):
-        module.CodexProvider(m).preflight(tmp_path)
+        module.CodexProvider(m)._auth_feature_diagnostics(tmp_path)
     assert len(calls) == 1 and calls[0][-2:] == ['login', 'status']
 
 
@@ -187,3 +187,21 @@ def test_redirect_rejected_without_following():
     from lab.discovery_job import NoRedirect
     with pytest.raises(PrecheckError, match='HTTP_REDIRECT_BLOCKED'):
         NoRedirect().redirect_request(None, None, 302, 'redirect', {}, 'https://example.org/')
+
+
+def test_live_adapter_blocks_before_any_auth_http_or_provider(setup, monkeypatch):
+    from lab import discovery_job as module
+    m, registry, calls, http = setup
+    monkeypatch.setattr(module, 'bounded_process', lambda *a, **k: pytest.fail('external process'))
+    result = run_job(m, registry=registry, http=http)
+    assert result['status'] == 'BLOCKED_TOOL_ISOLATION' and not result['attempts'] and not calls
+    with pytest.raises(PrecheckError, match='BLOCKED_TOOL_ISOLATION'):
+        module.CodexProvider(m)(b'prompt', registry, 1, 100)
+
+
+def test_medium_bound_in_manifest_and_argv(setup):
+    m, _, _, _ = setup
+    assert m['model_reasoning_effort'] == 'medium'
+    assert 'model_reasoning_effort="medium"' in overrides()
+    m['model_reasoning_effort'] = 'high'
+    with pytest.raises(PrecheckError, match='UNREVIEWED_REASONING_EFFORT'): check_manifest(m)

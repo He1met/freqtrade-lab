@@ -1,14 +1,14 @@
 {
   "schema": "issue137-engineering-receipt-v1",
-  "stage": "ENGINEERING_ONLY_AWAITING_REVIEW",
-  "tests_passed": 70,
+  "stage": "ENGINEERING_TESTED_REAL_PROVIDER_BLOCKED_TOOL_ISOLATION",
+  "tests_passed": 72,
   "targets": [
     "tests/test_discovery_job.py",
     "tests/test_literature_discovery.py",
     "tests/test_mechanism_precheck.py"
   ],
-  "manifest_file_sha256": "66af429de75c9d6b09d225d737ed080472de84f01f5057831f072cd33b23aed7",
-  "manifest_canonical_sha256": "2f372837892fa5e83c9026c51f552215bb23978f1393c21793a4d25945d3b4d8",
+  "manifest_file_sha256": "af3af03af50d075ef5ffe73c222babfdc2804d32cd7037a1c159f74e290d5406",
+  "manifest_canonical_sha256": "c7274f5108a8c4623d0393085eb1fbddd5be8d3884f140bf8d3510520ed83763",
   "synthetic_result_sha256": "b7ed56d6221e035f2bb83768fce5405bb0bce7876a399d8b1c68d3f2f448a64e",
   "synthetic_result_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue137-engineering-evidence/synthetic-result.json",
   "synthetic_repeat_identical": true,
@@ -41,5 +41,11 @@
   "database_writes": 0,
   "generation_calls": 0,
   "scheduler_created": false,
-  "next_action": "SUPERVISOR_FIXED_HEAD_REVIEW_BEFORE_ANY_LIVE_HTTP_OR_PROVIDER"
+  "next_action": "SUPERVISOR_REVIEW_ENGINEERING_ONLY; NO_LIVE_PROVIDER_AUTHORIZED_OR_ENABLED",
+  "synthetic_saved_receipt_manifest_sha256": "2f372837892fa5e83c9026c51f552215bb23978f1393c21793a4d25945d3b4d8",
+  "synthetic_saved_receipt_scope": "PREVIOUS_ENGINEERING_REVISION; CURRENT_REVISION_RECHECKED_BY_TARGETED_TESTS",
+  "provider_readiness": "BLOCKED_TOOL_ISOLATION",
+  "model_reasoning_effort": "medium",
+  "pre_request_tool_isolation": "NOT_ESTABLISHED",
+  "hard_block_before_auth_http_provider": true
 }

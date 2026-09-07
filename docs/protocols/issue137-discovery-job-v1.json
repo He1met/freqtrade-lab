@@ -30,9 +30,11 @@
   "authorization": "ENGINEERING_ONLY_PENDING_SUPERVISOR_FIXED_HEAD_REVIEW",
   "engineering_limits_not_economic_gates": true,
   "implementation_sha256": {
-    "lab/discovery_job.py": "e34780025587fc0866f27bbc20aec9fe0413fc278c71a3316853cb73b0d1bb7c",
+    "lab/discovery_job.py": "d1c71c16f18cae6277d588ef2e5c33d609f765728c0a7bf676f29e10fc57284c",
     "lab/literature_discovery.py": "e81d54c5c4562cf67519fda31f496a404e267aa5e255599c18c63519857afccd",
     "lab/codex_generation.py": "7f578e49d8f8503553c86c15d258dcf6a4bc16040e5992db727f892ac2e7b092",
     "scripts/run_discovery_job.py": "dd7678c17e17c6d2a094c93f8f2bd64962fb9f368c8fd268f0339b448258cee7"
-  }
+  },
+  "model_reasoning_effort": "medium",
+  "provider_readiness": "BLOCKED_TOOL_ISOLATION"
 }
