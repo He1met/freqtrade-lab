@@ -37,6 +37,21 @@ def verify_environment(source):
     return git("rev-parse", "HEAD^{tree}")
 
 
+def synthetic_config(mode):
+    from lab.bounded_research import profile_search_config
+    pairs = ["BTC/USDT:USDT", "ETH/USDT:USDT"]
+    # Reuse base field conventions without changing the old single-pair API.
+    config = profile_search_config(dict(exchange="binance", domain="BINANCE_CRYPTO_PERP",
+        trading_mode="futures",margin_mode="isolated",pairs=pairs[:1],max_open_trades=1,
+        stake_amount=400.,starting_balance=1000.,taker_fee_rate=.0006,timeframe="1d"))
+    config.update(timeframe="1h", max_open_trades=2, stake_amount="unlimited",tradable_balance_ratio=1.,portfolio_probe_mode=mode)
+    config["exchange"]["pair_whitelist"] = pairs
+    config["order_types"] = {"entry":"market","exit":"market","stoploss":"market","stoploss_on_exchange":False}
+    config["entry_pricing"]["price_side"] = "other"
+    config["exit_pricing"]["price_side"] = "other"
+    return config
+
+
 def run_native(root, mode, source):
     # The budget is already fsynced before any Freqtrade import or constructor.
     sys.path.insert(0, str(source))
@@ -55,7 +70,6 @@ def run_native(root, mode, source):
     from freqtrade.data.history.datahandlers import get_datahandler
     from freqtrade.exchange.binance import Binance
     from freqtrade.optimize.backtesting import Backtesting
-    from lab.bounded_research import profile_search_config
     from lab.portfolio_probe_strategy import PAIRS, PRICES, START, synthetic_mark
 
     for name in ("data", "user", "exports"): (root/name).mkdir()
@@ -84,13 +98,7 @@ def run_native(root, mode, source):
                     "price":{"min":.01,"max":None},"cost":{"min":50. if base=="BTC" else 20.,"max":None},
                     "leverage":{"min":1.,"max":20.}}, maker=.0006,taker=.0006,info={}))
         tiers[pair] = [{"minNotional":0.,"maxNotional":1000000.,"maintenanceMarginRate":.005,"maxLeverage":20.,"maintAmt":0.}]
-    config_value = profile_search_config(dict(exchange="binance", domain="BINANCE_CRYPTO_PERP",
-        trading_mode="futures",margin_mode="isolated",pairs=list(PAIRS),max_open_trades=2,
-        stake_amount=400.,starting_balance=1000.,taker_fee_rate=.0006,timeframe="1d"))
-    config_value.update(timeframe="1h", stake_amount="unlimited", tradable_balance_ratio=1., portfolio_probe_mode=mode)
-    config_value["order_types"] = {"entry":"market","exit":"market","stoploss":"market","stoploss_on_exchange":False}
-    config_value["entry_pricing"]["price_side"] = "other"
-    config_value["exit_pricing"]["price_side"] = "other"
+    config_value = synthetic_config(mode)
     config_path = root/"config.json"; config_path.write_bytes(canonical(config_value))
     config = setup_optimize_configuration(dict(command="backtesting",config=[str(config_path)],
         datadir=str(root/"data"),user_data_dir=str(root/"user"),strategy_path=str(REPO/"lab"),

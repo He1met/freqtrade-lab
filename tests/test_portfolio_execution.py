@@ -32,3 +32,12 @@ def test_closed_roundtrip_and_funding_sign_do_not_double_count():
              {"pair": "ETH", "side": "buy", "amount": "2", "price": "40"}]
     assert fill_equity(fills, {}, funding="0.01")["equity"] == D("1019.902")
     assert fill_equity(fills, {}, funding="0.01", slippage="0.0006")["equity"] == D("1019.794")
+
+
+def test_synthetic_config_keeps_old_single_pair_api_unchanged():
+    from scripts.run_portfolio_synthetic import synthetic_config
+    from lab.bounded_research import profile_search_config, PilotError
+    config = synthetic_config("B-risk")
+    assert config["max_open_trades"] == 2 and config["dry_run_wallet"] == 1000
+    assert config["exchange"]["pair_whitelist"] == ["BTC/USDT:USDT", "ETH/USDT:USDT"]
+    with pytest.raises(PilotError): profile_search_config({"pairs":config["exchange"]["pair_whitelist"]})
