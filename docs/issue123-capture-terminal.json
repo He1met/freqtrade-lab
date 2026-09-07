@@ -1,0 +1,329 @@
+{
+  "active_seconds_new": 35.759239196777344,
+  "budget_sha256": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+  "charged_bytes_cumulative": 14603929,
+  "economic_result": null,
+  "executable_source_published": false,
+  "funding_eligibility": "UNKNOWN",
+  "historical_interval_evidence": "UNKNOWN",
+  "launch_manifest_sha256": "0a44f61e103e25f9a20fc05750e428608c2f1d798efafde8674c1a54f45d51a1",
+  "market_native_calls": 0,
+  "parent_budget_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+  "parent_seconds_conservative_charge": 130,
+  "reason": "Observed event spacing and current fundingInfo do not prove historical schedule completeness",
+  "requests_cumulative": 73,
+  "requests_new": 36,
+  "settlement_precision": "UNKNOWN",
+  "status": "BLOCKED_DATA",
+  "structure": "PASS",
+  "symbols": {
+    "BTCUSDT": {
+      "associated_mark_complete": true,
+      "complete_days": 427,
+      "first_funding_ms": 1698796800000,
+      "funding_events": 1281,
+      "hourly_mark_rows": 10248,
+      "hourly_trade_rows": 10248,
+      "interval_ms_counts": {
+        "28799985": 1,
+        "28799986": 1,
+        "28799987": 1,
+        "28799990": 1,
+        "28799991": 2,
+        "28799992": 2,
+        "28799993": 1,
+        "28799994": 1,
+        "28799995": 3,
+        "28799996": 6,
+        "28799997": 4,
+        "28799998": 8,
+        "28799999": 135,
+        "28800000": 946,
+        "28800001": 135,
+        "28800002": 9,
+        "28800003": 5,
+        "28800004": 5,
+        "28800005": 3,
+        "28800006": 2,
+        "28800007": 1,
+        "28800008": 3,
+        "28800009": 1,
+        "28800010": 2,
+        "28800013": 2
+      },
+      "last_funding_ms": 1735660800000
+    },
+    "ETHUSDT": {
+      "associated_mark_complete": true,
+      "complete_days": 427,
+      "first_funding_ms": 1698796800000,
+      "funding_events": 1281,
+      "hourly_mark_rows": 10248,
+      "hourly_trade_rows": 10248,
+      "interval_ms_counts": {
+        "28799985": 1,
+        "28799986": 1,
+        "28799987": 1,
+        "28799990": 1,
+        "28799991": 2,
+        "28799992": 2,
+        "28799993": 1,
+        "28799994": 1,
+        "28799995": 3,
+        "28799996": 6,
+        "28799997": 4,
+        "28799998": 8,
+        "28799999": 135,
+        "28800000": 946,
+        "28800001": 135,
+        "28800002": 9,
+        "28800003": 5,
+        "28800004": 5,
+        "28800005": 3,
+        "28800006": 2,
+        "28800007": 1,
+        "28800008": 3,
+        "28800009": 1,
+        "28800010": 2,
+        "28800013": 2
+      },
+      "last_funding_ms": 1735660800000
+    }
+  },
+  "terminal_binding_check": "PASS",
+  "schema": "issue123-sanitized-v2-terminal-v1",
+  "execution_code_commit": "1b89da66320987823c16c48584b11dbf2d353c89",
+  "launch_pushed_commit": "12f81054d2b2568de2d7002aa07c331b770fce7b",
+  "new_decoded_bytes": 6906224,
+  "http_status_counts": {
+    "200": 36
+  },
+  "min_new_request_gap_seconds": 1.0060632228851318,
+  "max_new_http_elapsed_seconds": 0.4372880458831787,
+  "parent_attempts_unchanged": true,
+  "parent_raw_budget_unchanged": true,
+  "registry_prefix_bytes": 186369,
+  "registry_prefix_preserved": true,
+  "registry_after_bytes": 187288,
+  "registry_after_sha256": "384f5c6e950cd5a79bee039ffee913025902d04456e800bb0d122a0f4d74cbce",
+  "registration_line": 177,
+  "registration_sha256": "1d7365cb35d816835a8255991315fd510ea5abb8ba151110c32a6e614f6f588c",
+  "native_budget_unchanged_sha256": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+  "event_structure": {
+    "BTCUSDT": {
+      "events": 1281,
+      "all_have_positive_associated_mark": true,
+      "unique_times": 1281,
+      "nominal_8h_slots": 1281,
+      "observed_offset_min_ms": 0,
+      "observed_offset_max_ms": 15,
+      "observed_one_event_per_nominal_8h_slot": true,
+      "original_times_preserved": true,
+      "historical_schedule_authoritative_evidence": "UNKNOWN",
+      "rate_types": [
+        "Regular"
+      ]
+    },
+    "ETHUSDT": {
+      "events": 1281,
+      "all_have_positive_associated_mark": true,
+      "unique_times": 1281,
+      "nominal_8h_slots": 1281,
+      "observed_offset_min_ms": 0,
+      "observed_offset_max_ms": 15,
+      "observed_one_event_per_nominal_8h_slot": true,
+      "original_times_preserved": true,
+      "historical_schedule_authoritative_evidence": "UNKNOWN",
+      "rate_types": [
+        "Regular"
+      ]
+    }
+  },
+  "source_files": [
+    {
+      "name": "038-exchangeInfo.json",
+      "sha256": "6edb2b1cc12a815497645909f3ddd93ebd587f1e6cf6f14c2eada5c33359f0a9",
+      "bytes": 1108415
+    },
+    {
+      "name": "039-fundingInfo.json",
+      "sha256": "72f71de053af5a02f38281e4db2a59fbd328e73282403f77c09606b284554b44",
+      "bytes": 133691
+    },
+    {
+      "name": "040-fundingRate.json",
+      "sha256": "6d9f6cfd44266d98eb86143c870d73c3f15997022d2c03ed39027359f42849f0",
+      "bytes": 126087
+    },
+    {
+      "name": "041-fundingRate.json",
+      "sha256": "ac8b084d663fa64fe71ed0e923a1ee9bfc41888f1edf20b2a016deefd2c92cf4",
+      "bytes": 35439
+    },
+    {
+      "name": "042-fundingRate.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "bytes": 2
+    },
+    {
+      "name": "043-fundingRate.json",
+      "sha256": "27cdaaca1455fd6088858913be0c406fce372824f815a920c70430c8407e2eac",
+      "bytes": 125047
+    },
+    {
+      "name": "044-fundingRate.json",
+      "sha256": "034fe38bc9f9931ae4b5b22288ceee959db50ae8bf33bd9bd1ad4c559d0b6d19",
+      "bytes": 35126
+    },
+    {
+      "name": "045-fundingRate.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "bytes": 2
+    },
+    {
+      "name": "046-klines.json",
+      "sha256": "ba1ffe450d0b033c475ff2f4c7977a411f47d1d243cc8fb851b430321987d2f4",
+      "bytes": 210704
+    },
+    {
+      "name": "047-klines.json",
+      "sha256": "45c01d688a2b2eb62e7a557faa80ed58252c297db4ddbedf8c90df48592dd2dc",
+      "bytes": 214728
+    },
+    {
+      "name": "048-klines.json",
+      "sha256": "45e28fc3f1ba2ab2b603ade1a2db03dce8c56a0ffa3826b27f7a8bcc644fe402",
+      "bytes": 215681
+    },
+    {
+      "name": "049-klines.json",
+      "sha256": "e7975b74eecfff3b494796248f14837541a8be40f7ddbfbf3c11c5ebf5e82233",
+      "bytes": 213890
+    },
+    {
+      "name": "050-klines.json",
+      "sha256": "1889923af01ed969234b07e8ce14c72442aad7e670c8cfc768e3a646062300c9",
+      "bytes": 214760
+    },
+    {
+      "name": "051-klines.json",
+      "sha256": "d19828258884abad437c24aabea3f2ba088badc8ab7329a546aebdaa06b2577d",
+      "bytes": 214355
+    },
+    {
+      "name": "052-klines.json",
+      "sha256": "220e424fc0d24435a11d41cfbae7563aef306aae851927a8dcd8aca4cc4e7f54",
+      "bytes": 180070
+    },
+    {
+      "name": "053-markPriceKlines.json",
+      "sha256": "d1315a4739b2df79c53a90d6a09731dfe4c1671a3356ebbeb9b19bb36adbcc21",
+      "bytes": 179569
+    },
+    {
+      "name": "054-markPriceKlines.json",
+      "sha256": "110e3c302815c9f1ae42038c190af81820e030f83563b2210136ca9b4b61c7cc",
+      "bytes": 180091
+    },
+    {
+      "name": "055-markPriceKlines.json",
+      "sha256": "8084861655f2e5e12e2162f7f9fc01cb590b93eca3952447cc6b042f42aa2bde",
+      "bytes": 179281
+    },
+    {
+      "name": "056-markPriceKlines.json",
+      "sha256": "6d01fdc11b9ce388b1a89a55b2375fb5586d8267c43924469b03042e2ba6a3be",
+      "bytes": 179110
+    },
+    {
+      "name": "057-markPriceKlines.json",
+      "sha256": "3057d2d924b3088244f41387fa79996c907c97974c48a397136237aad2b17312",
+      "bytes": 178417
+    },
+    {
+      "name": "058-markPriceKlines.json",
+      "sha256": "21fbf0d6239cf98eefdac208b13a85a7b17b270f26a224225ecd56534a8a2f95",
+      "bytes": 178651
+    },
+    {
+      "name": "059-markPriceKlines.json",
+      "sha256": "cda0edefc9fe4cc5856cc76b18636f95e8d2bfef3d3181e2e101145d22b51a17",
+      "bytes": 150431
+    },
+    {
+      "name": "060-klines.json",
+      "sha256": "619f0419048b3c78086873e9a05468838f36a7fd349efdc730e0c75ff92d3c88",
+      "bytes": 209470
+    },
+    {
+      "name": "061-klines.json",
+      "sha256": "43c7177b52c1573727b9796eb72c9b74b80548c1110c9e214592ac7635e78e11",
+      "bytes": 210714
+    },
+    {
+      "name": "062-klines.json",
+      "sha256": "f265a5e9e07209c79cc9edd7dbd230e28517508e06c7087d044e159e3ecc5efd",
+      "bytes": 211620
+    },
+    {
+      "name": "063-klines.json",
+      "sha256": "2383fc32e431ea586d8039c7b79888f6bd51e6e215ce468addd5f3baf2f29afc",
+      "bytes": 210493
+    },
+    {
+      "name": "064-klines.json",
+      "sha256": "c6d94e42dd7ffe4e712ec80cabd3ce146f1de0dffcab2d8676fa6e07d1713440",
+      "bytes": 210818
+    },
+    {
+      "name": "065-klines.json",
+      "sha256": "4f643e3823e45b0d7e2992978d16232153164737818fdf45feaee873734b4e2e",
+      "bytes": 210610
+    },
+    {
+      "name": "066-klines.json",
+      "sha256": "3377205163cd1a19d5424602c687e4d93fe1dac5c1b60e75483bc1932174ddd3",
+      "bytes": 176912
+    },
+    {
+      "name": "067-markPriceKlines.json",
+      "sha256": "950c0d651dfe9a199ee489b0de220ac32e743a7cd426a27850f081613220cc90",
+      "bytes": 177853
+    },
+    {
+      "name": "068-markPriceKlines.json",
+      "sha256": "041a47ee2a95fc31aebee16ba677ab19466aefe075f0e678a59746e8b2aa17e2",
+      "bytes": 177790
+    },
+    {
+      "name": "069-markPriceKlines.json",
+      "sha256": "521b9938ebe7418181ddae2a105b44d2f7c6259e1eb695bc10a4d97fad23b66d",
+      "bytes": 177385
+    },
+    {
+      "name": "070-markPriceKlines.json",
+      "sha256": "6efe787d9b647bc5e3a242d6a7f47bc0166033cd0dc110162dcea323db6631fe",
+      "bytes": 176944
+    },
+    {
+      "name": "071-markPriceKlines.json",
+      "sha256": "0a9c2f7e2a6fa1ca81d40ac0d19e6049dca614b87496c9863f67b011e452a22b",
+      "bytes": 177241
+    },
+    {
+      "name": "072-markPriceKlines.json",
+      "sha256": "54a28e326a6caa209329642124a358aa1e2745474879396bb1adb2e41bb394e5",
+      "bytes": 177475
+    },
+    {
+      "name": "073-markPriceKlines.json",
+      "sha256": "fea569ccde03b2d62b3a490a57f2e969e107b8aeb65924464768d2999c3f0332",
+      "bytes": 147352
+    }
+  ],
+  "remaining_v2_gets": 18,
+  "remaining_global_gets": 49,
+  "automatic_restart_allowed": false,
+  "registered_before_first_new_get": true,
+  "posthoc_manifest_files_recheck": "PASS"
+}
