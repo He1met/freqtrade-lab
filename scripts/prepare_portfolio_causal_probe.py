@@ -16,10 +16,10 @@ REPO=Path(__file__).resolve().parents[1]
 CODE_FILES=("lab/portfolio_causal.py","lab/portfolio_causal_audit.py","lab/portfolio_causal_account.py","lab/portfolio_causal_fixture.py",
             "lab/portfolio_causal_strategy.py","lab/portfolio_causal_native.py","lab/portfolio_execution.py",
             "lab/portfolio_budget.py","lab/portfolio_preflight.py","lab/bounded_research.py",
-            "scripts/prepare_portfolio_causal_probe.py","scripts/run_portfolio_synthetic.py")
+            "scripts/prepare_portfolio_causal_probe.py","scripts/dispatch_portfolio_causal_probe.py","scripts/run_portfolio_synthetic.py")
 ASSERTIONS=("daily_decision_real_indicators","opposing_families_then_short_stop",
             "actual_short_close_then_long_next_hour","gap_exit_real_fill",
-            "halt_then_no_new_entry","fee_and_slippage_in_net_risk",
+            "halt_liquidates_at_first_executable_open","halt_then_no_new_entry","fee_and_slippage_in_net_risk",
             "recent_cycle_flat_only","both_pairs_shared_wallet","native_fill_equity_reconciliation")
 
 
@@ -44,6 +44,22 @@ def prepare(source):
         funding_settlement="UNVERIFIED",market_execution_allowed=False,native_calls_this_preparation=0)
 
 
+def verify_manifest(binding,source):
+    from lab.portfolio_budget import BudgetError
+    verify_binding(binding.get("base_protocol_sha256"),binding.get("semantics_sha256"))
+    code=binding.get("code")
+    if not isinstance(code,dict) or set(code)!=set(CODE_FILES):
+        raise BudgetError("code manifest paths must exactly match CODE_FILES")
+    if hashlib.sha256(canonical(code)).hexdigest()!=binding.get("code_sha256"):
+        raise BudgetError("code manifest hash mismatch")
+    if any(sha(REPO/p)!=value for p,value in code.items()) or input_sha()!=binding.get("input_sha256"):
+        raise BudgetError("prepared code/input changed")
+    tree=verify_environment(source)
+    if (tree!=binding.get("source_tree") or binding.get("source_commit")!=SOURCE_COMMIT or
+        hashlib.sha256(tree.encode()).hexdigest()!=binding.get("source_sha256")):
+        raise BudgetError("source changed")
+
+
 def run_reserved(root,source,binding):
     """Future approved dispatcher only: require already durable sole reservation.
 
@@ -51,11 +67,9 @@ def run_reserved(root,source,binding):
     This function is never called by the preparation CLI.
     """
     from lab.portfolio_budget import BudgetError
-    verify_binding(binding.get("base_protocol_sha256"),binding.get("semantics_sha256"))
+    verify_manifest(binding,source)
     if root != RUNTIME_ROOT/"runs/synthetic-6" or root.is_symlink():
         raise BudgetError("fixed synthetic/6 output root required")
-    if hashlib.sha256(canonical(binding["code"])).hexdigest()!=binding["code_sha256"]:
-        raise BudgetError("code manifest hash mismatch")
     verify_anchor()
     budget=LockedBudget(RUNTIME_ROOT)
     pending=budget.pending()
@@ -63,9 +77,6 @@ def run_reserved(root,source,binding):
         raise BudgetError("no sole durable synthetic/6 reservation")
     for key in ("input_sha256","code_sha256","source_sha256","semantics_sha256"):
         if pending[0].get(key)!=binding.get(key): raise BudgetError("reservation binding mismatch")
-    if any(sha(REPO/p)!=value for p,value in binding["code"].items()) or input_sha()!=binding["input_sha256"]:
-        raise BudgetError("prepared code/input changed")
-    if verify_environment(source)!=binding["source_tree"]: raise BudgetError("source changed")
     sys.path.insert(0,str(source))
     def deny_network(event,args):
         if event in {"socket.connect","socket.getaddrinfo","socket.bind"}:

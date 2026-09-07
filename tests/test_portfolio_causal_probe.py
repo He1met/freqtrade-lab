@@ -84,8 +84,42 @@ def test_execution_function_cannot_run_without_durable_reservation(tmp_path,monk
     from lab.portfolio_budget import canonical
     monkeypatch.setattr(script,"RUNTIME_ROOT",tmp_path)
     monkeypatch.setattr(script,"verify_anchor",lambda:None)
+    monkeypatch.setattr(script,"verify_manifest",lambda binding,source:None)
     binding=dict(base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA,
                  code={},code_sha256=hashlib.sha256(canonical({})).hexdigest())
     with pytest.raises(BudgetError,match="no sole durable"):
         script.run_reserved(tmp_path/"runs/synthetic-6",tmp_path,binding)
     assert not list(tmp_path.iterdir())
+
+
+def test_halt_requires_real_liquidation_at_first_open_not_final_forceexit():
+    from lab.portfolio_causal_audit import audit_halt_liquidation,HaltLiquidationError
+    stamp=int(T.timestamp()*1000)
+    trace=[dict(time=T.isoformat(),halted=True,inventory={P:"2",PAIRS[1]:"0"}),
+           dict(time=(T+timedelta(hours=1)).isoformat(),halted=True,inventory={p:"0" for p in PAIRS})]
+    fills=[dict(pair=P,side="buy",amount=2,time=stamp-3600000,is_entry=True),
+           dict(pair=P,side="sell",amount=2,time=stamp,is_entry=False)]
+    receipt=audit_halt_liquidation(fills,trace)
+    assert receipt["residual_at_earliest_time"][P]=="0"
+    # Final inventory is still zero, but an end-of-run force exit is too late.
+    delayed=[fills[0],{**fills[1],"time":stamp+24*3600000}]
+    assert sum(f["amount"]*(1 if f["side"]=="buy" else -1) for f in delayed)==0
+    with pytest.raises(HaltLiquidationError,match="delayed") as exc:
+        audit_halt_liquidation(delayed,trace)
+    assert exc.value.receipt["residual_at_earliest_time"][P]=="2"
+    with pytest.raises(HaltLiquidationError,match="incomplete"):
+        audit_halt_liquidation([fills[0],{**fills[1],"amount":1}],trace)
+    trace[1]["inventory"][P]="1"
+    with pytest.raises(HaltLiquidationError,match="remains"):
+        audit_halt_liquidation(fills,trace)
+
+
+def test_manifest_rejects_omitted_or_extra_paths_before_native(tmp_path):
+    import hashlib
+    from scripts.prepare_portfolio_causal_probe import verify_manifest,CODE_FILES
+    from lab.portfolio_budget import canonical
+    for code in ({},{**{p:"a"*64 for p in CODE_FILES},"unreviewed.py":"a"*64}):
+        binding=dict(base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA,code=code,
+                     code_sha256=hashlib.sha256(canonical(code)).hexdigest())
+        with pytest.raises(BudgetError,match="exactly"):
+            verify_manifest(binding,tmp_path)

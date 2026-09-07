@@ -60,14 +60,30 @@ PYTHONDONTWRITEBYTECODE=1 /Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43
 CLI无执行、预留或重试参数。`run_reserved`供获准后最小dispatcher使用，要求已有唯一durable
 synthetic/6 reservation及四重绑定，缺失先失败且不导入native。准备阶段只读取budget前缀。
 预算reserve向后兼容旧记录，新6–8槽必须带semantics SHA；同输入技术重试必须继承该SHA。
-批准后的dispatcher仍须持全程writer锁、先reserve+checkpoint、超时、失败占槽、证据落盘、
-finish+checkpoint及事后code/source复验；本轮没有实现可直接绕过审核的执行CLI。
+dispatcher持全程writer锁并在锁内重新验证anchor及准备清单，先reserve+checkpoint、180秒超时、失败占槽、证据落盘、
+finish+checkpoint及事后code/source复验；最小dispatcher已在 `scripts/dispatch_portfolio_causal_probe.py` 实现并纳入CODE_FILES；
+仅在监督放行固定版本后使用 `--execute-approved`，当前不得执行。
 
 审计断言要求真实两币成交、原始日线决策、短家族stop后实际先空转多并等下一小时、gap真实
 退出、实际mark halt后无新增单、净成本对账；任一缺少即失败，dust需显式审查。
 实际订单/钱包/逐时轨迹和原生ZIP将留Git外。合成control PASS不等于risk PASS或市场资格。
 
-测试：84项非原生测试通过；另在锁定native环境完成类导入和无constructor/start的方法验证，
+测试：92项非原生测试通过；另在锁定native环境完成类导入和无constructor/start的方法验证，
 确认bridge只修改两个信号位。实际prepare入口通过，输出清单保留旧6个已占槽。
 账本SHA仍 `986f164d19be4d4188ef59d8a052102f3a9c479469c8a7bc1703d214c1c97d7a`。
 下一门：监督审查固定提交、输入及断言，才决定放行现有synthetic/6一次。
+
+
+## PR #116审查修订：halt清仓与dispatcher
+
+首次halt的控制轨迹库存必须与此前真实fill累积一致。当前固定场景最早执行时点就是
+完成mark观测后的本小时open；审计只使用该时间戳的真实exit fill冲销库存，随后一小时
+真实inventory仍须为0。报告包含halt时库存、当时实际成交delta、该时点残余量及下一小时
+库存。不能用最终forceexit满足清仓；晚到期末的反例（最终净量确为0）也被拒绝。
+失败异常携带同一残余量回执，dispatcher在失败evidence中保留，不伪称已清仓。
+
+CODE_FILES现含dispatcher；run_reserved要求manifest路径集合与CODE_FILES精确相等，
+缺失/额外路径及code聚合SHA不符在native import前失败。dispatcher输出不可覆写，native前
+预约和全局checkpoint持久化，执行后无论成功/失败均复验code/input/source，失败仍占槽。
+测试只用临时账本与fake函数验证控制顺序，从未调用Backtesting构造器/start或预约真实槽。
+本次固定输入SHA及真实预算账本SHA完全不变，仍等待监督统一放行synthetic/6。
