@@ -150,12 +150,22 @@ class LockedBudget:
         ends = {r["key"] for r in self.events if r["event"] != "RESERVED"}
         return [r for r in self.events if r["event"] == "RESERVED" and r["key"] not in ends]
 
-    def reserve(self, key, *, input_sha256, code_sha256, source_sha256, retry_of=None):
+    def reserve(self, key, *, input_sha256, code_sha256, source_sha256, retry_of=None, semantics_sha256=None):
         for value in (input_sha256, code_sha256, source_sha256):
             try:
                 _sha(value)
             except AdmissionError as exc:
                 raise BudgetError("invalid binding hash") from exc
+        from lab.portfolio_causal import SEMANTICS_SHA, verify_binding
+        from lab.portfolio_risk_v2 import V2_SHA, verify_v2
+        allowed_slots={"synthetic/6":SEMANTICS_SHA,"synthetic/7":V2_SHA}
+        if key in {"synthetic/6","synthetic/7","synthetic/8"}:
+            if semantics_sha256 is None or semantics_sha256!=allowed_slots.get(key):
+                raise BudgetError("causal slot requires its explicitly allowed semantics version")
+        if semantics_sha256 is not None:
+            if semantics_sha256==SEMANTICS_SHA: verify_binding(PROTOCOL_SHA256,SEMANTICS_SHA)
+            elif semantics_sha256==V2_SHA: verify_v2(PROTOCOL_SHA256,V2_SHA)
+            else: raise BudgetError("unknown semantics version")
         if self.pending():
             raise BudgetError("interrupted reservation must be recorded, never replayed")
         if any(r["key"] == key for r in self.events):
@@ -168,13 +178,15 @@ class LockedBudget:
             terminal = next((r for r in self.events if r["key"] == retry_of and r["event"] in {"FAILED", "INTERRUPTED"}), None)
             if parent is None or terminal is None or any(r["key"]==retry_of and r["event"]=="AUDIT_RECOVERED" for r in self.events) or parent["input_sha256"] != input_sha256 or parent["source_sha256"] != source_sha256:
                 raise BudgetError("retry requires failed same-input/source parent")
+            if parent.get("semantics_sha256") != semantics_sha256:
+                raise BudgetError("retry semantics must equal failed parent")
             if any(r.get("retry_of") == retry_of for r in self.events):
                 raise BudgetError("retry chain must reference its latest failed attempt")
         else:
             raise BudgetError("only eight synthetic and four repair slots allowed")
         return self._append({"event": "RESERVED", "key": key, "input_sha256": input_sha256,
                              "code_sha256": code_sha256, "source_sha256": source_sha256,
-                             "retry_of": retry_of})
+                             "retry_of": retry_of, **({"semantics_sha256":semantics_sha256} if semantics_sha256 is not None else {})})
 
     def finish(self, key, status, result_sha256):
         if status not in {"SUCCEEDED", "FAILED", "INTERRUPTED"} or [r["key"] for r in self.pending()] != [key]:

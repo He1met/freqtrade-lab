@@ -1,0 +1,242 @@
+{
+  "schema": "issue115-synthetic7-actual-receipt-v1",
+  "execution_head": "767fda5a00c215f8b4aa63b55db2c5f26474ab94",
+  "budget_status": "SUCCEEDED",
+  "control_status": "V2_SYNTHETIC_CONTROL_PASS",
+  "constructor_calls": 1,
+  "backtesting_start_calls": 1,
+  "actual_trades": 10,
+  "actual_orders": 20,
+  "trace_hours": 120,
+  "fatal_callback_errors": 0,
+  "risk_limit_satisfied": false,
+  "max_mark_drawdown": "0.256812583254182721374",
+  "final_net_equity_synthetic_only": "994.238403179166253946",
+  "net_profit_synthetic_only": "-5.761596820833746054",
+  "fees_and_slippage": "7.683483600000099384",
+  "exposures": {
+    "continuous_40_80_compliance": false,
+    "observation_count": 3,
+    "meaning": "Observed real pre-control inventory; prices/ratios reconstructed from same fixed input, not erased by later exits",
+    "observations": [
+      {
+        "time": "2019-10-03T01:00:00+00:00",
+        "actual_inventory": {
+          "BTC/USDT:USDT": "-3.883",
+          "ETH/USDT:USDT": "-3.883"
+        },
+        "trace_net_equity": "998.79656122499997412",
+        "reconstructed_known_opens": {
+          "BTC/USDT:USDT": "103.04166666666667",
+          "ETH/USDT:USDT": "103.04166666666667"
+        },
+        "asset_notional_fractions": {
+          "BTC/USDT:USDT": "0.4005928806722566316746519211",
+          "ETH/USDT:USDT": "0.4005928806722566316746519211"
+        },
+        "total_notional_fraction": "0.8011857613445132633493038422",
+        "actual_fallback_events": [
+          {
+            "actual_quantity": "-3.883",
+            "delta": "3.883",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "BTC/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          },
+          {
+            "actual_quantity": "-3.883",
+            "delta": "3.883",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "ETH/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          }
+        ]
+      },
+      {
+        "time": "2019-10-04T01:00:00+00:00",
+        "actual_inventory": {
+          "BTC/USDT:USDT": "3.837",
+          "ETH/USDT:USDT": "3.837"
+        },
+        "trace_net_equity": "997.1184885499741078472",
+        "reconstructed_known_opens": {
+          "BTC/USDT:USDT": "104.04166666666667",
+          "ETH/USDT:USDT": "104.04166666666667"
+        },
+        "asset_notional_fractions": {
+          "BTC/USDT:USDT": "0.4003615213077982185527342481",
+          "ETH/USDT:USDT": "0.4003615213077982185527342481"
+        },
+        "total_notional_fraction": "0.8007230426155964371054684962",
+        "actual_fallback_events": [
+          {
+            "actual_quantity": "3.837",
+            "delta": "-3.837",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "BTC/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          },
+          {
+            "actual_quantity": "3.837",
+            "delta": "-3.837",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "ETH/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          }
+        ]
+      },
+      {
+        "time": "2019-10-05T01:00:00+00:00",
+        "actual_inventory": {
+          "BTC/USDT:USDT": "-3.790",
+          "ETH/USDT:USDT": "-3.790"
+        },
+        "trace_net_equity": "994.969097899999606300",
+        "reconstructed_known_opens": {
+          "BTC/USDT:USDT": "105.04166666666667",
+          "ETH/USDT:USDT": "105.04166666666667"
+        },
+        "asset_notional_fractions": {
+          "BTC/USDT:USDT": "0.4001208856706411251725697325",
+          "ETH/USDT:USDT": "0.4001208856706411251725697325"
+        },
+        "total_notional_fraction": "0.8002417713412822503451394650",
+        "actual_fallback_events": [
+          {
+            "actual_quantity": "-3.790",
+            "delta": "3.790",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "BTC/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          },
+          {
+            "actual_quantity": "-3.790",
+            "delta": "3.790",
+            "event": "FULL_REDUCE_ONLY_INTENT",
+            "pair": "ETH/USDT:USDT",
+            "reduce_only": true,
+            "trigger": "HARD_CAP"
+          }
+        ]
+      }
+    ],
+    "earliest_full_exit_receipts": [
+      {
+        "actual_before": "-3.883",
+        "actual_delta": "3.883",
+        "at": "2019-10-03T01:00:00+00:00",
+        "pair": "BTC/USDT:USDT",
+        "pause_until": "2019-10-04T00:00:00+00:00",
+        "residual": "0.000"
+      },
+      {
+        "actual_before": "-3.883",
+        "actual_delta": "3.883",
+        "at": "2019-10-03T01:00:00+00:00",
+        "pair": "ETH/USDT:USDT",
+        "pause_until": "2019-10-04T00:00:00+00:00",
+        "residual": "0.000"
+      },
+      {
+        "actual_before": "3.837",
+        "actual_delta": "-3.837",
+        "at": "2019-10-04T01:00:00+00:00",
+        "pair": "BTC/USDT:USDT",
+        "pause_until": "2019-10-05T00:00:00+00:00",
+        "residual": "0.000"
+      },
+      {
+        "actual_before": "3.837",
+        "actual_delta": "-3.837",
+        "at": "2019-10-04T01:00:00+00:00",
+        "pair": "ETH/USDT:USDT",
+        "pause_until": "2019-10-05T00:00:00+00:00",
+        "residual": "0.000"
+      },
+      {
+        "actual_before": "-3.790",
+        "actual_delta": "3.79",
+        "at": "2019-10-05T01:00:00+00:00",
+        "pair": "BTC/USDT:USDT",
+        "pause_until": "2019-10-06T00:00:00+00:00",
+        "residual": "0.000"
+      },
+      {
+        "actual_before": "-3.790",
+        "actual_delta": "3.79",
+        "at": "2019-10-05T01:00:00+00:00",
+        "pair": "ETH/USDT:USDT",
+        "pause_until": "2019-10-06T00:00:00+00:00",
+        "residual": "0.000"
+      }
+    ]
+  },
+  "halt_liquidation": {
+    "actual_delta_at_earliest_time": {
+      "BTC/USDT:USDT": "-2.351",
+      "ETH/USDT:USDT": "-2.351"
+    },
+    "earliest_execution_time": "2019-10-07T01:00:00+00:00",
+    "halt_time": "2019-10-07T01:00:00+00:00",
+    "inventory_before": {
+      "BTC/USDT:USDT": "2.351",
+      "ETH/USDT:USDT": "2.351"
+    },
+    "next_hour_inventory": {
+      "BTC/USDT:USDT": "0.000",
+      "ETH/USDT:USDT": "0.000"
+    },
+    "residual_at_earliest_time": {
+      "BTC/USDT:USDT": "0.000",
+      "ETH/USDT:USDT": "0.000"
+    }
+  },
+  "budget_events": [
+    "RESERVED",
+    "SUCCEEDED"
+  ],
+  "budget_sha256": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+  "total_consumed_slots": 8,
+  "total_actual_native_calls": 7,
+  "remaining_fresh_synthetic_slots": [
+    "synthetic/8"
+  ],
+  "remaining_retry_slots": [
+    "retry/2",
+    "retry/3",
+    "retry/4"
+  ],
+  "additional_calls_authorized": false,
+  "artifact_sha256": {
+    "runs/synthetic-7/evidence.json": "5dc62a72ec2d3696bf4930277734e9cb30ab6fbd00b1f1f5a71b4182ef95163d",
+    "runs/synthetic-7/trace.json": "edd156c1313535581980f6ed5e7de19c5d0222a206b412a1375a5711b23d9244",
+    "runs/synthetic-7/bindings.json": "7ecfdc060fa544ad5a021fca3f192c489bddf3d5be8987a50930a9e1e4941d32",
+    "runs/synthetic-7/native-result.json": "31724dc3bdb73abcfae5bcf19cda3ce7aa8961777786d38d52c2fea7d84ee6e6",
+    "synthetic-7-dispatch.log": "dc386702357f6b3ea04f9e2c5cd17b33d1e4e6a9dd6d45450bcb9fe54f043752",
+    "runs/synthetic-7/exports/backtest-result-2026-09-08_01-30-43.zip": "84c8b9396a407cbe7fdce0216a7bca3b8c4c58aae4601bb4ca7b281cfad20f09"
+  },
+  "old_synthetic6_status": "PERMANENT_NEGATIVE_UNCHANGED",
+  "cash_insufficiency": "NOT_COVERED_NATIVE",
+  "funding_real_settlement": "UNVERIFIED",
+  "market_execution_allowed": false,
+  "economic_result": null,
+  "logging": "Observer-only Python exception trace recorded dispatcher exceptions without modifying reviewed files; SystemExit:0 in log is normal termination",
+  "launch_instrumentation": {
+    "source": "Recorded tool command stdin, copied verbatim after execution",
+    "source_file": "docs/receipts/synthetic7-actual-launch-wrapper.py",
+    "post_execution_source_sha256": "031b7248053aa034655102cd8b0c453a44f0610c363c981d8b290755bdbde722",
+    "pre_execution_wrapper_sha256": "UNKNOWN",
+    "included_in_approved_manifest": false,
+    "added_when": "In the single authorized launch command, before dispatcher entry",
+    "difference": "sys.settrace exception observer plus runpy entry; reviewed execution files unchanged",
+    "changes_locals_callbacks_inputs_strategy_returns_or_matching": false,
+    "basis": "Inspection of complete recorded wrapper source",
+    "runtime_overhead": "UNKNOWN",
+    "additional_native_calls": 0
+  }
+}
