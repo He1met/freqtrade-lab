@@ -1,0 +1,142 @@
+{
+  "schema": "freqtrade-lab-portfolio-pilot-v1",
+  "protocol_id": "BTC_ETH_PORTFOLIO_V1",
+  "issue": 109,
+  "status": "ENGINEERING_FREEZE_NO_MARKET_EXECUTION",
+  "market": {
+    "exchange": "binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "pairs": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ],
+    "trading_mode": "futures",
+    "margin_mode": "isolated",
+    "leverage": 1,
+    "signal_timeframe": "1d",
+    "execution_timeframe": "1h",
+    "account_eligibility": "UNKNOWN"
+  },
+  "threshold_sources": {
+    "net_return_floor": "USER_2026_09_07",
+    "max_drawdown": "USER_20_PERCENT",
+    "other_numeric_parameters": "ADOPTED_FROM_SUPERVISOR_RECOMMENDATION_BEFORE_SCORING",
+    "old_experiment_gates": "UNCHANGED"
+  },
+  "capital": {
+    "research_wallet_usdt": "1000",
+    "total_notional_fraction": "0.8",
+    "asset_notional_fraction": "0.4",
+    "A_cell_stop_risk_fraction": "0.01",
+    "BC_cell_stop_risk_fraction": "0.005"
+  },
+  "signals": {
+    "trend_lookbacks": [
+      42,
+      63,
+      84
+    ],
+    "trend_default": 63,
+    "trend_exit_lookback": 21,
+    "trend_atr_stop": "3",
+    "trend_max_days": 42,
+    "reversal_thresholds": [
+      "1.5",
+      "2",
+      "2.5"
+    ],
+    "reversal_default": "2",
+    "reversal_return_days": 3,
+    "reversal_vol_days": 60,
+    "reversal_target_days": 5,
+    "reversal_atr_stop": "2",
+    "reversal_max_days": 5,
+    "atr_days": 20,
+    "atr_method": "SIMPLE_MEAN_TRUE_RANGE",
+    "return_volatility": "SAMPLE_STD_LOG_RETURNS_DDOF_1",
+    "volatility_multiplier": "MIN_1_PRIOR_252_MEDIAN_SIGMA20_OVER_CURRENT_SIGMA20",
+    "C_recovery_max_multiplier_step": "0.1",
+    "risk_matched_B_multiplier": "0.5"
+  },
+  "cost": {
+    "taker_rate_each_side": "0.0006",
+    "slippage_rate_each_side": "0.0006",
+    "stress_multiplier": "2",
+    "funding": "ACTUAL_SIGNED_ASSOCIATED_MARK_NO_ZERO_FILL",
+    "settlement_precision": "REQUIRES_VERIFIED_RULES_NO_PNL_ROUNDING_FOR_GATE",
+    "known_higher_taker": "USE_HIGHER_AND_REFREEZE_BEFORE_SCORE"
+  },
+  "risk": {
+    "max_drawdown_fraction": "0.20",
+    "warning_drawdown_fraction": "0.10",
+    "warning_risk_multiplier": "0.5",
+    "stop_new_risk_drawdown_fraction": "0.15",
+    "restart_after_economic_stop": "DISABLED_FOR_THIS_PILOT",
+    "data_recovery_complete_checks": 3,
+    "peak_reset": false
+  },
+  "evidence": {
+    "net_usdt_floor": "0",
+    "minimum_natural_clusters_per_family": 30,
+    "dependence_block_days": 42,
+    "bootstrap_repetitions": 2000,
+    "bootstrap_seed": 109,
+    "interval_level": "0.95",
+    "utility": "365_MEAN_DAILY_NET_RETURN_MINUS_1.5_TIMES_365_SAMPLE_VARIANCE",
+    "zero_trades": "SAFE_CASH_NO_EDGE_EVIDENCE",
+    "independent_confirmation": "FUTURE_ONLY",
+    "economic_result": null
+  },
+  "windows": {
+    "pool_months": 24,
+    "training_months": 12,
+    "validation_months": 3,
+    "folds": 4,
+    "warmup_days": 274,
+    "forward_months": 12,
+    "forward_start": "FIRST_FULL_UTC_DAY_AFTER_FINAL_ECONOMIC_FREEZE",
+    "extension_months": 0,
+    "old_protected_windows": "PRESERVE_ALL_REGISTERED_RESTRICTIONS"
+  },
+  "selection": {
+    "within_fold": "BASE_COST_TRAINING_ONLY_NET_GE_ZERO_DD_LE_20_THEN_UTILITY",
+    "final_parameters": "MEAN_OF_FOUR_TRAINING_UTILITIES_ELIGIBLE_IN_ALL_TRAIN_FOLDS",
+    "tie_break": "CENTRAL_PARAMETER_THEN_ASCENDING",
+    "validation_used_for_parameter_choice": false,
+    "no_eligible_family": "CASH_FOR_THAT_FAMILY_NO_REALLOCATION",
+    "C_adoption": "POSITIVE_PAIRED_42_DAY_BLOCK_UTILITY_INCREMENT_VS_HALF_RISK_B_CI_LOW_GT_ZERO",
+    "default_portfolio": "B",
+    "diagnostic_changes_selection": false
+  },
+  "budget": {
+    "max_native_calls": 96,
+    "max_workers": 1,
+    "synthetic_calls": 8,
+    "training_calls": 24,
+    "validation_base_calls": 24,
+    "validation_stress_calls": 24,
+    "final_diagnostic_base_calls": 6,
+    "final_diagnostic_stress_calls": 6,
+    "retry_reserve_calls": 4,
+    "signal_versions": 6,
+    "each_call_pairs": 2,
+    "failed_call_consumes_slot": true,
+    "retry_scope": "DETERMINISTIC_TECHNICAL_SAME_INPUTS_ONLY",
+    "existing_search_budget": "UNCHANGED_SEPARATE_CONTRACT"
+  },
+  "permissions": {
+    "public_metadata": true,
+    "registered_seen_training_only": true,
+    "old_protected_data": false,
+    "private_account": false,
+    "live_orders": false,
+    "paid_data": false,
+    "production_deployment": false,
+    "os_settings": false,
+    "automatic_release": false
+  },
+  "native_integration": "NOT_IMPLEMENTED_IN_ISSUE_109"
+}
