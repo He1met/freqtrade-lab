@@ -39,3 +39,30 @@ cash不足原生仍NOT_COVERED_NATIVE；真实funding结算UNVERIFIED；市场�
 为满足完整异常栈保留，启动时仅加只读Python异常观测hook，执行已审dispatcher脚本，
 未修改任何已绑定文件。日志的SystemExit:0是正常成功退出记录，非失败；原native无重试。
 当前只提交终审，不自行合并/关闭；下一市场前置门和风险含义仍由监督结合证据裁定。
+
+## 实际启动包装器与批准清单差异
+
+已审清单固定的是dispatcher及其依赖；本次唯一启动命令在进入dispatcher前额外加入
+Python异常观测hook，以满足完整异常栈保留。该包装器**未纳入原批准CODE_FILES/manifest**，
+属于实际启动方式的差异，不能把主文件没改等同执行环境完全未变。
+
+实际cwd为`/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab`，shell启动部分为：
+
+```sh
+set -C
+PYTHONDONTWRITEBYTECODE=1 /Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python - <<'PY' > /Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/synthetic-7-dispatch.log 2>&1
+# stdin完整源码见 receipts/synthetic7-actual-launch-wrapper.py；原调用此处为该文件逐字内容
+PY
+```
+
+上面注释仅用于文档指向，不是实际stdin的一部分。完整stdin源码从本次已记录工具调用
+逐字整理到`docs/receipts/synthetic7-actual-launch-wrapper.py`，运行后SHA256为
+`031b7248053aa034655102cd8b0c453a44f0610c363c981d8b290755bdbde722`。
+来源是调用记录，不是运行前落盘文件；运行前包装器独立SHA记录为UNKNOWN，未补造预冻结证据。
+
+源码只安装sys.settrace observer、设置与获准CLI一致的sys.argv并runpy执行同一dispatcher。
+异常事件命中dispatcher文件时打印完整traceback；没有赋值frame.f_locals、改策略回调、
+输入、订单/撮合、局部变量或策略返回值。trace函数return值用于注册跟踪函数，非替换
+被跟踪函数返回值。该结论来自完整包装器源码核对；跟踪的运行时开销未测量，记UNKNOWN。
+原批准文件的执行前后哈希校验通过；此事实与“存在额外未绑定的观测包装器”同时保留。
+不因补披露而新增运行，也不据此抹去控制前敞口超限、DD失败或任何数据资格缺口。

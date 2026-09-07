@@ -225,5 +225,18 @@
   "funding_real_settlement": "UNVERIFIED",
   "market_execution_allowed": false,
   "economic_result": null,
-  "logging": "Observer-only Python exception trace recorded dispatcher exceptions without modifying reviewed files; SystemExit:0 in log is normal termination"
+  "logging": "Observer-only Python exception trace recorded dispatcher exceptions without modifying reviewed files; SystemExit:0 in log is normal termination",
+  "launch_instrumentation": {
+    "source": "Recorded tool command stdin, copied verbatim after execution",
+    "source_file": "docs/receipts/synthetic7-actual-launch-wrapper.py",
+    "post_execution_source_sha256": "031b7248053aa034655102cd8b0c453a44f0610c363c981d8b290755bdbde722",
+    "pre_execution_wrapper_sha256": "UNKNOWN",
+    "included_in_approved_manifest": false,
+    "added_when": "In the single authorized launch command, before dispatcher entry",
+    "difference": "sys.settrace exception observer plus runpy entry; reviewed execution files unchanged",
+    "changes_locals_callbacks_inputs_strategy_returns_or_matching": false,
+    "basis": "Inspection of complete recorded wrapper source",
+    "runtime_overhead": "UNKNOWN",
+    "additional_native_calls": 0
+  }
 }
