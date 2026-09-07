@@ -1,0 +1,35 @@
+{
+  "schema": "mechanism-precheck-card-v1",
+  "candidate_id": "illustrative-trend-mechanism-card",
+  "idea": "Illustrative unreviewed idea: infrequent trend continuation could reduce turnover costs, but native minimum size and rare natural samples may prevent useful evidence. The referenced sizing case is synthetic calibration, not market measurements.",
+  "strategy_family": "unreviewed_trend_continuation",
+  "expected_failure_mode": "NATIVE_CELL_MINIMUM and SAMPLE_EVIDENCE_TYPE; possible cost drag remains unmeasured.",
+  "knowledge_refs": [
+    "RESERVE_ENDPOINT",
+    "NATIVE_CELL_MINIMUM",
+    "SAMPLE_EVIDENCE_TYPE",
+    "QUALIFICATION_LAYERS",
+    "EXPOSED_WINDOW",
+    "BUDGET_NO_REPLAY",
+    "TERMINAL_NO_RETUNE"
+  ],
+  "mechanism_id": "UNREVIEWED_TREND_CONTINUATION_IDEA",
+  "exchange": "binance",
+  "instrument_type": "USDT_PERPETUAL",
+  "symbols": [
+    "BTCUSDT"
+  ],
+  "purpose": "EXPLORATORY_TRAINING",
+  "window": {
+    "warmup_start": "2023-11-01T00:00:00Z",
+    "start": "2024-08-01T00:00:00Z",
+    "end_exclusive": "2024-11-01T00:00:00Z"
+  },
+  "reserve_source_sha256": "9bc45d4fdb227143b215933e05d083cc993491cbf011a88776dddaa2e3996d48",
+  "sizing_case_id": "btc_one_lot_cell",
+  "sample_evidence_type": "UNKNOWN",
+  "claimed_expected_trades": null,
+  "claims_real_qualification": false,
+  "native_calls_requested": 0,
+  "reuse_keys": []
+}
