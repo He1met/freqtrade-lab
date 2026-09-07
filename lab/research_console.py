@@ -324,6 +324,15 @@ def _minimal_environment() -> Dict[str, str]:
     }
 
 
+def _worker_python() -> Path:
+    """Validate the executable target without losing virtualenv invocation semantics."""
+    invoked = Path(sys.executable).absolute()
+    target = invoked.resolve(strict=True)
+    if not stat.S_ISREG(target.stat().st_mode) or not os.access(target, os.X_OK):
+        raise OSError("Research worker Python must be an executable regular file")
+    return invoked
+
+
 def _codex_environment() -> Dict[str, str]:
     """Pass only fixed locale/path plus the existing auth-location variables."""
     environment = _minimal_environment()
@@ -3955,7 +3964,7 @@ class ResearchConsoleController:
                     self.config.database_path,
                     prepared,
                     self._development_capability,
-                    Path(sys.executable).resolve(strict=True),
+                    _worker_python(),
                 )
                 process = subprocess.Popen(
                     argv,
@@ -4191,7 +4200,7 @@ class ResearchConsoleController:
                     self.config.database_path,
                     prepared,
                     self._holdout_capability,
-                    Path(sys.executable).resolve(strict=True),
+                    _worker_python(),
                 )
                 process = subprocess.Popen(
                     argv,
