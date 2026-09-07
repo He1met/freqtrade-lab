@@ -7,12 +7,13 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from lab.portfolio_budget import NativeBudget, BudgetError, RUNTIME_ROOT, canonical
+from lab.portfolio_budget import NativeBudget, BudgetError, RUNTIME_ROOT, canonical, verify_anchor
 from lab.portfolio_preflight import load_protocol, PROTOCOL_SHA256
 from lab.portfolio_execution import SYNTHETIC_VECTOR, fill_equity
 
@@ -178,6 +179,7 @@ def main():
     parser.add_argument("--retry-of", help="failed slot; consumes next of four technical retry slots")
     args = parser.parse_args()
     protocol = load_protocol()
+    verify_anchor()
     source = args.native_source.resolve(strict=True)
     tree = verify_environment(source)
     bindings = {str(p.relative_to(REPO)):sha(p) for p in [REPO/"scripts/run_portfolio_synthetic.py",
@@ -195,14 +197,22 @@ def main():
             raise BudgetError("output already exists; never overwrite an old attempt")
         budget.reserve(key,input_sha256=input_hash,code_sha256=code_hash,source_sha256=source_hash,retry_of=args.retry_of)
         root.mkdir(parents=True, exist_ok=False, mode=0o700)
+        def timed_out(*_):
+            raise TimeoutError("fixed 180 second synthetic worker budget expired")
+        signal.signal(signal.SIGALRM, timed_out)
+        signal.alarm(180)
         try:
             (root/"bindings.json").write_bytes(canonical({"code":bindings,"input_sha256":input_hash,"source_tree":tree,"mode":args.mode}))
             evidence = run_native(root,args.mode,source)
+            if any(sha(REPO/name) != value for name,value in bindings.items()):
+                raise ValueError("probe code changed during native execution")
             status = "SUCCEEDED"
         except Exception as exc:
             evidence = {"status":"FAILED", "error_type":type(exc).__name__,"reason":str(exc),"mode":args.mode,
                         "market_economic_result":None,"synthetic_only":True}
             status = "FAILED"
+        finally:
+            signal.alarm(0)
         raw = canonical(evidence)
         (root/"evidence.json").write_bytes(raw)
         budget.finish(key,status,hashlib.sha256(raw).hexdigest())

@@ -15,6 +15,8 @@ from pathlib import Path
 from lab.portfolio_preflight import PROTOCOL_SHA256, AdmissionError, _sha
 
 RUNTIME_ROOT = Path.home()/".codex/runs/freqtrade-lab/btc-eth-portfolio-v1"
+ANCHOR_LEDGER = Path.home()/"Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl"
+ANCHOR_RECORD_SHA256 = "7aaba6a65e372275d3a65a2fbaaf79abdd3a9597ae98eba62e5344edf3af79e9"
 
 
 def canonical(value):
@@ -23,6 +25,16 @@ def canonical(value):
 
 class BudgetError(ValueError):
     pass
+
+
+def verify_anchor():
+    """Bind the CLI to the published, exact control row, even after appends."""
+    matched = []
+    for line in ANCHOR_LEDGER.read_bytes().splitlines():
+        if hashlib.sha256(line).hexdigest() == ANCHOR_RECORD_SHA256:
+            matched.append(json.loads(line))
+    if len(matched) != 1 or matched[0]["budget_root"] != str(RUNTIME_ROOT) or matched[0]["protocol_sha256"] != PROTOCOL_SHA256:
+        raise BudgetError("trusted global budget anchor missing or moved")
 
 
 class NativeBudget:
