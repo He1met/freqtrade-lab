@@ -17,21 +17,22 @@ def git_state(path):
                 dirty=git('status','--porcelain','--untracked-files=all'))
 
 
-def controlled_hashes(manifest_path,manifest,manifest_raw,activation_raw,plan_raw):
+def controlled_hashes(manifest_path,manifest,manifest_raw,activation_raw,plan_raw,
+                      *, prepared=PREPARED, activation_path=ACTIVATION):
     receipt_raw=RECEIPT.read_bytes()
     if hashlib.sha256(receipt_raw).hexdigest()!=RECEIPT_SHA:
         raise SourceError('CONTROL_INTEGRITY source receipt changed before freeze')
     receipt=json.loads(receipt_raw)
     expected={str(ROOT/name):value for name,value in manifest['code_files'].items()}
-    expected.update({str(PREPARED/'data'/name):value for name,value in manifest['data_files'].items()})
+    expected.update({str(prepared/'data'/name):value for name,value in manifest['data_files'].items()})
     expected.update({str(RAW_ROOT/item['name']):item['sha256'] for item in receipt['source_files']})
     expected.update({str(RECEIPT):RECEIPT_SHA,
         str(Path(sys.executable)):manifest['environment']['interpreter_sha256'],
         str(manifest_path):hashlib.sha256(manifest_raw).hexdigest(),
-        str(ACTIVATION):hashlib.sha256(activation_raw).hexdigest(),
-        str(PREPARED/'plan.json'):hashlib.sha256(plan_raw).hexdigest(),
-        str(PREPARED/'assembly.json'):manifest['assembly_sha256'],
-        str(PREPARED/'events.json'):manifest['funding_event_table_sha256']})
+        str(activation_path):hashlib.sha256(activation_raw).hexdigest(),
+        str(prepared/'plan.json'):hashlib.sha256(plan_raw).hexdigest(),
+        str(prepared/'assembly.json'):manifest['assembly_sha256'],
+        str(prepared/'events.json'):manifest['funding_event_table_sha256']})
     return expected
 
 

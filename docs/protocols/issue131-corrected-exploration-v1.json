@@ -1,0 +1,123 @@
+{
+  "schema": "issue131-corrected-exploration-v1",
+  "batch": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION",
+  "status": "PREPARATION_ONLY_NOT_NATIVE_AUTHORIZED",
+  "repair_semantics": "EXACT_COMMON_SCALE_V1",
+  "repair_commit": "1fce623626a843050ba55a8b5acf6964cd2e5cb6",
+  "original_execution_commit": "fe01a6b543e26512aa8180c7226d2678eb80a93d",
+  "original_plan_sha256": "94f536cfcab71e26a3b912a6ac9d23e58d3cc02ff9ce6e395f20ae0994230084",
+  "original_activation_sha256": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+  "budget_prefix_bytes": 20818,
+  "budget_prefix_sha256": "aa790cd64c8baee3ded17c641fc4c4d6ccef3a7d72d182f67005e96369a00d40",
+  "budget_total": 96,
+  "consumed_before": 18,
+  "proposed_calls": 10,
+  "consumed_if_completed": 28,
+  "remaining_if_completed": 68,
+  "sealed_calls": 10,
+  "unallocated_before": 68,
+  "unallocated_after_activation": 58,
+  "jobs": [
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+      "mode": "A-trend",
+      "cost": "base",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-84"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+      "mode": "A-reversal",
+      "cost": "base",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-1.5"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+      "mode": "B",
+      "cost": "base",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+      "mode": "C",
+      "cost": "base",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2.5"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "base",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-trend"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+      "mode": "A-trend",
+      "cost": "stress",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-reversal"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+      "mode": "A-reversal",
+      "cost": "stress",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/B"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+      "mode": "B",
+      "cost": "stress",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/C"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+      "mode": "C",
+      "cost": "stress",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/market-exposure"
+    },
+    {
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "stress",
+      "original_key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/half-risk-B"
+    }
+  ],
+  "original_reserved_keys": [
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B"
+  ],
+  "source_receipt_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098",
+  "source_view": "EXACT_ORIGINAL_PREPARED_BYTES",
+  "score_start": "2024-08-01T00:00:00+00:00",
+  "score_end_exclusive": "2024-11-01T00:00:00+00:00",
+  "warmup_start": "2023-11-01T00:00:00+00:00",
+  "native_timeout_seconds": 180,
+  "strategy_parameters": "UNCHANGED_FIVE_MODES_CENTRAL_63_2_BASE_STRESS_1000_1X",
+  "behavior_change": "ONLY_EXACT_COMMON_SCALE_V1",
+  "original_model_semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+  "comparison": "PAIR_EACH_NEW_ACTUAL_PATH_WITH_ORIGINAL_SAME_MODE_COST; NO_MANUAL_SIMULATED_RETURNS; NO_WINNER_SELECTION",
+  "natural_count_protocol_sha256": "e60fcfb8423e2e2484bf02c0d78a6b06191e8393373afcadc24553ab74dc3274",
+  "natural_counts": "SAME_FROZEN_DEFINITION_ON_NEW_ACTUAL_ARTIFACTS_ONLY; NEVER_SUM_OLD_NEW_OR_MODES",
+  "independence": "REUSED_EXPOSED_EXPLORATION_NOT_INDEPENDENT",
+  "failure_policy": "FIRST_ENGINEERING_MODEL_INVALID_INTERRUPTED_OR_CONTROL_INTEGRITY_STOPS_BATCH; VALID_NEGATIVE_PATH_CONTINUES",
+  "completion_policy": "CONVERGE_MECHANISM_AND_EXECUTION_FEASIBILITY; NO_LOW_SAMPLE_PARAMETER_RERUN_LOOP",
+  "old_results": "PRESERVE_VALUES_AND_IMPLEMENTATION_DEFECT_AFFECTED_LABEL",
+  "new_gets": 0,
+  "native_authorized": false,
+  "original_evidence_manifest_sha256": "fc7fe8ce635ed0bf5aa5cd2b8d3ef9fef297e70e5462feeb4d6442bc5cb8fb3d"
+}

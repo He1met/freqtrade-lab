@@ -1,0 +1,2531 @@
+{
+  "schema": "issue131-corrected-terminal-v1",
+  "status": "COMPLETED_FIXED_TEN_NO_REAL_ECONOMIC_QUALIFICATION",
+  "execution_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+  "approval_reference": "https://github.com/He1met/freqtrade-lab/pull/132#issuecomment-5575658891",
+  "activation_publication": "https://github.com/He1met/freqtrade-lab/issues/131#issuecomment-5575664886",
+  "activation_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-activation.json",
+  "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+  "protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+  "plan_sha256": "32216836a0e66d7fdfb481ca493fc001ce7a2ad524da90f14d208e7a40c7ce76",
+  "preparation_receipt_sha256": "63a84ac328fd809651d1ab4c14a4a17facb08cfe798f11902a48b3c0b96eb6b8",
+  "native_constructors": 10,
+  "native_starts": 10,
+  "successful_jobs": 10,
+  "failed_jobs": 0,
+  "retries": 0,
+  "new_gets": 0,
+  "workers": 1,
+  "timeout_seconds_each": 180,
+  "execution_order": [
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+    "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B"
+  ],
+  "all_terminal_integrity": "PASS",
+  "execution_tree_fixed_and_clean": true,
+  "new_native_reservation_rows": [
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:10:53.763462+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "1b1c40f9349cc48396b8c50436840979f5d40e6286b893f757764305da0ee097",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+      "previous_sha256": "b3e4f88c9470d00e24379809e1bbe188bfe6b900c6332c5b6344f63a5352bce7",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-84",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:10:58.220339+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+      "previous_sha256": "fa1039320e92f2ee767b2964395e9ff27e75b1ebe5b7576aa64445b21df52fd7",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "55ad2619d093f45c1b81263b662f8bc0c1cac095f4786e6f99791eb5ae62c817",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:11:10.543857+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "4ccbfcdfe2e2fe1f2050990083ad188284dd3111e0857301dd260cb7314ed8f8",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+      "previous_sha256": "d095875d3b8ff361b4bdeae5960220a3795237f977a7beca3d34093d0c13727d",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-1.5",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:11:14.241103+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+      "previous_sha256": "9589aa11e36afe081d20f0833b0534353a0c84be2781924a9b97e17abed1fb70",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "cc42999519fb044a4c9adbb18098c06b4576b89f644fa1315b6ce81e514ef62b",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:11:27.992880+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "a7e45ad052aedb41f4ad55824164c5061bb470bae2919f9d9692b28fde7d59d5",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+      "previous_sha256": "5aafea22c5a369ad124844fd137fb102b11305ffb3a49eb98bc35138c8e9d338",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:11:31.990807+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+      "previous_sha256": "4b6edb3e9fb54d3382906b536190dc17112f8f6313333d4e1501b7924c401dbc",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "046dcc6fc2ceec58a15c0d20c5b4eb4bd250c79bcd5c50070fd20513abc3ea40",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:11:55.830556+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "7bac830b1f6ae5e828582ed777a5b1b1298e10fd1e746bf52ec0638ba4bf63a8",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+      "previous_sha256": "14a08104acbb4cf8116149ed6e6c406eb4eab08fa4aeab1ff652590678b09952",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2.5",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:11:59.645820+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+      "previous_sha256": "002aafe01f7a4a8da687b4a8a16cdbcd6cb91ea5e56102fd49b201f2a382c1fd",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "b37e19a7035874adb4485396902c821abd4fab7d48d356faf447badb0acfbd66",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:12:24.558236+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "4b2a785359dfda4d2e52f91ce9ab36b57ec55a25412d4576b9de3c09af18e8fa",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+      "previous_sha256": "29a55549b60007949be79b370f007de7a381843dc0106bfd416a54def780c432",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-trend",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:12:28.069678+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+      "previous_sha256": "a176e1fc43db5adb4a270bdcb8eed102cae4aa09ab52df8c007c76d5d51caecc",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "ebfa7de4878a5beeb42da81ac68e784dcad419f42ea2a14cc022270b522f3c68",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:12:41.633280+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "5c76d50e6406b9cacfa1b8b1b9385c19b5dfa71f38a5a90ba0a529372fe34ed0",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+      "previous_sha256": "025c4c5999ccadec93a6b19d17a2bd94f662300f1ba125276b5d1684ffa9df8e",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-reversal",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:12:45.496851+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+      "previous_sha256": "a6192e4cb7d9b46d8342cffa92bbe1fd0cdb6071907d2609ffb1eaac639b7493",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "be27c476b487b2517ecf534885ce2fd1dd6cb7edec8541000153d7e4c5e2ecc8",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:13:00.679836+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "2b9ea54e27fc7dcb030636b04f336b043f61131d2396259c14ba8cc77e604dd1",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+      "previous_sha256": "b1b76fba35630b71c04d24a0883595c01323cbfeb907f3b13896d166000efe6a",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/B",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:13:04.374322+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+      "previous_sha256": "be9baf6d33b195f24731ada8e451688788b45acd7022b5f9386596c40adf8600",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "35d366d2dcdef6dad62d077bb421fd38979e13d53196ab1c0ec7aacc9e37c651",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:13:19.748459+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "648343b17d25557bde79f4da2167fe840366f8aed2f1aacffb99a88b540de2ac",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+      "previous_sha256": "77e1475d960ce60fd38ee705c38e5c9550ba1c9174856c8156b11fc5bc634c30",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/C",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:13:23.737433+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+      "previous_sha256": "45f58f494d20b5953ca57aa6ff6b6a53ba92021e2a3ad2242ef0be8cf22d8dfd",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "36588d7902bfb0d8544a5d55105eb6a79ebe125043b94b1352d8ff3dcb2486a9",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:13:38.937945+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "d994dd1a1f42096417bd201598220cdcd1a99e223d0f6469a20c8889cbc83d27",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+      "previous_sha256": "cb238f4886041bc21ecb263bc36ec53b4887b9edcbbaf79fa8e6f58926ba23ab",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/market-exposure",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:13:42.794565+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+      "previous_sha256": "376d59871db84bc02dcc652ea53b3e955cc75215fc32153a00ae23a77c47a86b",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "943038f9625caddce174f51cdf5da7e1b34b4adacf73c63aef540a28ffe47239",
+      "schema": "portfolio-native-budget-v1"
+    },
+    {
+      "activation_sha256": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+      "at_utc": "2026-09-07T21:14:01.779647+00:00",
+      "code_commit": "7271a884557cd287623bd1d9f08016b72f843735",
+      "code_sha256": "0562f6842f3d5580bd33baf733ddaff3b13db5456974767906887bb882430b0b",
+      "correction_protocol_sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7",
+      "event": "RESERVED",
+      "input_sha256": "cf7922da85985e42a6b3f90327246e85ca54721905ec9a075ad8070958fd4279",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B",
+      "previous_sha256": "a24edb5f88033cee7c73c2e5efdbbcd5d33d198fec5a47883b976689007e1924",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/half-risk-B",
+      "retry_of": null,
+      "schema": "portfolio-native-budget-v1",
+      "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+      "source_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098"
+    },
+    {
+      "at_utc": "2026-09-07T21:14:05.290217+00:00",
+      "event": "SUCCEEDED",
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B",
+      "previous_sha256": "b38ca7e8190a85926261378ba5cc352f6e1716e980cb149288cc975b4f901279",
+      "protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+      "result_sha256": "209366482b4b14adc6eb4e60359e637131b1d6853cbd2c9c7da90409fc2029b7",
+      "schema": "portfolio-native-budget-v1"
+    }
+  ],
+  "cumulative_consumed": 28,
+  "native_total": 96,
+  "remaining": 68,
+  "sealed_remaining": 10,
+  "unallocated_remaining": 58,
+  "controls": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": {
+      "old_prefix_bytes": 20818,
+      "old_prefix_sha256": "aa790cd64c8baee3ded17c641fc4c4d6ccef3a7d72d182f67005e96369a00d40",
+      "old_prefix_preserved": true,
+      "current_bytes": 35263,
+      "current_sha256": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738"
+    },
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": {
+      "old_prefix_bytes": 194566,
+      "old_prefix_sha256": "a38fb7f477ebd7c79f0cf16eb62aa728d78529846ea454574d64d41e1f1afa78",
+      "old_prefix_preserved": true,
+      "current_bytes": 201846,
+      "current_sha256": "692c595eb32e928332d4d7759aabcf726e28f1d5ddda07a74a2a5a3a420d7439"
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json": {
+      "unchanged": true,
+      "sha256": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44"
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": {
+      "unchanged": true,
+      "sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0"
+    },
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": {
+      "unchanged": true,
+      "sha256": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897"
+    }
+  },
+  "original_evidence_files_unchanged": 140,
+  "original_results_overwritten": false,
+  "readonly_comparison_files": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/compare.py": "c3f3b3a3d2cda0c8f8ab593e023ecb52f68128496450a78212b46f18e55ddfcc",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/input-manifest.json": "7a17157b3577e8d2ab7f3938aa6ab6aff1e91beaca1195cd5eb63ce5c00c67db",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-01.json": "1d6f1a8ad9e26c0f17179ad5a702ada01998b0d2df0dd2aec715023d80f59c8e",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-02.json": "f9b3592e0354bb5e5d9d44d52232ee355e1e116b1cf2d307c0d2809050e84fc2",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-03.json": "79051aac2506407061fef0a68c2763e512ad2ea76eaaa6685462148f69561db2",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-04.json": "9eafd6e70bf8e3a349ed0db207160281b8b4ceab01fa1416417904911307f8e3",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-05.json": "da8c4549bd933c67d6dd10120fab46332fe428a94944d3a21676619b5fb21133",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-06.json": "a8cf438185d65a56b0c13436ab28ca7c57bf3647923f34f970c4eb43afbfdd05",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-07.json": "505889c671926a8bfb737e825935eed905514c9f7f8ada1c576378aa8a6ffcdc",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-08.json": "13033023c802461817131ebea09af726669b6c1e82d52520fa3b73f49f8f4989",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-09.json": "737a0af815c1cb168a4ee78be96ea66c31d1809c081eaa3023e70d6fb57b92d0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/natural-support-10.json": "2eae77a8f8c5d3b22fc239346159170707404c446f21802e365868845bb2d4f6",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue131-readonly-comparison/summary.json": "e31a45e86844dd8766b7746409a782ce83bee046952b64ea42ecd1f54cfc9dd5"
+  },
+  "readonly_comparison_input_manifest_sha256": "7a17157b3577e8d2ab7f3938aa6ab6aff1e91beaca1195cd5eb63ce5c00c67db",
+  "readonly_comparison_summary_sha256": "e31a45e86844dd8766b7746409a782ce83bee046952b64ea42ecd1f54cfc9dd5",
+  "readonly_comparison_additional_native": 0,
+  "natural_definition_sha256": "e60fcfb8423e2e2484bf02c0d78a6b06191e8393373afcadc24553ab74dc3274",
+  "natural_helper_sha256": "671aa085894cf58a0e3fe47d2d83a612e9f8926b545516ffd902ea65d2d1cc4c",
+  "natural_computation": "FROZEN_SAMPLE_SUPPORT_FUNCTION_ON_NEW_ACTUAL_ARTIFACTS; NO_OLD_COUNT_SUBSTITUTION; NO_POOLING",
+  "jobs": [
+    {
+      "index": 1,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+      "mode": "A-trend",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "6f57b7a23c9f39909207304aae5e6a4766e7cdf0e924d48ef0e71ed9248050cc",
+      "old_result_sha256": "f9ebb6262fb0fd2425dbdcee7bf6f441b2b4ba3e2e1afbdcdc91be35ff9e5bb7",
+      "new_evidence_index_sha256": "55ad2619d093f45c1b81263b662f8bc0c1cac095f4786e6f99791eb5ae62c817",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/01",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/01",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": 1038261,
+          "denominator": 100000,
+          "display": "10.38261"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 500000000,
+          "display": "0.067176018"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 500000000,
+          "display": "0.067176018"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 515504125299541707,
+          "denominator": 5000000000000000000,
+          "display": "0.1031008250599083414"
+        },
+        "modeled_net": {
+          "numerator": 51756793945299541707,
+          "denominator": 5000000000000000000,
+          "display": "10.3513587890599083414"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": 1038261,
+          "denominator": 100000,
+          "display": "10.38261"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 500000000,
+          "display": "0.067176018"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 500000000,
+          "display": "0.067176018"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 515504125299541707,
+          "denominator": 5000000000000000000,
+          "display": "0.1031008250599083414"
+        },
+        "modeled_net": {
+          "numerator": 51756793945299541707,
+          "denominator": 5000000000000000000,
+          "display": "10.3513587890599083414"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142992756556620597627,
+        "display": "0.0120908300154396459761209667396140494416173906320476329423214"
+      },
+      "old_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142992756556620597627,
+        "display": "0.0120908300154396459761209667396140494416173906320476329423214"
+      },
+      "new_net_gate": true,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 1,
+      "old_actual_position_cycles": 1,
+      "old_order_count": 2,
+      "new_order_count": 2,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 937,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-06 02:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-06 03:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-06 04:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": false,
+          "activated_episodes": 0,
+          "natural_exit_episodes": 0,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "NOT_ENABLED",
+          "proven_cluster_upper_bound": null,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "verdict": "NOT_QUALIFIED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 2062016501198167,
+        "denominator": 20000000000000000,
+        "display": "0.10310082505990835"
+      },
+      "native_funding_delta": {
+        "numerator": -43,
+        "denominator": 5000000000000000000,
+        "display": "-8.6E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 2,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+      "mode": "A-reversal",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "c09c3a2758d8ae591ee9316c11427aa82aeefe1b049601fdbb81387dcdc94a40",
+      "old_result_sha256": "bb515fe10d204a3a8fed50e2ab8b12c01324e20513b355962a49205741821f3e",
+      "new_evidence_index_sha256": "cc42999519fb044a4c9adbb18098c06b4576b89f644fa1315b6ce81e514ef62b",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/02",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/02",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -126079,
+          "denominator": 50000,
+          "display": "-2.52158"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 250000000,
+          "display": "0.363686676"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 250000000,
+          "display": "0.363686676"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 710548526635161039,
+          "denominator": 10000000000000000000,
+          "display": "0.0710548526635161039"
+        },
+        "modeled_net": {
+          "numerator": -31778984993364838961,
+          "denominator": 10000000000000000000,
+          "display": "-3.1778984993364838961"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -126079,
+          "denominator": 50000,
+          "display": "-2.52158"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 250000000,
+          "display": "0.363686676"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 250000000,
+          "display": "0.363686676"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 710548526635161039,
+          "denominator": 10000000000000000000,
+          "display": "0.0710548526635161039"
+        },
+        "modeled_net": {
+          "numerator": -31778984993364838961,
+          "denominator": 10000000000000000000,
+          "display": "-3.1778984993364838961"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 154500847605529094767,
+        "denominator": 10014054260608000000000,
+        "display": "0.0154284012833128614171045824010145131668363035207444070169625"
+      },
+      "old_max_drawdown": {
+        "numerator": 154500847605529094767,
+        "denominator": 10014054260608000000000,
+        "display": "0.0154284012833128614171045824010145131668363035207444070169625"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 105,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-05 02:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-05 03:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-05 04:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": false,
+          "activated_episodes": 0,
+          "natural_exit_episodes": 0,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "NOT_ENABLED",
+          "proven_cluster_upper_bound": null,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "verdict": "NOT_QUALIFIED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 2,
+          "certified_episodes": 2,
+          "natural_clusters": 2,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 2,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-03 01:00:00+00:00",
+              "end": "2024-08-04 18:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/reversal/1/2024-08-03T01:00:00+00:00"
+              ]
+            },
+            {
+              "start": "2024-08-06 01:00:00+00:00",
+              "end": "2024-08-11 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/reversal/1/2024-08-06T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 8881856582939513,
+        "denominator": 125000000000000000,
+        "display": "0.071054852663516104"
+      },
+      "native_funding_delta": {
+        "numerator": -1,
+        "denominator": 10000000000000000000,
+        "display": "-1E-19"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 3,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+      "mode": "B",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "251765b33f33c82ff1bf98939cf50bdb1391b347188821b1b2b3159753d6f0c9",
+      "old_result_sha256": "36b9e51e2a54f55970274eaae5a501125ef528fe9d6e1eeb4ca8a8e17cdacc68",
+      "new_evidence_index_sha256": "046dcc6fc2ceec58a15c0d20c5b4eb4bd250c79bcd5c50070fd20513abc3ea40",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/03",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/03",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -811,
+          "denominator": 3125,
+          "display": "-0.25952"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 2904903,
+          "denominator": 25000000,
+          "display": "0.11619612"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 2904903,
+          "denominator": 25000000,
+          "display": "0.11619612"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 109800930852083093,
+          "denominator": 2500000000000000000,
+          "display": "0.0439203723408332372"
+        },
+        "modeled_net": {
+          "numerator": -1119979669147916907,
+          "denominator": 2500000000000000000,
+          "display": "-0.4479918676591667628"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -44799,
+          "denominator": 100000,
+          "display": "-0.44799"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 56517699,
+          "denominator": 500000000,
+          "display": "0.113035398"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 56517699,
+          "denominator": 500000000,
+          "display": "0.113035398"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 44173098414200831,
+          "denominator": 1000000000000000000,
+          "display": "0.044173098414200831"
+        },
+        "modeled_net": {
+          "numerator": -629887697585799169,
+          "denominator": 1000000000000000000,
+          "display": "-0.629887697585799169"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 18847,
+          "denominator": 100000,
+          "display": "0.18847"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 1580361,
+          "denominator": 500000000,
+          "display": "0.003160722"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 1580361,
+          "denominator": 500000000,
+          "display": "0.003160722"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -1263630366837969,
+          "denominator": 5000000000000000000,
+          "display": "-0.0002527260733675938"
+        },
+        "modeled_net": {
+          "numerator": 909479149633162031,
+          "denominator": 5000000000000000000,
+          "display": "0.1818958299266324062"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 3332892974253715373,
+        "denominator": 625439195644000000000,
+        "display": "0.00532888408252366406914226144633034011973499832048527288349347"
+      },
+      "old_max_drawdown": {
+        "numerator": 3313025449972465373,
+        "denominator": 625439195644000000000,
+        "display": "0.00529711836585668594912458955944352723803689415196346971208852"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": false,
+      "different_actual_orders_new": [
+        {
+          "amount": "0.01",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        },
+        {
+          "amount": "0.01",
+          "filled_at": "2024-08-06 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2539.7",
+          "side": "buy",
+          "tag": "observed_target_close"
+        }
+      ],
+      "different_actual_orders_old": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        },
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-06 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2539.7",
+          "side": "buy",
+          "tag": "observed_target_close"
+        }
+      ],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 100,
+        "ETH/USDT:USDT": 30
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-09 02:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-09 03:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-09 04:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": [
+          {
+            "time": "2024-08-04 19:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.010",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-04 20:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.01",
+            "actual": "-0.01"
+          },
+          {
+            "time": "2024-08-04 21:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.01",
+            "actual": "-0.01"
+          }
+        ]
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 1098009308520831,
+        "denominator": 25000000000000000,
+        "display": "0.04392037234083324"
+      },
+      "native_funding_delta": {
+        "numerator": -7,
+        "denominator": 2500000000000000000,
+        "display": "-2.8E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 4,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+      "mode": "C",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "d2333a863723a564b86f6659f6f6fa828b99387c78bb0db69eef627833e2f607",
+      "old_result_sha256": "ba0e6000e843609dd99cbeff15138c7fca80654a40fe244c4c9d5558ceb83c76",
+      "new_evidence_index_sha256": "b37e19a7035874adb4485396902c821abd4fab7d48d356faf447badb0acfbd66",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/04",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/04",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -19543,
+          "denominator": 25000,
+          "display": "-0.78172"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 12409119,
+          "denominator": 125000000,
+          "display": "0.099272952"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 12409119,
+          "denominator": 125000000,
+          "display": "0.099272952"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 40442231446495339,
+          "denominator": 2000000000000000000,
+          "display": "0.0202211157232476695"
+        },
+        "modeled_net": {
+          "numerator": -1920089576553504661,
+          "denominator": 2000000000000000000,
+          "display": "-0.9600447882767523305"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -260089,
+          "denominator": 100000,
+          "display": "-2.60089"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 1963629,
+          "denominator": 20000000,
+          "display": "0.09818145"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 1963629,
+          "denominator": 20000000,
+          "display": "0.09818145"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 41264637046495339,
+          "denominator": 2000000000000000000,
+          "display": "0.0206323185232476695"
+        },
+        "modeled_net": {
+          "numerator": -5553241162953504661,
+          "denominator": 2000000000000000000,
+          "display": "-2.7766205814767523305"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 181917,
+          "denominator": 100000,
+          "display": "1.81917"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 545751,
+          "denominator": 500000000,
+          "display": "0.001091502"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 545751,
+          "denominator": 500000000,
+          "display": "0.001091502"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -1028007,
+          "denominator": 2500000000,
+          "display": "-0.0004112028"
+        },
+        "modeled_net": {
+          "numerator": 4541439483,
+          "denominator": 2500000000,
+          "display": "1.8165757932"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 43605754005235799849,
+        "denominator": 10005709543372000000000,
+        "display": "0.00435808713177379822687304916298660396875853857909873005480820"
+      },
+      "old_max_drawdown": {
+        "numerator": 910213100646484069,
+        "denominator": 200114190867440000000,
+        "display": "0.00454846853539451911259955299005354769848130502104511815251394"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": false,
+      "different_actual_orders_new": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        }
+      ],
+      "different_actual_orders_old": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-05 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2526.04",
+          "side": "sell",
+          "tag": "observed_open"
+        }
+      ],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 0,
+        "ETH/USDT:USDT": 6
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [],
+        "ETH/USDT:USDT": [
+          {
+            "time": "2024-08-04 19:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-04 20:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "-0.009"
+          },
+          {
+            "time": "2024-08-04 21:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "-0.009"
+          }
+        ]
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 20221115723247667,
+        "denominator": 1000000000000000000,
+        "display": "0.020221115723247667"
+      },
+      "native_funding_delta": {
+        "numerator": 1,
+        "denominator": 400000000000000000,
+        "display": "2.5E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 5,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "494bbc41590a9f7b01d6ed2858031fb72a809d894b1fb59105973049b2217b9a",
+      "old_result_sha256": "459c17e78cd492e20c0a837c02e46ae9f11c07043567905aa6a5b9f350bb6873",
+      "new_evidence_index_sha256": "ebfa7de4878a5beeb42da81ac68e784dcad419f42ea2a14cc022270b522f3c68",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/05",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/05",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -6553,
+          "denominator": 3125,
+          "display": "-2.09696"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 6250000,
+          "display": "0.02716848"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 6250000,
+          "display": "0.02716848"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -5900887441215373,
+          "denominator": 1250000000000000000,
+          "display": "-0.0047207099529722984"
+        },
+        "modeled_net": {
+          "numerator": -2695022087441215373,
+          "denominator": 1250000000000000000,
+          "display": "-2.1560176699529722984"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -6553,
+          "denominator": 3125,
+          "display": "-2.09696"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 6250000,
+          "display": "0.02716848"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 6250000,
+          "display": "0.02716848"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -5900887441215373,
+          "denominator": 1250000000000000000,
+          "display": "-0.0047207099529722984"
+        },
+        "modeled_net": {
+          "numerator": -2695022087441215373,
+          "denominator": 1250000000000000000,
+          "display": "-2.1560176699529722984"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 3134217731441215373,
+        "denominator": 1250439195644000000000,
+        "display": "0.00250649351232710963691548503790016565786894845081403354257123"
+      },
+      "old_max_drawdown": {
+        "numerator": 3134217731441215373,
+        "denominator": 1250439195644000000000,
+        "display": "0.00250649351232710963691548503790016565786894845081403354257123"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 1,
+      "old_actual_position_cycles": 1,
+      "old_order_count": 2,
+      "new_order_count": 2,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 0,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": 0,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 0,
+          "increase_fill_upper_bound": 0,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": -2360354976486149,
+        "denominator": 500000000000000000,
+        "display": "-0.004720709952972298"
+      },
+      "native_funding_delta": {
+        "numerator": -1,
+        "denominator": 2500000000000000000,
+        "display": "-4E-19"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 6,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+      "mode": "A-trend",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "3bb0df7645adf9b93ffe39f586021948a00d1fde7f793b3e8897a3f7ea86c4ee",
+      "old_result_sha256": "136ca70f24331ae0a9e07ec74ca58c62eba6670edab8a04a61f93c71e371c623",
+      "new_evidence_index_sha256": "be27c476b487b2517ecf534885ce2fd1dd6cb7edec8541000153d7e4c5e2ecc8",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/06",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/06",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": 1038261,
+          "denominator": 100000,
+          "display": "10.38261"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 250000000,
+          "display": "0.134352036"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 250000000,
+          "display": "0.134352036"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 515504125299541707,
+          "denominator": 5000000000000000000,
+          "display": "0.1031008250599083414"
+        },
+        "modeled_net": {
+          "numerator": 51085033765299541707,
+          "denominator": 5000000000000000000,
+          "display": "10.2170067530599083414"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": 1038261,
+          "denominator": 100000,
+          "display": "10.38261"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 250000000,
+          "display": "0.134352036"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 33588009,
+          "denominator": 250000000,
+          "display": "0.134352036"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 515504125299541707,
+          "denominator": 5000000000000000000,
+          "display": "0.1031008250599083414"
+        },
+        "modeled_net": {
+          "numerator": 51085033765299541707,
+          "denominator": 5000000000000000000,
+          "display": "10.2170067530599083414"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142258700716620597627,
+        "display": "0.0120917051010241473513365056558187698544649908779086187599143"
+      },
+      "old_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142258700716620597627,
+        "display": "0.0120917051010241473513365056558187698544649908779086187599143"
+      },
+      "new_net_gate": true,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 1,
+      "old_actual_position_cycles": 1,
+      "old_order_count": 2,
+      "new_order_count": 2,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 937,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-06 02:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-06 03:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-06 04:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": false,
+          "activated_episodes": 0,
+          "natural_exit_episodes": 0,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "NOT_ENABLED",
+          "proven_cluster_upper_bound": null,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "verdict": "NOT_QUALIFIED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 2062016501198167,
+        "denominator": 20000000000000000,
+        "display": "0.10310082505990835"
+      },
+      "native_funding_delta": {
+        "numerator": -43,
+        "denominator": 5000000000000000000,
+        "display": "-8.6E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 7,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+      "mode": "A-reversal",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "e6364e51fc50b0a947e04ab98a1da8c1b22f7af44d31c1bef967775d293b2ffe",
+      "old_result_sha256": "b6b06fd99a28f2e9b52939ae1e075a18d10113f067d96a9d4460eca0a241764e",
+      "new_evidence_index_sha256": "35d366d2dcdef6dad62d077bb421fd38979e13d53196ab1c0ec7aacc9e37c651",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/07",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/07",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -126079,
+          "denominator": 50000,
+          "display": "-2.52158"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 125000000,
+          "display": "0.727373352"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 125000000,
+          "display": "0.727373352"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 710548526635161039,
+          "denominator": 10000000000000000000,
+          "display": "0.0710548526635161039"
+        },
+        "modeled_net": {
+          "numerator": -39052718513364838961,
+          "denominator": 10000000000000000000,
+          "display": "-3.9052718513364838961"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -126079,
+          "denominator": 50000,
+          "display": "-2.52158"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 125000000,
+          "display": "0.727373352"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 90921669,
+          "denominator": 125000000,
+          "display": "0.727373352"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 710548526635161039,
+          "denominator": 10000000000000000000,
+          "display": "0.0710548526635161039"
+        },
+        "modeled_net": {
+          "numerator": -39052718513364838961,
+          "denominator": 10000000000000000000,
+          "display": "-3.9052718513364838961"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 156360122565529094767,
+        "denominator": 10012917194368000000000,
+        "display": "0.0156158409712483701669949713336804261750300062620880351700182"
+      },
+      "old_max_drawdown": {
+        "numerator": 156360122565529094767,
+        "denominator": 10012917194368000000000,
+        "display": "0.0156158409712483701669949713336804261750300062620880351700182"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 105,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-05 02:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-05 03:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-05 04:00:00+00:00",
+            "old": "0",
+            "new": "0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": false,
+          "activated_episodes": 0,
+          "natural_exit_episodes": 0,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "NOT_ENABLED",
+          "proven_cluster_upper_bound": null,
+          "increase_fill_upper_bound": null,
+          "minimum_required": 30,
+          "verdict": "NOT_QUALIFIED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 2,
+          "certified_episodes": 2,
+          "natural_clusters": 2,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 2,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-03 01:00:00+00:00",
+              "end": "2024-08-04 18:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/reversal/1/2024-08-03T01:00:00+00:00"
+              ]
+            },
+            {
+              "start": "2024-08-06 01:00:00+00:00",
+              "end": "2024-08-11 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/reversal/1/2024-08-06T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 8881856582939513,
+        "denominator": 125000000000000000,
+        "display": "0.071054852663516104"
+      },
+      "native_funding_delta": {
+        "numerator": -1,
+        "denominator": 10000000000000000000,
+        "display": "-1E-19"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 8,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+      "mode": "B",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "561282cc3cefc95c3f6fa3e1e5117e27e4df85b471bd0e4980360787dfcc04fc",
+      "old_result_sha256": "2babac5dec6730e897f6ebc7a259a30e2dbe54ef965d83f59954ae3618ab4cc2",
+      "new_evidence_index_sha256": "36588d7902bfb0d8544a5d55105eb6a79ebe125043b94b1352d8ff3dcb2486a9",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/08",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/08",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -811,
+          "denominator": 3125,
+          "display": "-0.25952"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 2904903,
+          "denominator": 12500000,
+          "display": "0.23239224"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 2904903,
+          "denominator": 12500000,
+          "display": "0.23239224"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 109800930852083093,
+          "denominator": 2500000000000000000,
+          "display": "0.0439203723408332372"
+        },
+        "modeled_net": {
+          "numerator": -1700960269147916907,
+          "denominator": 2500000000000000000,
+          "display": "-0.6803841076591667628"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -44799,
+          "denominator": 100000,
+          "display": "-0.44799"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 56517699,
+          "denominator": 250000000,
+          "display": "0.226070796"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 56517699,
+          "denominator": 250000000,
+          "display": "0.226070796"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 44173098414200831,
+          "denominator": 1000000000000000000,
+          "display": "0.044173098414200831"
+        },
+        "modeled_net": {
+          "numerator": -855958493585799169,
+          "denominator": 1000000000000000000,
+          "display": "-0.855958493585799169"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 18847,
+          "denominator": 100000,
+          "display": "0.18847"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 1580361,
+          "denominator": 250000000,
+          "display": "0.006321444"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 1580361,
+          "denominator": 250000000,
+          "display": "0.006321444"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -1263630366837969,
+          "denominator": 5000000000000000000,
+          "display": "-0.0002527260733675938"
+        },
+        "modeled_net": {
+          "numerator": 877871929633162031,
+          "denominator": 5000000000000000000,
+          "display": "0.1755743859266324062"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 3385742129253715373,
+        "denominator": 625403662324000000000,
+        "display": "0.00541369092191161412531133695760023679832166265336607718857487"
+      },
+      "old_max_drawdown": {
+        "numerator": 169771950197979123,
+        "denominator": 31270183116200000000,
+        "display": "0.00542919590739544308265319437995290315536281490091826160765666"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": false,
+      "different_actual_orders_new": [
+        {
+          "amount": "0.01",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        },
+        {
+          "amount": "0.01",
+          "filled_at": "2024-08-06 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2539.7",
+          "side": "buy",
+          "tag": "observed_target_close"
+        }
+      ],
+      "different_actual_orders_old": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        },
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-06 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2539.7",
+          "side": "buy",
+          "tag": "observed_target_close"
+        }
+      ],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 100,
+        "ETH/USDT:USDT": 30
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [
+          {
+            "time": "2024-08-09 02:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-09 03:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-09 04:00:00+00:00",
+            "old": "0",
+            "new": "-0.001",
+            "actual": "0"
+          }
+        ],
+        "ETH/USDT:USDT": [
+          {
+            "time": "2024-08-04 19:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.010",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-04 20:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.01",
+            "actual": "-0.01"
+          },
+          {
+            "time": "2024-08-04 21:00:00+00:00",
+            "old": "-0.009",
+            "new": "-0.01",
+            "actual": "-0.01"
+          }
+        ]
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 1098009308520831,
+        "denominator": 25000000000000000,
+        "display": "0.04392037234083324"
+      },
+      "native_funding_delta": {
+        "numerator": -7,
+        "denominator": 2500000000000000000,
+        "display": "-2.8E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 9,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+      "mode": "C",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "9384180ff1373db3adadc328144fc108ee5e17f055dd68b88ed8010651681a10",
+      "old_result_sha256": "b1f16ecdbb36e0febdfbc7817926c3e25125107a6c3e0784003db86fa35159e3",
+      "new_evidence_index_sha256": "943038f9625caddce174f51cdf5da7e1b34b4adacf73c63aef540a28ffe47239",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/09",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/09",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -19543,
+          "denominator": 25000,
+          "display": "-0.78172"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 12409119,
+          "denominator": 62500000,
+          "display": "0.198545904"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 12409119,
+          "denominator": 62500000,
+          "display": "0.198545904"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 40442231446495339,
+          "denominator": 2000000000000000000,
+          "display": "0.0202211157232476695"
+        },
+        "modeled_net": {
+          "numerator": -2317181384553504661,
+          "denominator": 2000000000000000000,
+          "display": "-1.1585906922767523305"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -260089,
+          "denominator": 100000,
+          "display": "-2.60089"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 1963629,
+          "denominator": 10000000,
+          "display": "0.1963629"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 1963629,
+          "denominator": 10000000,
+          "display": "0.1963629"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 41264637046495339,
+          "denominator": 2000000000000000000,
+          "display": "0.0206323185232476695"
+        },
+        "modeled_net": {
+          "numerator": -5945966962953504661,
+          "denominator": 2000000000000000000,
+          "display": "-2.9729834814767523305"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 181917,
+          "denominator": 100000,
+          "display": "1.81917"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 545751,
+          "denominator": 250000000,
+          "display": "0.002183004"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 545751,
+          "denominator": 250000000,
+          "display": "0.002183004"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -1028007,
+          "denominator": 2500000000,
+          "display": "-0.0004112028"
+        },
+        "modeled_net": {
+          "numerator": 4535981973,
+          "denominator": 2500000000,
+          "display": "1.8143927892"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 44321438805235799849,
+        "denominator": 10005247610212000000000,
+        "display": "0.00442981928403235971096422867452408641798729993443777374080392"
+      },
+      "old_max_drawdown": {
+        "numerator": 935023035846484069,
+        "denominator": 200104952204240000000,
+        "display": "0.00467266314774728487331035434582894894279225767448328461438343"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 3,
+      "old_actual_position_cycles": 3,
+      "old_order_count": 6,
+      "new_order_count": 6,
+      "actual_order_signature_multisets_equal": false,
+      "different_actual_orders_new": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-04 19:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2728.17",
+          "side": "sell",
+          "tag": "observed_open"
+        }
+      ],
+      "different_actual_orders_old": [
+        {
+          "amount": "0.009",
+          "filled_at": "2024-08-05 01:00:00+00:00",
+          "pair": "ETH/USDT:USDT",
+          "price": "2526.04",
+          "side": "sell",
+          "tag": "observed_open"
+        }
+      ],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 0,
+        "ETH/USDT:USDT": 6
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [],
+        "ETH/USDT:USDT": [
+          {
+            "time": "2024-08-04 19:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "0"
+          },
+          {
+            "time": "2024-08-04 20:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "-0.009"
+          },
+          {
+            "time": "2024-08-04 21:00:00+00:00",
+            "old": "-0.008",
+            "new": "-0.009",
+            "actual": "-0.009"
+          }
+        ]
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 1,
+          "natural_clusters": 1,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 2,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [
+            {
+              "start": "2024-08-04 01:00:00+00:00",
+              "end": "2024-09-15 01:00:00+00:00",
+              "episode_ids": [
+                "ETH/USDT:USDT/trend/-1/2024-08-04T01:00:00+00:00"
+              ]
+            }
+          ],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": 20221115723247667,
+        "denominator": 1000000000000000000,
+        "display": "0.020221115723247667"
+      },
+      "native_funding_delta": {
+        "numerator": 1,
+        "denominator": 400000000000000000,
+        "display": "2.5E-18"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    },
+    {
+      "index": 10,
+      "key": "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "new_result_sha256": "5b8660f5e1faea0b4f3d4fb0f9b00452d447325c80ce1a892027b93333803786",
+      "old_result_sha256": "4733c69ccb11385856323494839f5d0cce9dd4849cf613aebb47e2096d8f9349",
+      "new_evidence_index_sha256": "209366482b4b14adc6eb4e60359e637131b1d6853cbd2c9c7da90409fc2029b7",
+      "new_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-jobs/10",
+      "old_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/10",
+      "new_model": {
+        "actual_price_cashflow": {
+          "numerator": -6553,
+          "denominator": 3125,
+          "display": "-2.09696"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 3125000,
+          "display": "0.05433696"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 3125000,
+          "display": "0.05433696"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -5900887441215373,
+          "denominator": 1250000000000000000,
+          "display": "-0.0047207099529722984"
+        },
+        "modeled_net": {
+          "numerator": -2762943287441215373,
+          "denominator": 1250000000000000000,
+          "display": "-2.2103546299529722984"
+        },
+        "exact_identity_verified": true
+      },
+      "old_implementation_affected_model": {
+        "actual_price_cashflow": {
+          "numerator": -6553,
+          "denominator": 3125,
+          "display": "-2.09696"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 3125000,
+          "display": "0.05433696"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 169803,
+          "denominator": 3125000,
+          "display": "0.05433696"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": -5900887441215373,
+          "denominator": 1250000000000000000,
+          "display": "-0.0047207099529722984"
+        },
+        "modeled_net": {
+          "numerator": -2762943287441215373,
+          "denominator": 1250000000000000000,
+          "display": "-2.2103546299529722984"
+        },
+        "exact_identity_verified": true
+      },
+      "actual_model_differences": {
+        "actual_price_cashflow": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_fees_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_slippage_on_actual_fills": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_funding_on_actual_inventory": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        },
+        "modeled_net": {
+          "numerator": 0,
+          "denominator": 1,
+          "display": "0"
+        }
+      },
+      "new_max_drawdown": {
+        "numerator": 3166605611441215373,
+        "denominator": 1250403662324000000000,
+        "display": "0.00253246668004455681821696679491786609822533563899222749794419"
+      },
+      "old_max_drawdown": {
+        "numerator": 3166605611441215373,
+        "denominator": 1250403662324000000000,
+        "display": "0.00253246668004455681821696679491786609822533563899222749794419"
+      },
+      "new_net_gate": false,
+      "new_risk_gate": true,
+      "new_actual_position_cycles": 1,
+      "old_actual_position_cycles": 1,
+      "old_order_count": 2,
+      "new_order_count": 2,
+      "actual_order_signature_multisets_equal": true,
+      "different_actual_orders_new": [],
+      "different_actual_orders_old": [],
+      "target_changed_hours_by_asset": {
+        "BTC/USDT:USDT": 0,
+        "ETH/USDT:USDT": 0
+      },
+      "target_change_examples": {
+        "BTC/USDT:USDT": [],
+        "ETH/USDT:USDT": []
+      },
+      "natural_support": {
+        "trend": {
+          "enabled": true,
+          "activated_episodes": 4,
+          "natural_exit_episodes": 3,
+          "possible_supported_episodes": 0,
+          "certified_episodes": 0,
+          "natural_clusters": 0,
+          "attribution": "CERTIFIED_EXCLUSIVE_CYCLES",
+          "proven_cluster_upper_bound": 0,
+          "increase_fill_upper_bound": 0,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        },
+        "reversal": {
+          "enabled": true,
+          "activated_episodes": 5,
+          "natural_exit_episodes": 4,
+          "possible_supported_episodes": 1,
+          "certified_episodes": 0,
+          "natural_clusters": null,
+          "attribution": "UNKNOWN_NETTED_OR_UNPROVEN_EXECUTION",
+          "proven_cluster_upper_bound": 1,
+          "increase_fill_upper_bound": 1,
+          "minimum_required": 30,
+          "verdict": "UNDERPOWERED",
+          "certified_subset_components": [],
+          "certified_subset_component_count_is_not_a_lower_bound_when_ambiguous": true,
+          "statistical_independence": "UNKNOWN",
+          "original_full_logical_intervals_preserved": true,
+          "upper_bound_mapping_verified": true,
+          "upper_bound_conditional_on_frozen_support_definition": true,
+          "upper_bound_proof": "Every eligible supported interval has an actual increase in its original interval and is in the possible set. Choose one interval from each cluster of any true supported subset: representatives are strictly disjoint. Earliest-finish maximum disjoint count bounds their number. Unique pair/family occupancy also maps each possible support episode to a distinct compatible increase event within a family; no interval is trimmed to actual partial holding."
+        }
+      },
+      "model_label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+      "native_funding": {
+        "numerator": -2360354976486149,
+        "denominator": 500000000000000000,
+        "display": "-0.004720709952972298"
+      },
+      "native_funding_delta": {
+        "numerator": -1,
+        "denominator": 2500000000000000000,
+        "display": "-4E-19"
+      },
+      "native_rejection_reasons": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+      "new_independence": false
+    }
+  ],
+  "money_identity": "ACTUAL_PRICE_CASHFLOW_MINUS_MODELED_FEE_MINUS_MODELED_SLIPPAGE_PLUS_MODELED_ACTUAL_INVENTORY_FUNDING_EQUALS_RECORDED_MODELED_NET_EXACTLY",
+  "model_net_pass_count": 2,
+  "model_risk_pass_count": 10,
+  "enabled_family_natural_gate_pass_count": 0,
+  "research_evidence_status": "UNDERPOWERED",
+  "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+  "qualified_real_net": null,
+  "native_rejection_reason": "UNKNOWN_NO_NATIVE_REJECTION_RECEIPT",
+  "continuous_risk_coverage": "UNKNOWN",
+  "historical_exchange_rules_verified": false,
+  "independent_confirmation": "SEALED_NOT_AUTHORIZED",
+  "official_ui_imported": false,
+  "live_official_ui_verified": false,
+  "conclusion": "EXACT_SIZING_REPAIR_REACHES_ACTUAL_NATIVE_CONSUMER; B_AND_C_DIFFER_BUT_REMAIN_NEGATIVE; A_TREND_POSITIVE_MODEL_PATH_HAS_ONE_NATURAL_CLUSTER; NO_QUALIFIED_MECHANISM_OR_NEW_INDEPENDENCE",
+  "next_action": "STOP_THIS_REEVALUATION; NO_PARAMETER_RERUN_OR_NEW_WINDOW_WITHOUT_SEPARATE_REVIEW"
+}
