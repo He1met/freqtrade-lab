@@ -1,4 +1,4 @@
-"""Three fixed identities, synthetic inputs only: no HTTP or native backtests."""
+"""Four fixed identities, synthetic inputs only: no HTTP or native backtests."""
 import hashlib
 import json
 
@@ -8,7 +8,7 @@ from lab import binance_source as producer, bounded_research as pilot
 from lab.futures_costs import FuturesCostError, audit_from_source, binance_identity
 from tests.test_spot_research import spot_profile
 
-PAIRS = ['BCH/USDT:USDT', 'DOGE/USDT:USDT', 'ADA/USDT:USDT']
+PAIRS = ['BCH/USDT:USDT', 'DOGE/USDT:USDT', 'ADA/USDT:USDT', 'BNB/USDT:USDT']
 START = 1704067200000  # synthetic 2024-01-01
 DAY = 86400000
 
