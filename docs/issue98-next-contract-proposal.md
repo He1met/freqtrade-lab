@@ -66,4 +66,10 @@ E0=1000，固定stake250，max_open_trades1，tradable_balance_ratio0.99；单�
 
 现有新六表DB中：真实Profile→受控Generation→经静态/合成审阅批准Candidate→SINGLE_BASELINE Search，terminal/trials/artifact真实写 `generation_runs.response_json`，无finalist不造ResearchRun。额外门若没有正式字段就用现有JSON/审阅receipt绑定，在导入finalist前执行，不修改主字段冒充native；页面如实标原生/保守口径和UNKNOWN。S全门+root放行后才创建D ResearchRun；H/Stress使用同research_run_id，最后人工判定，Release/交易0。沿Console实际验证状态/禁用门，不新建UI或宣称FreqUI可用。
 
-本轮实际新增市场请求0、Candidate0、Search0、D/H/Stress0；未写研究DB、未追加消费台账。交付一份提案，Issue98保持OPEN等待监督选择：先授权3GET数据QC，或拒绝该研究。文件完成不等于用户长期盈利目标完成。
+初次提案时新增市场请求0、Candidate0、Search0、D/H/Stress0；未写研究DB、未追加消费台账。文件完成不等于用户长期盈利目标完成。
+
+## 后续获准QC实绩
+
+root随后仅授权上述3GET资金QC，未冻结整体实验或授权业务适配。2026-09-07T04:01:23.292219Z至04:01:23.725974Z完成：实际3次HTTP GET、1,242,829解码bytes、0重试/0重定向。DOGEUSDT身份TRADING/PERPETUAL/USDT线性；实际1092事件，首2023-11-06T00:00Z、末2024-11-03T16:00Z，严格递增；重复时间/重复分钟桶/缺失8h桶/额外桶/错币/非Regular/无效associated mark/非有限funding均0。状态 `FUNDING_CALENDAR_ASSOCIATED_MARK_QC_PASS_NOT_SOURCE_READY`。仅机器校验事件/有限性，不输出资金率或mark分布；OHLCV、D/H、Candidate、Search均0。未改三个业务模块。
+
+证据根 `/Users/shenjianpeng/.codex/runs/freqtrade-lab/doge-funding-qc-bb9d-20260907`：`authorization.json`绑定事前协议和脚本SHA；`qc.py`、三个response/receipt、`utc-sequence.json`和`qc-report.json`保留原响应及时间。已重核响应bytes/SHA与脚本SHA。QC报告SHA256 `3ba2b453c7c1bd8cb396f055c9d525a42937152483adabf8ff8cba72316eab90`。资金S现在是QC已接触、不是从未读取；行情完整性/流动性/D/H及经济有效性仍UNKNOWN。已即时通知root，Issue98保持OPEN等待窄适配与完整冻结裁决；没有再次采集或经济实验。
