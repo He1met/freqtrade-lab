@@ -289,7 +289,7 @@ def qc_summary(data, start, end):
 
 
 def register(contract, snapshot, ledger_path, manifest_sha):
-    with exclusive(str(ledger_path) + '.portfolio-source.lock'):
+    with exclusive(str(ledger_path) + '.lock'):
         raw = Path(ledger_path).read_bytes()
         check_scope(contract, snapshot, raw)
         registration = dict(record_type='PORTFOLIO_EXPLORATORY_SOURCE_REGISTERED',

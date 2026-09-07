@@ -31,3 +31,17 @@ PYTHONDONTWRITEBYTECODE=1 uv run --with pytest python -m pytest -q -p no:cachepr
 [脱敏终态与37响应SHA](issue119-capture-terminal.json)：`BLOCKED_DATA`，首个BTC funding页1000条事件的markPrice全部为空。BTC trade/mark各24096小时结构通过；ETH历史请求0。37 GET均HTTP200，共7,697,705字节，36.70秒，最小请求间隔1.00146秒，无重试。首次GET前账行176已登记；未写可执行source，native账SHA不变，经济结果NULL。尚余85个采集请求额度不构成失败后自动恢复授权；固定预算/root不重置。
 
 缺失关联mark不能以邻近小时mark或当前mark填补。后续需要官方可核验事件mark来源，或独立审查新的源/日历合同；本次不自行扩大范围或把不完整源称为策略失败。历史interval证据亦仍UNKNOWN。
+
+## 合并前并发及终态身份修复
+
+原执行register使用`.portfolio-source.lock`，既有`portfolio_budget.checkpoint_budget()`使用`.lock`，二者不互斥。本次不能以单下载worker宣称全局账无并发。现已统一到同一`.lock`；共享锁被已有writer持有时，实际CLI不追加登记、不GET，返回BLOCKED_CONTROL。21项测试通过（含共享锁CLI零GET与成功/失败数据路径均做终态身份复核）。
+
+未来入口在写终态前再次核验完整文件、manifest本身和解释器SHA；漂移明确`CONTROL_INTEGRITY`并禁止发布，保留原启动manifest身份，不全部归为数据问题。本次原执行没有该终态自检，之前的事后hash复核只是外部审查证据。原manifest内容不变并仍绑定历史d8bc4bf，修复代码不匹配它，不能用旧manifest重启。
+
+[事后完整性审查](issue119-integrity-review.json)只读核验原185542 bytes前缀SHA不变，现186369 bytes/SHA d596e9ce1f15c9271b8815e9e557187e97af3b240befb43f8e0e87250d34f5ee；827 bytes后缀仅本次一条登记。未观察到其他追加，不证明没有其他writer运行。旧capture预算、原raw和终态均未改，未重新采集。
+
+## 单一后继日历的控制元数据检查
+
+[官方更新日志](https://developers.binance.com/zh-CN/docs/products/derivatives-trading-coin-futures/change-log)在2023-11-01 U本位条目记载fundingRate新增markPrice；这只是字段可得性线索，不能保证历史覆盖或之后全部完整。仅作控制日历假设：源从2023-11-01起，274日暖启动后最早月初训练池为 `[2024-08-01,2026-08-01)`，必然穿过2025 outer和2026全局保护，不能登记。
+
+截至2026-09-08，没有在该假设起点之后避开2025 outer的已结束连续24月+274日区间：若放在outer之前，源总长最多427日，扣warmup仅153日；若放在outer之后，2026-01-01到当前不足一年，且还有2026-05-31/07-31全局保护。原24月四折协议不能在这些边界下直接满足。继续该方向需要等待足够未来时间，或明确调整时间/样本协议并重新评估其证据意义；不能拼接非连续年段、缩短warmup或把改窗当独立验证。本检查未登记新窗、未读取新行情或funding，也未把85请求余量当新探测授权。

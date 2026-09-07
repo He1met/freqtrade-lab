@@ -181,3 +181,61 @@ def test_actual_entrypoint_registers_before_get_and_failure_never_publishes(tmp_
     assert not receipt['executable_source_published']
     assert not (root/'source-ready.json').exists()
     with pytest.raises(SourceError):cli.capture(manifest)
+
+
+def test_existing_checkpoint_writer_shared_lock_blocks_register_without_append(tmp_path):
+    import fcntl
+    c,s,raw=scope_fixture();c.update(training_start='2021-01-01T00:00:00Z',authorization='review')
+    ledger=tmp_path/'ledger';ledger.write_bytes(raw)
+    # Same lock name/protocol as portfolio_budget.checkpoint_budget.
+    with Path(str(ledger)+'.lock').open('a') as existing_writer:
+        fcntl.flock(existing_writer,fcntl.LOCK_EX)
+        with pytest.raises(SourceError,match='lock held'):register(c,s,ledger,'a'*64)
+        assert ledger.read_bytes()==raw
+
+
+@pytest.mark.parametrize('data_failure',[False,True])
+def test_terminal_manifest_drift_classified_integrity_not_data(tmp_path,monkeypatch,capsys,data_failure):
+    from scripts import capture_portfolio_source as cli
+    from lab.portfolio_source import write_json
+    c,s,raw=scope_fixture();ledger=tmp_path/'ledger';ledger.write_bytes(raw)
+    c.update(training_start='2021-01-01T00:00:00Z',authorization='review',registry=str(ledger),
+             output_root=str(tmp_path/'source'),budget_path=str(tmp_path/'budget'),limits=LIMITS)
+    cp=tmp_path/'contract';sp=tmp_path/'scope';write_json(cp,c);write_json(sp,s)
+    monkeypatch.setattr(cli,'CONTRACT',cp);monkeypatch.setattr(cli,'SCOPE',sp)
+    manifest=tmp_path/'manifest';cli.prepare(manifest)
+    class Fake:
+        def __init__(self,*a):pass
+        def get(self,endpoint,params):
+            manifest.write_text(manifest.read_text()+'\n')
+            if data_failure:raise SourceError('source failure')
+            if endpoint=='exchangeInfo':
+                return {'symbols':[{'symbol':x,'contractType':'PERPETUAL','onboardDate':0} for x in c['symbols']]}
+            return []
+    monkeypatch.setattr(cli,'Fetcher',Fake)
+    monkeypatch.setattr(cli,'collect',lambda *a:[])
+    monkeypatch.setattr(cli,'qc_summary',lambda *a:dict(status='PASS',executable_source_published=False))
+    assert cli.capture(manifest)==2
+    receipt=json.loads((tmp_path/'source/qc-receipt.json').read_text())
+    assert receipt['status']=='CONTROL_INTEGRITY' and receipt['terminal_binding_check']=='FAIL'
+    assert not receipt['executable_source_published']
+
+
+def test_shared_writer_lock_cli_failure_has_zero_gets(tmp_path,monkeypatch,capsys):
+    import fcntl
+    from scripts import capture_portfolio_source as cli
+    from lab.portfolio_source import write_json
+    c,s,raw=scope_fixture();ledger=tmp_path/'ledger';ledger.write_bytes(raw)
+    c.update(training_start='2021-01-01T00:00:00Z',authorization='review',registry=str(ledger),
+             output_root=str(tmp_path/'source'),budget_path=str(tmp_path/'budget'),limits=LIMITS)
+    cp=tmp_path/'contract';sp=tmp_path/'scope';write_json(cp,c);write_json(sp,s)
+    monkeypatch.setattr(cli,'CONTRACT',cp);monkeypatch.setattr(cli,'SCOPE',sp)
+    def forbidden(*a):pytest.fail('GET attempted while global writer lock held')
+    monkeypatch.setattr(cli,'Fetcher',forbidden)
+    manifest=tmp_path/'manifest';cli.prepare(manifest)
+    with Path(str(ledger)+'.lock').open('a') as writer:
+        fcntl.flock(writer,fcntl.LOCK_EX)
+        assert cli.capture(manifest)==2
+    assert ledger.read_bytes()==raw
+    r=json.loads((tmp_path/'source/qc-receipt.json').read_text())
+    assert r['status']=='BLOCKED_CONTROL' and r['requests']==0
