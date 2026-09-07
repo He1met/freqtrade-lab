@@ -1371,6 +1371,11 @@ def prepare_development_run(
         connection.execute("BEGIN IMMEDIATE")
         _schema_v1(connection)
         row = _bound_candidate(connection, candidate_id, capability.timeframe)
+        from lab.search_campaign import require_no_protocol_rejection, SearchCampaignError
+        try:
+            require_no_protocol_rejection(connection, candidate_id)
+        except SearchCampaignError as exc:
+            raise DevelopmentRunError("BLOCKED_SECURITY", exc.message) from exc
         profile_contract = _profile_gate(connection, row, capability)
         binding = _verified_search_finalist_binding(
             connection,

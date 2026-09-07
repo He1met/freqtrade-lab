@@ -1173,7 +1173,8 @@ def _generated_candidate_review(
     exploration = request_document.get("exploration")
     signal = request_document.get("signal_contract")
     if (
-        set(metadata) not in (_CANDIDATE_METADATA_FIELDS, _CANDIDATE_METADATA_FIELDS | {"prefilter_evidence"})
+        (not _CANDIDATE_METADATA_FIELDS <= set(metadata)
+         or set(metadata) - _CANDIDATE_METADATA_FIELDS - {"prefilter_evidence", "search_protocol_rejection"})
         or not isinstance(generation, dict)
         or set(generation) != _GENERATION_METADATA_FIELDS
         or generation.get("source") != "CODEX"
@@ -1222,6 +1223,15 @@ def _generated_candidate_review(
         )
     if "prefilter_evidence" in metadata:
         _validate_prefilter_evidence(metadata["prefilter_evidence"], generation_row, candidate_row)
+    if "search_protocol_rejection" in metadata:
+        from lab.search_campaign import validate_protocol_rejection, SearchCampaignError
+        try:
+            validate_protocol_rejection(metadata["search_protocol_rejection"], generation_row, candidate_row)
+            from lab.bounded_research import canonical, digest
+            if metadata["search_protocol_rejection"]["profile_snapshot_sha256"] != digest(canonical(request_document["profile_snapshot"])):
+                raise SearchCampaignError("invalid_protocol_rejection", "Rejection Profile snapshot changed")
+        except SearchCampaignError as exc:
+            raise GenerationContractError(exc.code, exc.message, status=409) from exc
     return review
 
 
@@ -2108,6 +2118,12 @@ def load_generation(database: Path, generation_id: str) -> Dict[str, Any]:
                 }
                 if "prefilter_evidence" in metadata:
                     candidate_public["prefilter_evidence"] = metadata["prefilter_evidence"]
+                if "search_protocol_rejection" in metadata:
+                    from lab.search_campaign import protocol_rejection, SearchCampaignError
+                    try:
+                        candidate_public["search_protocol_rejection"] = protocol_rejection(connection, candidate_row["id"])
+                    except SearchCampaignError as exc:
+                        raise GenerationContractError(exc.code, exc.message, status=409) from exc
             valid_state = (
                 row["status"] == "RUNNING"
                 and row["returned_strategy_count"] == 0
