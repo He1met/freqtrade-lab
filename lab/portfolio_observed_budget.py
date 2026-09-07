@@ -68,6 +68,8 @@ class ObservedLockedBudget(LockedBudget):
         m=json.loads(manifest_raw)
         if (m['key']!=key or m['source_receipt_sha256']!=RECEIPT_SHA or m['semantics_sha256']!=SEMANTICS_SHA):
             raise BudgetError('manifest binding mismatch')
+        if any(r['event'] in ('FAILED','INTERRUPTED') and r['key'] in self.activation['allowed_manifests'] for r in self.events):
+            raise BudgetError('BATCH_STOPPED engineering/model-invalid failure; new review required')
         if self.pending():raise BudgetError('interrupted reservation requires terminal audit; no replay')
         if any(r['key']==key for r in self.events):raise BudgetError('key already consumed')
         if sum(r['event']=='RESERVED' for r in self.events)>=96:raise BudgetError('96-call cap')

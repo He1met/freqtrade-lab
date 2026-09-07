@@ -17,7 +17,7 @@ from lab.portfolio_short import configuration
 from lab.portfolio_source import SourceError
 
 SEMANTICS = ROOT/'docs/protocols/issue125-observed-semantics-v3.json'
-SEMANTICS_SHA = '3f28c163e41b6b94d70bf2de342a38929860052f86a23d689195a3b7dc670da9'
+SEMANTICS_SHA = 'f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda'
 SHORT = ROOT/'docs/protocols/issue121-short-feasibility-v2.json'
 NATIVE_SOURCE = Path('/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade')
 NATIVE_SHA = '52bc96f4480b1a0da6a9b455bd00b17fbb6786a5'
@@ -146,7 +146,7 @@ def prepare(root=PREPARED):
         assembly_sha256=sha(root/'assembly.json'),environment=env,code_files=bundle,
         code_bundle_sha256=hashlib.sha256(encoded(bundle)).hexdigest(),
         native_budget_prefix_sha256=BUDGET_PREFIX_SHA,native_budget_prefix_bytes=len(raw),
-        native_calls=1,continuous_risk_coverage='UNKNOWN',economic_qualification=sem['economic_qualification'])
+        native_calls=1,native_timeout_seconds=180,batch_failure_policy=sem['batch_failure_policy'],continuous_risk_coverage='UNKNOWN',economic_qualification=sem['economic_qualification'])
     manifests={};sealed=[]
     (root/'jobs').mkdir()
     for i,job in enumerate(jobs()):
@@ -189,6 +189,7 @@ def verify_prepared(root,manifest):
     if actual!=manifest['data_files']:raise SourceError('native data view drift')
     expected=next((j for j in jobs()[:10] if j['key']==manifest['key']),None)
     if (expected is None or manifest['config']!=native_config(expected['mode'],expected['cost']) or
+        manifest.get('native_timeout_seconds')!=180 or manifest.get('wrappers')!=[] or
         manifest['mode']!=expected['mode'] or manifest['cost']!=expected['cost'] or
         manifest['native_timerange']!=f'{int((START-timedelta(hours=3)).timestamp())}-{int(END.timestamp())}' or
         manifest['score_start']!=START.isoformat() or manifest['score_end_exclusive']!=END.isoformat() or

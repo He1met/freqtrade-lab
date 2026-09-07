@@ -32,10 +32,20 @@
 
 未来执行入口为同一脚本 `--run-key <首批精确 key>`，目前不可运行。缺少固定外部 `observed-v3-activation.json` 即失败；本交付不创建 activation。监督对完整固定 SHA 包统一审批后，外部 activation 需包含 schema `issue125-observed-activation-v1`、status `APPROVED_FIRST_EXPLORATION_BATCH`、审批记录、最终执行 commit、plan SHA 以及精确首 10 key→manifest SHA。运行时要求工作区干净且 HEAD 等于该 commit，同时复核所有项目代码/协议文件、native tree/依赖/解释器、源与输入 SHA。
 
-20 个新旧键的一对一替换只有 activation 后生效；后 10 键仍硬拒绝。全局仍为 96 槽，已消费 8，20 个计划键之外保留 68，未借失败调用扩容。与原 budget 使用同一 writer.lock；每 job 在构造 native 前持久化 RESERVED 并做全局 checkpoint，失败也消费，不重放、无自动重试。原旧账完整前缀必须一致。执行后的原生 archive 与证据摘要还需监督审阅；本 PR 不合并/关闭 Issue，不授权 native。
+20 个新旧键的一对一替换只有 activation 后生效；后 10 键仍硬拒绝。全局仍为 96 槽，已消费 8，20 个计划键之外保留 68，未借失败调用扩容。与原 budget 使用同一 writer.lock；锁内重新核对 anchor、activation、plan、manifest 和全部获准 SHA，再预约。每 job 在构造 native 前持久化 RESERVED 并做全局 checkpoint，失败也消费，不重放、无自动重试。原旧账完整前缀必须一致。首个工程装配失败、MODEL_INVALID、超时/中断或 CONTROL_INTEGRITY 终态会停止整批，后续 key 全部拒绝；当前没有继续执行或重试绕过开关。有效路径的负净值或 DD 超门不等于工程失败，保留 SUCCEEDED 技术终态和真实模型门结果，不自动调参。执行后的原生 archive 与证据摘要还需监督审阅；本 PR 不合并/关闭 Issue，不授权 native。
 
 ## 验证
 
-93 项针对性测试通过，涵盖纯资金费因果顺序、冻结数量/午夜旧家族处理、实源前缀不变性、实际订单来源检查、sticky failure、期末失败保留库存、精度、逐 episode 证据及共享预算封存/重放/失败门禁，并回归既有 source/风险/预算/费用逻辑。
+114 项针对性测试通过，涵盖纯资金费因果顺序、冻结数量/午夜旧家族处理、实源前缀不变性、实际订单来源检查、sticky failure、期末失败保留库存、精度、逐 episode 证据及共享预算封存/重放/失败门禁，并回归既有 source/风险/预算/费用逻辑。
 
 另外使用锁定环境逐一校验最终 10 个 manifest，以及直接在普通 namespace 上调用 funding loader，验证每币 276 条、毫秒时间逐条一致、无 NaN；未创建 Backtesting 实例。真实 Feather 转换是结构验证，不含行情收益、手工撮合或评分。没有实际执行过 native，因此装配、订单回调和真实 native 结果尚待首批获准调用验证。
+
+## 734b78c 初审修复
+
+每个 job 冻结 **180 秒** 内部 wall-clock 上限，沿既有合成上限，不因市场结果扩时。SIGALRM 抛出不会被 native `except Exception` 策略 wrapper 吞掉的 `BaseException`，与 SIGTERM/用户中断一起占槽并保留完整 exception traceback、已有 trace 和终态。该计时器由被绑定的 runner 自身实施；manifest 明确 `native_timeout_seconds=180`、`wrappers=[]`，没有外部 `sys.settrace` 或事后补救包装器。终态审计在关闭 native 计时器后运行。
+
+预约前冻结已批准的代码、原 raw、Feather、事件表、market/tier、解释器、manifest、activation、plan SHA，以及当前项目/native Git HEAD/tree/dirty 和依赖版本。预约后另冻结原生账与输出 manifest，保存 `pre-call-integrity.json`。成功、异常、超时路径都执行相同的 `terminal-integrity.json` 复核，并复查 anchor；漂移单列 `CONTROL_INTEGRITY`，禁止 SUCCEEDED 和经济结果发布。原始 native 文件仍作为未可信诊断证据保留，不能充当有效经济输出。kill -9 或不可写存储造成无法完成收据时，既有 pending 槽仍不允许重放。
+
+静态核对锁定 native `backtesting.py:944` 默认调用 `price_to_precision`；其 `rounding_mode=ccxt.ROUND`，正数 TICK_SIZE 半 tick 为 HALF_UP，不是 ROUND_UP/DOWN。21 个边界用例精确相等。market entry 不使用 limit custom-price rounder，因此额外验证全部 17,568 个获准小时 open 已在冻结 tick 上；在 native 月度推导精度下，探索 open 的纯舍入结果同样逐条不变。未放宽任何价差容忍，也未创建 Backtesting 对象。
+
+新增纯测试覆盖实际内部计时器、占槽/终态与 traceback、成功/异常两路径七类控制文件漂移、锁内 anchor 变化、冻结时 SHA 变化、通用装配与 MODEL_INVALID 首失败停止后续九键，以及有效负路径不误停批次。旧 `734b78c` 准备目录完整保留为 superseded，新逐 job 清单重新生成；budget 仍不激活。

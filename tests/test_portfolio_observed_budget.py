@@ -39,7 +39,8 @@ def test_budget_new_calls_keep_old_prefix_and_refuse_duplicates_sealed_retired(t
     with observed.locked_observed(tmp_path,activation,plan,raw) as b:
         with pytest.raises(BudgetError):b.reserve_observed(key,manifests[key])
         assert b.path.read_bytes().startswith(before)
-        second=jobs()[1]['key'];b.reserve_observed(second,manifests[second]);b.finish(second,'SUCCEEDED','f'*64)
+        second=jobs()[1]['key']
+        with pytest.raises(BudgetError,match='BATCH_STOPPED'):b.reserve_observed(second,manifests[second])
 
 
 def test_missing_or_changed_activation_fails_before_reservation(tmp_path,monkeypatch):
