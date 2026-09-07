@@ -41,3 +41,11 @@ def test_synthetic_config_keeps_old_single_pair_api_unchanged():
     assert config["max_open_trades"] == 2 and config["dry_run_wallet"] == 1000
     assert config["exchange"]["pair_whitelist"] == ["BTC/USDT:USDT", "ETH/USDT:USDT"]
     with pytest.raises(PilotError): profile_search_config({"pairs":config["exchange"]["pair_whitelist"]})
+
+
+def test_stop_behavior_does_not_turn_twenty_percent_breach_into_risk_pass():
+    from scripts.run_portfolio_synthetic import risk_observation
+    r=risk_observation([{"time":"2020-01-03T13:00:00+00:00","equity":778.0683555,"halted":True}])
+    assert r["risk_limit_satisfied"] is False
+    assert set(r["first_crossings"])=={"0.1","0.15","0.2"}
+    assert r["first_crossings"]["0.2"]["mark_bar_open"]=="2020-01-03T12:00:00+00:00"

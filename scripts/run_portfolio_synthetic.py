@@ -14,7 +14,7 @@ import sys
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from lab.portfolio_budget import NativeBudget, BudgetError, RUNTIME_ROOT, canonical, verify_anchor
+from lab.portfolio_budget import NativeBudget, BudgetError, RUNTIME_ROOT, canonical, verify_anchor, checkpoint_budget
 from lab.portfolio_preflight import load_protocol, PROTOCOL_SHA256
 from lab.portfolio_execution import SYNTHETIC_VECTOR, fill_equity
 
@@ -194,10 +194,31 @@ def audit_probe(trades, trace, mode, result, pairs, prices):
             "native_profit_synthetic_only":native_profit,"native_funding":funding,"source_funding":source_funding,
             "native_final_equity":str(audit["equity"]),"fill_fees":str(audit["costs"]),
             "minimum_mark_equity":min(p["equity"] for p in trace if "equity" in p),
+            "risk_observation":risk_observation(trace),
             "market_economic_result":None, "full_economic_signal_template":"NOT_IMPLEMENTED"}
 
 
+def risk_observation(trace):
+    peak, maximum, crossings = 1000., 0., {}
+    for point in trace:
+        if "equity" not in point: continue
+        peak=max(peak,point["equity"])
+        dd=1-point["equity"]/peak
+        maximum=max(maximum,dd)
+        for gate in (.1,.15,.2):
+            if dd>=gate and str(gate) not in crossings:
+                instant=datetime.fromisoformat(point["time"])
+                crossings[str(gate)]={"mark_bar_open":(instant-timedelta(hours=1)).isoformat(),
+                    "mark_closed_and_control_time":instant.isoformat(),
+                    "earliest_execution_time":instant.isoformat(),"equity":point["equity"],
+                    "drawdown_fraction":dd,"halted":point["halted"]}
+    return {"maximum_drawdown_fraction":maximum,"risk_limit_satisfied":maximum<=.2,
+            "first_crossings":crossings,"meaning":"CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"}
+
+
 def main():
+    if not __debug__:
+        raise ValueError("synthetic assertions must not be disabled")
     parser = argparse.ArgumentParser(description=__doc__)
     operation = parser.add_mutually_exclusive_group(required=True)
     operation.add_argument("--mode", choices=MODES)
@@ -218,7 +239,8 @@ def main():
             if reservation is None: raise BudgetError("no consumed call to audit")
             root=RUNTIME_ROOT/"runs"/key.replace("/","-")
             binding=json.loads((root/"bindings.json").read_bytes())
-            if binding["input_sha256"]!=reservation["input_sha256"] or binding["source_tree"]!=tree:
+            current_input=hashlib.sha256(canonical({"vector":SYNTHETIC_VECTOR,"mode":binding["mode"]})).hexdigest()
+            if binding["input_sha256"]!=reservation["input_sha256"] or current_input!=reservation["input_sha256"] or binding["source_tree"]!=tree:
                 raise BudgetError("audit source/input binding mismatch")
             target=root/"audit-evidence.json"
             if target.exists(): raise BudgetError("recovered evidence already exists")
@@ -229,6 +251,7 @@ def main():
                             archive_sha256={p.name:sha(p) for p in (root/"exports").glob("*.zip")})
             raw=canonical(evidence);target.write_bytes(raw)
             budget.recover_audit(key,hashlib.sha256(raw).hexdigest())
+            checkpoint_budget()
             print(json.dumps({"status":"AUDIT_RECOVERED","key":key,"evidence":str(target),"additional_native_calls":0}))
             return 0
     bindings = {str(p.relative_to(REPO)):sha(p) for p in [REPO/"scripts/run_portfolio_synthetic.py",
@@ -245,6 +268,7 @@ def main():
         if root.exists():
             raise BudgetError("output already exists; never overwrite an old attempt")
         budget.reserve(key,input_sha256=input_hash,code_sha256=code_hash,source_sha256=source_hash,retry_of=args.retry_of)
+        checkpoint_budget()
         root.mkdir(parents=True, exist_ok=False, mode=0o700)
         def timed_out(*_):
             raise TimeoutError("fixed 180 second synthetic worker budget expired")
@@ -253,6 +277,8 @@ def main():
         try:
             (root/"bindings.json").write_bytes(canonical({"code":bindings,"input_sha256":input_hash,"source_tree":tree,"mode":args.mode}))
             evidence = run_native(root,args.mode,source)
+            if verify_environment(source) != tree:
+                raise ValueError("native source changed during execution")
             if any(sha(REPO/name) != value for name,value in bindings.items()):
                 raise ValueError("probe code changed during native execution")
             status = "SUCCEEDED"
@@ -265,9 +291,17 @@ def main():
         raw = canonical(evidence)
         (root/"evidence.json").write_bytes(raw)
         budget.finish(key,status,hashlib.sha256(raw).hexdigest())
+        checkpoint_budget()
         print(json.dumps({"status":status,"key":key,"evidence":str(root/"evidence.json"),"market_economic_result":None}))
         return 0 if status=="SUCCEEDED" else 2
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        exit_code=main()
+    except (BudgetError, ValueError, OSError) as exc:
+        print(json.dumps({"status":"BLOCKED_BEFORE_NATIVE","error_type":type(exc).__name__,
+                          "reason":str(exc) if isinstance(exc,BudgetError) else "fixed input/environment validation failed",
+                          "market_economic_result":None}))
+        exit_code=2
+    raise SystemExit(exit_code)

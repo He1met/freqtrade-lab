@@ -1,7 +1,7 @@
 import hashlib
 import json
 import pytest
-from lab.portfolio_budget import NativeBudget, BudgetError
+from lab.portfolio_budget import NativeBudget, BudgetError, verify_checkpoint
 
 
 def reserve(b, key="synthetic/1", **kwargs):
@@ -71,3 +71,11 @@ def test_postprocessing_recovery_preserves_failed_terminal_and_consumption(tmp_p
         assert [r["event"] for r in b.events] == ["RESERVED","FAILED","AUDIT_RECOVERED"]
         with pytest.raises(BudgetError): reserve(b)
         with pytest.raises(BudgetError): reserve(b,"retry/1",retry_of="synthetic/1")
+
+
+def test_global_checkpoint_rejects_reset_truncation_and_rewrite():
+    raw=b'old-reservation\n'
+    cp={"bytes":len(raw),"sha256":hashlib.sha256(raw).hexdigest()}
+    verify_checkpoint(raw+b'new-append\n',cp)
+    for changed in (b'',raw[:-1],b'new-reservation\n'):
+        with pytest.raises(BudgetError): verify_checkpoint(changed,cp)

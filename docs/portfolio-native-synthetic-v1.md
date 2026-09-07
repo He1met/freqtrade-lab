@@ -36,6 +36,9 @@ A-trend/A-reversal是两个分别执行的独立账户，B和C各自一个共享
 原生构造/执行失败均占槽。调用前在固定预算位置`~/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1`
 持久预约，output是其子目录，无输出目录选项。跨进程flock整个调用；记录fsync后才import原生。
 事件追加hash链、终态只写一次；未闭合预约阻塞后续，不自动重放/回收。
+预约/终态还在既有全局账追加预算文件前缀checkpoint；预算文件丢失/截断/改写时拒绝重新建零账。
+后处理失败可`--audit-only retry/1`读取原ZIP，追加一次AUDIT_RECOVERED，原FAILED不变；
+不得因此再原生重试，输入向量或source不一致拒绝恢复。
 异常原始日志/ZIP/trace在Git外，GitHub保存摘要与SHA。
 
 固定合成向量在`lab/portfolio_execution.py::SYNTHETIC_VECTOR`，其规范JSON+mode绑定input_sha256。
@@ -74,3 +77,7 @@ exchange fetch也拒绝，不替换原生成交/钱包/资金费算法。生成�
 
 市场训练、完整A/B/C信号、独立确认、统计优势、FreqUI可见性均未证明。
 首次原生计划与代码先推送冻结SHA，然后逐调用把实际结果、失败及修复追加到Issue #111。
+
+已执行结果与风险突破见 [验收收据](issue111-native-receipt.md)及
+[脱敏合成摘要](issue111-synthetic-summary.json)。这里的PASS是技术断言通过，
+尤其B-risk发生22.19316445%回撤，**不满足20%风险限额**；停止动作通过不能改变该事实。

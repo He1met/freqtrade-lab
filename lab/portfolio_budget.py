@@ -29,12 +29,40 @@ class BudgetError(ValueError):
 
 def verify_anchor():
     """Bind the CLI to the published, exact control row, even after appends."""
-    matched = []
+    matched, checkpoints = [], []
     for line in ANCHOR_LEDGER.read_bytes().splitlines():
+        if not line.strip(): continue
         if hashlib.sha256(line).hexdigest() == ANCHOR_RECORD_SHA256:
             matched.append(json.loads(line))
+        row=json.loads(line)
+        if row.get("record_type")=="PORTFOLIO_NATIVE_BUDGET_CHECKPOINT" and row.get("protocol_sha256")==PROTOCOL_SHA256:
+            checkpoints.append(row)
     if len(matched) != 1 or matched[0]["budget_root"] != str(RUNTIME_ROOT) or matched[0]["protocol_sha256"] != PROTOCOL_SHA256:
         raise BudgetError("trusted global budget anchor missing or moved")
+    if checkpoints:
+        try: raw=(RUNTIME_ROOT/"calls.jsonl").read_bytes()
+        except OSError as exc: raise BudgetError("checkpointed budget ledger missing; cannot reset") from exc
+        verify_checkpoint(raw, checkpoints[-1])
+
+
+def verify_checkpoint(raw, checkpoint):
+    length=checkpoint["bytes"]
+    if type(length) is not int or length<=0 or len(raw)<length or hashlib.sha256(raw[:length]).hexdigest()!=checkpoint["sha256"]:
+        raise BudgetError("budget differs from globally checkpointed prefix")
+
+
+def checkpoint_budget():
+    """Caller holds the native writer lock; preserve the old global byte prefix."""
+    raw=(RUNTIME_ROOT/"calls.jsonl").read_bytes()
+    row={"record_type":"PORTFOLIO_NATIVE_BUDGET_CHECKPOINT","protocol_sha256":PROTOCOL_SHA256,
+         "bytes":len(raw),"sha256":hashlib.sha256(raw).hexdigest(),
+         "at_utc":datetime.now(timezone.utc).isoformat()}
+    with Path(str(ANCHOR_LEDGER)+".lock").open("a") as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        previous=ANCHOR_LEDGER.read_bytes()
+        row["previous_prefix_sha256"]=hashlib.sha256(previous).hexdigest()
+        with ANCHOR_LEDGER.open("ab") as output:
+            output.write(canonical(row)+b"\n");output.flush();os.fsync(output.fileno())
 
 
 class NativeBudget:

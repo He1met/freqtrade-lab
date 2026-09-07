@@ -1,0 +1,195 @@
+{
+  "schema": "portfolio-synthetic-delivery-summary-v1",
+  "synthetic_only": true,
+  "market_economic_result": null,
+  "full_economic_template": "NOT_IMPLEMENTED",
+  "native_attempt_slots_consumed": 6,
+  "actual_Backtesting_calls": 5,
+  "audit_recovery_additional_calls": 0,
+  "unused_synthetic_slots": 3,
+  "unused_technical_retry_slots": 3,
+  "budget_ledger_bytes": 5994,
+  "budget_ledger_sha256": "986f164d19be4d4188ef59d8a052102f3a9c479469c8a7bc1703d214c1c97d7a",
+  "reports": [
+    {
+      "slot": "retry-1",
+      "mode": "B-risk",
+      "synthetic_only": true,
+      "status": "PASS",
+      "native_trade_count": 2,
+      "native_order_count": 11,
+      "native_profit_synthetic_only": -1.3187545,
+      "fees": "0.95988000",
+      "funding": -0.3588745000000001,
+      "source_funding": -0.3588745000000001,
+      "native_final_equity": "998.6812454999999999",
+      "risk_observation": {
+        "maximum_drawdown_fraction": 0.2219316444999999,
+        "risk_limit_satisfied": false,
+        "first_crossings": {
+          "0.1": {
+            "mark_bar_open": "2020-01-03T12:00:00+00:00",
+            "mark_closed_and_control_time": "2020-01-03T13:00:00+00:00",
+            "earliest_execution_time": "2020-01-03T13:00:00+00:00",
+            "equity": 778.0683555,
+            "drawdown_fraction": 0.2219316444999999,
+            "halted": true
+          },
+          "0.15": {
+            "mark_bar_open": "2020-01-03T12:00:00+00:00",
+            "mark_closed_and_control_time": "2020-01-03T13:00:00+00:00",
+            "earliest_execution_time": "2020-01-03T13:00:00+00:00",
+            "equity": 778.0683555,
+            "drawdown_fraction": 0.2219316444999999,
+            "halted": true
+          },
+          "0.2": {
+            "mark_bar_open": "2020-01-03T12:00:00+00:00",
+            "mark_closed_and_control_time": "2020-01-03T13:00:00+00:00",
+            "earliest_execution_time": "2020-01-03T13:00:00+00:00",
+            "equity": 778.0683555,
+            "drawdown_fraction": 0.2219316444999999,
+            "halted": true
+          }
+        },
+        "meaning": "CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"
+      },
+      "archive_sha256": {
+        "backtest-result-2026-09-08_00-06-27.zip": "5f09d357e09c3a34e81faa185bf9ac6f648e16822552c8b842878a4385023fc5"
+      },
+      "evidence_sha256": "2a03ef4863edaa7fc19a7d57ff3c31511f9ce8c9fbb37df59b7615514953c16b",
+      "trace_sha256": "4f6a6d0f1f4abe7e20c489ed93732b21de067942889d856baf43305c3f6443ec",
+      "input_sha256": "8554db6ad9d2be38e4985ca7f0579346beccc3c099446d83a823ac7572e2bd4f",
+      "code_binding": {
+        "lab/portfolio_budget.py": "6ff92b9484bad5468418bee6f7cf9e421347e628d1f27611f78466c651ed9894",
+        "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+        "lab/portfolio_probe_strategy.py": "8c0109610ccf7772a3e9eb330944094ab115be1f9acf30d975e82f81689aabf5",
+        "scripts/run_portfolio_synthetic.py": "d7caee3375154de786b535b38c27bd7437ec3cadeeb8f8688068075a4ea01bd0"
+      }
+    },
+    {
+      "slot": "synthetic-2",
+      "mode": "A-trend",
+      "synthetic_only": true,
+      "status": "PASS",
+      "native_trade_count": 3,
+      "native_order_count": 7,
+      "native_profit_synthetic_only": -1.23,
+      "fees": "0.960000",
+      "funding": -0.27,
+      "source_funding": -0.26999999999999996,
+      "native_final_equity": "998.770000",
+      "risk_observation": {
+        "maximum_drawdown_fraction": 0.0012300000000000644,
+        "risk_limit_satisfied": true,
+        "first_crossings": {},
+        "meaning": "CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"
+      },
+      "archive_sha256": {
+        "backtest-result-2026-09-08_00-09-53.zip": "110086de49940a72885a1aaf4ba3ad3e3a8e79d0c9ec18c467ef342eb58008b2"
+      },
+      "evidence_sha256": "0d5cce2b9b08b80a6f88664409ef8ca24f8ece61f2c441f0561b45e7af376e1f",
+      "trace_sha256": "56a9af83a8cc09c22836856c1b32b953245ac7b3613cdea91525cbc2ab83d006",
+      "input_sha256": "d1dc50c224defe594345d4944c4152cdb3d6374eeeda4e5ee6e9aa963b2b3261",
+      "code_binding": {
+        "lab/portfolio_budget.py": "69df6b7ba835137d68609e5df05640ecf11cea2b010a2fc7669c337d7c06d7da",
+        "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+        "lab/portfolio_probe_strategy.py": "53baebbfbbf1c9b48a361345217d3be16a720fd98936666816972f7eada01aef",
+        "scripts/run_portfolio_synthetic.py": "9e615145ae2cf51d74e85e8c94aa9c11c45d8f3b37ee807eb964ee08e416ca98"
+      }
+    },
+    {
+      "slot": "synthetic-3",
+      "mode": "A-reversal",
+      "synthetic_only": true,
+      "status": "PASS",
+      "native_trade_count": 5,
+      "native_order_count": 10,
+      "native_profit_synthetic_only": -0.6599999999999999,
+      "fees": "0.720000",
+      "funding": 0.06,
+      "source_funding": 0.06,
+      "native_final_equity": "999.340000",
+      "risk_observation": {
+        "maximum_drawdown_fraction": 0.0006599999999999939,
+        "risk_limit_satisfied": true,
+        "first_crossings": {},
+        "meaning": "CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"
+      },
+      "archive_sha256": {
+        "backtest-result-2026-09-08_00-10-16.zip": "7e2091740f00d2df54bda60c3f8b9ce1853682b344708617673cbe2e7edfeb7d"
+      },
+      "evidence_sha256": "dd2ec91a1187553035382242b8c2ec4baadca00f1a56376f37ffb3f7edd4545f",
+      "trace_sha256": "8ec0a90d57b44e6d2fa778e0a1f345df22809a93a36d1430a486c43539588ec3",
+      "input_sha256": "25c58019c384097e84cdc2ec856a15f15afce8b43fbd68aa7bb0f117bad2f007",
+      "code_binding": {
+        "lab/portfolio_budget.py": "69df6b7ba835137d68609e5df05640ecf11cea2b010a2fc7669c337d7c06d7da",
+        "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+        "lab/portfolio_probe_strategy.py": "53baebbfbbf1c9b48a361345217d3be16a720fd98936666816972f7eada01aef",
+        "scripts/run_portfolio_synthetic.py": "9e615145ae2cf51d74e85e8c94aa9c11c45d8f3b37ee807eb964ee08e416ca98"
+      }
+    },
+    {
+      "slot": "synthetic-4",
+      "mode": "B",
+      "synthetic_only": true,
+      "status": "PASS",
+      "native_trade_count": 3,
+      "native_order_count": 9,
+      "native_profit_synthetic_only": -1.7291699999999999,
+      "fees": "1.43916000",
+      "funding": -0.29001,
+      "source_funding": -0.2900100000000002,
+      "native_final_equity": "998.27083000",
+      "risk_observation": {
+        "maximum_drawdown_fraction": 0.0017291699999999466,
+        "risk_limit_satisfied": true,
+        "first_crossings": {},
+        "meaning": "CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"
+      },
+      "archive_sha256": {
+        "backtest-result-2026-09-08_00-10-38.zip": "0a218512e2c4b554d301363a201f6f03f854295954caf0405935064f7287a5ca"
+      },
+      "evidence_sha256": "b8a9a3503eaa69c863c590279c62b9cc313bbb6a7d60303d4bb048bd7fe9d05b",
+      "trace_sha256": "2b8511aa2b0ad440a5c3ff82cd030310610a1130936c80502461cf2c3da560a6",
+      "input_sha256": "37e41b69f75da0daa5a2f718659cd895d9548225d04623c31c41df90f5ed58f2",
+      "code_binding": {
+        "lab/portfolio_budget.py": "69df6b7ba835137d68609e5df05640ecf11cea2b010a2fc7669c337d7c06d7da",
+        "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+        "lab/portfolio_probe_strategy.py": "53baebbfbbf1c9b48a361345217d3be16a720fd98936666816972f7eada01aef",
+        "scripts/run_portfolio_synthetic.py": "9e615145ae2cf51d74e85e8c94aa9c11c45d8f3b37ee807eb964ee08e416ca98"
+      }
+    },
+    {
+      "slot": "synthetic-5",
+      "mode": "C",
+      "synthetic_only": true,
+      "status": "PASS",
+      "native_trade_count": 3,
+      "native_order_count": 8,
+      "native_profit_synthetic_only": -0.665,
+      "fees": "0.576000",
+      "funding": -0.089,
+      "source_funding": -0.08900000000000004,
+      "native_final_equity": "999.335000",
+      "risk_observation": {
+        "maximum_drawdown_fraction": 0.0006649999999999157,
+        "risk_limit_satisfied": true,
+        "first_crossings": {},
+        "meaning": "CONTROL_BEHAVIOR_PASS_IS_NOT_RISK_LIMIT_PASS"
+      },
+      "archive_sha256": {
+        "backtest-result-2026-09-08_00-11-30.zip": "190a54ee168304abc7e9762fcbe523b0dbe14a714f6c139836d4b8ffd9a8d3d2"
+      },
+      "evidence_sha256": "55c230917df7dbdd367cacd32d9c6cecabd65457928aeeb90f55788e1e4b65ab",
+      "trace_sha256": "f02c820c2f8e03364a4fd77aa7a4698bdcd3d625d8567ac3804e3caf714236e2",
+      "input_sha256": "8419a841bdfd0151a4bdd2d95f53641a90ad995ff32a9204377bbaa9d41e5930",
+      "code_binding": {
+        "lab/portfolio_budget.py": "69df6b7ba835137d68609e5df05640ecf11cea2b010a2fc7669c337d7c06d7da",
+        "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+        "lab/portfolio_probe_strategy.py": "53baebbfbbf1c9b48a361345217d3be16a720fd98936666816972f7eada01aef",
+        "scripts/run_portfolio_synthetic.py": "9e615145ae2cf51d74e85e8c94aa9c11c45d8f3b37ee807eb964ee08e416ca98"
+      }
+    }
+  ]
+}
