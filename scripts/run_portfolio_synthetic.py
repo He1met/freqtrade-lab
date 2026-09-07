@@ -11,6 +11,7 @@ import signal
 from pathlib import Path
 import subprocess
 import sys
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lab.portfolio_budget import NativeBudget, BudgetError, RUNTIME_ROOT, canonical, verify_anchor
@@ -50,6 +51,20 @@ def synthetic_config(mode):
     config["entry_pricing"]["price_side"] = "other"
     config["exit_pricing"]["price_side"] = "other"
     return config
+
+
+def exported_result(root):
+    archives = list((root/"exports").glob("*.zip"))
+    if len(archives) != 1: raise ValueError("requires one retained native archive")
+    found = []
+    with zipfile.ZipFile(archives[0]) as archive:
+        for item in archive.infolist():
+            if item.filename.endswith(".json") and item.file_size < 16*1024*1024:
+                payload = json.loads(archive.read(item))
+                if isinstance(payload,dict) and isinstance(payload.get("strategy"),dict) and "PortfolioSyntheticProbe" in payload["strategy"]:
+                    found.append(payload["strategy"]["PortfolioSyntheticProbe"])
+    if len(found) != 1: raise ValueError("native archive strategy payload ambiguous")
+    return found[0]
 
 
 def run_native(root, mode, source):
@@ -117,7 +132,9 @@ def run_native(root, mode, source):
             raise ValueError("native account/strategy/pair scope mismatch")
         bt.start()
         strategy = bt.strategylist[0]
-        result = bt.results["strategy"]["PortfolioSyntheticProbe"]
+        # Read the native serialized export, not internal Timedelta-bearing
+        # objects. The archive stays immutable and can be audited after failure.
+        result = exported_result(root)
         trades = result["trades"]
         # Preserve full native result and probe trace externally before assertions.
         (root/"trace.json").write_bytes(canonical(strategy.trace))
@@ -182,7 +199,9 @@ def audit_probe(trades, trace, mode, result, pairs, prices):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", required=True, choices=MODES)
+    operation = parser.add_mutually_exclusive_group(required=True)
+    operation.add_argument("--mode", choices=MODES)
+    operation.add_argument("--audit-only", choices=[f"synthetic/{n}" for n in range(1,9)]+[f"retry/{n}" for n in range(1,5)])
     parser.add_argument("--native-source", required=True, type=Path)
     parser.add_argument("--retry-of", help="failed slot; consumes next of four technical retry slots")
     args = parser.parse_args()
@@ -190,6 +209,28 @@ def main():
     verify_anchor()
     source = args.native_source.resolve(strict=True)
     tree = verify_environment(source)
+    if args.audit_only:
+        if args.retry_of: raise ValueError("audit-only is not a native retry")
+        sys.path.insert(0,str(source))
+        with NativeBudget(RUNTIME_ROOT).locked() as budget:
+            key=args.audit_only
+            reservation=next((r for r in budget.events if r["key"]==key and r["event"]=="RESERVED"),None)
+            if reservation is None: raise BudgetError("no consumed call to audit")
+            root=RUNTIME_ROOT/"runs"/key.replace("/","-")
+            binding=json.loads((root/"bindings.json").read_bytes())
+            if binding["input_sha256"]!=reservation["input_sha256"] or binding["source_tree"]!=tree:
+                raise BudgetError("audit source/input binding mismatch")
+            target=root/"audit-evidence.json"
+            if target.exists(): raise BudgetError("recovered evidence already exists")
+            result=exported_result(root)
+            from lab.portfolio_probe_strategy import PAIRS,PRICES
+            evidence=audit_probe(result["trades"],json.loads((root/"trace.json").read_bytes()),binding["mode"],result,PAIRS,PRICES)
+            evidence.update(recovery_of=key,additional_native_calls=0,
+                            archive_sha256={p.name:sha(p) for p in (root/"exports").glob("*.zip")})
+            raw=canonical(evidence);target.write_bytes(raw)
+            budget.recover_audit(key,hashlib.sha256(raw).hexdigest())
+            print(json.dumps({"status":"AUDIT_RECOVERED","key":key,"evidence":str(target),"additional_native_calls":0}))
+            return 0
     bindings = {str(p.relative_to(REPO)):sha(p) for p in [REPO/"scripts/run_portfolio_synthetic.py",
                 REPO/"lab/portfolio_budget.py",REPO/"lab/portfolio_execution.py",REPO/"lab/portfolio_probe_strategy.py"]}
     input_hash = hashlib.sha256(canonical({"vector":SYNTHETIC_VECTOR,"mode":args.mode})).hexdigest()

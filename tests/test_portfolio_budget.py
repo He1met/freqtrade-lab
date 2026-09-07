@@ -60,3 +60,13 @@ def test_terminal_cannot_be_replaced(tmp_path):
     with NativeBudget(tmp_path).locked() as b:
         reserve(b); b.finish("synthetic/1", "FAILED", "d"*64)
         with pytest.raises(BudgetError): b.finish("synthetic/1", "SUCCEEDED", "e"*64)
+
+
+def test_postprocessing_recovery_preserves_failed_terminal_and_consumption(tmp_path):
+    with NativeBudget(tmp_path).locked() as b:
+        reserve(b); b.finish("synthetic/1", "FAILED", "d"*64)
+        b.recover_audit("synthetic/1", "e"*64)
+        with pytest.raises(BudgetError): b.recover_audit("synthetic/1", "e"*64)
+    with NativeBudget(tmp_path).locked() as b:
+        assert [r["event"] for r in b.events] == ["RESERVED","FAILED","AUDIT_RECOVERED"]
+        with pytest.raises(BudgetError): reserve(b)

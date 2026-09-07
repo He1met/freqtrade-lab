@@ -81,7 +81,7 @@ class LockedBudget:
         self._validate_history()
 
     def _validate_history(self):
-        opened, ended = {}, set()
+        opened, ended, statuses, recovered = {}, set(), {}, set()
         for row in self.events:
             key = row.get("key")
             if row.get("event") == "RESERVED":
@@ -94,6 +94,11 @@ class LockedBudget:
                 if key not in opened or key in ended:
                     raise BudgetError("invalid terminal history")
                 ended.add(key)
+                statuses[key] = row["event"]
+            elif row.get("event") == "AUDIT_RECOVERED":
+                if statuses.get(key) != "FAILED" or key in recovered:
+                    raise BudgetError("invalid audit recovery history")
+                recovered.add(key)
             else:
                 raise BudgetError("invalid ledger event")
 
@@ -151,3 +156,9 @@ class LockedBudget:
         except AdmissionError as exc:
             raise BudgetError("invalid result hash") from exc
         return self._append({"event": status, "key": key, "result_sha256": result_sha256})
+
+    def recover_audit(self, key, result_sha256):
+        if self.pending() or not any(r["key"] == key and r["event"] == "FAILED" for r in self.events) or any(r["key"] == key and r["event"] == "AUDIT_RECOVERED" for r in self.events):
+            raise BudgetError("only a failed completed call can attach one recovered audit")
+        _sha(result_sha256)
+        return self._append({"event":"AUDIT_RECOVERED", "key":key,"result_sha256":result_sha256,"additional_native_calls":0})
