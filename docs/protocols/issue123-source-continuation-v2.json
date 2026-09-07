@@ -1,0 +1,28 @@
+{
+  "exchange": "binance",
+  "instrument_type": "USDT_PERPETUAL",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "start": "2023-11-01T00:00:00Z",
+  "training_start": "2024-08-01T00:00:00Z",
+  "end_exclusive": "2025-01-01T00:00:00Z",
+  "parent_budget_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+  "parent_seconds_charged": 130,
+  "preparation_authorization": "supervisor-thread:01a07c6a-d535-7030-814c-7775d0f27f99/after-PR120",
+  "schema": "issue123-source-continuation-v2",
+  "issue": 123,
+  "authorization": "https://github.com/He1met/freqtrade-lab/pull/122#issuecomment-5574360226",
+  "registry": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl",
+  "parent_budget_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json",
+  "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source/continuation-v2",
+  "budget_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json",
+  "parent_attempts": 37,
+  "parent_charged_bytes": 7697705,
+  "new_gets_max": 54,
+  "cumulative_gets_max": 91,
+  "active_seconds_remaining": 1670,
+  "native_authorized": false,
+  "parent_time_is_conservative_charge_not_measurement": true
+}
