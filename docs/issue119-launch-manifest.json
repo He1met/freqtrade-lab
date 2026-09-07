@@ -1,0 +1,22 @@
+{
+  "budget": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json",
+  "code_commit": "d8bc4bf14191a1b580933aeba43c7a84d2442093",
+  "command": [
+    "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3.9",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/capture_portfolio_source.py",
+    "capture",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue119-launch-manifest.json"
+  ],
+  "external_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source",
+  "files": {
+    "docs/issue119-scope-snapshot.json": "03c14224fefb254285d22331f9109fcf8fa9033dfba85b5c888032be3fa6ab7c",
+    "docs/protocols/issue119-source-contract.json": "30d90dcfa7b5fab8eda64c5e0463a931275a0c7c6d1d948039651743e0d3e046",
+    "lab/portfolio_source.py": "756e290723205b5722178f5cb23633211ba5a8bea4cd27b398fc0e326e9451d5",
+    "scripts/capture_portfolio_source.py": "ca374b8c0e4c56b0124cfc4d95118cf24a9bd9bc787d36484c48e328b498a590"
+  },
+  "native_authorized": false,
+  "python": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3.9",
+  "python_sha256": "bdea59019a38eb6600cc9e71e984a97fedadc406448431281e7657030f54987e",
+  "schema": "issue119-launch-manifest-v1",
+  "wrappers": []
+}
