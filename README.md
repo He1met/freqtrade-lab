@@ -829,6 +829,11 @@ the repository.
 
 ## Delivery order
 
+The BTC/ETH portfolio pilot has a separate [metadata admission entrypoint](docs/portfolio-pilot-v1.md).
+`PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_portfolio_pilot.py` reports missing
+training bindings as `BLOCKED_DATA`; it never executes a backtest or authorizes
+trading. Its fixed 96-call plan does not alter the existing Search budget.
+
 Development proceeds in small, dependent slices:
 
 1. Parse one verified, sanitized Freqtrade backtest artifact into the existing schema.
