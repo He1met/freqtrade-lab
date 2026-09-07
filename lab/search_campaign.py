@@ -14,12 +14,14 @@ import fcntl
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import sqlite3
 import stat
 from contextlib import closing
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, BinaryIO, Mapping, Optional, Sequence, Tuple, Union
 from uuid import uuid4
@@ -82,6 +84,155 @@ FINALIST_BINDING_FIELDS = {
 }
 FINALIST_BINDING_OPTIONAL_FIELDS = {"economic_gate", "single_baseline"}
 SEARCH_DATABASE_CHANGED = "SEARCH_DATABASE_CHANGED"
+
+
+def validate_protocol_rejection(value, generation, candidate):
+    """Validate the optional, path-free attachment without re-evaluating economics."""
+    try:
+        identity = value["protocol_review_identity"]
+        if (set(value) != {"outcome", "campaign_id", "profile_id", "profile_snapshot_sha256",
+                          "protocol_review_identity", "review_sha256", "failed_gates", "summary", "recorded_at_utc"}
+                or value["outcome"] != "REJECTED"
+                or not isinstance(value["campaign_id"], str) or not pilot.SAFE_ID.fullmatch(value["campaign_id"])
+                or value["profile_id"] != generation["research_profile_id"]
+                or set(identity) != {"schema", "protocol_sha256", "data_provenance_sha256",
+                                     "candidate_id", "source_sha256", "attempt_number", "raw_artifact_sha256"}
+                or identity["schema"] != "freqtrade-lab-single-baseline-review-v1"
+                or identity["candidate_id"] != candidate["id"]
+                or identity["source_sha256"] != candidate["code_sha256"]
+                or type(identity["attempt_number"]) is not int or identity["attempt_number"] != 1):
+            raise ValueError("identity")
+        for digest in [value["review_sha256"], value["profile_snapshot_sha256"],
+                       *(v for k, v in identity.items() if k.endswith("sha256"))]:
+            if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                raise ValueError("digest")
+        stamp = datetime.fromisoformat(value["recorded_at_utc"])
+        if stamp.utcoffset() != timezone.utc.utcoffset(stamp):
+            raise ValueError("UTC required")
+        gates, summary = value["failed_gates"], value["summary"]
+        if (not isinstance(gates, list) or not 1 <= len(gates) <= 64
+                or not isinstance(summary, dict) or not summary or len(summary) > 64):
+            raise ValueError("summary")
+        names = set()
+        for gate in gates:
+            if (not isinstance(gate, dict) or set(gate) != {"gate", "status", "actual", "frozen_requirement"}
+                    or gate["status"] != "FAILED" or not isinstance(gate["gate"], str)
+                    or not 1 <= len(gate["gate"]) <= 128 or gate["gate"] in names
+                    or not isinstance(gate["frozen_requirement"], str)
+                    or not 1 <= len(gate["frozen_requirement"]) <= 256):
+                raise ValueError("failed gate")
+            names.add(gate["gate"])
+        # Bounded scalar summaries only; null remains unknown, never zero.
+        for item in [*(g["actual"] for g in gates), *summary.values()]:
+            if item is not None and type(item) is not bool and (type(item) not in (int, float) or not math.isfinite(item)):
+                raise ValueError("finite scalar required")
+        if any(not isinstance(k, str) or not 1 <= len(k) <= 128 for k in summary):
+            raise ValueError("summary key")
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise SearchCampaignError("invalid_protocol_rejection", "Invalid protocol rejection attachment") from exc
+
+
+def protocol_rejection(connection, candidate_id):
+    """Read the attachment against its original immutable Search projection."""
+    row = connection.execute("SELECT c.*,g.research_profile_id FROM candidates c JOIN generation_runs g ON g.id=c.generation_run_id WHERE c.id=?", (candidate_id,)).fetchone()
+    if row is None:
+        raise SearchCampaignError("invalid_protocol_rejection", "Candidate unavailable")
+    try:
+        metadata = json.loads(row["metadata_json"])
+        if "search_protocol_rejection" not in metadata:
+            return None
+        value = metadata["search_protocol_rejection"]
+        validate_protocol_rejection(value, row, row)
+        projection = connection.execute("SELECT * FROM generation_runs WHERE id=?", (value["campaign_id"],)).fetchone()
+        parsed = parse_finalist_projection(*(projection[k] for k in ("request_json", "response_json", "parse_report_json")))
+        if (projection["source"] != "MANUAL" or projection["status"] != "COMPLETED"
+                or value["campaign_id"] != parsed["binding"]["search_generation_id"]
+                or value["protocol_review_identity"] != parsed["protocol_review_identity"]
+                or value["profile_id"] != parsed["binding"]["profile_id"]
+                or row["generation_run_id"] != parsed["binding"]["generation_run_id"]
+                or value["profile_snapshot_sha256"] != parsed["binding"]["profile_snapshot_sha256"]
+                or load_profile_snapshot(connection, value["profile_id"]) != parsed["profile_snapshot"]):
+            raise ValueError("projection binding")
+        return value
+    except (KeyError, TypeError, ValueError, RecursionError, GenerationContractError) as exc:
+        raise SearchCampaignError("invalid_protocol_rejection", "Protocol rejection binding is invalid") from exc
+
+
+def require_no_protocol_rejection(connection, candidate_id):
+    if protocol_rejection(connection, candidate_id) is not None:
+        raise SearchCampaignError("search_protocol_rejected", "Full frozen protocol REJECTED; Development cannot start")
+
+
+def attach_search_protocol_rejection(database, campaign_id, review_path, archive_path, *, review_sha256):
+    """Attach a trusted caller's hash-pinned review; never execute or recalculate research."""
+    from lab.holdout_run import _read_regular_relative_at, HoldoutRunError
+    try:
+        def read(path, maximum):
+            path = Path(path)
+            if not path.is_absolute() or ".." in path.parts:
+                raise ValueError("absolute bounded path required")
+            fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                return _read_regular_relative_at(fd, Path(*path.parts[1:]), "protocol evidence", maximum)
+            finally:
+                os.close(fd)
+        raw = read(review_path, 1024 * 1024)
+        if not isinstance(review_sha256, str) or pilot.digest(raw) != review_sha256:
+            raise ValueError("review hash")
+        report = _strict_json(raw, "protocol review")
+        archive_sha = pilot.digest(read(archive_path, 32 * 1024 * 1024))
+        with closing(get_connection(database, must_exist=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            projection = connection.execute("SELECT * FROM generation_runs WHERE id=?", (campaign_id,)).fetchone()
+            parsed = parse_finalist_projection(*(projection[k] for k in ("request_json", "response_json", "parse_report_json")))
+            expected = _terminal_generation_values({"id": campaign_id, "profile_id": parsed["binding"]["profile_id"],
+                "finished_at": parsed["timestamp"], "status": "COMPLETED", "_error": None,
+                "_request": json.loads(projection["request_json"]), "terminal": json.loads(projection["response_json"]),
+                "_report": json.loads(projection["parse_report_json"])})
+            identity = parsed["protocol_review_identity"]
+            if (not _row_matches_terminal_generation(projection, expected) or identity is None
+                    or campaign_id != parsed["binding"]["search_generation_id"]):
+                raise ValueError("immutable single baseline projection required")
+            candidate_id = identity["candidate_id"]
+            snapshot = load_approved_candidate_snapshot(connection, candidate_id)
+            if (snapshot.profile != parsed["profile_snapshot"] or snapshot.code_sha256 != identity["source_sha256"]
+                    or snapshot.generation_run_id != parsed["binding"]["generation_run_id"]
+                    or report["campaign_id"] != campaign_id or report["candidate_id"] != candidate_id
+                    or report["protocol_sha256"] != identity["protocol_sha256"]
+                    or report["strategy_sha256"] != identity["source_sha256"]
+                    or report["archive_sha256"] != archive_sha or archive_sha != identity["raw_artifact_sha256"]
+                    or type(report["actual_Search_attempts"]) is not int or report["actual_Search_attempts"] != identity["attempt_number"]
+                    or report["all_protocol_gates"] != "FAILED"):
+                raise ValueError("review identity mismatch")
+            if connection.execute("SELECT 1 FROM research_runs WHERE candidate_id=? LIMIT 1", (candidate_id,)).fetchone():
+                raise SearchCampaignError("research_already_exists", "ResearchRun already exists; rejection was not attached")
+            if set(report["cost_decomposition"]) & set(report["native_metrics"]):
+                raise ValueError("summary fields must not overlap")
+            value = dict(outcome="REJECTED", campaign_id=campaign_id, profile_id=snapshot.profile_id,
+                profile_snapshot_sha256=parsed["binding"]["profile_snapshot_sha256"], protocol_review_identity=identity,
+                review_sha256=review_sha256, failed_gates=[g for g in report["gates"] if g["status"] == "FAILED"],
+                summary={**report["cost_decomposition"], **report["native_metrics"]},
+                recorded_at_utc=datetime.now(timezone.utc).isoformat())
+            row = connection.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
+            validate_protocol_rejection(value, {"research_profile_id": snapshot.profile_id}, row)
+            metadata = json.loads(row["metadata_json"])
+            previous = protocol_rejection(connection, candidate_id)
+            if previous is not None:
+                value["recorded_at_utc"] = previous["recorded_at_utc"]
+                if value != previous:
+                    raise SearchCampaignError("protocol_rejection_conflict", "Different protocol rejection already attached")
+                return previous
+            metadata["search_protocol_rejection"] = value
+            changed = connection.execute("UPDATE candidates SET metadata_json=?,updated_at=? WHERE id=? AND metadata_json=?",
+                (pilot.canonical(metadata).decode(), value["recorded_at_utc"], candidate_id, row["metadata_json"]))
+            if changed.rowcount != 1:
+                raise ValueError("candidate changed")
+            connection.commit()
+            return value
+    except (OSError, KeyError, TypeError, ValueError, RecursionError, sqlite3.Error, HoldoutRunError, GenerationContractError) as exc:
+        if isinstance(exc, SearchCampaignError):
+            raise
+        raise SearchCampaignError("invalid_protocol_rejection", "Protocol rejection was not attached") from exc
 
 
 class SearchCampaignError(ValueError):
@@ -1177,6 +1328,10 @@ def load_search_context(
             terminal_projection = _load_terminal_generation(
                 database_path, terminal_projection
             )
+            if terminal_projection is not None and terminal_projection.get("finalist_binding"):
+                with closing(get_connection(database_path, read_only=True)) as connection:
+                    state["search_protocol_rejection"] = protocol_rejection(
+                        connection, terminal_projection["finalist_binding"]["candidate_id"])
             if (
                 terminal_projection is not None
                 and terminal_projection.get("error_code")
@@ -2162,6 +2317,7 @@ def verified_finalist_binding(
         with closing(get_connection(database_path, read_only=True)) as connection:
             connection.execute("BEGIN")
             snapshot = _bound_candidate(connection, candidate_id, capability)
+            require_no_protocol_rejection(connection, candidate_id)
     except (OSError, RuntimeError, sqlite3.Error) as exc:
         raise SearchCampaignError("BLOCKED_DATA", "Finalist Candidate is unavailable", status=503) from exc
     if (snapshot.generation_run_id, snapshot.code_sha256, snapshot.profile_id) != (

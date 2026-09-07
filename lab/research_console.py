@@ -3779,7 +3779,10 @@ class ResearchConsoleController:
                     binding = verified_finalist_binding(
                         self.config.database_path, capability, candidate["candidate_id"]
                     )
-                except SearchCampaignError:
+                except SearchCampaignError as exc:
+                    if exc.code == "search_protocol_rejected":
+                        candidate.update(status="BLOCKED_SECURITY", reason=exc.message)
+                        continue
                     binding = None
                 if binding is None:
                     candidate.update(status="BLOCKED_SECURITY", reason="Candidate is not a verified Search finalist; Development cannot start")
@@ -4969,6 +4972,9 @@ async function loadSearchContext() {
       document.getElementById('search-purpose').textContent = searchContext.capability.single_baseline
         ? 'SINGLE_BASELINE_V1：一条冻结 seed、一轮、一次 Search。核心门通过后仍需人工协议审阅和单独 Development 授权。'
         : searchContext.capability.research_mode === 'EXPLORATORY' ? 'EXPLORATORY · NOT_INDEPENDENTLY_VALIDATED：已见历史探索，不能作为独立验证或启动 Development / Holdout。' : '';
+      const rejection = searchContext.state.search_protocol_rejection;
+      if (rejection) document.getElementById('search-purpose').textContent +=
+        ` 完整冻结协议 REJECTED：${rejection.failed_gates.map(g => `${g.gate}=${g.actual}（要求 ${g.frozen_requirement}）`).join('；')}。Development 已阻止；核心 Search 结果与盈利摘要保留在下方。`;
       renderSearchSeeds(searchContext); renderSearchChildren(searchContext); refreshParents();
       searchStatus.textContent = JSON.stringify({capability:searchContext.capability,state:searchContext.state,generation_run:searchContext.generation_run || null}, null, 2); updateSearchControls();
       if (searchContext.state.status === 'RUNNING' && !searchTimer) searchTimer = setTimeout(pollSearch, 750);
