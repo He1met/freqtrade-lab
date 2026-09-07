@@ -91,16 +91,16 @@ def fingerprint(proposal, fields):
     return sha(json.dumps(values, sort_keys=True, ensure_ascii=False).encode())
 
 
-def discover(batch, cache_root):
+def discover(batch, cache_root, *, protocol_path=PROTOCOL, protocol_sha=PROTOCOL_SHA):
     """Validate submitted accounting; no authority to fetch or enforce external calls."""
-    require(sha(PROTOCOL.read_bytes()) == PROTOCOL_SHA, 'protocol SHA drift')
-    protocol = json.loads(PROTOCOL.read_bytes())
+    require(sha(Path(protocol_path).read_bytes()) == protocol_sha, 'protocol SHA drift')
+    protocol = json.loads(Path(protocol_path).read_bytes())
     for name, expected in protocol['prior_knowledge'].items():
         require(sha((ROOT / name).read_bytes()) == expected, 'prior knowledge SHA drift')
     knowledge = load_knowledge()
     require(isinstance(batch, dict) and batch.get('schema') == 'literature-discovery-batch-v1'
             and batch.get('batch_id') == protocol['batch_id']
-            and batch.get('protocol_sha256') == PROTOCOL_SHA, 'invalid batch binding')
+            and batch.get('protocol_sha256') == protocol_sha, 'invalid batch binding')
     for key, limit in [('queries', 'search_queries'), ('sources', 'source_records'),
                        ('page_attempts', 'page_attempts'), ('proposals', 'proposals')]:
         require(isinstance(batch.get(key), list) and len(batch[key]) <= protocol['limits'][limit],
@@ -140,7 +140,7 @@ def discover(batch, cache_root):
         utc(source.get('accessed_at_utc'))
         status = source.get('status')
         require((key, status) in attempts and status in ('READABLE', 'FETCH_FAILED'), 'source missing matching attempt')
-        expected_kind = 'WEB_TOOL_EXTRACT_NOT_FULL_HTML' if status == 'READABLE' else 'WEB_TOOL_FETCH_ERROR_NOT_PAPER_CONTENT'
+        expected_kind = protocol.get('readable_content_kind', 'WEB_TOOL_EXTRACT_NOT_FULL_HTML') if status == 'READABLE' else protocol.get('failed_content_kind', 'WEB_TOOL_FETCH_ERROR_NOT_PAPER_CONTENT')
         require(source.get('content_kind') == expected_kind, 'error receipt is not paper content')
         verify_cache(cache_root, source.get('cache_file'), source.get('content_sha256'))
         sources[key] = source
@@ -202,7 +202,7 @@ def discover(batch, cache_root):
             family_relation='RELATED_PRIOR_FAMILY_INFERENCE' if proposal['family'] in ('trend', 'reversal', 'funding')
                             else 'UNPROVEN_RELATION_NEEDS_REVIEW'))
     require(len(cards) <= protocol['limits']['cards'], 'card budget exceeded')
-    return dict(schema='literature-discovery-result-v1', protocol_sha256=PROTOCOL_SHA,
+    return dict(schema='literature-discovery-result-v1', protocol_sha256=protocol_sha,
         counts=dict(queries=len(queries), page_attempts=len(attempts), source_records=len(sources),
                     readable_sources=sum(s['status'] == 'READABLE' for s in sources.values()),
                     cards=len(cards), executable_cards=0),
