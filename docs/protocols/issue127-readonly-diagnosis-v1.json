@@ -1,0 +1,77 @@
+{
+  "schema": "issue127-readonly-diagnosis-v1",
+  "issue": 127,
+  "frozen_at_utc": "2026-09-07T20:05:20.738096+00:00",
+  "status": "RULES_FROZEN_BEFORE_DIAGNOSTIC_STATISTICS",
+  "input_manifest_sha256": "fc7fe8ce635ed0bf5aa5cd2b8d3ef9fef297e70e5462feeb4d6442bc5cb8fb3d",
+  "source_results_already_known": true,
+  "scope": "READ_ONLY_EXISTING_EVIDENCE_NO_NEW_RETURNS_FILLS_NATIVE_GETS_OR_RESERVED_SLICE",
+  "units": "EACH_JOB_EACH_FAMILY_SEPARATELY; NEVER_POOL_BASE_STRESS_OR_MODES_AS_INDEPENDENT_SAMPLES",
+  "natural_exit_reasons": [
+    "stop",
+    "expiry",
+    "signal"
+  ],
+  "non_natural_exits": [
+    "halt",
+    "RISK_OR_CONTROL_REMOVAL",
+    "PHASE_END_NOT_NATURAL_EXIT"
+  ],
+  "actual_support": "Only actual inventory increases in the episode direction qualify; a reduction or virtual/net-zero intention is not support. Use actual order IDs and original time, never invent fills.",
+  "possible_episode_support": "A naturally completed episode has an actual inventory-increase fill in [activation,exit), same pair/direction and positive recorded effective intention at that fill time. This is possible support only where other families can contribute.",
+  "certified_episode_support": "Require a real closed native position cycle opened during this episode and closing exactly at its natural exit. Across all recorded hours of that cycle, this episode is the sole nonzero family intention on its asset. No family PnL or lot split is inferred.",
+  "cluster_rule": "Within each job and family and direction, merge overlapping/touching episode intervals across BTC and ETH; aggregate directions without asserting statistical independence.",
+  "exact_count_rule": "Publish exact family cluster count only if every possibly-supported natural episode is certified. Otherwise NULL with attribution UNKNOWN. Empty possible set is exact zero, never qualified cash.",
+  "proven_upper_bound": "For each direction, maximum number of strictly disjoint possible intervals via earliest-finish greedy scheduling (start > previous_end). This bounds components for any supported subset, unlike counting components of the entire ambiguous superset, which can undercount due to bridge intervals. Also report the weaker actual-increase-fill bound; never use raw cycle count as a universal bound.",
+  "missing_evidence": "Fail integrity/shape checks or mark unknown; never impute missing records, reason, or count to zero.",
+  "diagnostic_recomputation": "Use recorded states and contemporaneous approved prefix OHLC opens only. Arithmetic for intentions, 40/80 caps, lot floors and original native minimums is labelled DIAGNOSTIC_RECOMPUTATION_NOT_NATIVE_REJECTION. Do not replay controller state, matching, fees or returns.",
+  "native_minimum_formula": "max(min_notional*clamp((1+reserve)/(1-abs(stop_arg)),1,1.5),min_qty*open*(1+reserve))/leverage",
+  "native_callsite_constants": {
+    "reserve_default": "0.05",
+    "fresh_entry_stop_arg": "-0.05",
+    "adjust_callback_stop_arg": "-0.1",
+    "adjust_enter_stop_arg": "0",
+    "leverage": "1",
+    "strategy_sentinel_stoploss_not_used_for_these_minimum_calls": true
+  },
+  "raw_cell_risk": {
+    "initial_equity": "1000",
+    "A_fraction": "0.01",
+    "B_C_halfB_fraction": "0.005",
+    "halfB_additional_scale": "0.5",
+    "C_multiplier": "recorded only"
+  },
+  "required_equity_diagnostic": "Necessary threshold only from ceil-to-lot native minimum, episode stop-distance/open and fixed risk fraction/recorded scale, plus 40% cap. Not a proposal or sufficient executable new-capital backtest. Zero multiplier or full net cancellation has no finite capital fix inferred.",
+  "denominators": "Report unique activated episodes, actual orders/cycles, and repeated hourly opportunities separately; hourly checks are not independent samples. Multi-label reasons can overlap, never sum them as disjoint causes.",
+  "quantity_diagnostics": [
+    "frozen00_units_and_risk_dollars",
+    "01_units_downscale",
+    "effective_family_intents_and_net_cancellation",
+    "40_80_cap",
+    "lot_min_qty_notional_max_qty",
+    "native_entry_and_adjustment_padding",
+    "recorded_final_target_to_actual_delta",
+    "native_rounding_or_wallet_limit_unresolved",
+    "recorded_stop_expiry_signal_halt_pause_and_quantity_changes"
+  ],
+  "unrecorded_rejections": "UNKNOWN; deterministic original-code/input diagnosis is not an observed native rejection receipt.",
+  "decision_rule": "Do not spend reserved process-check merely to pursue a positive mode. If all per-family supported-cluster upper bounds are below 30 and entry-cell constraints or low activation prevent adequate sampling, recommend protocol-level feasibility redesign before any new market consumption. Any alternative must explicitly name the still-unanswered fixed question and demonstrated execution feasibility, not pick winners.",
+  "forbidden": [
+    "family_PnL_allocation",
+    "pooling_same_window_runs",
+    "new_parameters",
+    "larger_capital_or_leverage_execution",
+    "lower_risk_gates",
+    "new_returns_or_simulated_fills",
+    "native_constructor_or_start",
+    "GET",
+    "reserved_window_read",
+    "independent_confirmation",
+    "promotion",
+    "trading"
+  ],
+  "minimum_natural_clusters_per_family": 30,
+  "economic_qualification": "UNKNOWN_NO_REAL_ECONOMIC_QUALIFICATION",
+  "maximum_conclusion": "UNDERPOWERED_OR_EXPLICIT_EXECUTION_CONSTRAINT",
+  "next_authorization": false
+}
