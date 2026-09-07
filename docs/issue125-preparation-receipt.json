@@ -1,0 +1,447 @@
+{
+  "schema": "issue125-sanitized-preparation-receipt-v1",
+  "status": "PREPARED_NOT_AUTHORIZED",
+  "issue": 125,
+  "native_constructors": 0,
+  "native_starts": 0,
+  "new_gets": 0,
+  "market_results": null,
+  "family_natural_cluster_gate": "NOT_EVALUATED",
+  "source_grade": "OBSERVED_API_COMPLETE_FOR_EXPLORATORY_MODEL",
+  "old_source_qc": "PRESERVED_BLOCKED_DATA",
+  "reserved_strategy_view_opened": false,
+  "prepared_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared",
+  "plan_sha256": "94f536cfcab71e26a3b912a6ac9d23e58d3cc02ff9ce6e395f20ae0994230084",
+  "first_batch": [
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/02.json",
+      "manifest_sha256": "d27b3c5d48340267ee955dad33c02724ce6b37112e0fdb3bf719d32f8ab26e62",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal"
+      ],
+      "config_sha256": "8cd02ca5270c1182dee6b94681035106dcfc5b8476fa622960406e597a34e120",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/02",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/01.json",
+      "manifest_sha256": "400bc669102a9ffd82f2d0b496563b4b234de17f97a208c22032ca86d84335d8",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend"
+      ],
+      "config_sha256": "fc3cb53c9c74b4568a6681e16899957a8fa1ae6641fb0a69cd4a38cc0579b27b",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/01",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/03.json",
+      "manifest_sha256": "d81f3b23a43c2d1e0c263512b808740f26867ba568682e9692339b413c659e8a",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B"
+      ],
+      "config_sha256": "5c7bad5a18698d8b7379b184c33af8e81150c9fd231badb545bbd67639703548",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/03",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/04.json",
+      "manifest_sha256": "c64dfaa47e5986d205eb16c0a608b8fc860dd652596a08caae387e888e585cfa",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C"
+      ],
+      "config_sha256": "29121814b6d5bdbe2e8b17f45f7aa65176f4d024ba8b805755d75a657c795057",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/04",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/05.json",
+      "manifest_sha256": "f5f8b297c7739db7119a9d369b9a03d6c0e79ee170543fb9e9bfc4d9fe1497a6",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B"
+      ],
+      "config_sha256": "477d48f5cc031b36784d5b07c4a778c34d5bfbe1127753dc9d38632baee23ca4",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/05",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/07.json",
+      "manifest_sha256": "74006a660daefeea1201ff5b2662804f8e80f4e5e3d5e838010c76b24aac6fd7",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal"
+      ],
+      "config_sha256": "a9adc8bae6dc1ee2f0ed8668389ac0ad09e961a890e34ef9438062bee7bcb635",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/07",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/06.json",
+      "manifest_sha256": "52f3fb6bff033f993f186f2c3ede6483b731a5ec8f740594775132a8b5e8bef0",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend"
+      ],
+      "config_sha256": "44ce27a3a214bdef90a31fb1c396ee4077f75d86de1b65cfa18483ffb07308c9",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/06",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/08.json",
+      "manifest_sha256": "56a8b4f93cfee2daa2dc7d250323c271e1c1736aefeea90a45302366175360cd",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B"
+      ],
+      "config_sha256": "2e75d12e3a152ac50858e578ee73fbe017e1f3789405259e25e257bf2e638527",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/08",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/09.json",
+      "manifest_sha256": "89d0019d2e5630e33ccf8bf032786be5d4edff06b800f083a4c589e80dbc98f8",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C"
+      ],
+      "config_sha256": "296f20cc16e325b57f03fab507f7397f3340bed653cea952207e7cc57b350bd3",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/09",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+      "manifest_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared/jobs/10.json",
+      "manifest_sha256": "59ef92dfdafbd58bdb2c46f862cbd5ccb736e9a14b1f105e7e443333d77a6192",
+      "command": [
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+        "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_portfolio_observed.py",
+        "--run-key",
+        "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B"
+      ],
+      "config_sha256": "90f8f0b9483620f190eac8fe8c9695504233257d8fa455a50159a53545f3d146",
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/10",
+      "native_timeout_seconds": 180,
+      "wrappers": []
+    }
+  ],
+  "reserved": [
+    {
+      "cost": "base",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend",
+      "mode": "A-trend",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/market-exposure",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "base",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal",
+      "mode": "A-reversal",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/half-risk-B",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "base",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B",
+      "mode": "B",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-trend",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "base",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C",
+      "mode": "C",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-reversal",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "base",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B",
+      "mode": "half-risk-B",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/B",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "stress",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend",
+      "mode": "A-trend",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/C",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "stress",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal",
+      "mode": "A-reversal",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/market-exposure",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "stress",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B",
+      "mode": "B",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/half-risk-B",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "stress",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C",
+      "mode": "C",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-42",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    },
+    {
+      "cost": "stress",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "input_sha256": null,
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B",
+      "mode": "half-risk-B",
+      "native_calls": 1,
+      "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-63",
+      "start": "2024-11-01T00:00:00Z",
+      "status": "SEALED_NOT_PREPARED"
+    }
+  ],
+  "replacement_map": {
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-63",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-42",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-84",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-1.5",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2.5",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/half-risk-B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/market-exposure",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/market-exposure",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/half-risk-B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-42",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-63"
+  },
+  "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+  "source_receipt_sha256": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098",
+  "native_environment": {
+    "interpreter": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+    "interpreter_sha256": "3237648c5222017bba78737370570e4c9d5a01e552cdf2fa11f107c8d00fc06e",
+    "packages": {
+      "ccxt": "4.5.68",
+      "freqtrade": "2026.7",
+      "pandas": "3.0.3",
+      "pyarrow": "25.0.0"
+    },
+    "python": "3.13.13",
+    "source_commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+    "source_tree": "167618402c6e278b7dc9dd72a3f69003fad04983"
+  },
+  "code_bundle_sha256": "ca252971e1abc5c7133109ffe8a6bc52dfd9a9d6da9893861d1d7c42bb8c821c",
+  "code_files": {
+    "docs/protocols/btc-eth-portfolio-semantics-v1.json": "5fb7ee5d01920eaa91eafd936569c6c7a15fbdf5708c16162fd49537d8b7848a",
+    "docs/protocols/btc-eth-portfolio-semantics-v2.json": "9773d03346b89822a8495a3d5e6566cd8895c3c83e377be63b74b9f80477e784",
+    "docs/protocols/btc-eth-portfolio-v1.json": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+    "docs/protocols/issue119-source-contract.json": "30d90dcfa7b5fab8eda64c5e0463a931275a0c7c6d1d948039651743e0d3e046",
+    "docs/protocols/issue121-short-feasibility-v2.json": "89ee74bb866aa50fea03249138bef024de877263d7bee09f125063da824a57e1",
+    "docs/protocols/issue123-source-continuation-v2.json": "93484a949fff7eed23d10b8ede1b39c7cb74c1b2c3dd1e3cc9ba6ad11d1c52be",
+    "docs/protocols/issue125-observed-semantics-v3.json": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+    "lab/__init__.py": "0f3361d5ccc8e002084410a079acb93f0d564ee16ec68765511f7cff206cc380",
+    "lab/backtest_artifact.py": "f0e84ab4e54c1be614d09c6a4401f7f892574f02f3aa5f0f38b950a1e0059f27",
+    "lab/binance_source.py": "712e066c95fdc15591e8aabbe5676eb79520ac7ddad9d068837e44de93ca1dcb",
+    "lab/bounded_research.py": "243ae6cfb24a5b2d2f55a1771e05e03c19199c5fa39f8e6aa6112b2849532642",
+    "lab/bounded_strategy.py": "fd5e56cdb73287ed3d710331c0a97aa8152df3467701b237431f9b56d2608117",
+    "lab/codex_generation.py": "7f578e49d8f8503553c86c15d258dcf6a4bc16040e5992db727f892ac2e7b092",
+    "lab/database.py": "983ea522c1d9007ac06ca7395488b58cb0983ca8a23840ad04f9669b79c65c54",
+    "lab/development_run.py": "312fff1cfd4e5aef1607d4d1af8b0da8656f8aaea7a135de3514c7296b3667a7",
+    "lab/frequi.py": "c093f4828b224193466b6c369c9bb16777849b4c010143b578d0e61cb8ff0321",
+    "lab/futures_costs.py": "98d989a3190f72fdbbee1551806df163130d8b31ef110f7ba2eeaa6a21dae101",
+    "lab/holdout_run.py": "72331a726205b246020682b6c10f6ba990a70695deda728315d54a8167fe2788",
+    "lab/lagged_funding.py": "5506bc18c542e1cba6573783b115beb1b2e6285b804fdf9d16d840f46bf2a149",
+    "lab/manual_release.py": "08ce4fa5a0b1849b4124bb6cd51120ef4afbb98108fafcf50977d2183cfa04ab",
+    "lab/market_contract.py": "94474e73a03c69a34adfd1b6c5ffef6f492f9c7ac7d3e711580e7102e7f0c138",
+    "lab/portfolio_budget.py": "7e1e6b6695775f625689363cf5df58f1fbaf408fe98900b67af0e63095576891",
+    "lab/portfolio_causal.py": "9ef9125921bace1d3238cc1ce15a28b751c893b753d21b51f70bc72f8ac62ad0",
+    "lab/portfolio_causal_account.py": "1f85628abf47c86c548da415589ea824797af779a2b4efd6604241621461bc2f",
+    "lab/portfolio_causal_audit.py": "a9f578c0a575afd53a1df2ce483962f15dc855c32c9866e0ca5558df8dbc77c1",
+    "lab/portfolio_causal_audit_v2.py": "ac53deb41f305d7cce1e96532b228fb3131429b4e115128bbacaeccbb14c6155",
+    "lab/portfolio_causal_fixture.py": "e7e6d9137db49fae1a4ceb658276fdfc3f8e8fe2013320c804415c70e3d63384",
+    "lab/portfolio_causal_fixture_v2.py": "ada26ae56588564fdbe1d1160f6c4c39e55b1f5d4925cf877d3c80cad7308fa5",
+    "lab/portfolio_causal_native.py": "77a9101832152d9c00d7726877e694da8a902b00fe8cf27d452cc6684927ce64",
+    "lab/portfolio_causal_strategy.py": "77218e42a29a4d639b83b24cd254e9998d2119a0a035d5e4c6572b718a40aca2",
+    "lab/portfolio_causal_strategy_v2.py": "18dc57234f2f7ab2ec80f3e59a4a77f64e77a537dc9aae9aac64bb95bbfcce2d",
+    "lab/portfolio_execution.py": "8d1dee4135803b99f8c6aa41d9297696a5d40fc60a89b457a70f4304cb07b054",
+    "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+    "lab/portfolio_observed_adapter.py": "f0e41d03e6d43ad6851fac0b1e682d1ff66a2ad76d338e7e4c985940c6739026",
+    "lab/portfolio_observed_budget.py": "e424917025d87ea41245cf66b028846c45569ca301fd21ef9c2e5a561371aa08",
+    "lab/portfolio_observed_control.py": "6ed2626f2a422d6f2bc5bf4d8fd8112f00c03115c88718736178fa6c3e481c50",
+    "lab/portfolio_observed_integrity.py": "7856a74044612147a817bc15ab428c05987823186840b79d64bb552605de707d",
+    "lab/portfolio_observed_money.py": "ee00789ec443478c14379bf5d180ef2459ccde03d0e07fb4b41b05224967ffda",
+    "lab/portfolio_observed_native.py": "2bfe0c1c7ff4f6d1763d1927a3c507ee15eea095d333bc163db5f7064ef31872",
+    "lab/portfolio_observed_prepare.py": "704ed0a5b4e2b15ec965583abeb3c93ce80d18e9d43951f272936c11d2e1d895",
+    "lab/portfolio_observed_source.py": "a1c04d284087a45bfac969bea1261d34c93b6fc7a3d5e44a18981f7da44a2e4d",
+    "lab/portfolio_observed_strategy.py": "d5a88bdb2304375eae9c2bdd40e965e37f329e3cf0f78603a2cf158ceb0fe6e2",
+    "lab/portfolio_preflight.py": "06a3288d223c5b5122b9b26af69a48f061ba3cd0efac966ca6b480b6f6be181a",
+    "lab/portfolio_probe_strategy.py": "53baebbfbbf1c9b48a361345217d3be16a720fd98936666816972f7eada01aef",
+    "lab/portfolio_risk_v2.py": "f387d9c06a2a22b7cd9a746229c8284ecc4f93ff5748ccf7676d4112fdac70c9",
+    "lab/portfolio_short.py": "7362afb1be74a5dfd177e20f4828730234eff12c4ff3695fe33ebe7b31893f78",
+    "lab/portfolio_source.py": "6ba3d35f379d984467c9f89e6d8e1b40873eb8c3734ca72828d241dc6cb5092d",
+    "lab/portfolio_source_continuation.py": "d8b1366973a051d4bb26d6e527c871789fcdfee63bf7c4f80eb3ab992e3b0653",
+    "lab/research_bundle.py": "77b48dd3ca361e24d721ab3d092feb5196b81ab85cf7eb08a62cdeca6a23c7a7",
+    "lab/research_candidate.py": "37a170ea65571ee48eda0eeff27242be91c78cb148cc3a16ffbda6a92466f42f",
+    "lab/research_comparison.py": "f122500bb46130aff311be8554b8a798e84ae4d30effa0c7585b958fa626ef8f",
+    "lab/research_console.py": "2fae63de8084ce4f15e95da4489a5676c1d18376449d568b1757c96e0d4a4a40",
+    "lab/search_campaign.py": "4aee22b61bd36d0f788df081ec3a41c12d97e25e41df36ffdb3cca61ac1b9ee9",
+    "lab/strategy_library.py": "5412384c3c46ca2ea0e1f5ac7f648abb89f80cdb12dc784919eec1d9bd04e8bb",
+    "scripts/attach_candidate_prefilter_evidence.py": "a0ea520b1d4edad288c4f3e0923e372f62d0778ac3059b9af1c7bb824da82df7",
+    "scripts/attach_research_comparison.py": "0e18eec463bbee03396eb925b703a8c430a6ad9ec3a891b7a7c64172d5c7c398",
+    "scripts/attach_search_protocol_rejection.py": "6abc0ef02d54117ee7fedbd274f6fdffa70bf1fc4394c38e1579383f73d9b612",
+    "scripts/capture_portfolio_source.py": "58fe9092a69c8db77b23c34da41bccec7b482c4664150f2d83cfad7e3ecee312",
+    "scripts/capture_portfolio_source_v2.py": "0156cffbc1fb222c983162a01dd8cd0b4e080ed8e48d297d48808dd74fce543f",
+    "scripts/check_portfolio_pilot.py": "a7cfbf0946deca0837d8ad1cebbf31482d254cd6ccb130c5e3f8dd266362b5dc",
+    "scripts/dispatch_portfolio_causal_probe.py": "7aaad2b1890d8eab59d518c69a501056ada9c522692cb667161933a165e5984b",
+    "scripts/fetch_binance_profile_data.py": "874fe63d4cd8ffc228ada3e083ea90082828ca3780e7f16f31deb4ff56a0ca03",
+    "scripts/fetch_okx_profile_data.py": "cfd16f2016fbe106c40a5e057cca20df70aed0e7c0ad05bc43f9847804768b28",
+    "scripts/import_backtest_artifact.py": "230a93a8862d7c6968231b0466c07f1db85688b31e1ae20032ee57ba682acfc9",
+    "scripts/import_research_bundle.py": "ece92cad962f53bd2729080a6040138c4e77dc39198a03ff71612f736c7c4b44",
+    "scripts/init_database.py": "a332a0bbba5b46939ed220ed0f224c53bfaa485ea3e90eb0e7db0b8cd2e80780",
+    "scripts/prepare_portfolio_causal_probe.py": "b5ed9e0e4094072627c3473720908f66570c9dd6aa225c3658ba36240c17758e",
+    "scripts/prepare_portfolio_causal_probe_v2.py": "d6c789c12833f9a1b11308a59e243a18cc50e9e3f8286fa81a45a4ceb3b68425",
+    "scripts/prepare_portfolio_short.py": "fe40e0427506c8a239b3749a9fd8b03c3214330fba35e8ee567d62001af84dee",
+    "scripts/recover_portfolio_causal_audit.py": "b6548d3c562c260533ecd3a05dd1c14ca96a642398125d42ad27837c4c2aeb18",
+    "scripts/run_bounded_research_pilot.py": "ac02fb5479e52dcda73b6bfd8349754bfbea4e632b0a31acddec5b100434b6ec",
+    "scripts/run_development_candidate.py": "954f0e35b75bee54c4a10ebad93ae7060aefce9672208d249801fbd6441101e7",
+    "scripts/run_freqtrade_backtest.py": "49c2e78db6d028b40d0c347f128dd425c65d5ed2edbec37b417cc39ca30a5eda",
+    "scripts/run_holdout_continuation.py": "f718ca13cb08c2e48764de8059ed846656aceb1ea71fe2a0b43983f940734ed5",
+    "scripts/run_portfolio_observed.py": "08a152953ffcd66a2683d879839be39d8282d521bdfe9ccedd5fcbe8b49aabb7",
+    "scripts/run_portfolio_synthetic.py": "a6b81125ab853a5bb9770ed6955f0dec72b735b69dd530476f81ba926b7423fb",
+    "scripts/run_research_candidate.py": "800bcfb73eb27c52468229392fdb7f8a81cf1e05df1dc2fbf3b41f6717df0950",
+    "scripts/serve_research_console.py": "388102eb6c513c632a81ea1d4b1bc45a269c5db9aef47e9380d80d339b82153d",
+    "scripts/serve_strategy_library.py": "cabb157e0bff067732d3d9f8a0dd216419566a5f7d37e10710296656c341aae7"
+  },
+  "data_files": {
+    "futures/BTC_USDT_USDT-1h-futures.feather": "3182a826aec58ed50b83c0176278268a3cb8d255ea25ffceee3138f73ec121e4",
+    "futures/ETH_USDT_USDT-1h-futures.feather": "8f6cfeaeebd8b327d6947f909e3f3890bad96113a960de394970d3fb156fa5fc"
+  },
+  "assembly_sha256": "34c1cc475664bb5ad43bd99e5ed2e39ee338634b838428cbe0f5e40b94b2e71c",
+  "funding_event_table_sha256": "ab41c58ead5c72a6e366c5320e13e56a6925bc5403dfa2d3df0a58d9061556e6",
+  "hourly_rows_per_pair": 8784,
+  "daily_rows_per_pair": 366,
+  "funding_events_per_pair": 276,
+  "activation_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json",
+  "activation_exists": false,
+  "unchanged_controls": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "384f5c6e950cd5a79bee039ffee913025902d04456e800bb0d122a0f4d74cbce"
+  },
+  "tests_passed": 114,
+  "loader_structure": "PASS_NO_BACKTESTING_INSTANCE",
+  "preserved_preparation_outputs": [
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared-failed-import-1",
+      "reason": "conversion import path mismatch before data write"
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared-failed-manifest-2",
+      "reason": "duplicate status keyword after structure conversion"
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared-superseded-3",
+      "reason": "superseded before activation by database guard and final checks"
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-observed-prepared-superseded-734b78c",
+      "reason": "initial review package superseded by timeout, terminal integrity and batch stop guards",
+      "plan_sha256": "b9c8d375a6620f3cf68d87d4f8867fff42b3d5a79274250ba9edf6907f078ab3"
+    }
+  ],
+  "native_timeout_seconds": 180,
+  "wrapper_files": [],
+  "terminal_integrity_tests": "PASS_SUCCESS_AND_EXCEPTION_PATHS",
+  "batch_stop_tests": "PASS_TECHNICAL_FAILURE_STOPS_REMAINING_JOBS_VALID_NEGATIVE_PATH_CONTINUES",
+  "native_pure_rounding_check": {
+    "boundary_cases": 21,
+    "source_hourly_opens": 17568,
+    "default_rounding": "CCXT_ROUND_HALF_UP_FOR_POSITIVE_TICKS",
+    "monthly_precision_explore_open_invariance": "PASS",
+    "native_constructors": 0
+  }
+}

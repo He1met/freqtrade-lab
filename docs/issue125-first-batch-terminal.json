@@ -1,0 +1,953 @@
+{
+  "schema": "issue125-first-exploration-terminal-v1",
+  "status": "FIRST_EXPLORATION_BATCH_COMPLETED",
+  "issue": 125,
+  "execution_commit": "fe01a6b543e26512aa8180c7226d2678eb80a93d",
+  "plan_sha256": "94f536cfcab71e26a3b912a6ac9d23e58d3cc02ff9ce6e395f20ae0994230084",
+  "semantics_sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+  "preparation_receipt_sha256": "45422648ca038c827789d7aba2c113c94ea21cd4e9d20c71e0f6fee6b8c230d6",
+  "activation_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json",
+  "activation_sha256": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+  "approval_url": "https://github.com/He1met/freqtrade-lab/pull/126#issuecomment-5574995442",
+  "activation_publication_url": "https://github.com/He1met/freqtrade-lab/issues/125#issuecomment-5575005854",
+  "native_constructor_calls": 10,
+  "native_start_calls": 10,
+  "new_gets": 0,
+  "retries": 0,
+  "wrappers": [],
+  "worker_count": 1,
+  "native_timeout_seconds": 180,
+  "jobs": [
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "mode": "A-trend",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": 51756793945299541707,
+        "denominator": 5000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": 51756793945299541707,
+        "denominator": 50000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142992756556620597627
+      },
+      "modeled_execution_fee": {
+        "numerator": 33588009,
+        "denominator": 500000000
+      },
+      "modeled_slippage": {
+        "numerator": 33588009,
+        "denominator": 500000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 33588009,
+        "denominator": 250000000
+      },
+      "model_funding": {
+        "denominator": 5000000000000000000,
+        "numerator": 515504125299541707
+      },
+      "native_funding": {
+        "denominator": 20000000000000000,
+        "numerator": 2062016501198167
+      },
+      "native_funding_delta": {
+        "denominator": 5000000000000000000,
+        "numerator": -43
+      },
+      "display": {
+        "net_usdt": "10.351358789060",
+        "return_pct": "1.035135878906",
+        "max_drawdown_pct": "1.209083001544",
+        "execution_fee_usdt": "0.067176018000",
+        "slippage_usdt": "0.067176018000",
+        "funding_usdt": "0.103100825060"
+      },
+      "modeled_net_gate": true,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 1,
+      "actual_filled_orders": 2,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 4.049363,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/01",
+      "manifest_sha256": "400bc669102a9ffd82f2d0b496563b4b234de17f97a208c22032ca86d84335d8",
+      "result_sha256": "f9ebb6262fb0fd2425dbdcee7bf6f441b2b4ba3e2e1afbdcdc91be35ff9e5bb7",
+      "evidence_index_sha256": "ed0ef4b241344cb8ff55b4feedbd73f3836e5b6b7606037e2ba284b54da57a72",
+      "terminal_integrity_sha256": "24624088eb17e00c58c94d74be6284a3b3b760b0ac3b1491c973391ba5efc205",
+      "evidence_files": {
+        "actual-orders.json": "e4a260786011d1b2f2190ed97e656cf6739e1f97c90950b675bb2a640c1f2faa",
+        "config.json": "fc3cb53c9c74b4568a6681e16899957a8fa1ae6641fb0a69cd4a38cc0579b27b",
+        "episode-events.json": "8e93c5af5260e5e460e0fc45d830ddaeef79063d62f1ca0b96909df5c69af607",
+        "exports/.last_result.json": "d40f158baeebd93c675308ca67983e8b3bb79588694cd8f930ff87963cc6dec2",
+        "exports/backtest-result-2026-09-08_03-43-11.meta.json": "cdd643c357ea0a5bd0cf62ef5c0e75dcaa8fd283a4897d18624f4345e0d9aa8d",
+        "exports/backtest-result-2026-09-08_03-43-11.zip": "92dd37c5aed697bd9b9bde21718c1e9253b2199293354c99e9318ea83575f02d",
+        "manifest.json": "400bc669102a9ffd82f2d0b496563b4b234de17f97a208c22032ca86d84335d8",
+        "position-cycles.json": "659a4f4526b1cb3613f4dfe8d23609d7e9effca78850eb468957486a2c97f2c7",
+        "pre-call-integrity.json": "e82e0a936e1ce89da96b11a22e8a11bb573be8da355bb12a0be1cc267818c775",
+        "result.json": "f9ebb6262fb0fd2425dbdcee7bf6f441b2b4ba3e2e1afbdcdc91be35ff9e5bb7",
+        "risk-events.json": "7d8b32a9a007d563653884a87afcefb89fb4d3b7269cd8ba2e364dd4b9f064c2",
+        "terminal-integrity.json": "24624088eb17e00c58c94d74be6284a3b3b760b0ac3b1491c973391ba5efc205",
+        "trace.json": "294b3a7c1b65d25dc2b34a114638dbb88c3e5db46ee65924e76e63f39e9f292f"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-01.log",
+      "stdout_stderr_sha256": "46ea0479cb9678e05c9c7194d3c018ccae18893d44f3bab77b6a372c3ca7dd04",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "mode": "A-reversal",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -31778984993364838961,
+        "denominator": 10000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -31778984993364838961,
+        "denominator": 100000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 154500847605529094767,
+        "denominator": 10014054260608000000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 90921669,
+        "denominator": 250000000
+      },
+      "modeled_slippage": {
+        "numerator": 90921669,
+        "denominator": 250000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 90921669,
+        "denominator": 125000000
+      },
+      "model_funding": {
+        "denominator": 10000000000000000000,
+        "numerator": 710548526635161039
+      },
+      "native_funding": {
+        "denominator": 125000000000000000,
+        "numerator": 8881856582939513
+      },
+      "native_funding_delta": {
+        "denominator": 10000000000000000000,
+        "numerator": -1
+      },
+      "display": {
+        "net_usdt": "-3.177898499336",
+        "return_pct": "-0.317789849934",
+        "max_drawdown_pct": "1.542840128331",
+        "execution_fee_usdt": "0.363686676000",
+        "slippage_usdt": "0.363686676000",
+        "funding_usdt": "0.071054852664"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.64777,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/02",
+      "manifest_sha256": "d27b3c5d48340267ee955dad33c02724ce6b37112e0fdb3bf719d32f8ab26e62",
+      "result_sha256": "bb515fe10d204a3a8fed50e2ab8b12c01324e20513b355962a49205741821f3e",
+      "evidence_index_sha256": "26e5c33162b9709f7b23b80d33a439ba5e027e62d7f9bab66258e2c40696494f",
+      "terminal_integrity_sha256": "943b00494f00765ef73466e03e3a7089f4dafb1afdb68ef52ade6751f913d500",
+      "evidence_files": {
+        "actual-orders.json": "40eac87dcfb7f2ff235fd9952af685b3f910c2838d81114179731c7d34d8f819",
+        "config.json": "8cd02ca5270c1182dee6b94681035106dcfc5b8476fa622960406e597a34e120",
+        "episode-events.json": "3172a987595e23db9d859c06b44955d063602fe63d8246335f25f9436dbf0a1e",
+        "exports/.last_result.json": "7432edbcf2ff4847f9f04a644c64084fea361cc992fec85175b649d424d962f5",
+        "exports/backtest-result-2026-09-08_03-43-35.meta.json": "4ccdf59e7f80767422889c42805f7671ac97a66322a54ef774f18c26e518c6b3",
+        "exports/backtest-result-2026-09-08_03-43-35.zip": "edaf23e8e34e95216e1204f3199b5f74808ec8ebb88a1f205b02fa083d293522",
+        "manifest.json": "d27b3c5d48340267ee955dad33c02724ce6b37112e0fdb3bf719d32f8ab26e62",
+        "position-cycles.json": "c1c241ab935f129593143cc986744b494d3900855763ba027824bc708cac1003",
+        "pre-call-integrity.json": "ce0db9dc788724e159762b425cc26b26a89232803bc32eaad21abb98ccee111b",
+        "result.json": "bb515fe10d204a3a8fed50e2ab8b12c01324e20513b355962a49205741821f3e",
+        "risk-events.json": "08b3e4760344a521ec54b780bff77752620053417996bd6e45b97f9fcffe4504",
+        "terminal-integrity.json": "943b00494f00765ef73466e03e3a7089f4dafb1afdb68ef52ade6751f913d500",
+        "trace.json": "9af91ac156ea36f16856fc4fa3ffd451a502cc68f888a12500513f6c412dfea8"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-02.log",
+      "stdout_stderr_sha256": "02d807e8e1293c78b664e53948172fb0d14b293b8682bcea104e6c815868e9c9",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "mode": "B",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -629887697585799169,
+        "denominator": 1000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -629887697585799169,
+        "denominator": 10000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 3313025449972465373,
+        "denominator": 625439195644000000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 56517699,
+        "denominator": 500000000
+      },
+      "modeled_slippage": {
+        "numerator": 56517699,
+        "denominator": 500000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 56517699,
+        "denominator": 250000000
+      },
+      "model_funding": {
+        "denominator": 1000000000000000000,
+        "numerator": 44173098414200831
+      },
+      "native_funding": {
+        "denominator": 500000000000000000,
+        "numerator": 22086549207100417
+      },
+      "native_funding_delta": {
+        "denominator": 1000000000000000000,
+        "numerator": -3
+      },
+      "display": {
+        "net_usdt": "-0.629887697586",
+        "return_pct": "-0.062988769759",
+        "max_drawdown_pct": "0.529711836586",
+        "execution_fee_usdt": "0.113035398000",
+        "slippage_usdt": "0.113035398000",
+        "funding_usdt": "0.044173098414"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.961078,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/03",
+      "manifest_sha256": "d81f3b23a43c2d1e0c263512b808740f26867ba568682e9692339b413c659e8a",
+      "result_sha256": "36b9e51e2a54f55970274eaae5a501125ef528fe9d6e1eeb4ca8a8e17cdacc68",
+      "evidence_index_sha256": "f30d6b376b3691758f593e05978642b78b6f01486093521a847dc51ce0d8502c",
+      "terminal_integrity_sha256": "1f63f66fff5991f7101aaeca7df96cd5b71a44cc2e6978e93d7fbe8d2cf7e139",
+      "evidence_files": {
+        "actual-orders.json": "6bc347292bfb551a6e83406a3cd39b6ffcbd055fff4f0f8715d946b8c3444ff2",
+        "config.json": "5c7bad5a18698d8b7379b184c33af8e81150c9fd231badb545bbd67639703548",
+        "episode-events.json": "78c216dac20af89ae79d7dbb731a46d01a78d323936ddb2d7ee7ec286a8a44ca",
+        "exports/.last_result.json": "04150e0b2c7bf572823926d56b228b994dae49ae72c79b4bf05ac821b293e13a",
+        "exports/backtest-result-2026-09-08_03-43-55.meta.json": "e8fe4a849a056e74c7db8e195641569faca6a5cc7dd3412d0c10b554774fcf26",
+        "exports/backtest-result-2026-09-08_03-43-55.zip": "1e73cbc41fab64189e7dced841f012ab9b3f2af438bbb5501c061b3fbd0e6054",
+        "manifest.json": "d81f3b23a43c2d1e0c263512b808740f26867ba568682e9692339b413c659e8a",
+        "position-cycles.json": "2eec45a020da77583d4e5cf0fe55bd37f63ce1fdef8005343cb6e35e3b834bd0",
+        "pre-call-integrity.json": "cf152cded94eadd3b186e917b00e81951dcbb2d3de3c5543b3122105892014a2",
+        "result.json": "36b9e51e2a54f55970274eaae5a501125ef528fe9d6e1eeb4ca8a8e17cdacc68",
+        "risk-events.json": "be894c3c8c25b8290c9dfd1e77fd5cb306192611a75d7cdc0aaf78c0019e80ca",
+        "terminal-integrity.json": "1f63f66fff5991f7101aaeca7df96cd5b71a44cc2e6978e93d7fbe8d2cf7e139",
+        "trace.json": "035eac504c86f30f1f28fd8e028404e5f5e2a082ccf11da8c099483dbbb793ff"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-03.log",
+      "stdout_stderr_sha256": "f915a65629b3ddf72346a40cd469471c308fe94d9fb2981435a744831c38046d",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "mode": "C",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -5553241162953504661,
+        "denominator": 2000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -5553241162953504661,
+        "denominator": 20000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 910213100646484069,
+        "denominator": 200114190867440000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 1963629,
+        "denominator": 20000000
+      },
+      "modeled_slippage": {
+        "numerator": 1963629,
+        "denominator": 20000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 1963629,
+        "denominator": 10000000
+      },
+      "model_funding": {
+        "denominator": 2000000000000000000,
+        "numerator": 41264637046495339
+      },
+      "native_funding": {
+        "denominator": 1000000000000000000,
+        "numerator": 20632318523247667
+      },
+      "native_funding_delta": {
+        "denominator": 400000000000000000,
+        "numerator": 1
+      },
+      "display": {
+        "net_usdt": "-2.776620581477",
+        "return_pct": "-0.277662058148",
+        "max_drawdown_pct": "0.454846853539",
+        "execution_fee_usdt": "0.098181450000",
+        "slippage_usdt": "0.098181450000",
+        "funding_usdt": "0.020632318523"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 4.240627,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/04",
+      "manifest_sha256": "c64dfaa47e5986d205eb16c0a608b8fc860dd652596a08caae387e888e585cfa",
+      "result_sha256": "ba0e6000e843609dd99cbeff15138c7fca80654a40fe244c4c9d5558ceb83c76",
+      "evidence_index_sha256": "bb5deaf0823f4ec2485a6cbc18241d7ea1b80164768da0642c274b546b900eb2",
+      "terminal_integrity_sha256": "c7aef882b9fda9b8277a308289ef9c0e08f6886a54a131b550f7d07470a23e87",
+      "evidence_files": {
+        "actual-orders.json": "b5710d4dfccb6d0de1157241b0838fe11d20ecb0386b56a130ceee4ef26d67c4",
+        "config.json": "29121814b6d5bdbe2e8b17f45f7aa65176f4d024ba8b805755d75a657c795057",
+        "episode-events.json": "ae0078f39dc553bfe6b83b02a00b1114fcba0204d7cd7c201a12965fc113b70d",
+        "exports/.last_result.json": "78808e48bd72d57286e08591d4099f22da2059a993805d0fd49b6f79fcd490e4",
+        "exports/backtest-result-2026-09-08_03-44-15.meta.json": "e280f21448c27791080b31c845a4dbe17b0c10a59edcb0a11741db7b75cf9146",
+        "exports/backtest-result-2026-09-08_03-44-15.zip": "cd095209f91f98f066422db68e135a4d2a1f9fc102b9b6297de22116a6494abc",
+        "manifest.json": "c64dfaa47e5986d205eb16c0a608b8fc860dd652596a08caae387e888e585cfa",
+        "position-cycles.json": "6a3efe0a2e31f7a4085ec93f47085f02d93b83014efcc0cc026164d63fb7bf76",
+        "pre-call-integrity.json": "4b31b14b7edf0873a8f54a4e50f5d7cf8740a50a097791367de8f13675130cc4",
+        "result.json": "ba0e6000e843609dd99cbeff15138c7fca80654a40fe244c4c9d5558ceb83c76",
+        "risk-events.json": "a7cedaedb9245849b1615765324a17e9f6b19ae593ee6430a45b9d15c3e7fcc9",
+        "terminal-integrity.json": "c7aef882b9fda9b8277a308289ef9c0e08f6886a54a131b550f7d07470a23e87",
+        "trace.json": "ed70a8f03eff06d4620fcf92716a2236d18752075e053294602c1789fec3e3e3"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-04.log",
+      "stdout_stderr_sha256": "86520b406ea54d8f1cda028a8202390cc92e9c454893a60c20f55771b4523b14",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "base",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -2695022087441215373,
+        "denominator": 1250000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -2695022087441215373,
+        "denominator": 12500000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 3134217731441215373,
+        "denominator": 1250439195644000000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 169803,
+        "denominator": 6250000
+      },
+      "modeled_slippage": {
+        "numerator": 169803,
+        "denominator": 6250000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 169803,
+        "denominator": 3125000
+      },
+      "model_funding": {
+        "denominator": 1250000000000000000,
+        "numerator": -5900887441215373
+      },
+      "native_funding": {
+        "denominator": 500000000000000000,
+        "numerator": -2360354976486149
+      },
+      "native_funding_delta": {
+        "denominator": 2500000000000000000,
+        "numerator": -1
+      },
+      "display": {
+        "net_usdt": "-2.156017669953",
+        "return_pct": "-0.215601766995",
+        "max_drawdown_pct": "0.250649351233",
+        "execution_fee_usdt": "0.027168480000",
+        "slippage_usdt": "0.027168480000",
+        "funding_usdt": "-0.004720709953"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 1,
+      "actual_filled_orders": 2,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.471875,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/05",
+      "manifest_sha256": "f5f8b297c7739db7119a9d369b9a03d6c0e79ee170543fb9e9bfc4d9fe1497a6",
+      "result_sha256": "459c17e78cd492e20c0a837c02e46ae9f11c07043567905aa6a5b9f350bb6873",
+      "evidence_index_sha256": "478c37fd2ad3591a57a61981ed7adbfa0749ca2053ae88a88bec9a7d1c15d34f",
+      "terminal_integrity_sha256": "9ff0d1a8d3804070e7de4663ca8d1d96c50350f882b5e7edae86ed7e663e7ad0",
+      "evidence_files": {
+        "actual-orders.json": "342b2c2eb518f36063079b3ab95a40ca35ac8c61238568772115f7f43b84e534",
+        "config.json": "477d48f5cc031b36784d5b07c4a778c34d5bfbe1127753dc9d38632baee23ca4",
+        "episode-events.json": "aba3c5ba57409635f45e4e587ffec595e50d4a4a5a301e629f2f7c8e678c2166",
+        "exports/.last_result.json": "425089b99f2a5d42e9c1206bb9e7ac0e0dbb6667fa874c762b6a4a793673e2ec",
+        "exports/backtest-result-2026-09-08_03-44-38.meta.json": "36e3cbb25d05cdd00556418089239283e67b213383100b88829aa11f4c48ba99",
+        "exports/backtest-result-2026-09-08_03-44-38.zip": "989a556a34f83de5c59734746cc5a9766565e5534745843be0b7f56a01f83e33",
+        "manifest.json": "f5f8b297c7739db7119a9d369b9a03d6c0e79ee170543fb9e9bfc4d9fe1497a6",
+        "position-cycles.json": "9b84cae3a1443103afd461e1f6115104c90af7b5d0d83e186977757f84a67698",
+        "pre-call-integrity.json": "a788d8a5785109d87161d6146fabf3ef345dea954a85e51f46ac9f538b919a69",
+        "result.json": "459c17e78cd492e20c0a837c02e46ae9f11c07043567905aa6a5b9f350bb6873",
+        "risk-events.json": "5dc606078213ee529e6f8934b04a29ad902900349784ac0590c4c5026aa572ac",
+        "terminal-integrity.json": "9ff0d1a8d3804070e7de4663ca8d1d96c50350f882b5e7edae86ed7e663e7ad0",
+        "trace.json": "9bc5e4ba815b473602c4b8490f408e4e87005eda8317edc0c32286687508a766"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-05.log",
+      "stdout_stderr_sha256": "ecb17aecaebea6703f22ac3599fdaa8caf3b4b8a847a704cf054d3d6b2faee03",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "mode": "A-trend",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": 51085033765299541707,
+        "denominator": 5000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": 51085033765299541707,
+        "denominator": 50000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 122637201267361702320,
+        "denominator": 10142258700716620597627
+      },
+      "modeled_execution_fee": {
+        "numerator": 33588009,
+        "denominator": 250000000
+      },
+      "modeled_slippage": {
+        "numerator": 33588009,
+        "denominator": 250000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 33588009,
+        "denominator": 125000000
+      },
+      "model_funding": {
+        "denominator": 5000000000000000000,
+        "numerator": 515504125299541707
+      },
+      "native_funding": {
+        "denominator": 20000000000000000,
+        "numerator": 2062016501198167
+      },
+      "native_funding_delta": {
+        "denominator": 5000000000000000000,
+        "numerator": -43
+      },
+      "display": {
+        "net_usdt": "10.217006753060",
+        "return_pct": "1.021700675306",
+        "max_drawdown_pct": "1.209170510102",
+        "execution_fee_usdt": "0.134352036000",
+        "slippage_usdt": "0.134352036000",
+        "funding_usdt": "0.103100825060"
+      },
+      "modeled_net_gate": true,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 1,
+      "actual_filled_orders": 2,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.898685,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/06",
+      "manifest_sha256": "52f3fb6bff033f993f186f2c3ede6483b731a5ec8f740594775132a8b5e8bef0",
+      "result_sha256": "136ca70f24331ae0a9e07ec74ca58c62eba6670edab8a04a61f93c71e371c623",
+      "evidence_index_sha256": "0e1c71693a0b11b3d5f42e80172c8dbd994ab286ca81e5a795b2c69bf746167f",
+      "terminal_integrity_sha256": "798393d58f716d53c0c96c2701ad893534963b5fc0b503b25f11fc9f2fbe7c26",
+      "evidence_files": {
+        "actual-orders.json": "bd64a2ebbfe4486119cc2ee22c8b7c9ee8502030a3f4c0b03e3e61dabf5aefde",
+        "config.json": "44ce27a3a214bdef90a31fb1c396ee4077f75d86de1b65cfa18483ffb07308c9",
+        "episode-events.json": "2d9aa6dca882dff62eb48af4990315db0c657eb1076961eed0a3d3ce6df8b6a1",
+        "exports/.last_result.json": "032ef4d83856e9341ecbb646cb2affb76a888a2921529d0e516628179eae4661",
+        "exports/backtest-result-2026-09-08_03-45-01.meta.json": "2b82dd12449c66e9cddf181b6042ed7f73b461e0bca834d8464a824a74c4eb86",
+        "exports/backtest-result-2026-09-08_03-45-01.zip": "6f276958e9204d8b4f8e88d6327c2a1df10d88b1a2f336b8015dfe0a7b76f25c",
+        "manifest.json": "52f3fb6bff033f993f186f2c3ede6483b731a5ec8f740594775132a8b5e8bef0",
+        "position-cycles.json": "659a4f4526b1cb3613f4dfe8d23609d7e9effca78850eb468957486a2c97f2c7",
+        "pre-call-integrity.json": "e5e3af51117e4c33f472e1e2b975ec54b44e7985195086dc6ed74ef61fde5336",
+        "result.json": "136ca70f24331ae0a9e07ec74ca58c62eba6670edab8a04a61f93c71e371c623",
+        "risk-events.json": "4d07832510db6875238189a2d071599cb891e883010d1cd1f1d36921fd2c405c",
+        "terminal-integrity.json": "798393d58f716d53c0c96c2701ad893534963b5fc0b503b25f11fc9f2fbe7c26",
+        "trace.json": "4b2e26014ae5db1fb953c4cddc587dc481bab3e0b81a6ccdc8d8d52b18dede28"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-06.log",
+      "stdout_stderr_sha256": "6d30c2415f6b909e369b8c3c08d363e3e2f51bbf49d04b7af35db325b9238f6e",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "mode": "A-reversal",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -39052718513364838961,
+        "denominator": 10000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -39052718513364838961,
+        "denominator": 100000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 156360122565529094767,
+        "denominator": 10012917194368000000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 90921669,
+        "denominator": 125000000
+      },
+      "modeled_slippage": {
+        "numerator": 90921669,
+        "denominator": 125000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 90921669,
+        "denominator": 62500000
+      },
+      "model_funding": {
+        "denominator": 10000000000000000000,
+        "numerator": 710548526635161039
+      },
+      "native_funding": {
+        "denominator": 125000000000000000,
+        "numerator": 8881856582939513
+      },
+      "native_funding_delta": {
+        "denominator": 10000000000000000000,
+        "numerator": -1
+      },
+      "display": {
+        "net_usdt": "-3.905271851336",
+        "return_pct": "-0.390527185134",
+        "max_drawdown_pct": "1.561584097125",
+        "execution_fee_usdt": "0.727373352000",
+        "slippage_usdt": "0.727373352000",
+        "funding_usdt": "0.071054852664"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.875046,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/07",
+      "manifest_sha256": "74006a660daefeea1201ff5b2662804f8e80f4e5e3d5e838010c76b24aac6fd7",
+      "result_sha256": "b6b06fd99a28f2e9b52939ae1e075a18d10113f067d96a9d4460eca0a241764e",
+      "evidence_index_sha256": "c1c694b8f27c89a973fdcdc102c8deb11280ae403a23c7bce89a648d7e092cef",
+      "terminal_integrity_sha256": "4993ed92cdcf0209a0b2787336f40a7ab43be97f87a04ae380e2cfc93e90ced5",
+      "evidence_files": {
+        "actual-orders.json": "283aa83450a361ad03a1771eb367d862b8d65ec8acb77d1ad0a26d5eed349a86",
+        "config.json": "a9adc8bae6dc1ee2f0ed8668389ac0ad09e961a890e34ef9438062bee7bcb635",
+        "episode-events.json": "4cb7b2a0331ac21a118882186802e534f4e5caa2d16f647ad6ffec000676810e",
+        "exports/.last_result.json": "4421d99492aa6994eb6e780051b932d9d4cfea3fc7b853cae4cb8f276f020656",
+        "exports/backtest-result-2026-09-08_03-45-39.meta.json": "b70d6b1da937ef2fca98eabce2298081fb5422e608875aad82a16f5c1d1cc971",
+        "exports/backtest-result-2026-09-08_03-45-39.zip": "90f29118039bdddb3bd085bae0e114e74de2d8711037285c45cf745806288b80",
+        "manifest.json": "74006a660daefeea1201ff5b2662804f8e80f4e5e3d5e838010c76b24aac6fd7",
+        "position-cycles.json": "c1c241ab935f129593143cc986744b494d3900855763ba027824bc708cac1003",
+        "pre-call-integrity.json": "95250db5177325f6b5d2dcfb257253b0491b80348bb9c052ef11d755ef75e456",
+        "result.json": "b6b06fd99a28f2e9b52939ae1e075a18d10113f067d96a9d4460eca0a241764e",
+        "risk-events.json": "33d5d4f22733bc95b0a285d0bd468d922af7af673eb8e198e8070a918105ca37",
+        "terminal-integrity.json": "4993ed92cdcf0209a0b2787336f40a7ab43be97f87a04ae380e2cfc93e90ced5",
+        "trace.json": "07f4084c75d28db960f1205c989d9f350d2606b72f72cf3c0be4a16ca26d5a76"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-07.log",
+      "stdout_stderr_sha256": "335f09e03e48a4bbe08b90acb0984abf8791586cc99b44020f5f6d38e5c888c8",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "mode": "B",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -855958493585799169,
+        "denominator": 1000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -855958493585799169,
+        "denominator": 10000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 169771950197979123,
+        "denominator": 31270183116200000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 56517699,
+        "denominator": 250000000
+      },
+      "modeled_slippage": {
+        "numerator": 56517699,
+        "denominator": 250000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 56517699,
+        "denominator": 125000000
+      },
+      "model_funding": {
+        "denominator": 1000000000000000000,
+        "numerator": 44173098414200831
+      },
+      "native_funding": {
+        "denominator": 500000000000000000,
+        "numerator": 22086549207100417
+      },
+      "native_funding_delta": {
+        "denominator": 1000000000000000000,
+        "numerator": -3
+      },
+      "display": {
+        "net_usdt": "-0.855958493586",
+        "return_pct": "-0.085595849359",
+        "max_drawdown_pct": "0.542919590740",
+        "execution_fee_usdt": "0.226070796000",
+        "slippage_usdt": "0.226070796000",
+        "funding_usdt": "0.044173098414"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 4.04029,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/08",
+      "manifest_sha256": "56a8b4f93cfee2daa2dc7d250323c271e1c1736aefeea90a45302366175360cd",
+      "result_sha256": "2babac5dec6730e897f6ebc7a259a30e2dbe54ef965d83f59954ae3618ab4cc2",
+      "evidence_index_sha256": "a573dca2833fe0b69c5d04f22697ca3f4698a9db3b2f5d7cfe5a4aa02163dc67",
+      "terminal_integrity_sha256": "b404e09a8be070ece3b25ff2d2d136db0d6ad3ba5811f656b47e97a01f3bc99b",
+      "evidence_files": {
+        "actual-orders.json": "5aa92a67d890a17f111e8302ee7526ebe41ff5fbb392d73dcb8173f75f6e944f",
+        "config.json": "2e75d12e3a152ac50858e578ee73fbe017e1f3789405259e25e257bf2e638527",
+        "episode-events.json": "28ebaaf80979aaf132aa333f9caa1b2a6712b8d26640e4edf51fdbb594a718b5",
+        "exports/.last_result.json": "a859fc785a854b7ac5d3822d538164bf8fe15c8c33f28dc67d21a3250699eeaf",
+        "exports/backtest-result-2026-09-08_03-46-03.meta.json": "f4447b8f5ba7883f62f93b87362953d60e0956df52338fc1e5ea7afae15ec965",
+        "exports/backtest-result-2026-09-08_03-46-03.zip": "b27fe2cdedda19324e421c0ede4e7a810d79d921f20be9ae235079d1d77932aa",
+        "manifest.json": "56a8b4f93cfee2daa2dc7d250323c271e1c1736aefeea90a45302366175360cd",
+        "position-cycles.json": "2eec45a020da77583d4e5cf0fe55bd37f63ce1fdef8005343cb6e35e3b834bd0",
+        "pre-call-integrity.json": "ae78216587aeae42ed8fb1cb7e635361393ddb4bff7266be52dfdc498f934487",
+        "result.json": "2babac5dec6730e897f6ebc7a259a30e2dbe54ef965d83f59954ae3618ab4cc2",
+        "risk-events.json": "31da642b144464b47faf6de05a1d742ec3e164f8f7ada21b052f03747bf899fe",
+        "terminal-integrity.json": "b404e09a8be070ece3b25ff2d2d136db0d6ad3ba5811f656b47e97a01f3bc99b",
+        "trace.json": "88b6f6ab774a850bac2e486ad5964bf030f5da60caec610d686fe40dcfc132a8"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-08.log",
+      "stdout_stderr_sha256": "51848ad743dbea5b38dc95684129586574a127b717d1df013ffa01c2b39f0230",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "mode": "C",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -5945966962953504661,
+        "denominator": 2000000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -5945966962953504661,
+        "denominator": 20000000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 935023035846484069,
+        "denominator": 200104952204240000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 1963629,
+        "denominator": 10000000
+      },
+      "modeled_slippage": {
+        "numerator": 1963629,
+        "denominator": 10000000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 1963629,
+        "denominator": 5000000
+      },
+      "model_funding": {
+        "denominator": 2000000000000000000,
+        "numerator": 41264637046495339
+      },
+      "native_funding": {
+        "denominator": 1000000000000000000,
+        "numerator": 20632318523247667
+      },
+      "native_funding_delta": {
+        "denominator": 400000000000000000,
+        "numerator": 1
+      },
+      "display": {
+        "net_usdt": "-2.972983481477",
+        "return_pct": "-0.297298348148",
+        "max_drawdown_pct": "0.467266314775",
+        "execution_fee_usdt": "0.196362900000",
+        "slippage_usdt": "0.196362900000",
+        "funding_usdt": "0.020632318523"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 3,
+      "actual_filled_orders": 6,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.804662,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/09",
+      "manifest_sha256": "89d0019d2e5630e33ccf8bf032786be5d4edff06b800f083a4c589e80dbc98f8",
+      "result_sha256": "b1f16ecdbb36e0febdfbc7817926c3e25125107a6c3e0784003db86fa35159e3",
+      "evidence_index_sha256": "7556c0bab7fdefb50c73170384e028cb8db095f25e0df8974f53238d049bd499",
+      "terminal_integrity_sha256": "c479eede187dd0c988d0f51c0753c4281844ab44347a55d6c4dd7d047faed3c6",
+      "evidence_files": {
+        "actual-orders.json": "f787243f37cf23798a90f52f196aa139f29789e5238d47d5799adcd10b8bb1dc",
+        "config.json": "296f20cc16e325b57f03fab507f7397f3340bed653cea952207e7cc57b350bd3",
+        "episode-events.json": "415b68c96616fba308890927b80b7b62283413c21d026b45ba07b95e7ac49efd",
+        "exports/.last_result.json": "526a4e63a713f50d551a8e6679e2914e1900a752b43818a2881cc50fc85bc130",
+        "exports/backtest-result-2026-09-08_03-46-45.meta.json": "456cec4ce296064ab0724c2db978d27e5f949d565161946abc21522d17be3509",
+        "exports/backtest-result-2026-09-08_03-46-45.zip": "e3743e1b20961fc78832c80918584137d1578e97d42a6f0bfee3683bfcc3c44a",
+        "manifest.json": "89d0019d2e5630e33ccf8bf032786be5d4edff06b800f083a4c589e80dbc98f8",
+        "position-cycles.json": "6a3efe0a2e31f7a4085ec93f47085f02d93b83014efcc0cc026164d63fb7bf76",
+        "pre-call-integrity.json": "6f0d366ec073ae1076a4a5bc60b93d11fda2007acf59a010da17a026ff9a8ecb",
+        "result.json": "b1f16ecdbb36e0febdfbc7817926c3e25125107a6c3e0784003db86fa35159e3",
+        "risk-events.json": "243ba4657edcc58426b905eeffea9ca736a58d5ea61181444397372c1c7b16eb",
+        "terminal-integrity.json": "c479eede187dd0c988d0f51c0753c4281844ab44347a55d6c4dd7d047faed3c6",
+        "trace.json": "0f214e27b04c7d3885e66a7a42d91a29902bf630dd761b610c60656bdeb52f87"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-09.log",
+      "stdout_stderr_sha256": "a4943b70b0d62ada199ccaca63eb95bf60c93d800428f2f6d35541953d5117a9",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    },
+    {
+      "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+      "mode": "half-risk-B",
+      "cost": "stress",
+      "status": "SUCCEEDED",
+      "integrity": "PASS",
+      "native_constructor_calls": 1,
+      "native_start_calls": 1,
+      "native_call_evidence": "Reviewed runner has exactly one constructor and one start, normal return, intact execution code and native archive",
+      "modeled_net": {
+        "numerator": -2762943287441215373,
+        "denominator": 1250000000000000000
+      },
+      "modeled_return_pct": {
+        "numerator": -2762943287441215373,
+        "denominator": 12500000000000000000
+      },
+      "modeled_max_drawdown": {
+        "numerator": 3166605611441215373,
+        "denominator": 1250403662324000000000
+      },
+      "modeled_execution_fee": {
+        "numerator": 169803,
+        "denominator": 3125000
+      },
+      "modeled_slippage": {
+        "numerator": 169803,
+        "denominator": 3125000
+      },
+      "modeled_transaction_cost": {
+        "numerator": 169803,
+        "denominator": 1562500
+      },
+      "model_funding": {
+        "denominator": 1250000000000000000,
+        "numerator": -5900887441215373
+      },
+      "native_funding": {
+        "denominator": 500000000000000000,
+        "numerator": -2360354976486149
+      },
+      "native_funding_delta": {
+        "denominator": 2500000000000000000,
+        "numerator": -1
+      },
+      "display": {
+        "net_usdt": "-2.210354629953",
+        "return_pct": "-0.221035462995",
+        "max_drawdown_pct": "0.253246668004",
+        "execution_fee_usdt": "0.054336960000",
+        "slippage_usdt": "0.054336960000",
+        "funding_usdt": "-0.004720709953"
+      },
+      "modeled_net_gate": false,
+      "modeled_risk_gate": true,
+      "actual_closed_position_cycles": 1,
+      "actual_filled_orders": 2,
+      "cycles_are_independent_family_samples": false,
+      "family_natural_clusters": null,
+      "family_natural_cluster_gate": "NOT_EVALUATED",
+      "final_inventory": "FLAT",
+      "phase_end": "2024-11-01T00:00:00Z",
+      "technical_wall_seconds": 3.474108,
+      "output_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-jobs/10",
+      "manifest_sha256": "59ef92dfdafbd58bdb2c46f862cbd5ccb736e9a14b1f105e7e443333d77a6192",
+      "result_sha256": "4733c69ccb11385856323494839f5d0cce9dd4849cf613aebb47e2096d8f9349",
+      "evidence_index_sha256": "37bb6a3df2d4487d89cd67851af7f8cff455bc03da7b4b9c22dd90eb2de396ea",
+      "terminal_integrity_sha256": "6d7c97a21ec94549d78b6ccefd85190cbb38f26c539de4919b6af8b180e98bae",
+      "evidence_files": {
+        "actual-orders.json": "617ab0a81331801645959fb7cc754a20c8c4bb15db7b40a5aa34b48648080dfe",
+        "config.json": "90f8f0b9483620f190eac8fe8c9695504233257d8fa455a50159a53545f3d146",
+        "episode-events.json": "33e622efd2d4f03ea768651649e02e682b8aaeaf31468069333a4a0a1d5f8b42",
+        "exports/.last_result.json": "a1426e54c36094634e0dc154d67830156e0c85090f1466c94c8d5e2ab489c261",
+        "exports/backtest-result-2026-09-08_03-47-09.meta.json": "cd9d9d4b1bf664993bdd882b515cebddd217db46a3f01a1eae8db5bfec8e5366",
+        "exports/backtest-result-2026-09-08_03-47-09.zip": "7dd667f651b40756851fd6dd30d5a4cde0efdc70155c6224a1d9d1611c7853c0",
+        "manifest.json": "59ef92dfdafbd58bdb2c46f862cbd5ccb736e9a14b1f105e7e443333d77a6192",
+        "position-cycles.json": "9b84cae3a1443103afd461e1f6115104c90af7b5d0d83e186977757f84a67698",
+        "pre-call-integrity.json": "550225d3a5b98729ba5b5b9cfb7eed2841f52e30ed6f8afe1463621c2d1f1f4a",
+        "result.json": "4733c69ccb11385856323494839f5d0cce9dd4849cf613aebb47e2096d8f9349",
+        "risk-events.json": "3a3b2e8d26f407cae15c47593f024d63e74b86f96862e1382e3474244b0bc6e9",
+        "terminal-integrity.json": "6d7c97a21ec94549d78b6ccefd85190cbb38f26c539de4919b6af8b180e98bae",
+        "trace.json": "e5cc409b7b4723b1f930e5f433698111d6b04f7c529d8878766bc7c42518a692"
+      },
+      "stdout_stderr_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/issue125-first-batch-10.log",
+      "stdout_stderr_sha256": "cc7c5073090f2f106b9ca7c280a64d4a868863667fc3e7ab88202efb606082a0",
+      "label": "SIMULATED_UNDER_ASSUMPTIONS",
+      "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION"
+    }
+  ],
+  "failed_keys": [],
+  "unexecuted_authorized_keys": [],
+  "reserved_sealed_keys": [
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C",
+    "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B"
+  ],
+  "budget": {
+    "total": 96,
+    "previous_consumed": 8,
+    "batch_consumed": 10,
+    "cumulative_consumed": 18,
+    "remaining": 78,
+    "reserved_sealed": 10,
+    "unallocated": 68,
+    "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl",
+    "sha256": "aa790cd64c8baee3ded17c641fc4c4d6ccef3a7d72d182f67005e96369a00d40",
+    "bytes": 20818,
+    "prior_prefix_bytes": 8438,
+    "prior_prefix_sha256": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+    "global_ledger_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl",
+    "global_ledger_sha256": "a38fb7f477ebd7c79f0cf16eb62aa728d78529846ea454574d64d41e1f1afa78",
+    "global_ledger_bytes": 194566,
+    "prior_global_prefix_bytes": 187288,
+    "prior_global_prefix_sha256": "384f5c6e950cd5a79bee039ffee913025902d04456e800bb0d122a0f4d74cbce",
+    "appended_global_checkpoints": 20,
+    "unchanged_acquisition": {
+      "acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+      "acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897"
+    }
+  },
+  "final_worktree_clean_execution_commit_verified": true,
+  "label": "SIMULATED_UNDER_ASSUMPTIONS",
+  "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+  "family_natural_cluster_gate": "NOT_EVALUATED",
+  "family_natural_clusters": null,
+  "independent_confirmation": "SEALED_NOT_AUTHORIZED",
+  "promotion": false,
+  "trading": false,
+  "interpretation": "A-trend positive fixed modeled paths only; other fixed modeled paths negative; no family statistical qualification or sufficient whole-mechanism rejection",
+  "ui_visibility": "NOT_IMPORTED_TO_OFFICIAL_UI",
+  "source_grade": "OBSERVED_API_COMPLETE_FOR_EXPLORATORY_MODEL",
+  "old_source_qc": "PRESERVED_BLOCKED_DATA",
+  "ui_live_state_verified": false
+}
