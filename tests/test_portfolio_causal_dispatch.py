@@ -90,3 +90,16 @@ def test_pre_native_checkpoint_failure_never_enters_function(harness,monkeypatch
     rows=[json.loads(s) for s in (root/"calls.jsonl").read_text().splitlines()]
     assert [r["event"] for r in rows]==["RESERVED","FAILED"]
     assert len(calls)==2
+
+
+def test_v2_dispatch_selects_explicit_slot_and_semantics_without_native(harness,monkeypatch):
+    from scripts import prepare_portfolio_causal_probe_v2 as v2
+    from lab.portfolio_risk_v2 import V2_SHA
+    root,binding,events=harness
+    binding={**binding,'key':'synthetic/7','semantics_sha256':V2_SHA}
+    monkeypatch.setattr(v2,'prepare',lambda source:binding)
+    monkeypatch.setattr(v2,'verify_manifest',lambda *args:None)
+    monkeypatch.setattr(v2,'run_reserved',lambda *args:{'status':'FAKE_V2_TEST_ONLY'})
+    assert worker.dispatch(root,binding)['status']=='SUCCEEDED'
+    rows=[json.loads(s) for s in (root/'calls.jsonl').read_text().splitlines()]
+    assert rows[0]['key']=='synthetic/7' and rows[0]['semantics_sha256']==V2_SHA

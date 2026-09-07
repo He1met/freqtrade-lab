@@ -77,6 +77,12 @@ def run_reserved(root,source,binding):
         raise BudgetError("no sole durable synthetic/6 reservation")
     for key in ("input_sha256","code_sha256","source_sha256","semantics_sha256"):
         if pending[0].get(key)!=binding.get(key): raise BudgetError("reservation binding mismatch")
+    from lab.portfolio_causal_audit import audit_causal
+    return run_engine(root,source,expand(),"PortfolioCausalProbe",input_sha(),audit_causal)
+
+
+def run_engine(root,source,bundle,strategy_name,expected_input_sha,audit):
+    """Shared engine mechanics. Only version-bound reserved callers dispatch."""
     sys.path.insert(0,str(source))
     def deny_network(event,args):
         if event in {"socket.connect","socket.getaddrinfo","socket.bind"}:
@@ -91,7 +97,7 @@ def run_reserved(root,source,binding):
     from lab.portfolio_causal_fixture import mark_at
     from lab.portfolio_causal import PAIRS
     from scripts.run_portfolio_synthetic import synthetic_config
-    spec,start,hourly,daily=expand()
+    spec,start,hourly,daily=bundle
     for name in ("data","user","exports"): (root/name).mkdir()
     handler=get_datahandler(root/"data","feather")
     markets=[];tiers={}
@@ -119,11 +125,11 @@ def run_reserved(root,source,binding):
                     "leverage":{"min":1.,"max":20.}},maker=.0006,taker=.0006,info={}))
         tiers[pair]=[{"minNotional":0.,"maxNotional":1000000.,"maintenanceMarginRate":.005,"maxLeverage":20.,"maintAmt":0.}]
     config=synthetic_config("B")
-    config["causal_input_sha256"]=input_sha()
+    config["causal_input_sha256"]=expected_input_sha
     config_path=root/"config.json";config_path.write_bytes(canonical(config))
     config=setup_optimize_configuration(dict(command="backtesting",config=[str(config_path)],
         datadir=str(root/"data"),user_data_dir=str(root/"user"),strategy_path=str(REPO/"lab"),
-        strategy="PortfolioCausalProbe",timerange=f"{int((start-timedelta(hours=1)).timestamp())}-{int((hourly[PAIRS[0]][-1].closed_at).timestamp())}",
+        strategy=strategy_name,timerange=f"{int((start-timedelta(hours=1)).timestamp())}-{int((hourly[PAIRS[0]][-1].closed_at).timestamp())}",
         fee=.0006,export="trades",exportdirectory=str(root/"exports"),dataformat_ohlcv="feather",
         disableparamexport=True,backtest_cache="none"),RunMode.BACKTEST)
     exchange=Binance(config,validate=False,load_leverage_tiers=False)
@@ -140,9 +146,9 @@ def run_reserved(root,source,binding):
         from lab.portfolio_causal_audit import audit_causal
         archives=list((root/"exports").glob("*.zip"))
         if len(archives)!=1: raise ValueError("one native archive required")
-        results=[read_strategy_export(archives[0],"PortfolioCausalProbe")]
+        results=[read_strategy_export(archives[0],strategy_name)]
         (root/"native-result.json").write_bytes(canonical(results[0]))
-        evidence=audit_causal(results[0],bt.strategylist[0].trace,start)
+        evidence=audit(results[0],bt.strategylist[0].trace,start)
         evidence["archive_sha256"]=sha(archives[0])
         return evidence
     finally:

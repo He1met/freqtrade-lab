@@ -157,10 +157,15 @@ class LockedBudget:
             except AdmissionError as exc:
                 raise BudgetError("invalid binding hash") from exc
         from lab.portfolio_causal import SEMANTICS_SHA, verify_binding
-        if key in {"synthetic/6", "synthetic/7", "synthetic/8"} or semantics_sha256 is not None:
-            if semantics_sha256 != SEMANTICS_SHA:
-                raise BudgetError("causal call requires frozen semantics binding")
-            verify_binding(PROTOCOL_SHA256, semantics_sha256)
+        from lab.portfolio_risk_v2 import V2_SHA, verify_v2
+        allowed_slots={"synthetic/6":SEMANTICS_SHA,"synthetic/7":V2_SHA}
+        if key in {"synthetic/6","synthetic/7","synthetic/8"}:
+            if semantics_sha256 is None or semantics_sha256!=allowed_slots.get(key):
+                raise BudgetError("causal slot requires its explicitly allowed semantics version")
+        if semantics_sha256 is not None:
+            if semantics_sha256==SEMANTICS_SHA: verify_binding(PROTOCOL_SHA256,SEMANTICS_SHA)
+            elif semantics_sha256==V2_SHA: verify_v2(PROTOCOL_SHA256,V2_SHA)
+            else: raise BudgetError("unknown semantics version")
         if self.pending():
             raise BudgetError("interrupted reservation must be recorded, never replayed")
         if any(r["key"] == key for r in self.events):

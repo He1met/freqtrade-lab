@@ -21,14 +21,26 @@ class PortfolioCausalProbe(IStrategy):
     use_exit_signal=True
 
     def bot_start(self, **kwargs):
-        if self.config.get("dry_run") is not True or self.config.get("causal_input_sha256")!=input_sha():
+        if self.config.get("dry_run") is not True or self.config.get("causal_input_sha256")!=self.fixed_input_sha():
             raise ValueError("fixed synthetic input required")
-        self.spec,self.start,self.hourly,self.daily=expand()
-        self.state=State("B")
+        self.spec,self.start,self.hourly,self.daily=self.fixed_expand()
+        self.state=self.initial_state()
         self.trace=[]
         self.targets={p:Decimal(0) for p in PAIRS}
         self.failed=False
         self.target_time=None
+
+    fixed_input_sha=staticmethod(input_sha)
+    fixed_expand=staticmethod(expand)
+
+    def initial_state(self): return State("B")
+
+    def make_decision(self,current_time,equity):
+        return daily_decision(self.daily,current_time,equity,mode="B",selection=self.spec["selection"],
+                              base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA)
+
+    def advance_state(self,**kwargs):
+        return advance(self.state,base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA,**kwargs)
 
     def populate_indicators(self,dataframe,metadata): return dataframe
 
@@ -68,16 +80,14 @@ class PortfolioCausalProbe(IStrategy):
             account=self._account(current_time,marks)
             decision=None
             if current_time.hour==0:
-                decision=daily_decision(self.daily,current_time,account["equity"],mode="B",
-                    selection=self.spec["selection"],base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA)
+                decision=self.make_decision(current_time,account["equity"])
             self.wallets.update()
             native_free=self.wallets.get_free("USDT")
             free=max(Decimal(0),Decimal(str(native_free))-account["slippage_paid"])
             rules={p:dict(step="0.001",min_qty="0.001",min_notional="50" if p==PAIRS[0] else "20",max_qty="120" if p==PAIRS[0] else "2000") for p in PAIRS}
-            self.state,out=advance(self.state,at=current_time,opens=opens,completed=completed,
+            self.state,out=self.advance_state(at=current_time,opens=opens,completed=completed,
                 actual_quantities=account["actual_quantities"],equity=account["equity"],free_cash=free,
-                rules=rules,flat_confirmed_at=account["flat_confirmed_at"],decision=decision,
-                base_protocol_sha256=BASE_SHA,semantics_sha256=SEMANTICS_SHA)
+                rules=rules,flat_confirmed_at=account["flat_confirmed_at"],decision=decision)
             self.targets=out["target_quantities"]
             self.target_time=current_time
             self.trace.append(dict(time=current_time.isoformat(),equity=str(account["equity"]),
@@ -90,7 +100,10 @@ class PortfolioCausalProbe(IStrategy):
                 family_exits=out["family_exits"],unexecutable_reductions=out["unexecutable_reductions"],
                 episodes=[dict(pair=e.entry.pair,family=e.entry.family,direction=e.entry.direction,
                     started=e.started.isoformat(),units=str(e.entry.units)) for e in self.state.episodes],
-                daily_decision=decision is not None,actual_order_count=account["actual_order_count"]))
+                daily_decision=decision is not None,actual_order_count=account["actual_order_count"],
+                hard_cap_fallback=out.get("hard_cap_fallback",[]),pending_actual_flat=out.get("pending_actual_flat",()),
+                paused_assets=out.get("paused_assets",()),blocked_assets=out.get("blocked_assets",()),
+                v1_unexecutable_reductions=out.get("v1_unexecutable_reductions",())))
         except Exception as exc:
             # Native safe-wrapper suppresses callback exceptions: latch and keep
             # the error in evidence so no callback can silently resume entries.
