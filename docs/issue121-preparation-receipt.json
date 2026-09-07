@@ -1,0 +1,30 @@
+{
+  "status": "PREPARED_NOT_ACTIVATED",
+  "scope": "PASS_EXACT_SNAPSHOT",
+  "cumulative_acquisition_remaining": {
+    "gets": 85,
+    "total_bytes": 59411159,
+    "seconds": 1670
+  },
+  "new_segment_get_cap": 54,
+  "proposed_native_jobs": 20,
+  "native_remaining_after_proposed_jobs": 68,
+  "source_qc": "NOT_RUN",
+  "native_adapter": "NOT_BOUND_TO_MARKET_SOURCE",
+  "funding_eligibility": "UNKNOWN_REQUIRES_CERTIFIED_EVENTS",
+  "interval_evidence": "UNKNOWN",
+  "settlement_rounding": "UNKNOWN",
+  "next_gate": "FIXED_PACKAGE_SUPERVISOR_REVIEW",
+  "registration_written": false,
+  "additional_gets": 0,
+  "native_calls": 0,
+  "parent_budget_unchanged_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+  "native_budget_unchanged_sha256": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+  "continuation_runtime_exists": false,
+  "prepared_files_sha256": {
+    "lab/portfolio_short.py": "84e43a5a1780401161d4e4981ae9d306db4bea90fb9e7ab2c0bb946a3b256fd1",
+    "scripts/prepare_portfolio_short.py": "fe40e0427506c8a239b3749a9fd8b03c3214330fba35e8ee567d62001af84dee",
+    "docs/protocols/issue121-short-feasibility-v2.json": "89ee74bb866aa50fea03249138bef024de877263d7bee09f125063da824a57e1",
+    "docs/issue121-scope-snapshot.json": "4514729c0a2210f596d21572ba4acdf9bb5055c29c9883f346fd4261b829f799"
+  }
+}

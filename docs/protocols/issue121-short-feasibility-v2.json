@@ -1,0 +1,307 @@
+{
+  "schema": "btc-eth-short-feasibility-v2",
+  "status": "PREPARED_NOT_AUTHORIZED_FOR_DATA_OR_NATIVE",
+  "preparation_authorization": "supervisor-thread:01a07c6a-d535-7030-814c-7775d0f27f99/after-PR120",
+  "parent_protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+  "exchange": "binance",
+  "instrument_type": "USDT_PERPETUAL",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "start": "2023-11-01T00:00:00Z",
+  "training_start": "2024-08-01T00:00:00Z",
+  "end_exclusive": "2025-01-01T00:00:00Z",
+  "warmup_days": 274,
+  "source_days": 427,
+  "hourly_rows_per_asset": 10248,
+  "score_days": 153,
+  "purpose": "DATA_COST_MECHANISM_FEASIBILITY_ONLY",
+  "phases": [
+    [
+      "explore",
+      "2024-08-01T00:00:00Z",
+      "2024-11-01T00:00:00Z"
+    ],
+    [
+      "reserved-process-check",
+      "2024-11-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ]
+  ],
+  "selection": {
+    "trend": 63,
+    "reversal": "2",
+    "hyperparameter_selection": false,
+    "C_selection": false,
+    "later_slice_parameter_feedback": false
+  },
+  "gates": {
+    "max_drawdown_fraction": "0.20",
+    "minimum_natural_clusters_per_family": 30,
+    "independent_confirmation": "FUTURE_SEPARATE_FREEZE_ONLY",
+    "zero_samples": "UNDERPOWERED_CASH_NOT_QUALIFIED",
+    "no_promotion": true,
+    "possible_verdicts": [
+      "FEASIBLE_FOR_FURTHER_RESEARCH",
+      "MECHANISM_NEGATIVE",
+      "UNDERPOWERED",
+      "BLOCKED_DATA",
+      "BLOCKED_CONTROL"
+    ]
+  },
+  "cost": {
+    "base_fee": "0.0006",
+    "base_slippage": "0.0006",
+    "stress_fee": "0.0012",
+    "stress_slippage": "0.0012",
+    "funding": "ORIGINAL_ASSOCIATED_MARK_WITH_CERTIFIED_CAUSAL_ELIGIBILITY_NO_PROXY",
+    "historical_interval_evidence": "UNKNOWN",
+    "settlement_rounding": "UNKNOWN_NO_QUALIFICATION"
+  },
+  "budget": {
+    "native_total": 96,
+    "native_consumed": 8,
+    "proposed_short_jobs": 20,
+    "unallocated_remaining_after_activation": 68,
+    "jobs": [
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-42",
+        "mode": "A-trend",
+        "cost": "base",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-63",
+        "mode": "A-reversal",
+        "cost": "base",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-84",
+        "mode": "B",
+        "cost": "base",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-1.5",
+        "mode": "C",
+        "cost": "base",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2",
+        "mode": "half-risk-B",
+        "cost": "base",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2.5",
+        "mode": "A-trend",
+        "cost": "stress",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-trend",
+        "mode": "A-reversal",
+        "cost": "stress",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-reversal",
+        "mode": "B",
+        "cost": "stress",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/B",
+        "mode": "C",
+        "cost": "stress",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/C",
+        "mode": "half-risk-B",
+        "cost": "stress",
+        "start": "2024-08-01T00:00:00Z",
+        "end_exclusive": "2024-11-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/market-exposure",
+        "mode": "A-trend",
+        "cost": "base",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/half-risk-B",
+        "mode": "A-reversal",
+        "cost": "base",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-trend",
+        "mode": "B",
+        "cost": "base",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-reversal",
+        "mode": "C",
+        "cost": "base",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/B",
+        "mode": "half-risk-B",
+        "cost": "base",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/C",
+        "mode": "A-trend",
+        "cost": "stress",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/market-exposure",
+        "mode": "A-reversal",
+        "cost": "stress",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/half-risk-B",
+        "mode": "B",
+        "cost": "stress",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-42",
+        "mode": "C",
+        "cost": "stress",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      },
+      {
+        "key": "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B",
+        "replaces_unused_key_on_approval": "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-63",
+        "mode": "half-risk-B",
+        "cost": "stress",
+        "start": "2024-11-01T00:00:00Z",
+        "end_exclusive": "2025-01-01T00:00:00Z",
+        "status": "NOT_AUTHORIZED",
+        "native_calls": 1
+      }
+    ]
+  },
+  "source_plan": {
+    "first": [
+      "exchangeInfo",
+      "fundingInfo",
+      "BTCUSDT/fundingRate",
+      "ETHUSDT/fundingRate"
+    ],
+    "then": [
+      "BTCUSDT/klines",
+      "BTCUSDT/markPriceKlines",
+      "ETHUSDT/klines",
+      "ETHUSDT/markPriceKlines"
+    ],
+    "expected_gets_if_8h": 36,
+    "maximum_gets": 54,
+    "parent_gets": 37,
+    "maximum_cumulative_gets": 91,
+    "global_get_cap": 122,
+    "global_bytes_cap": 67108864,
+    "global_seconds_cap": 1800,
+    "request_seconds": 20,
+    "response_bytes": 5242880,
+    "workers": 1,
+    "requests_per_second": 1,
+    "automatic_retry": false,
+    "missing_funding_mark": "STOP_BEFORE_LARGE_OHLC",
+    "source_publication": "BLOCK_UNTIL_INTERVAL_AND_ALL_SOURCE_QC"
+  },
+  "parent_budget_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+  "parent_seconds_charged": 130,
+  "time_charge_basis": "Conservative ceiling from capture start to 144eb608 terminal receipt commit timestamp; includes control/post-HTTP work, not only 36.696695 HTTP seconds",
+  "parent_gets": 37,
+  "parent_bytes": 7697705,
+  "acquisition_budget_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json",
+  "continuation_budget_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json",
+  "segment_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source/continuation-v2",
+  "activation_authorization": null
+}
