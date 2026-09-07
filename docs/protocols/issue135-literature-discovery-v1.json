@@ -1,0 +1,64 @@
+{
+  "schema": "bounded-literature-discovery-v1",
+  "batch_id": "PUBLIC_RESEARCH_DISCOVERY_135_V1",
+  "status": "FROZEN_PUBLIC_LITERATURE_ONLY",
+  "domain": "LOW_FREQUENCY_CRYPTO_MECHANISMS: TREND_REVERSAL_CARRY_CROSS_MARKET_SPREAD; COST_AND_EXECUTION_CONSTRAINTS",
+  "queries": [
+    "site:nber.org Risks and Returns of Cryptocurrency momentum",
+    "site:bis.org Crypto carry",
+    "site:mit.edu Makarov Schoar cryptocurrency arbitrage trading",
+    "site:nber.org cryptocurrency liquidity reversal transaction costs"
+  ],
+  "fourth_query_condition": "ONLY_IF_FIRST_THREE_DO_NOT_PROVIDE_SUPPORTABLE_MATERIAL; NEVER_TO_FILL_THREE_CARDS",
+  "limits": {
+    "search_queries": 4,
+    "source_records": 12,
+    "page_attempts": 6,
+    "cards": 3,
+    "proposals": 3
+  },
+  "accounting": "EVERY_ACTUAL_QUERY_AND_PAGE_ATTEMPT_INCLUDING_FAILURES_CHARGED; SEARCH_LOG_HITS_NOT_AUTOMATIC_PAGE_READS; MAX_12_REGISTERED_SOURCE_RECORDS",
+  "permitted": "PUBLIC_ORIGINAL_PAPERS_AUTHOR_OR_OFFICIAL_PAGES_ONLY",
+  "prohibited": [
+    "MARKET_API",
+    "MARKET_DATA",
+    "BACKTEST",
+    "HOLDOUT_READ",
+    "SENSITIVE_DB",
+    "CREDENTIALS",
+    "PAID_API",
+    "AUTOMATION_RESUME",
+    "NATIVE",
+    "GENERATION_CALL",
+    "DATABASE_WRITE"
+  ],
+  "source_fields": [
+    "canonical_url",
+    "title",
+    "authors_or_institution",
+    "publication_date",
+    "accessed_at_utc",
+    "query_ids",
+    "scope",
+    "content_sha256",
+    "content_kind",
+    "summary",
+    "support_locator",
+    "cache_file"
+  ],
+  "content_policy": "CACHE_TOOL_EXTRACT_OUTSIDE_GIT_IF_NEEDED; HASH_IDENTIFIES_RETAINED_TEXT_NOT_TRUTH; SHORT_PARAPHRASE_AND_LOCATOR_ONLY_IN_GIT; UNTRUSTED_TEXT_NEVER_EXECUTED",
+  "fingerprint_fields": [
+    "economic_explanation",
+    "signal",
+    "direction",
+    "holding_scale",
+    "execution_cost_dependencies"
+  ],
+  "fingerprint_policy": "NORMALIZE_UNICODE_CASE_WHITESPACE; ASSETS_PARAMETERS_IDS_EXCLUDED; SAME_FAMILY_VARIANTS_NOT_INDEPENDENT; SEMANTICS_MODEL_INFERENCE_NOT_PROVEN",
+  "prior_knowledge": {
+    "docs/research-knowledge/btc-eth-1000-central-v1.json": "7469c8970be61d87aa43d6a15507a12434ba0e56768d596c8ea10115cdeda69f",
+    "docs/lagged-funding-signal-v1.md": "278e4104eb5526cc8ab364c527a760d9f31705539980ff0c6cb0d809cffe3f76"
+  },
+  "result_policy": "0_TO_3_CARDS; EVERY_CARD_NEEDS_SOURCE_SUPPORT_AND_LIMITS; UNKNOWN_SIZING_WINDOW_CODE_EXPECTED_SAMPLES_RETURNS; NO_NATIVE_OR_PROMOTION_AUTHORIZATION",
+  "operation": "TASK_WEB_TOOLS_AND_MODEL_CURATED_PROPOSALS; OFFLINE_REUSABLE_CLI_HAS_NO_NETWORK_OR_LLM_SCHEDULER"
+}
