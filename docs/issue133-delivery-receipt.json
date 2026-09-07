@@ -1,0 +1,88 @@
+{
+  "schema": "issue133-knowledge-precheck-delivery-v1",
+  "status": "RUNNABLE_WITH_LIMITS",
+  "example_commit": "a2d6faf8a12160d933f0da29c54822c6900e2f5b",
+  "example_command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/precheck_mechanism.py --card tests/fixtures/research_precheck/candidate-card-v1.json",
+  "interpreter_version": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "example_output_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue133-mechanism-precheck/example.json",
+  "example_output_sha256": "b32d6decaf25bc0392de6a201199df6bce8f8c7ad8a94eca402c1f041fbbdc41",
+  "knowledge_sha256": "7469c8970be61d87aa43d6a15507a12434ba0e56768d596c8ea10115cdeda69f",
+  "rule_source_sha256": "1fce29ba4b0d4868817837e73ff00ffb6e323572d0b86b4491fa6e92bbb8544c",
+  "cli_sha256": "3edc7feb115f4e0c84a00f2ad70f2a44dbfa8dfb7d18c0e59d0ec5fa31014851",
+  "card_sha256": "56d65e36fa8c8a6d983b81356d155414dec0c36f5152c6ebc8c9e85162405e11",
+  "fixture_provenance_sha256": "f58e2612388bac654ea43dacf5d2a25604b1995aef84b8a881f81bbf2e52c022",
+  "example_status": "PRECHECK_BLOCKED",
+  "example_reason_codes": [
+    "REVIEWED_SIZING_SOURCE",
+    "SCENARIO_CELL_BLOCKED",
+    "EXPECTED_COUNT_UNKNOWN",
+    "RESEARCH_LAYERS_UNPROVEN",
+    "EXPOSED_NOT_INDEPENDENT",
+    "NO_EXECUTION_ALLOCATION",
+    "MECHANISM_DEDUP_REVIEW_REQUIRED"
+  ],
+  "example_sizing": {
+    "cell_grid_meets_native_minimum": false,
+    "floored_quantity": {
+      "denominator": 1000,
+      "numerator": 1
+    },
+    "historical_exchange_rules_verified": false,
+    "market_feasibility": "UNKNOWN",
+    "minimum_grid_quantity": {
+      "denominator": 500,
+      "numerator": 1
+    },
+    "minimum_grid_risk": {
+      "denominator": 1,
+      "numerator": 20
+    },
+    "native_min_stake": {
+      "denominator": 1,
+      "numerator": 63
+    },
+    "post_cost_single_asset_cap_ok": true,
+    "quote_notional": {
+      "denominator": 1,
+      "numerator": 60
+    },
+    "raw_quantity": {
+      "denominator": 1000,
+      "numerator": 1
+    },
+    "risk_cell": {
+      "denominator": 1,
+      "numerator": 10
+    },
+    "scope": "FROZEN_SYNTHETIC_NECESSARY_CONDITION_ONLY",
+    "upward_quantity_adjustment": false
+  },
+  "expected_trades": null,
+  "expected_trades_state": "UNKNOWN",
+  "new_market_returns": null,
+  "execution_authorized": false,
+  "tests_passed": 23,
+  "test_scope": "PURE_PRECHECK_MODULE_AND_SYNTHETIC_CLI; NO_DB_NATIVE_OR_OLD_CAMPAIGN_RERUN",
+  "control_files_unchanged": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "692c595eb32e928332d4d7759aabcf726e28f1d5ddda07a74a2a5a3a420d7439",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-activation.json": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210"
+  },
+  "market_reads": 0,
+  "new_gets": 0,
+  "native_calls": 0,
+  "database_writes": 0,
+  "codex_memory_writes": 0,
+  "scheduler_created": false,
+  "automations_resumed": false,
+  "production_actions": false,
+  "knowledge_connected_to_generation": false,
+  "internet_idea_ingestion": false,
+  "semantic_deduplication": false,
+  "autonomous_continuous_operation": false,
+  "automatic_promotion": false,
+  "minimum_next_dependency": "SUPERVISOR_REVIEWED_BOUNDED_IDEA_SOURCE_AND_DEDUP_TO_MECHANISM_CARD_INTERFACE"
+}
