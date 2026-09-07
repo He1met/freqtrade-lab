@@ -642,9 +642,14 @@ def validate_profile_runtime_contract(
             or not isinstance(snapshot.get("history_start_date"), str)
             or re.fullmatch(r"\d{4}-\d{2}-\d{2}", snapshot["history_start_date"]) is None):
         raise PilotError("Profile Search snapshot runtime contract is invalid")
-    if snapshot["exchange"] == "binance" and (pairs != ["BCH/USDT:USDT"]
-            or timeframe != "1d" or snapshot.get("max_open_trades") != 1):
-        raise PilotError("Binance V1 requires BCH perpetual, 1d, one position")
+    if snapshot["exchange"] == "binance":
+        from lab.futures_costs import binance_identity, FuturesCostError
+        try:
+            binance_identity(pairs[0])
+        except FuturesCostError as exc:
+            raise PilotError(str(exc)) from exc
+        if timeframe != "1d" or snapshot.get("max_open_trades") != 1:
+            raise PilotError("Binance V1 requires 1d, one position")
     values = {key: finite(snapshot.get(key), f"Profile {key}", 0) for key in (
         "starting_balance", "stake_amount", "taker_fee_rate", "min_profit_factor", "max_drawdown_pct"
     )}

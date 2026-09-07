@@ -9,7 +9,7 @@ from lab.futures_costs import FuturesCostError
 
 
 def test_native_transport_clamps_discovery_and_exclusive_end():
-    url = bounded_url('https://fapi.binance.com/fapi/v1/klines?symbol=BCHUSDT&interval=1d&startTime=0', 'GET', 100, 200)
+    url = bounded_url('https://fapi.binance.com/fapi/v1/klines?symbol=BCHUSDT&interval=1d&startTime=0', 'GET', 100, 200, pair='BCH/USDT:USDT')
     assert parse_qs(urlsplit(url).query)['startTime'] == ['100']
     assert parse_qs(urlsplit(url).query)['endTime'] == ['199']
 
@@ -23,7 +23,7 @@ def test_native_transport_clamps_discovery_and_exclusive_end():
     'https://other.invalid/fapi/v1/exchangeInfo',
 ])
 def test_transport_rejects_before_fetch(url):
-    with pytest.raises(FuturesCostError): bounded_url(url, 'GET', 100, 200)
+    with pytest.raises(FuturesCostError): bounded_url(url, 'GET', 100, 200, pair='BCH/USDT:USDT')
 
 
 def test_retained_tamper_rejected(tmp_path):
@@ -32,7 +32,7 @@ def test_retained_tamper_rejected(tmp_path):
     receipts=tmp_path/'receipts.jsonl'
     receipts.write_text(json.dumps({'url':'https://fapi.binance.com/fapi/v1/exchangeInfo',
         'body_file':'body','bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}))
-    with pytest.raises(FuturesCostError,match='digest'): retained_responses(receipts,tmp_path)
+    with pytest.raises(FuturesCostError,match='digest'): retained_responses(receipts,tmp_path,pair='BCH/USDT:USDT')
 
 
 @pytest.mark.parametrize('failure', ['conversion', 'write', 'publication', 'existing'])
@@ -47,14 +47,15 @@ def test_source_failure_cleans_only_owned_temporary_directory(tmp_path, monkeypa
           'mark':{start+i*3600000:[start+i*3600000,100,100,100,100,0] for i in range(24)},
           'funding':{start+i*28800000:{'symbol':'BCHUSDT','fundingTime':start+i*28800000,
               'fundingRate':'0.001','markPrice':'100'} for i in range(3)}}
-    monkeypatch.setattr(binance_source,'retained_responses',lambda *_:(rows,{}))
+    monkeypatch.setattr(binance_source,'retained_responses',lambda *_,**kw:(rows,{}))
     monkeypatch.setattr(bounded_research,'validate_profile_runtime_contract',lambda *_:None)
     monkeypatch.setattr(fetch_okx_profile_data,'validate_runtime',lambda:{
         'freqtrade_tag':'2026.7','freqtrade_commit':'0'*40,
         'versions':{key:'test' for key in ('ccxt','pandas','pyarrow','python')}})
-    monkeypatch.setattr(ccxt.binance,'parse_market',lambda *_:{'symbol':'BCH/USDT:USDT'})
+    monkeypatch.setattr(ccxt.binance,'parse_market',lambda *_:{'symbol':'BCH/USDT:USDT',
+        'id':'BCHUSDT','base':'BCH','quote':'USDT','settle':'USDT','linear':True,'swap':True})
     monkeypatch.setattr(native,'__file__',str(tmp_path/'binance.py'))
-    (tmp_path/'binance_leverage_tiers.json').write_text('{"BCH/USDT:USDT": []}')
+    (tmp_path/'binance_leverage_tiers.json').write_text('{"BCH/USDT:USDT": [{"symbol":"BCH/USDT:USDT"}]}')
     class Frame:
         def __init__(self,values):self.size=len(values)
         def __len__(self):return self.size
@@ -73,7 +74,7 @@ def test_source_failure_cleans_only_owned_temporary_directory(tmp_path, monkeypa
     output=tmp_path/'source'
     if failure=='existing':
         output.mkdir();(output/'user-file').write_text('preserve')
-    contract={'profile_snapshot':{'exchange':'binance'},'search_timerange':'20231106-20231107',
+    contract={'profile_snapshot':{'exchange':'binance','pairs':['BCH/USDT:USDT']},'search_timerange':'20231106-20231107',
               'development_timerange':None,'pre_roll_candles':0}
     with pytest.raises((FuturesCostError,ValueError,OSError)):
         compile_source(output,tmp_path/'receipts',tmp_path,contract)
