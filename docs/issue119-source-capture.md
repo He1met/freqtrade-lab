@@ -25,3 +25,9 @@ PYTHONDONTWRITEBYTECODE=1 uv run --with pytest python -m pytest -q -p no:cachepr
 ```
 
 实际终态收据在执行后补充；未采集前不声称source可用。下一依赖为源QC证据缺口和最小市场消费者，仍不评分。
+
+## 实际终态
+
+[脱敏终态与37响应SHA](issue119-capture-terminal.json)：`BLOCKED_DATA`，首个BTC funding页1000条事件的markPrice全部为空。BTC trade/mark各24096小时结构通过；ETH历史请求0。37 GET均HTTP200，共7,697,705字节，36.70秒，最小请求间隔1.00146秒，无重试。首次GET前账行176已登记；未写可执行source，native账SHA不变，经济结果NULL。尚余85个采集请求额度不构成失败后自动恢复授权；固定预算/root不重置。
+
+缺失关联mark不能以邻近小时mark或当前mark填补。后续需要官方可核验事件mark来源，或独立审查新的源/日历合同；本次不自行扩大范围或把不完整源称为策略失败。历史interval证据亦仍UNKNOWN。
