@@ -11,11 +11,13 @@ import ast
 import hashlib
 import json
 import keyword
+import os
 import re
 import sqlite3
 import unicodedata
 from contextlib import closing
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
@@ -1171,7 +1173,7 @@ def _generated_candidate_review(
     exploration = request_document.get("exploration")
     signal = request_document.get("signal_contract")
     if (
-        set(metadata) != _CANDIDATE_METADATA_FIELDS
+        set(metadata) not in (_CANDIDATE_METADATA_FIELDS, _CANDIDATE_METADATA_FIELDS | {"prefilter_evidence"})
         or not isinstance(generation, dict)
         or set(generation) != _GENERATION_METADATA_FIELDS
         or generation.get("source") != "CODEX"
@@ -1218,7 +1220,170 @@ def _generated_candidate_review(
         raise GenerationContractError(
             "generation_state_invalid", "generated Candidate review is invalid", status=409
         )
+    if "prefilter_evidence" in metadata:
+        _validate_prefilter_evidence(metadata["prefilter_evidence"], generation_row, candidate_row)
     return review
+
+
+def _validate_prefilter_evidence(value: Any, generation: Mapping, candidate: Mapping) -> None:
+    """Validate the one supported, informational pre-Search capacity receipt."""
+    from lab.bounded_research import canonical
+    try:
+        profile = _issue_request_document(generation)[0]["profile_snapshot"]
+        fields = {"contract", "stage", "status", "exposure", "generation_id", "candidate_id",
+                  "profile_id", "profile_snapshot_sha256", "code_sha256", "protocol_sha256",
+                  "source_provenance_sha256", "source_receipt_sha256", "search_source_provenance_sha256",
+                  "search_ohlcv_sha256", "report_sha256", "entry_boundary_report_sha256", "counts",
+                  "required_total", "native_search_runs", "pnl", "recorded_at_utc", "experiment_name",
+                  "scoring_start_utc", "scoring_end_exclusive_utc"}
+        valid = (isinstance(value, dict) and set(value) == fields
+                 and value["contract"] == "FROZEN_SIGNAL_CAPACITY_EVIDENCE_V1"
+                 and value["stage"] == "PRE_SEARCH" and value["status"] == "UNDERPOWERED"
+                 and value["exposure"] == "S_SIGNAL_EXPOSED"
+                 and value["generation_id"] == generation["id"]
+                 and value["candidate_id"] == candidate["id"]
+                 and candidate["generation_run_id"] == generation["id"]
+                 and value["profile_id"] == generation["research_profile_id"] == profile["id"]
+                 and value["code_sha256"] == candidate["code_sha256"]
+                 and value["profile_snapshot_sha256"] == hashlib.sha256(canonical(profile)).hexdigest()
+                 and value["experiment_name"] == candidate["strategy_family"]
+                 and type(value["native_search_runs"]) is int and value["native_search_runs"] == 0
+                 and value["pnl"] is None)
+        if not valid:
+            raise ValueError("identity or shape")
+        counts = value["counts"]
+        if (not isinstance(counts, dict) or set(counts) != {"total", "long", "short"}
+                or any(type(n) is not int or n < 0 for n in counts.values())
+                or counts["total"] != counts["long"] + counts["short"]
+                or type(value["required_total"]) is not int
+                or value["required_total"] != profile["min_development_trades"]
+                or not counts["total"] < value["required_total"]):
+            raise ValueError("not below frozen Profile capacity")
+        if any(not isinstance(value[k], str) or not _HEX_SHA256.fullmatch(value[k])
+               for k in fields if k.endswith("sha256")):
+            raise ValueError("digest")
+        stamp = datetime.fromisoformat(value["recorded_at_utc"])
+        if stamp.utcoffset() != timezone.utc.utcoffset(stamp):
+            raise ValueError("UTC required")
+        start, end = (datetime.fromisoformat(value[k]) for k in
+                      ("scoring_start_utc", "scoring_end_exclusive_utc"))
+        if any(d.utcoffset() != timezone.utc.utcoffset(d) for d in (start, end)) or start >= end:
+            raise ValueError("positive UTC scoring window required")
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise GenerationContractError("invalid_prefilter_evidence", "Invalid capacity evidence", status=409) from exc
+
+
+def attach_prefilter_evidence(database: Path, candidate_id: str, evidence_root: Path, *,
+                             terminal_sha256: str, boundary_sha256: str) -> Dict[str, Any]:
+    """Attach reviewed, hash-pinned metadata; never read candles or execute research.
+
+    The trusted CLI caller supplies both reviewed receipt hashes. The decisive
+    sample gate comes from the immutable Generation Profile, never CLI numbers.
+    Direction-only failures are deliberately outside this narrow total-capacity importer.
+    """
+    from lab.bounded_research import canonical, timerange
+    from lab.holdout_run import _read_regular_relative_at, HoldoutRunError
+    try:
+        root = Path(evidence_root)
+        if not root.is_absolute() or ".." in root.parts:
+            raise ValueError("absolute bounded root required")
+        with closing(get_connection(database, must_exist=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            frozen = load_approved_candidate_snapshot(connection, candidate_id)
+            root_fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                def read(name: str) -> bytes:
+                    return _read_regular_relative_at(root_fd, Path(*root.parts[1:]) / name, "capacity evidence")
+                raw = read("capacity-terminal-receipt.json")
+                boundary_raw = read("capacity-entry-boundary-audit.json")
+                if (hashlib.sha256(raw).hexdigest() != terminal_sha256
+                        or hashlib.sha256(boundary_raw).hexdigest() != boundary_sha256):
+                    raise ValueError("reviewed receipt hash mismatch")
+                terminal, boundary = json.loads(raw), json.loads(boundary_raw)
+                cap_raw = read("signal-capacity.json")
+                cap = json.loads(cap_raw)
+                contract = json.loads(read("profile-contract.json"))
+                source = json.loads(read("source-publication.json"))
+                qc = json.loads(read("source-aggregation-qc.json"))
+                source_raw = read("complete-source/retained-data-provenance.json")
+                search_raw = read("search-campaign/acquisition/retained-data-provenance.json")
+                provenance, search_provenance = json.loads(source_raw), json.loads(search_raw)
+                protocol_sha = hashlib.sha256(read("final-protocol.md")).hexdigest()
+            finally:
+                os.close(root_fd)
+            scoring_start, scoring_end = timerange(contract["search_timerange"], "Search")
+            blocks = [(datetime.fromisoformat(b["start"]), datetime.fromisoformat(b["end_exclusive"]))
+                      for b in cap["blocks"]]
+            if (not blocks or blocks[0][0] != scoring_start or blocks[-1][1] != scoring_end
+                    or any(a.utcoffset() != timezone.utc.utcoffset(a)
+                           or b.utcoffset() != timezone.utc.utcoffset(b) or a >= b for a, b in blocks)
+                    or any(left[1] != right[0] for left, right in zip(blocks, blocks[1:]))
+                    or provenance["contract"]["profile_acquisition"]["search_timerange"] != contract["search_timerange"]):
+                raise ValueError("frozen scoring window mismatch")
+            if (terminal["status"] != "UNDERPOWERED" or terminal["candidate_id"] != candidate_id or terminal["generation_id"] != frozen.generation_run_id
+                    or terminal["strategy_sha256"] != frozen.code_sha256
+                    or terminal["protocol_sha256"] != protocol_sha
+                    or contract["profile_snapshot"] != frozen.profile
+                    or contract["single_baseline"]["protocol_sha256"] != protocol_sha
+                    or contract["single_baseline"]["strategy_sha256"] != frozen.code_sha256
+                    or terminal["source"] != qc or qc["status"] != "SOURCE_QC_PASS"
+                    or source["provenance_sha256"] != qc["phase_qc"][0]["provenance_sha256"]
+                    or source["provenance_sha256"] != hashlib.sha256(source_raw).hexdigest()
+                    or provenance["contract"]["profile_acquisition"]["profile_snapshot"] != frozen.profile
+                    or provenance["contract"]["profile_acquisition"]["single_baseline"] != contract["single_baseline"]
+                    or provenance["files"]["retrieval_receipt.json"]["sha256"] != source["retrieval_receipt_sha256"]
+                    or hashlib.sha256(search_raw).hexdigest() != next(p["provenance_sha256"] for p in qc["phase_qc"] if p["stage"] == "S")
+                    or [v["sha256"] for k, v in search_provenance["local_only_files"].items() if k.endswith('-futures.feather')] != [cap["source_sha256"]]
+                    or terminal["capacity"] != cap or cap["status"] != "UNDERPOWERED"
+                    or cap["exposure"] != "S_SIGNAL_EXPOSED"
+                    or cap["strategy_sha256"] != frozen.code_sha256
+                    or type(cap["thresholds"]["natural_total"]) is not int or cap["thresholds"]["natural_total"] != frozen.profile["min_development_trades"]
+                    or cap["PnL_or_future_returns_computed"] is not False
+                    or type(cap["native_backtests"]) is not int or cap["native_backtests"] != 0
+                    or terminal["economic_result"] != "UNKNOWN_NOT_COMPUTED"
+                    or type(terminal["native_Search_runs"]) is not int or terminal["native_Search_runs"] != 0
+                    or type(terminal["D_strategy_runs"]) is not int or terminal["D_strategy_runs"] != 0
+                    or terminal["H_Stress"] != "SEALED_UNREAD_UNACQUIRED"
+                    or boundary["original_report_sha256"] != hashlib.sha256(cap_raw).hexdigest()
+                    or boundary["S_only_source_sha256"] != cap["source_sha256"]
+                    or boundary["corrected_blocks_use_entry_dates"] is not True
+                    or type(boundary["native_backtests"]) is not int or boundary["native_backtests"] != 0
+                    or boundary["status"] != "UNDERPOWERED"):
+                raise ValueError("frozen receipt binding mismatch")
+            value = dict(contract="FROZEN_SIGNAL_CAPACITY_EVIDENCE_V1", stage="PRE_SEARCH",
+                         status="UNDERPOWERED", exposure="S_SIGNAL_EXPOSED", generation_id=frozen.generation_run_id,
+                         candidate_id=candidate_id, profile_id=frozen.profile_id, code_sha256=frozen.code_sha256,
+                         profile_snapshot_sha256=hashlib.sha256(canonical(frozen.profile)).hexdigest(),
+                         protocol_sha256=protocol_sha, source_provenance_sha256=source["provenance_sha256"],
+                         source_receipt_sha256=source["retrieval_receipt_sha256"],
+                         search_source_provenance_sha256=next(p["provenance_sha256"] for p in qc["phase_qc"] if p["stage"] == "S"),
+                         search_ohlcv_sha256=cap["source_sha256"], report_sha256=terminal_sha256,
+                         entry_boundary_report_sha256=boundary_sha256,
+                         counts={"total": boundary["in_S_entry_upper_bound"], "long": boundary["long_upper_bound"], "short": boundary["short_upper_bound"]},
+                         required_total=frozen.profile["min_development_trades"], native_search_runs=0, pnl=None,
+                         scoring_start_utc=scoring_start.isoformat(), scoring_end_exclusive_utc=scoring_end.isoformat(),
+                         recorded_at_utc=datetime.now(timezone.utc).isoformat(), experiment_name=frozen.strategy_family)
+            candidate = connection.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
+            generation = connection.execute("SELECT * FROM generation_runs WHERE id=?", (frozen.generation_run_id,)).fetchone()
+            _validate_prefilter_evidence(value, generation, candidate)
+            metadata = _parse_metadata(candidate["metadata_json"], "Candidate")
+            previous = metadata.get("prefilter_evidence")
+            if previous is not None:
+                value["recorded_at_utc"] = previous["recorded_at_utc"]
+                if previous != value:
+                    raise GenerationContractError("prefilter_conflict", "Capacity evidence already attached", status=409)
+                return previous
+            metadata["prefilter_evidence"] = value
+            updated = connection.execute("UPDATE candidates SET metadata_json=?,updated_at=? WHERE id=? AND metadata_json=?",
+                                         (_canonical_json(metadata), value["recorded_at_utc"], candidate_id, candidate["metadata_json"]))
+            if updated.rowcount != 1:
+                raise GenerationContractError("prefilter_conflict", "Candidate changed", status=409)
+            connection.commit()
+            return value
+    except (OSError, KeyError, TypeError, ValueError, StopIteration, RecursionError, sqlite3.Error, HoldoutRunError) as exc:
+        if isinstance(exc, GenerationContractError):
+            raise
+        raise GenerationContractError("invalid_prefilter_evidence", "Capacity evidence could not be attached", status=409) from exc
 
 
 def _approved_parent_snapshot(
@@ -1941,6 +2106,8 @@ def load_generation(database: Path, generation_id: str) -> Dict[str, Any]:
                     "review_decided_at": review.get("decided_at"),
                     "created_at": candidate_row["created_at"],
                 }
+                if "prefilter_evidence" in metadata:
+                    candidate_public["prefilter_evidence"] = metadata["prefilter_evidence"]
             valid_state = (
                 row["status"] == "RUNNING"
                 and row["returned_strategy_count"] == 0
