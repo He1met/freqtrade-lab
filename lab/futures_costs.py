@@ -21,9 +21,9 @@ class FuturesCostError(ValueError):
 
 def binance_identity(pair: str) -> dict[str, str]:
     """One frozen pair selects every Binance source identity; never a mixed set."""
-    bases = {"BCH/USDT:USDT": "BCH", "DOGE/USDT:USDT": "DOGE"}
+    bases = {"BCH/USDT:USDT": "BCH", "DOGE/USDT:USDT": "DOGE", "ADA/USDT:USDT": "ADA"}
     if not isinstance(pair, str) or pair not in bases:
-        raise FuturesCostError("Binance V1 requires BCH or DOGE perpetual")
+        raise FuturesCostError("Binance V1 requires BCH, DOGE or ADA perpetual")
     base = bases[pair]
     return {"pair": pair, "instrument_id": base + "USDT",
             "pair_family": base + "-USDT", "base": base,

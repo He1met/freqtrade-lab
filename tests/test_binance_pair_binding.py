@@ -1,4 +1,4 @@
-"""Two fixed identities, synthetic inputs only: no HTTP or native backtests."""
+"""Three fixed identities, synthetic inputs only: no HTTP or native backtests."""
 import hashlib
 import json
 
@@ -8,7 +8,7 @@ from lab import binance_source as producer, bounded_research as pilot
 from lab.futures_costs import FuturesCostError, audit_from_source, binance_identity
 from tests.test_spot_research import spot_profile
 
-PAIRS = ['BCH/USDT:USDT', 'DOGE/USDT:USDT']
+PAIRS = ['BCH/USDT:USDT', 'DOGE/USDT:USDT', 'ADA/USDT:USDT']
 START = 1704067200000  # synthetic 2024-01-01
 DAY = 86400000
 
@@ -128,8 +128,9 @@ def test_invalid_profile_fails_before_capture_root_or_retained_reads(tmp_path,mo
     assert not (tmp_path/'capture').exists() and not (tmp_path/'output').exists()
 
 
-def test_holdout_cannot_rebind_authorized_profile_before_output(tmp_path,monkeypatch):
-    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,PAIRS[1])
+@pytest.mark.parametrize('pair', PAIRS[1:])
+def test_holdout_cannot_rebind_authorized_profile_before_output(tmp_path,monkeypatch,pair):
+    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,pair)
     contract['holdout_source']={'profile_snapshot':{**contract['profile_snapshot'],'pairs':[PAIRS[0]]}}
     with pytest.raises(FuturesCostError,match='Profile binding'):
         producer.capture_native(tmp_path/'capture',contract)
@@ -140,12 +141,13 @@ def test_holdout_cannot_rebind_authorized_profile_before_output(tmp_path,monkeyp
 
 @pytest.mark.parametrize('failure',['request_pair','funding_pair','market_base','market_margin',
     'missing_mark','missing_event','duplicate_event','native_tiers'])
-def test_mixed_or_incomplete_source_rejected_before_publication(tmp_path, monkeypatch, failure):
-    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,PAIRS[1])
+@pytest.mark.parametrize('pair', PAIRS[1:])
+def test_mixed_or_incomplete_source_rejected_before_publication(tmp_path, monkeypatch, failure, pair):
+    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,pair)
     records=[json.loads(line) for line in receipts.read_text().splitlines()]
     index=0 if failure.startswith('market') else 3
     rec=records[index];body=json.loads((raw/rec['body_file']).read_bytes())
-    if failure=='request_pair':rec['url']=rec['url'].replace('DOGEUSDT','BCHUSDT')
+    if failure=='request_pair':rec['url']=rec['url'].replace(binance_identity(pair)['instrument_id'],'BCHUSDT')
     elif failure=='funding_pair':body[0]['symbol']='BCHUSDT'
     elif failure=='market_base':body['symbols'][0]['baseAsset']='BCH'
     elif failure=='market_margin':body['symbols'][0]['marginAsset']='DOGE'
@@ -155,7 +157,7 @@ def test_mixed_or_incomplete_source_rejected_before_publication(tmp_path, monkey
     elif failure=='native_tiers':
         import freqtrade.exchange.binance as native
         monkeypatch.setattr(native,'__file__',str(tmp_path/'native.py'))
-        (tmp_path/'binance_leverage_tiers.json').write_text(json.dumps({PAIRS[1]:[{'symbol':PAIRS[0]}]}))
+        (tmp_path/'binance_leverage_tiers.json').write_text(json.dumps({pair:[{'symbol':PAIRS[0]}]}))
     data=json.dumps(body).encode();(raw/rec['body_file']).write_bytes(data)
     rec.update(bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
     receipts.write_text(''.join(json.dumps(r)+'\n' for r in records))
@@ -164,8 +166,9 @@ def test_mixed_or_incomplete_source_rejected_before_publication(tmp_path, monkey
 
 
 @pytest.mark.parametrize('failure',['source_pair','source_symbol','source_family','mark_path','trade_pair'])
-def test_consumer_and_audit_cannot_substitute_other_supported_pair(tmp_path,monkeypatch,failure):
-    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,PAIRS[1])
+@pytest.mark.parametrize('pair', PAIRS[1:])
+def test_consumer_and_audit_cannot_substitute_other_supported_pair(tmp_path,monkeypatch,failure,pair):
+    contract,receipts,raw=synthetic_source(tmp_path,monkeypatch,pair)
     output=tmp_path/'source';producer.compile_source(output,receipts,raw,contract)
     source=json.loads((output/'retained-data-provenance.json').read_bytes())['source']
     start,stop=pilot.timerange('20240101-20240103','S')
@@ -174,11 +177,11 @@ def test_consumer_and_audit_cannot_substitute_other_supported_pair(tmp_path,monk
     elif failure=='source_symbol':source['instrument_id']='BCHUSDT'
     elif failure=='source_family':source['pair_family']='BCH-USDT'
     elif failure=='mark_path':
-        mark=output/'data/binance/futures/DOGE_USDT_USDT-1h-mark.feather'
+        mark=output/'data/binance/futures'/f"{binance_identity(pair)['file_stem']}-1h-mark.feather"
         mark.rename(mark.with_name('BCH_USDT_USDT-1h-mark.feather'))
     if failure!='trade_pair':
         with pytest.raises((FuturesCostError,FileNotFoundError)):
-            producer.validate_source(source,output/'data/binance',PAIRS[1],start,stop)
+            producer.validate_source(source,output/'data/binance',pair,start,stop)
     else:
         from tests.test_futures_costs import trade
         t=trade(opened=START,closed=START+3600000)
