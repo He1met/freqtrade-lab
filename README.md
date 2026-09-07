@@ -833,6 +833,9 @@ The BTC/ETH portfolio pilot has a separate [metadata admission entrypoint](docs/
 `PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_portfolio_pilot.py` reports missing
 training bindings as `BLOCKED_DATA`; it never executes a backtest or authorizes
 trading. Its fixed 96-call plan does not alter the existing Search budget.
+The next [native synthetic portfolio slice](docs/portfolio-native-synthetic-v1.md)
+exercises shared-wallet execution using fixed artificial targets only. It is not
+the full economic strategy template and cannot accept market data.
 
 Development proceeds in small, dependent slices:
 
