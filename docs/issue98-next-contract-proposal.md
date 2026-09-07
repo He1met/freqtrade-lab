@@ -1,6 +1,6 @@
-# Issue 98：下一轮合约研究提案，等待监督冻结
+# Issue 98：合约研究提案与BCH/DOGE窄适配
 
-2026-09-07。结论：建议只推进 **DOGE 日线双向冲击后确认回归** 的一次来源可行性门；不是 Search-ready，更不是合格策略。当前 Binance 业务链只允许 BCH，DOGE 需要三个现有模块的窄适配。先验证固定 S 的资金数据，失败即停止，避免先做工程。现货仅作为未来备选，未获本轮执行授权。
+2026-09-07。当前结果：**DOGE S资金QC通过，BCH/DOGE窄适配完成并通过92项定向合成测试**，等待监督核固定提交。完整行情来源、流动性和策略有效性仍UNKNOWN，尚非Search-ready。下文保留值前的确认回归提案与数据门设计；整体经济实验还未冻结。现货仅作为未来备选，未获本轮执行授权。
 
 ## 当前证据与三机制比较
 
@@ -60,7 +60,7 @@ E0=1000，固定stake250，max_open_trades1，tradable_balance_ratio0.99；单�
 
 **Search预算严格1基线、1轮、1次原生，R2=0，非两轮六次全额授权。** 不做增量消融或额外参数；因此只能检验整个确认回归假说，不能声称确认模块的因果收益已证实。无论正负都不在S重放。失败后先按价格毛利/费用/集中度/样本分类向root报告，本Issue不自动换币、换机制或换窗；以后改进需新独立窗口和新冻结。合法finalist后最多D1；D全门过后，同一Run授权H1+Stress1。全阶段实际原生上限4，后3次均需阶段授权。
 
-最小业务差异仅 `lab/bounded_research.py`（BCH-only Profile校验）、`lab/binance_source.py`（请求/身份/路径/转换/档位与来源绑定）、`lab/futures_costs.py`（mark文件及symbol读取）。采用明确BCH/DOGE二项允许列表、从冻结Profile映射身份；保留1d/单仓/1x、原资金合同及所有失败前置。不增表/字段/索引/runner/native改动。相关定向合成测试需验证错误pair/混源/缺mark/非8h在副作用前失败、两币的source/audit一致；粗估3–6主动小时，超过上限或需要扩大合同即交回。当前只审阅未实施。
+最小业务差异仅 `lab/bounded_research.py`（Profile校验）、`lab/binance_source.py`（请求/身份/路径/转换/档位与来源绑定）、`lab/futures_costs.py`（mark文件及symbol读取）。采用明确BCH/DOGE二项允许列表、从冻结Profile映射身份；保留1d/单仓/1x、原资金合同及所有失败前置。不增表/字段/索引/runner/native改动。此窄切片随后经root单独授权实施，实绩见末节；原3–6主动小时上限未用满。
 
 通过窄工程后再冻结source/Profile/代码和ledger：完整S+D来源预计763日价格/18312小时mark（含S35预热）、评分2184 funding；一次native capture，至多128 CCXT fetch、32MiB解码、30分钟、零自动重试，保存失败字节。不查市场PnL作QC。D只producer机械QC并物理分离，H不取；无法保留D隔离即停。后期H只有同Run资格及授权后才能采集，203日评分及35预热，funding609事件，沿现有H入口绑定。
 
@@ -73,3 +73,17 @@ E0=1000，固定stake250，max_open_trades1，tradable_balance_ratio0.99；单�
 root随后仅授权上述3GET资金QC，未冻结整体实验或授权业务适配。2026-09-07T04:01:23.292219Z至04:01:23.725974Z完成：实际3次HTTP GET、1,242,829解码bytes、0重试/0重定向。DOGEUSDT身份TRADING/PERPETUAL/USDT线性；实际1092事件，首2023-11-06T00:00Z、末2024-11-03T16:00Z，严格递增；重复时间/重复分钟桶/缺失8h桶/额外桶/错币/非Regular/无效associated mark/非有限funding均0。状态 `FUNDING_CALENDAR_ASSOCIATED_MARK_QC_PASS_NOT_SOURCE_READY`。仅机器校验事件/有限性，不输出资金率或mark分布；OHLCV、D/H、Candidate、Search均0。未改三个业务模块。
 
 证据根 `/Users/shenjianpeng/.codex/runs/freqtrade-lab/doge-funding-qc-bb9d-20260907`：`authorization.json`绑定事前协议和脚本SHA；`qc.py`、三个response/receipt、`utc-sequence.json`和`qc-report.json`保留原响应及时间。已重核响应bytes/SHA与脚本SHA。QC报告SHA256 `3ba2b453c7c1bd8cb396f055c9d525a42937152483adabf8ff8cba72316eab90`。资金S现在是QC已接触、不是从未读取；行情完整性/流动性/D/H及经济有效性仍UNKNOWN。已即时通知root，Issue98保持OPEN等待窄适配与完整冻结裁决；没有再次采集或经济实验。
+
+## 窄适配工程交付
+
+root验收QC后授权同Issue实施。唯一身份映射在 `futures_costs.binance_identity`；Profile确定pair后，capture的配置/argv/请求护栏、retained response身份、原生转换文件名、market/tier选择、source及审计mark路径全部使用该pair。不能因为BCH/DOGE都支持就让单cohort混币。未知pair在请求或文件输出前失败；来源identity/family/结算币、资金symbol、重复market快照、解析market、tiers均核对。`bounded_url`和`retained_responses`现在必须显式传入冻结pair，不能默认为旧BCH。
+
+源码审阅覆盖 `fetch_binance_profile_data.py`（普通及授权H来源）、`bounded_research.py`（S/D来源准备与Search审计）、`research_candidate.py`（D/H/Stress artifact审计）、`holdout_run.py`（同Run续跑数据门）；后两者已通过现有helper传递冻结来源，无额外业务改动。lab/scripts中BCH字面量仅剩二品种映射。H资金receipt封存逻辑保持原样。
+
+定向T0/T1：`test_binance_market.py`、`test_binance_source.py`、`test_binance_pair_binding.py`、`test_futures_costs.py`、`test_profile_holdout.py`，最终 **92 passed / 0 skipped / 6.70s**，76条pandas/pyarrow弃用告警。91项通过后，最终审阅补入H授权内部Profile与capture/compile外部Profile一致性拒绝及一项测试；同一定向范围复验92项，没有扩大到全套。完整命令/工具stdout保存为QC根 `engineering-tests-command.sh`、`engineering-tests-output.txt`，先前91项stdout为 `engineering-tests-91-output.txt`。Python3.13.13/ccxt4.5.68/pandas3.0.3/pyarrow25.0.0/Freqtrade2026.7已现场读取；使用锁定native Python/源码、临时六表DB及纯合成序列。真实converter、来源消费者、双向资金审计、BCH兼容、DOGE S/D及同Run后期授权HTTP入口均经过检查。捕获/native执行为桩，不是native smoke或策略回测。未跑367全套。首次测试71过15失败，均来自新fixture两日窗口不满足旧Profile容量；改为四日、最少2笔的明确合成来源合同后通过，实际研究Profile和业务容量门未改变。`git diff --check`通过。
+
+依root明确授权，沿既有 `.jsonl.lock` + `flock` 追加唯一 `FUNDING_QC_ONLY` 控制记录，Search_consumed=false、无future reservation，OHLCV/D/H未接触。ledger从112022到113454bytes，旧前缀/空行完全保留；新SHA `af0a1c3287e1162995e40636471d395016d2e1301df64f310bdabf987b1c2af0`，追加记录SHA `a3520e42e751c61080179a55d280cd24280d154aef1b7de3aa471fbe9bf94f08`；QC根 `ledger-record.json` / `ledger-receipt.json`绑定授权与三响应SHA。
+
+尚未新增完整行情请求、批准真实Candidate或Search。下一门由监督审核固定代码提交及完整协议，再决定S+D机械采集；不能把测试或funding QC当经济通过。Issue98维持OPEN。
+
+预算执行缺口明确保留：提案128fetch/32MiB/30min比capture_native内建2000fetch/2GiB/7200s小，当前代码尚不会自动执行提案小预算，不能直接采集。最小后续办法是在现有capture函数增加只能收紧的三项运行限制，调用前冻结，guard在请求前计数拒绝第129次，SIGALRM设1800s；解码字节硬限还必须在sync/async接收流累计检查/截断失败并保留部分响应，不能仅在整响应之后计数而宣称32MiB硬限。不新增runner或策略试跑；这项预算修改本次未授权实施，需root先裁决，当前不采集。

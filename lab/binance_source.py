@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import parse_qs, urlsplit
 
-from lab.futures_costs import CONTRACT, validate_events, FuturesCostError
+from lab.futures_costs import CONTRACT, validate_events, FuturesCostError, binance_identity, source_identity
 
 
 def validate_output_path(output: Path) -> Path:
@@ -20,9 +20,10 @@ def validate_output_path(output: Path) -> Path:
     return parent/output.name
 
 
-def bounded_url(url: str, method: str, lower_ms: int, upper_ms: int) -> str:
+def bounded_url(url: str, method: str, lower_ms: int, upper_ms: int, *, pair: str) -> str:
     """Restrict native public transport before any network request is sent."""
     from urllib.parse import urlencode, urlunsplit
+    identity = binance_identity(pair)
     p = urlsplit(url)
     if (method != 'GET' or p.scheme != 'https' or p.netloc != 'fapi.binance.com'
             or p.fragment):
@@ -34,7 +35,7 @@ def bounded_url(url: str, method: str, lower_ms: int, upper_ms: int) -> str:
     if p.path not in paths:
         raise FuturesCostError('native endpoint outside acquisition contract')
     q = parse_qs(p.query)
-    if (q.get('symbol') != ['BCHUSDT'] or len(q.get('startTime', [])) != 1
+    if (q.get('symbol') != [identity['instrument_id']] or len(q.get('startTime', [])) != 1
             or set(q) - {'symbol', 'startTime', 'endTime', 'interval', 'limit'}
             or (paths[p.path] is not None and q.get('interval') != [paths[p.path]])):
         raise FuturesCostError('native request identity/window invalid')
@@ -65,7 +66,10 @@ def capture_native(root: Path, contract: Mapping[str, Any]) -> tuple[Path, Path]
     pilot.validate_profile_runtime_contract(profile)
     if profile['exchange'] != 'binance':
         raise FuturesCostError('Binance Profile required')
+    pair = binance_identity(profile['pairs'][0])['pair']
     auth = contract.get('holdout_source')
+    if auth is not None and auth.get('profile_snapshot') != profile:
+        raise FuturesCostError('Holdout source Profile binding changed')
     start, stop = pilot.timerange(auth['holdout_timerange'] if auth else contract['search_timerange'], 'capture')
     if not auth and contract['development_timerange'] is not None:
         stop = pilot.timerange(contract['development_timerange'], 'Development')[1]
@@ -82,7 +86,7 @@ def capture_native(root: Path, contract: Mapping[str, Any]) -> tuple[Path, Path]
     receipts = root/'http-receipts.jsonl'
     config = {'trading_mode':'futures', 'margin_mode':'isolated', 'stake_currency':'USDT',
               'dry_run':True, 'exchange': {'name':'binance', 'key':'', 'secret':'',
-                'pair_whitelist':['BCH/USDT:USDT'], 'pair_blacklist':[],
+                'pair_whitelist':[pair], 'pair_blacklist':[],
                 **{key:{'enableRateLimit':True, 'options':{'fetchMarkets':{'types':['linear']}}}
                    for key in ('ccxt_config', 'ccxt_async_config')}}}
     (root/'config.json').write_bytes(pilot.canonical(config))
@@ -93,7 +97,7 @@ def capture_native(root: Path, contract: Mapping[str, Any]) -> tuple[Path, Path]
         nonlocal count
         if stopped or count >= 2000:
             raise FuturesCostError('capture stopped or fetch budget exhausted')
-        checked = bounded_url(url, method, lo, hi)
+        checked = bounded_url(url, method, lo, hi, pair=pair)
         count += 1
         return checked, count
     def record(exchange, url, index, error=None):
@@ -142,7 +146,7 @@ def capture_native(root: Path, contract: Mapping[str, Any]) -> tuple[Path, Path]
         signal.alarm(7200)
         try:
             main(['download-data','--config',str(root/'config.json'),'--userdir',str(userdir),
-                  '--datadir',str(root/'native'),'--pairs','BCH/USDT:USDT','--timeframes','1d',
+                  '--datadir',str(root/'native'),'--pairs',pair,'--timeframes','1d',
                   '--timerange',f'{lower:%Y%m%d}-{stop:%Y%m%d}','--no-parallel-download','--no-color'])
         except SystemExit as exc:
             if exc.code not in (0,None):raise FuturesCostError('native download failed') from exc
@@ -172,17 +176,17 @@ def validate_source(source: Mapping[str, Any], data_dir: Path, pair: str,
                     start: datetime, stop: datetime) -> None:
     if source.get("exchange") != "binance":
         return
-    if source.get("funding_model") != CONTRACT or pair != "BCH/USDT:USDT":
-        raise FuturesCostError("Binance funding identity/model invalid")
+    identity = source_identity(source, pair)
     import pandas as pd
-    frame = pd.read_feather(data_dir/'futures/BCH_USDT_USDT-1h-mark.feather')
+    frame = pd.read_feather(data_dir/'futures'/f"{identity['file_stem']}-1h-mark.feather")
     marks = [[int(r.date.value//1_000_000),r.open,r.high,r.low,r.close] for r in frame.itertuples()]
-    validate_events(source.get("funding_events", []), marks, symbol="BCHUSDT",
+    validate_events(source.get("funding_events", []), marks, symbol=identity['instrument_id'],
                     start_ms=int(start.timestamp()*1000),end_ms=int(stop.timestamp()*1000))
 
 
-def retained_responses(receipts_path: Path, raw_dir: Path) -> tuple[dict[str, dict[int, Any]], dict[str, Any]]:
+def retained_responses(receipts_path: Path, raw_dir: Path, *, pair: str) -> tuple[dict[str, dict[int, Any]], dict[str, Any]]:
     """Verify decoded-response receipts before reading numeric candle values."""
+    identity = binance_identity(pair)
     series: dict[str, dict[int, Any]] = {"futures":{},"mark":{},"funding":{}}
     market = None
     records = [json.loads(line) for line in receipts_path.read_text().splitlines()]
@@ -201,12 +205,18 @@ def retained_responses(receipts_path: Path, raw_dir: Path) -> tuple[dict[str, di
             raise FuturesCostError("retained response digest mismatch")
         rows=json.loads(data)
         if p.path=="/fapi/v1/exchangeInfo":
-            selected=[m for m in rows["symbols"] if m["symbol"]=="BCHUSDT"]
-            if len(selected)!=1:raise FuturesCostError("BCH market metadata missing")
+            selected=[m for m in rows["symbols"] if m["symbol"]==identity['instrument_id']]
+            if len(selected)!=1:raise FuturesCostError("frozen pair market metadata missing")
+            expected = {'symbol':identity['instrument_id'], 'baseAsset':identity['base'],
+                        'quoteAsset':'USDT', 'marginAsset':'USDT', 'contractType':'PERPETUAL'}
+            if any(selected[0].get(k)!=v for k,v in expected.items()):
+                raise FuturesCostError("market metadata disagrees with frozen pair")
+            if market is not None and market != selected[0]:
+                raise FuturesCostError("conflicting market metadata")
             market=selected[0]
             continue
         q=parse_qs(p.query)
-        if q.get("symbol")!=["BCHUSDT"] or not {"startTime","endTime"}<=q.keys():
+        if q.get("symbol")!=[identity['instrument_id']] or not {"startTime","endTime"}<=q.keys():
             raise FuturesCostError("retained request lacks bounded identity")
         lo,hi=int(q["startTime"][0]),int(q["endTime"][0])
         key={"/fapi/v1/klines":"futures","/fapi/v1/markPriceKlines":"mark","/fapi/v1/fundingRate":"funding"}.get(p.path)
@@ -217,7 +227,7 @@ def retained_responses(receipts_path: Path, raw_dir: Path) -> tuple[dict[str, di
             t=row['fundingTime'] if key=='funding' else row[0]
             if isinstance(t,bool) or not isinstance(t,int) or not lo<=t<=hi:
                 raise FuturesCostError("response escapes requested window")
-            if key=='funding' and row.get('symbol')!='BCHUSDT':
+            if key=='funding' and row.get('symbol')!=identity['instrument_id']:
                 raise FuturesCostError("funding response identity mismatch")
             if t in series[key] and row!=series[key][t]:
                 raise FuturesCostError("conflicting paginated response")
@@ -238,7 +248,11 @@ def compile_source(output: Path, receipts_path: Path, raw_dir: Path,
     profile=contract['profile_snapshot']
     pilot.validate_profile_runtime_contract(profile)
     if profile['exchange']!='binance':raise FuturesCostError('Binance Profile required')
+    identity = binance_identity(profile['pairs'][0])
+    pair = identity['pair']
     authorization=contract.get('holdout_source')
+    if authorization is not None and authorization.get('profile_snapshot') != profile:
+        raise FuturesCostError('Holdout source Profile binding changed')
     if authorization is None:
         start,split=pilot.timerange(contract['search_timerange'],'Search')
         stop=split if contract['development_timerange'] is None else pilot.timerange(contract['development_timerange'],'Development')[1]
@@ -249,7 +263,7 @@ def compile_source(output: Path, receipts_path: Path, raw_dir: Path,
     from datetime import timedelta
     lower=start-timedelta(days=pre)
     lo,score,hi=map(lambda d:int(d.timestamp()*1000),(lower,start,stop))
-    rows,raw_market=retained_responses(receipts_path,raw_dir)
+    rows,raw_market=retained_responses(receipts_path,raw_dir,pair=pair)
     candles={}
     for key,step in [('futures',86400000),('mark',3600000)]:
         selected=[row for t,row in sorted(rows[key].items()) if lo<=t<hi]
@@ -257,7 +271,7 @@ def compile_source(output: Path, receipts_path: Path, raw_dir: Path,
             raise FuturesCostError(f'{key} source window incomplete')
         candles[key]=selected
     funding=[r for t,r in sorted(rows['funding'].items()) if score<=t<hi]
-    validate_events(funding,candles['mark'],symbol='BCHUSDT',start_ms=score,end_ms=hi)
+    validate_events(funding,candles['mark'],symbol=identity['instrument_id'],start_ms=score,end_ms=hi)
     output=validate_output_path(output)
     parent=output.parent
     frames={}
@@ -265,13 +279,19 @@ def compile_source(output: Path, receipts_path: Path, raw_dir: Path,
     for key,tf,kind in [('futures','1d','futures'),('mark','1h','mark'),('funding','1h','funding_rate')]:
         values=([[r['fundingTime'],r['fundingRate'],0,0,0,0] for r in funding] if key=='funding'
                 else [[r[0],*r[1:6]] for r in candles[key]])
-        frame=ohlcv_to_dataframe(values,tf,'BCH/USDT:USDT',fill_missing=False,drop_incomplete=False)
+        frame=ohlcv_to_dataframe(values,tf,pair,fill_missing=False,drop_incomplete=False)
         if len(frame)!=len(values):raise FuturesCostError('native conversion collapsed events')
-        frames[f'BCH_USDT_USDT-{tf}-{kind}.feather']=frame
+        frames[f"{identity['file_stem']}-{tf}-{kind}.feather"]=frame
     market=ccxt.binance().parse_market(raw_market)
-    if market['symbol']!='BCH/USDT:USDT':raise FuturesCostError('parsed market identity changed')
+    if (market.get('symbol')!=pair or market.get('id')!=identity['instrument_id']
+            or market.get('base')!=identity['base'] or market.get('quote')!='USDT'
+            or market.get('settle')!='USDT' or market.get('linear') is not True
+            or market.get('swap') is not True):
+        raise FuturesCostError('parsed market identity changed')
     tiers_path=Path(freqtrade.exchange.binance.__file__).parent/'binance_leverage_tiers.json'
-    tiers=json.loads(tiers_path.read_bytes())['BCH/USDT:USDT']
+    tiers=json.loads(tiers_path.read_bytes())[pair]
+    if not isinstance(tiers,list) or not tiers or any(t.get('symbol')!=pair for t in tiers):
+        raise FuturesCostError('native tiers disagree with frozen pair')
     # Conversion and identity validation precede even temporary output writes.
     import tempfile
     destination=parent/output.name
@@ -287,13 +307,13 @@ def compile_source(output: Path, receipts_path: Path, raw_dir: Path,
         write('market_snapshot.json',market)
         write('isolated_tiers_snapshot.json',tiers)
         write('config.json',pilot.profile_search_config(profile))
-        source={'host':'fapi.binance.com','authentication':'none','exchange':'binance','instrument_id':'BCHUSDT',
-                'pair':'BCH/USDT:USDT','pair_family':'BCH-USDT','retrieval_receipt':'retrieval_receipt.json',
+        source={'host':'fapi.binance.com','authentication':'none','exchange':'binance',
+                **{k:identity[k] for k in ('pair','instrument_id','pair_family')},'retrieval_receipt':'retrieval_receipt.json',
                 'funding_model':CONTRACT,'funding_events':funding}
         if authorization is not None:
             write('funding-events.json', source.pop('funding_events'))
             source['funding_events_receipt'] = receipt('funding-events.json')
-        retrieval={'host':'fapi.binance.com','authentication':'none','pair':'BCH/USDT:USDT','instrument_id':'BCHUSDT',
+        retrieval={'host':'fapi.binance.com','authentication':'none','pair':pair,'instrument_id':identity['instrument_id'],
                    'data_window':{'start_utc':lower.isoformat(),'end_exclusive_utc':stop.isoformat(),
                                   'fully_closed_at_fetch':True,'development_start_utc':start.isoformat(),
                                   'holdout_start_utc':split.isoformat(),'startup_candles_required':pre},

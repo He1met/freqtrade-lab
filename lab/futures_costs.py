@@ -19,6 +19,27 @@ class FuturesCostError(ValueError):
     pass
 
 
+def binance_identity(pair: str) -> dict[str, str]:
+    """One frozen pair selects every Binance source identity; never a mixed set."""
+    bases = {"BCH/USDT:USDT": "BCH", "DOGE/USDT:USDT": "DOGE"}
+    if not isinstance(pair, str) or pair not in bases:
+        raise FuturesCostError("Binance V1 requires BCH or DOGE perpetual")
+    base = bases[pair]
+    return {"pair": pair, "instrument_id": base + "USDT",
+            "pair_family": base + "-USDT", "base": base,
+            "file_stem": base + "_USDT_USDT"}
+
+
+def source_identity(source: Mapping[str, Any], pair: str) -> dict[str, str]:
+    identity = binance_identity(pair)
+    expected = {"host": "fapi.binance.com", "authentication": "none", "exchange": "binance",
+                "funding_model": CONTRACT,
+                **{key: identity[key] for key in ("pair", "instrument_id", "pair_family")}}
+    if any(source.get(key) != value for key, value in expected.items()):
+        raise FuturesCostError("Binance source identity disagrees with frozen pair")
+    return identity
+
+
 def number(value: Any, name: str, *, positive: bool = False) -> float:
     if isinstance(value, bool) or not isinstance(value, (str, int, float)):
         raise FuturesCostError(f"{name} is not numeric")
@@ -224,15 +245,14 @@ def audit_from_source(result: Mapping[str, Any], source: Mapping[str, Any], data
     import json
     import pandas as pd
     from pathlib import Path
-    if source.get('exchange')!='binance' or source.get('funding_model')!=CONTRACT:
-        raise FuturesCostError('Binance funding audit requires frozen source model')
+    identity = source_identity(source, source.get('pair'))
     start,stop=[datetime.strptime(s,'%Y%m%d').replace(tzinfo=timezone.utc) for s in timerange.split('-')]
-    path=Path(data_dir)/'futures/BCH_USDT_USDT-1h-mark.feather'
+    path=Path(data_dir)/'futures'/f"{identity['file_stem']}-1h-mark.feather"
     raw=path.read_bytes()
     import io
     frame=pd.read_feather(io.BytesIO(raw))
     marks=[[int(r.date.value//1_000_000),r.open,r.high,r.low,r.close] for r in frame.itertuples()]
-    audit=audit_native_trades(result['trades'],source['funding_events'],marks,symbol='BCHUSDT',
+    audit=audit_native_trades(result['trades'],source['funding_events'],marks,symbol=identity['instrument_id'],
         start_ms=int(start.timestamp()*1000),end_ms=int(stop.timestamp()*1000),starting_balance=result['starting_balance'])
     audit['source_events_sha256']=hashlib.sha256(json.dumps(source['funding_events'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
     audit['mark_data_sha256']=hashlib.sha256(raw).hexdigest()

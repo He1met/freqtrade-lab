@@ -110,11 +110,11 @@ def test_spot_daily_development_preparation_keeps_holdout_unopened(tmp_path, mon
     assert capability.timeframe == "1d"
 
 
-@pytest.mark.parametrize('binance',[False,True])
-def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, monkeypatch, binance):
+@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT')])
+def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, monkeypatch, binance, binance_pair):
     pytest.importorskip("pyarrow")
     from tests.profile_holdout_fixture import passed_profile_development_stub, authorized_artificial_holdout
-    database, run_id, directory, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance)
+    database, run_id, directory, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance,binance_pair=binance_pair)
     with get_connection(database, read_only=True) as connection:
         before = json.loads(connection.execute("SELECT input_snapshot_json FROM research_runs WHERE id=?", (run_id,)).fetchone()[0])
     source = authorized_artificial_holdout(database, run_id,binance=binance)
@@ -137,14 +137,14 @@ def test_profile_holdout_source_and_preparation_preserve_development(tmp_path, m
     assert [row[0] for row in ends] == ["2026-04-30T00:00:00Z", "2026-06-30T00:00:00Z", "2026-06-30T00:00:00Z"]
 
 
-@pytest.mark.parametrize('binance',[False,True])
-def test_profile_actual_http_entry_authorizes_same_run_and_keeps_release_sealed(tmp_path, monkeypatch, binance):
+@pytest.mark.parametrize('binance,binance_pair',[(False,'BCH/USDT:USDT'),(True,'BCH/USDT:USDT'),(True,'DOGE/USDT:USDT')])
+def test_profile_actual_http_entry_authorizes_same_run_and_keeps_release_sealed(tmp_path, monkeypatch, binance, binance_pair):
     pytest.importorskip("pyarrow")
     import subprocess
     from tests.profile_holdout_fixture import passed_profile_development_stub, authorized_artificial_holdout, profile_console
     from tests.test_development_console_http import _post
     from tests.test_research_console import _request
-    database, run_id, run_dir, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance)
+    database, run_id, run_dir, development = passed_profile_development_stub(tmp_path, monkeypatch,binance=binance,binance_pair=binance_pair)
     authorized_artificial_holdout(database, run_id,binance=binance)
     original_popen = subprocess.Popen
     workers = []

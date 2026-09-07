@@ -82,12 +82,14 @@ def write_artificial_source(root, start, stop):
         data / "ADA_USDT-1d.feather", root / "market_snapshot.json", root / "isolated_tiers_snapshot.json")}
 
 
-def write_artificial_binance_source(root, start, stop, scoring_start):
+def write_artificial_binance_source(root, start, stop, scoring_start, pair='BCH/USDT:USDT'):
     """Synthetic constants only; no exchange data or backtest execution."""
     import pandas as pd
+    from lab.futures_costs import binance_identity
+    identity=binance_identity(pair)
     start,stop,scoring_start=(pd.to_datetime(value,utc=True) for value in (start,stop,scoring_start))
     data=root/'data/binance/futures';data.mkdir(parents=True,exist_ok=True)
-    placeholder=data/'BCH-1d.feather'
+    placeholder=data/f"{identity['base']}-1d.feather"
     if placeholder.exists():
         assert placeholder.read_bytes()==b'development-only\n'
         placeholder.unlink()
@@ -95,23 +97,25 @@ def write_artificial_binance_source(root, start, stop, scoring_start):
                               ('1h','funding_rate','8h',scoring_start)]:
         dates=pd.date_range(lower,stop,freq=freq,inclusive='left',tz='UTC')
         value=.001 if kind=='funding_rate' else 100.
-        pd.DataFrame(dict(date=dates,open=value,high=value,low=value,close=value,volume=0.)).to_feather(data/f'BCH_USDT_USDT-{tf}-{kind}.feather')
+        pd.DataFrame(dict(date=dates,open=value,high=value,low=value,close=value,volume=0.)).to_feather(data/f"{identity['file_stem']}-{tf}-{kind}.feather")
     market=artificial_market()
-    market.update(id='BCHUSDT',symbol='BCH/USDT:USDT',base='BCH',baseId='BCH',settle='USDT',
+    market.update(id=identity['instrument_id'],symbol=pair,base=identity['base'],baseId=identity['base'],settle='USDT',
                   contract=True,swap=True,spot=False,linear=True,inverse=False,type='swap',contractSize=1.)
     (root/'market_snapshot.json').write_bytes(canonical(market))
-    (root/'isolated_tiers_snapshot.json').write_bytes(canonical([{'symbol':'BCH/USDT:USDT'}]))
-    events=[{'symbol':'BCHUSDT','fundingTime':int(date.value//1_000_000),'fundingRate':'0.001','markPrice':'100'}
+    (root/'isolated_tiers_snapshot.json').write_bytes(canonical([{'symbol':pair}]))
+    events=[{'symbol':identity['instrument_id'],'fundingTime':int(date.value//1_000_000),'fundingRate':'0.001','markPrice':'100'}
             for date in pd.date_range(scoring_start,stop,freq='8h',inclusive='left',tz='UTC')]
     local={str(path.relative_to(root)):record(path) for path in (*data.iterdir(),root/'market_snapshot.json',root/'isolated_tiers_snapshot.json')}
     return local,events
 
 
 def prepared_profile_development(root, monkeypatch, *, python=None, native_source=None,
-                                 development_stop="2026-05-01", holdout_days=61, binance=False):
+                                 development_stop="2026-05-01", holdout_days=61, binance=False, binance_pair='BCH/USDT:USDT'):
+    from lab.futures_costs import binance_identity
+    identity=binance_identity(binance_pair)
     root.mkdir(parents=True, exist_ok=True)
     database, candidate_id = _approved_candidate_database(
-        root, pair="BCH/USDT:USDT" if binance else "ADA/USDT", timeframe="1d", spot=not binance,
+        root, pair=binance_pair if binance else "ADA/USDT", timeframe="1d", spot=not binance,
         source_text=SOURCE.replace('can_short = False','can_short = True') if binance else SOURCE,
         exchange='binance' if binance else 'okx',
         min_development_trades=1, holdout_days=holdout_days,
@@ -124,12 +128,12 @@ def prepared_profile_development(root, monkeypatch, *, python=None, native_sourc
     # restore those patches before freezing the actual pinned runtime.
     with monkeypatch.context() as fixture_patch:
         pilot_root, fake_python, fake_source = _frozen_capability_fixture(
-            root / "capability", fixture_patch, pair="BCH/USDT:USDT" if binance else "ADA/USDT", instrument_id="BCHUSDT" if binance else "ADA-USDT",
+            root / "capability", fixture_patch, pair=binance_pair if binance else "ADA/USDT", instrument_id=identity['instrument_id'] if binance else "ADA-USDT",
             timeframe="1d", profile_contract=contract,
         )
     isolation = pilot_root / "development-isolation"
     if binance:
-        local,events=write_artificial_binance_source(isolation,'2026-02-09',development_stop,'2026-03-01')
+        local,events=write_artificial_binance_source(isolation,'2026-02-09',development_stop,'2026-03-01',pair=binance_pair)
     else:
         local = write_artificial_source(isolation, "2026-02-09", development_stop)
     acquisition = pilot_root / "acquisition"
@@ -167,17 +171,18 @@ def prepared_profile_development(root, monkeypatch, *, python=None, native_sourc
 
 def authorized_artificial_holdout(database, run_id, *, binance=False):
     if binance:
-        from lab.futures_costs import CONTRACT
+        from lab.futures_costs import CONTRACT, binance_identity
         output,auth=holdout_run.authorize_profile_holdout_source(database,run_id)
+        identity=binance_identity(auth['profile_snapshot']['pairs'][0])
         output.mkdir()
         local,events=write_artificial_binance_source(output,auth['data_start_utc'],auth['end_exclusive_utc'],
-                                                    auth['holdout_timerange'].split('-')[0])
+                                                    auth['holdout_timerange'].split('-')[0],pair=identity['pair'])
         (output/'funding-events.json').write_bytes(canonical(events))
         (output/'config.json').write_bytes(canonical(pilot.profile_search_config(auth['profile_snapshot'])))
         (output/'retained-data-provenance.json').write_bytes(canonical({
             'contract':{'holdout_source':auth},'local_only_files':local,
             'source':{'host':'fapi.binance.com','authentication':'none','exchange':'binance',
-                      'pair':'BCH/USDT:USDT','instrument_id':'BCHUSDT','funding_model':CONTRACT,
+                      **{k:identity[k] for k in ('pair','instrument_id','pair_family')},'funding_model':CONTRACT,
                       'funding_events_receipt':record(output/'funding-events.json')}}))
         return output
     from scripts import fetch_okx_profile_data as producer
@@ -194,7 +199,7 @@ def authorized_artificial_holdout(database, run_id, *, binance=False):
     return output
 
 
-def passed_profile_development_stub(root, monkeypatch, *, holdout_days=61, binance=False):
+def passed_profile_development_stub(root, monkeypatch, *, holdout_days=61, binance=False, binance_pair='BCH/USDT:USDT'):
     """Only the imported D artifact is a stub; preparation and gates are real."""
     from dataclasses import replace
     from lab.backtest_artifact import execution_result_values
@@ -202,7 +207,7 @@ def passed_profile_development_stub(root, monkeypatch, *, holdout_days=61, binan
     legacy_root = root / "legacy-parser-seed"
     legacy_root.mkdir(parents=True)
     _, _, _, _, template = _eligible_run(legacy_root, monkeypatch)
-    database, run_id, run_dir, capability = prepared_profile_development(root / "profile", monkeypatch, holdout_days=holdout_days,binance=binance)
+    database, run_id, run_dir, capability = prepared_profile_development(root / "profile", monkeypatch, holdout_days=holdout_days,binance=binance,binance_pair=binance_pair)
     evidence = run_dir / "development-evidence"
     evidence.mkdir()
     archive = evidence / "development-01.zip"
@@ -219,7 +224,7 @@ def passed_profile_development_stub(root, monkeypatch, *, holdout_days=61, binan
         source=SOURCE.replace('can_short = False','can_short = True')
         adjustments=[{'native_profit_abs':2.,'funding_deduction_abs':0.,'conservative_profit_abs':2.} for _ in range(7)]
         adjustments.append({'native_profit_abs':-4.,'funding_deduction_abs':0.,'conservative_profit_abs':-4.})
-        parsed=replace(parsed,exchange='binance',trading_mode='futures',margin_mode='isolated',pairs=('BCH/USDT:USDT',),
+        parsed=replace(parsed,exchange='binance',trading_mode='futures',margin_mode='isolated',pairs=(binance_pair,),
                        strategy_source=source,strategy_sha256=hashlib.sha256(source.encode()).hexdigest(),
                        funding_audit={'contract':CONTRACT,'native_artifact_unchanged':True,'funding_deduction_abs':0.,
                             'conservative_net_profit_pct':1.,'conservative_final_balance':1010.,

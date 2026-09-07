@@ -24,14 +24,15 @@ def test_domain_exchange_and_six_tables_in_new_database(tmp_path):
         assert {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}==BUSINESS_TABLES
 
 
-def test_binance_profile_passes_exchange_without_expanding_market_scope(tmp_path):
+@pytest.mark.parametrize('pair', ['BCH/USDT:USDT', 'DOGE/USDT:USDT'])
+def test_binance_profile_passes_exchange_without_expanding_market_scope(tmp_path, pair):
     _,profile=spot_profile(tmp_path)
     profile.update(domain="BINANCE_CRYPTO_PERP",exchange="binance",trading_mode="futures",
-                   margin_mode="isolated",pairs=["BCH/USDT:USDT"],timeframe="1d",max_open_trades=1)
+                   margin_mode="isolated",pairs=[pair],timeframe="1d",max_open_trades=1)
     assert profile_search_config(profile)["exchange"]["name"]=="binance"
-    assert validate_profile_runtime_contract(profile)["pair"]=="BCH/USDT:USDT"
+    assert validate_profile_runtime_contract(profile)["pair"]==pair
     profile["pairs"]=["BTC/USDT:USDT"]
-    with pytest.raises(PilotError,match="BCH perpetual"):
+    with pytest.raises(PilotError,match="BCH or DOGE perpetual"):
         validate_profile_runtime_contract(profile)
 
 
