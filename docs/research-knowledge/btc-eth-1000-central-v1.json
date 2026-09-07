@@ -1,0 +1,422 @@
+{
+  "schema": "research-knowledge-v1",
+  "knowledge_id": "BTC_ETH_1000_CENTRAL_V1",
+  "version": 1,
+  "sources": {
+    "diagnosis": {
+      "path": "docs/issue127-diagnostic-summary.json",
+      "sha256": "ed344d19252dbd40c301496e64d82014a2915e4b1a5b36dd05ab43e2ab320108"
+    },
+    "repair": {
+      "path": "docs/issue129-reserve-exact-common-scale.md",
+      "sha256": "cb1e1933fb4f330e01f76c203e67091cf88007f22ab33176d89cdca5bb2932c1"
+    },
+    "terminal": {
+      "path": "docs/issue131-corrected-terminal.json",
+      "sha256": "4421e64a235668f2b032995e243bdc638057c7b026a59bb05c066b4cc1e2fa66"
+    },
+    "rules": {
+      "path": "docs/protocols/issue125-observed-semantics-v3.json",
+      "sha256": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda"
+    },
+    "reserve_code": {
+      "path": "lab/portfolio_short.py",
+      "sha256": "9bc45d4fdb227143b215933e05d083cc993491cbf011a88776dddaa2e3996d48"
+    },
+    "budget_map": {
+      "path": "docs/protocols/issue131-corrected-exploration-v1.json",
+      "sha256": "df83beb6e030fa6039ad2757dc7eaecb503c96353df3fa2171e1186f9b3559d7"
+    }
+  },
+  "terminal": {
+    "study_id": "BTC_ETH_1000_CENTRAL_V1",
+    "status": "UNDERPOWERED",
+    "real_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+    "closed_by_review": "https://github.com/He1met/freqtrade-lab/pull/132",
+    "terminal_commit": "f4734627501434c4ce5be4c775f574e45b020d13",
+    "new_execution_authorization": false
+  },
+  "scope": {
+    "exchange": "binance",
+    "instrument_type": "USDT_PERPETUAL",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "capital_usdt": "1000",
+    "selection": {
+      "trend": 63,
+      "reversal": "2"
+    }
+  },
+  "reserve": {
+    "fixed_source_sha256": "9bc45d4fdb227143b215933e05d083cc993491cbf011a88776dddaa2e3996d48",
+    "affected_source_sha256": "7362afb1be74a5dfd177e20f4828730234eff12c4ff3695fe33ebe7b31893f78",
+    "fixed_semantics": "EXACT_COMMON_SCALE_V1"
+  },
+  "windows": {
+    "exposed_start": "2023-11-01T00:00:00Z",
+    "exploration_start": "2024-08-01T00:00:00Z",
+    "exposed_end_exclusive": "2024-11-01T00:00:00Z",
+    "sealed_start": "2024-11-01T00:00:00Z",
+    "sealed_end_exclusive": "2025-01-01T00:00:00Z"
+  },
+  "budget": {
+    "snapshot_only": true,
+    "total": 96,
+    "consumed": 28,
+    "sealed": 10,
+    "unallocated": 58,
+    "remaining": 68,
+    "authorization": false,
+    "consumed_market_keys": [
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-trend",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/A-reversal",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/C",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/base/half-risk-B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-trend",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/A-reversal",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/C",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/explore/stress/half-risk-B",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-trend",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/A-reversal",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/B",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/C",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/base/half-risk-B",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-trend",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/A-reversal",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/B",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/C",
+      "CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/stress/half-risk-B"
+    ],
+    "sealed_keys": [
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-trend",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/A-reversal",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/C",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/base/half-risk-B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-trend",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/A-reversal",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/B",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/C",
+      "BTC_ETH_SHORT_FEASIBILITY_V2/reserved-process-check/stress/half-risk-B"
+    ],
+    "retired_resource_keys": [
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-42",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-63",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/trend-84",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-1.5",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/train/reversal-2.5",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-trend",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/A-reversal",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/B",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/C",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/market-exposure",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/base/half-risk-B",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-trend",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/A-reversal",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/B",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/C",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/market-exposure",
+      "BTC_ETH_PORTFOLIO_V1/fold-1/validate/stress/half-risk-B",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-42",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-63",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/trend-84",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-1.5",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/train/reversal-2.5",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-trend",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/A-reversal",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/B",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/C",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/market-exposure",
+      "BTC_ETH_PORTFOLIO_V1/fold-2/validate/base/half-risk-B"
+    ]
+  },
+  "prior_sample_evidence": [
+    {
+      "mode": "A-trend",
+      "cost": "base",
+      "actual_cycles": 1,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": null
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "A-reversal",
+      "cost": "base",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": null,
+          "upper_bound": null
+        },
+        "reversal": {
+          "count": 2,
+          "upper_bound": 2
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "B",
+      "cost": "base",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "C",
+      "cost": "base",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "half-risk-B",
+      "cost": "base",
+      "actual_cycles": 1,
+      "natural_counts": {
+        "trend": {
+          "count": 0,
+          "upper_bound": 0
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "A-trend",
+      "cost": "stress",
+      "actual_cycles": 1,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": null
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "A-reversal",
+      "cost": "stress",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": null,
+          "upper_bound": null
+        },
+        "reversal": {
+          "count": 2,
+          "upper_bound": 2
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "B",
+      "cost": "stress",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "C",
+      "cost": "stress",
+      "actual_cycles": 3,
+      "natural_counts": {
+        "trend": {
+          "count": 1,
+          "upper_bound": 1
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    },
+    {
+      "mode": "half-risk-B",
+      "cost": "stress",
+      "actual_cycles": 1,
+      "natural_counts": {
+        "trend": {
+          "count": 0,
+          "upper_bound": 0
+        },
+        "reversal": {
+          "count": null,
+          "upper_bound": 1
+        }
+      },
+      "verdict": "UNDERPOWERED",
+      "transferable_to_new_candidate": false
+    }
+  ],
+  "lessons": [
+    {
+      "id": "RESERVE_ENDPOINT",
+      "layer": "engineering",
+      "finding": "Legal grid endpoints must survive the actual Decimal context; code integrity alone did not prove sizing fidelity.",
+      "source_ids": [
+        "diagnosis",
+        "repair",
+        "reserve_code"
+      ]
+    },
+    {
+      "id": "NATIVE_CELL_MINIMUM",
+      "layer": "execution_feasibility",
+      "finding": "Use actual native call-site minimum stake padding and lot grid against the risk cell. Do not round up opening quantity to manufacture feasibility.",
+      "source_ids": [
+        "diagnosis",
+        "rules"
+      ]
+    },
+    {
+      "id": "SAMPLE_EVIDENCE_TYPE",
+      "layer": "research_evidence",
+      "finding": "Intent, actual order, account cycle and supported natural cluster are distinct. No pooling modes or old/new batches; no unbound future trade-count estimate.",
+      "source_ids": [
+        "terminal",
+        "diagnosis"
+      ]
+    },
+    {
+      "id": "QUALIFICATION_LAYERS",
+      "layer": "research_evidence",
+      "finding": "Tests and fixed code do not prove model behavior; model net and native completion do not prove real economic qualification.",
+      "source_ids": [
+        "repair",
+        "terminal"
+      ]
+    },
+    {
+      "id": "EXPOSED_WINDOW",
+      "layer": "data_provenance",
+      "finding": "The consumed warmup/exploration view is exposed. Reuse is not independent confirmation; the later slice remains sealed.",
+      "source_ids": [
+        "terminal",
+        "budget_map"
+      ]
+    },
+    {
+      "id": "BUDGET_NO_REPLAY",
+      "layer": "resource_control",
+      "finding": "28 of 96 consumed; 10 sealed and 58 unallocated in the terminal snapshot. Remaining capacity is not execution authorization; old keys cannot replay.",
+      "source_ids": [
+        "terminal",
+        "budget_map"
+      ]
+    },
+    {
+      "id": "TERMINAL_NO_RETUNE",
+      "layer": "study_terminal",
+      "finding": "BTC ETH 1000 central pilot is UNDERPOWERED with no qualified mechanism. Do not chase its one positive path or loop low-sample parameter reruns. This is scoped, not a universal mechanism rejection.",
+      "source_ids": [
+        "terminal"
+      ]
+    }
+  ],
+  "sizing_cases": {
+    "btc_one_lot_cell": {
+      "kind": "SANITIZED_SYNTHETIC_CALIBRATION_NOT_MARKET_EVIDENCE",
+      "version": 1,
+      "provenance": "Hand-constructed cell/native-padding arithmetic from the reviewed call-site formula; no downloaded prices, fills, returns or expected trades.",
+      "exchange": "binance",
+      "instrument_type": "USDT_PERPETUAL",
+      "equity_usdt": "1000",
+      "risk_fraction": "0.01",
+      "family_scale": "1",
+      "native_stop_arg": "-0.05",
+      "leverage": "1",
+      "fee": "0.0006",
+      "slippage": "0.0006",
+      "lot_step": "0.001",
+      "min_qty": "0.001",
+      "historical_exchange_rules_verified": false,
+      "symbol": "BTCUSDT",
+      "open_price": "60000",
+      "stop_distance": "10000",
+      "min_notional": "50"
+    },
+    "eth_arithmetic_only": {
+      "kind": "SANITIZED_SYNTHETIC_CALIBRATION_NOT_MARKET_EVIDENCE",
+      "version": 1,
+      "provenance": "Hand-constructed cell/native-padding arithmetic from the reviewed call-site formula; no downloaded prices, fills, returns or expected trades.",
+      "exchange": "binance",
+      "instrument_type": "USDT_PERPETUAL",
+      "equity_usdt": "1000",
+      "risk_fraction": "0.01",
+      "family_scale": "1",
+      "native_stop_arg": "-0.05",
+      "leverage": "1",
+      "fee": "0.0006",
+      "slippage": "0.0006",
+      "lot_step": "0.001",
+      "min_qty": "0.001",
+      "historical_exchange_rules_verified": false,
+      "symbol": "ETHUSDT",
+      "open_price": "3000",
+      "stop_distance": "500",
+      "min_notional": "20"
+    }
+  },
+  "future_candidate_expected_trades": null,
+  "knowledge_not_execution_authorization": true
+}

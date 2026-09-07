@@ -8,6 +8,13 @@ artifact importer, and a narrow three-scenario bundle importer for Freqtrade
 library. The producer can run one bounded Freqtrade research Candidate; that
 technical completion does not prove that any strategy is profitable.
 
+## Evidence-linked mechanism precheck
+
+Use [the local mechanism precheck](docs/mechanism-precheck.md) to turn a versioned
+failure-knowledge record and one mechanism card into deterministic blocked or
+missing-evidence reasons. It does not generate strategies, run research, or grant
+execution authority.
+
 ## Legacy 5m three-scenario fixture path
 
 This compatibility path is not the Profile-driven Issue #43 workflow. Use the

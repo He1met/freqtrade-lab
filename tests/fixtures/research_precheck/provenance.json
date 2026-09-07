@@ -1,0 +1,9 @@
+{
+  "schema": "sanitized-fixture-provenance-v1",
+  "version": 1,
+  "files": {
+    "candidate-card-v1.json": "56d65e36fa8c8a6d983b81356d155414dec0c36f5152c6ebc8c9e85162405e11"
+  },
+  "content": "Hand-authored synthetic mechanical-precheck card; no market data, trades, returns or credentials.",
+  "knowledge_sha256": "7469c8970be61d87aa43d6a15507a12434ba0e56768d596c8ea10115cdeda69f"
+}
