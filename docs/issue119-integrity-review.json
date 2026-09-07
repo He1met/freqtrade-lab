@@ -1,0 +1,33 @@
+{
+  "schema": "issue119-post-execution-integrity-review-v1",
+  "at_utc": "2026-09-07T18:06:48.723499+00:00",
+  "original_execution_lock": "registry.portfolio-source.lock",
+  "existing_checkpoint_writer_lock": "registry.lock",
+  "original_shared_writer_exclusion": "NOT_PROVEN_DIFFERENT_LOCK_FILES",
+  "future_fix": "Both use registry.lock; nonblocking contention rejects registration before GET",
+  "prefix_bytes": 185542,
+  "prefix_sha256": "b395c63a777eebbb453ec73e2a71cd3c4ead194ed4a71f23ff9854720c362b15",
+  "prefix_preserved": true,
+  "current_bytes": 186369,
+  "current_sha256": "d596e9ce1f15c9271b8815e9e557187e97af3b240befb43f8e0e87250d34f5ee",
+  "suffix_bytes": 827,
+  "appended_records_observed": 1,
+  "appended_record_types": [
+    "PORTFOLIO_EXPLORATORY_SOURCE_REGISTERED"
+  ],
+  "additional_concurrent_appends_observed": 0,
+  "concurrency_claim_boundary": "Snapshot proves original byte prefix and sole registration suffix, not absence of other running writers or a shared lock during the original run",
+  "original_terminal_binding_check": "NOT_IMPLEMENTED_AT_EXECUTION",
+  "posthoc_external_hash_review": "PASS_AT_144eb608_BEFORE_FUTURE_CODE_FIX",
+  "original_manifest_sha256": "6aa3ef141ba9499a6b1783fc9ceb0f62a7fc8664e6a34f3379a4c80ddff0572c",
+  "historical_code_files_sha256": {
+    "docs/issue119-scope-snapshot.json": "03c14224fefb254285d22331f9109fcf8fa9033dfba85b5c888032be3fa6ab7c",
+    "docs/protocols/issue119-source-contract.json": "30d90dcfa7b5fab8eda64c5e0463a931275a0c7c6d1d948039651743e0d3e046",
+    "lab/portfolio_source.py": "756e290723205b5722178f5cb23633211ba5a8bea4cd27b398fc0e326e9451d5",
+    "scripts/capture_portfolio_source.py": "ca374b8c0e4c56b0124cfc4d95118cf24a9bd9bc787d36484c48e328b498a590"
+  },
+  "future_code_differs_from_historical_manifest": true,
+  "old_manifest_rewritten": false,
+  "capture_restarted": false,
+  "budget_unchanged_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0"
+}

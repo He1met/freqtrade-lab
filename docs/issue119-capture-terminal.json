@@ -1,0 +1,240 @@
+{
+  "schema": "issue119-sanitized-capture-terminal-v1",
+  "status": "BLOCKED_DATA",
+  "reason": "MISSING_ASSOCIATED_MARK_FIRST_BTC_FUNDING_PAGE",
+  "source_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source",
+  "launch_manifest_sha256": "6aa3ef141ba9499a6b1783fc9ceb0f62a7fc8664e6a34f3379a4c80ddff0572c",
+  "execution_code_commit": "d8bc4bf14191a1b580933aeba43c7a84d2442093",
+  "launch_pushed_commit": "b96dbadc897dc452fe3216f2d3b19d019b12abe0",
+  "attempts": 37,
+  "http_status_counts": {
+    "200": 37
+  },
+  "decoded_bytes": 7697705,
+  "charged_bytes": 7697705,
+  "elapsed_to_last_http_seconds": 36.69669508934021,
+  "min_request_start_gap_seconds": 1.0014641284942627,
+  "max_request_elapsed_seconds": 0.6053862571716309,
+  "attempts_remaining": 85,
+  "remaining_attempts_automatically_authorized": false,
+  "budget_sha256": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+  "registration_receipt_sha256": "5d0bb9f332565cba6e104d40c880f0e8c829a60513fd0800bd3f6b1667364e59",
+  "registry_after_sha256": "d596e9ce1f15c9271b8815e9e557187e97af3b240befb43f8e0e87250d34f5ee",
+  "registry_registration_physical_line": 176,
+  "registered_before_first_get": true,
+  "BTCUSDT": {
+    "trade_1h_rows": 24096,
+    "mark_1h_rows": 24096,
+    "hourly_structure": "PASS",
+    "funding_first_page": {
+      "events": 1000,
+      "missing_mark": 1000,
+      "keys": [
+        "fundingRate",
+        "fundingTime",
+        "markPrice",
+        "rateType",
+        "symbol"
+      ],
+      "first_event": 1585785600000,
+      "last_event": 1614556800000,
+      "raw_sha256": "1df9529171b9ee646f8bcc483f61c6d78567814ad15e44ea44e6882b826a25ff"
+    }
+  },
+  "ETHUSDT": {
+    "historical_requests": 0,
+    "source_status": "NOT_CAPTURED_AFTER_BTC_QC_STOP"
+  },
+  "historical_interval_evidence": "UNKNOWN",
+  "executable_source_published": false,
+  "native_calls": 0,
+  "native_budget_unchanged_sha256": "a828469373802b7296a19d15bb79735d3adf30ca31c7201e4ff881b59e969e18",
+  "economic_result": null,
+  "source_files": [
+    {
+      "name": "001-exchangeInfo.json",
+      "sha256": "6edb2b1cc12a815497645909f3ddd93ebd587f1e6cf6f14c2eada5c33359f0a9",
+      "bytes": 1108415
+    },
+    {
+      "name": "002-fundingInfo.json",
+      "sha256": "72f71de053af5a02f38281e4db2a59fbd328e73282403f77c09606b284554b44",
+      "bytes": 133691
+    },
+    {
+      "name": "003-klines.json",
+      "sha256": "6b8c748202b38e0b7478499d1c2aa516f21b33387f24a42ba52e51e961ba5312",
+      "bytes": 206370
+    },
+    {
+      "name": "004-klines.json",
+      "sha256": "f52de173750a720586548e57e3f2aece41d28c1041ff94ba142e7f7a82294d48",
+      "bytes": 205357
+    },
+    {
+      "name": "005-klines.json",
+      "sha256": "0d947575e38904eda6ff97d05158cdced6a6fad627ec1024abb457375b3d1935",
+      "bytes": 210916
+    },
+    {
+      "name": "006-klines.json",
+      "sha256": "7dee80d275d73c46b3dc2b2b2d8eceb7221f77fe03d11f945910dfe2e41de1bd",
+      "bytes": 212795
+    },
+    {
+      "name": "007-klines.json",
+      "sha256": "5cb3c44d2254b8d628e1f4cced72e1e70cec9951dd4d13bed30cc54e540db059",
+      "bytes": 214724
+    },
+    {
+      "name": "008-klines.json",
+      "sha256": "4980dd7ace1508f527e2f31efb7e0e0dc13c621abd773a8c41d0389126203b73",
+      "bytes": 215063
+    },
+    {
+      "name": "009-klines.json",
+      "sha256": "4c0c6f11003455dae56b8a5fed422a8ee78e15f815c54ca1cfdb3bfc2eadb01f",
+      "bytes": 216431
+    },
+    {
+      "name": "010-klines.json",
+      "sha256": "82cf939e8d694e85e936bed35618a0976af9111d8ea43d7da78be3b6d4107852",
+      "bytes": 217193
+    },
+    {
+      "name": "011-klines.json",
+      "sha256": "0a008358cc93685114bfe596dea662cab3a3f6a695ca95d9f69a1f02cf46f633",
+      "bytes": 215412
+    },
+    {
+      "name": "012-klines.json",
+      "sha256": "32cc38c5b28d458efb3de91aa5d8bed3b18227b8492fd1df4bf9900851ff5136",
+      "bytes": 214677
+    },
+    {
+      "name": "013-klines.json",
+      "sha256": "4b9f1f331859ffc447bba3bbf11e5f95a96fd5ae1636951a14dc88f9c4e1d215",
+      "bytes": 214895
+    },
+    {
+      "name": "014-klines.json",
+      "sha256": "07ef74c334bc22cca22e65b44fe5bfabfbf60e5be1c0e0d1f22693b5cf7847be",
+      "bytes": 214920
+    },
+    {
+      "name": "015-klines.json",
+      "sha256": "e8f28bd14267e9426246eca37fb3cc2257c1132b2efb507bd8659f30bd251de5",
+      "bytes": 215788
+    },
+    {
+      "name": "016-klines.json",
+      "sha256": "3bd8564ddfb75843398f5ec2a03bd35041462c3ce75f955982fc470466db888c",
+      "bytes": 216524
+    },
+    {
+      "name": "017-klines.json",
+      "sha256": "b3489dc25b30801a4c36cf3beca14fc9671baf64b1e9c1dad9ad1721b151f540",
+      "bytes": 215747
+    },
+    {
+      "name": "018-klines.json",
+      "sha256": "1fa9fde811bf3b1b3c4e453fed3001e0801c4d3419f571e620f82b6a3f111c49",
+      "bytes": 214099
+    },
+    {
+      "name": "019-klines.json",
+      "sha256": "8e38465b7fd8e813f4eaaab56dce461365ce18837ed853b60eb7a674fa2688e8",
+      "bytes": 13569
+    },
+    {
+      "name": "020-markPriceKlines.json",
+      "sha256": "23a73cac53062afa34a5e27ee6436471ce529209aeb5122020b74a522a74898d",
+      "bytes": 178567
+    },
+    {
+      "name": "021-markPriceKlines.json",
+      "sha256": "d82966c90119ebb2ab6bfba1df2a569ffa352c9250e8100b2b206cb62780babc",
+      "bytes": 179115
+    },
+    {
+      "name": "022-markPriceKlines.json",
+      "sha256": "1411255e2d99c24b01e50ac8410d21c2a5fa0e73f4112da22370942d62835185",
+      "bytes": 181840
+    },
+    {
+      "name": "023-markPriceKlines.json",
+      "sha256": "ff957fa3df9f2ee66cc0e19e350faa17f43d3cf5aa9db1f34c9502ef6a7e4b20",
+      "bytes": 182107
+    },
+    {
+      "name": "024-markPriceKlines.json",
+      "sha256": "ef9dcb558bceadb449a96999bee9ca012cd57ee693302708097331426d7b22be",
+      "bytes": 181853
+    },
+    {
+      "name": "025-markPriceKlines.json",
+      "sha256": "c5d8574a2807df470197164d88a88a5a26cfc4949cb94c65160b3c5c472bd1c2",
+      "bytes": 181834
+    },
+    {
+      "name": "026-markPriceKlines.json",
+      "sha256": "1be985e83d37f2a518dd96e68ced10736392923992765691d8370dff1d71fd3b",
+      "bytes": 182845
+    },
+    {
+      "name": "027-markPriceKlines.json",
+      "sha256": "bee6bb622c772dedad7647e48a3fc1be084dd85476b528cb82f1a09932ad8ab2",
+      "bytes": 182169
+    },
+    {
+      "name": "028-markPriceKlines.json",
+      "sha256": "578dc1fba8530499c4e4f275c9e76b96f9a56a7d03e0fbd527a8f7eb77c53026",
+      "bytes": 182152
+    },
+    {
+      "name": "029-markPriceKlines.json",
+      "sha256": "8efb8dc2a77fa78322e2bfa62655ebd409560e7cdad0b2480cc8747de8379212",
+      "bytes": 182152
+    },
+    {
+      "name": "030-markPriceKlines.json",
+      "sha256": "7f8f218ed2e104badd63bdfddd797f82c96de454dbc276f22d6a7a5852137b2a",
+      "bytes": 181981
+    },
+    {
+      "name": "031-markPriceKlines.json",
+      "sha256": "047d89b85e39473c9dc6f9c763ec7bf483c5596b3e95f8ac373ef4644c4370b4",
+      "bytes": 179713
+    },
+    {
+      "name": "032-markPriceKlines.json",
+      "sha256": "3903b2f871cf649fbcf29022dfde4e498bade8782673b5dff7c3bb23bf10941b",
+      "bytes": 180289
+    },
+    {
+      "name": "033-markPriceKlines.json",
+      "sha256": "e6a614a8d0003f8edd3fac83fdd2a22392d4b747fc40b9d6a906b59f16243f3d",
+      "bytes": 180349
+    },
+    {
+      "name": "034-markPriceKlines.json",
+      "sha256": "4992e4380dfe52fc2ee09c81a4d75c965dc6c8618572c64cb4bd272f912457b4",
+      "bytes": 180055
+    },
+    {
+      "name": "035-markPriceKlines.json",
+      "sha256": "6be554f17556e9a7b4ff92e8f08d487fb6509589a32c426a08cb591f6ad9a1b9",
+      "bytes": 180442
+    },
+    {
+      "name": "036-markPriceKlines.json",
+      "sha256": "8bebfcad121bedef39e9fd01bd3c3239a3bf882ae8253dab16222098c4e4a62b",
+      "bytes": 11548
+    },
+    {
+      "name": "037-fundingRate.json",
+      "sha256": "1df9529171b9ee646f8bcc483f61c6d78567814ad15e44ea44e6882b826a25ff",
+      "bytes": 112108
+    }
+  ]
+}
