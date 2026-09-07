@@ -1,0 +1,29 @@
+def reserve_additions(equity, actual, desired, prices, steps, config):
+    """Only same-direction additions. Reductions remain the existing V2 path.
+
+    Bisection scales additions; final quantities floor to lot steps and are
+    rechecked using net equity after new fee+slippage. Old cap breaches block.
+    """
+    if config != configuration(config['mode'],'base' if config['fee']=='0.0006' else 'stress'):
+        raise SourceError('cost configuration drift')
+    E=Decimal(str(equity));c=Decimal(config['fee'])+Decimal(config['slippage'])
+    a={p:Decimal(str(actual[p])) for p in PAIRS};d={p:Decimal(str(desired[p])) for p in PAIRS}
+    px={p:Decimal(str(prices[p])) for p in PAIRS};step={p:Decimal(str(steps[p])) for p in PAIRS}
+    if E<=0 or any(px[p]<=0 or step[p]<=0 for p in PAIRS):raise SourceError('invalid addition inputs')
+    if any(a[p]*d[p]<0 or abs(d[p])<abs(a[p]) for p in PAIRS):
+        raise SourceError('reduction/reversal must use actual V2 execution path first')
+    def valid(q):
+        cost=sum(abs(q[p]-a[p])*px[p]*c for p in PAIRS)
+        net=E-cost
+        ns=[abs(q[p])*px[p] for p in PAIRS]
+        return net>0 and sum(ns)<=Decimal('.8')*net and all(n<=Decimal('.4')*net for n in ns)
+    if not valid(a):raise SourceError('existing exposure breach: no additions')
+    low,high=Decimal(0),Decimal(1)
+    for _ in range(96):
+        mid=(low+high)/2;q={p:a[p]+mid*(d[p]-a[p]) for p in PAIRS}
+        if valid(q):low=mid
+        else:high=mid
+    q={p:a[p]+low*(d[p]-a[p]) for p in PAIRS}
+    q={p:(abs(q[p])/step[p]).to_integral_value(rounding=ROUND_FLOOR)*step[p]*(1 if q[p]>=0 else -1) for p in PAIRS}
+    if any(abs(q[p])<abs(a[p]) for p in PAIRS) or not valid(q):raise SourceError('quantized cap check failed')
+    return q

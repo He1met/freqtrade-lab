@@ -1,5 +1,6 @@
 """Pure consumers for the proposed short feasibility slice; no network/native."""
-from decimal import Decimal, ROUND_FLOOR
+from decimal import Decimal, InvalidOperation
+from fractions import Fraction
 from datetime import datetime
 from lab.portfolio_causal import State, daily_decision, BASE_SHA, SEMANTICS_SHA, PAIRS
 from lab.portfolio_causal_account import account_snapshot
@@ -61,35 +62,78 @@ def account(orders, at, marks, events, config):
     return result
 
 
-def reserve_additions(equity, actual, desired, prices, steps, config):
-    """Only same-direction additions. Reductions remain the existing V2 path.
+RESERVE_SEMANTICS_VERSION = 'EXACT_COMMON_SCALE_V1'
 
-    Bisection scales additions; final quantities floor to lot steps and are
-    rechecked using net equity after new fee+slippage. Old cap breaches block.
+
+def reserve_additions(equity, actual, desired, prices, steps, config):
+    """Maximal continuous common addition scale, then conservative lot projection.
+
+    Exact rational inequalities include new fee+slippage in equity. This is not
+    a globally optimal discrete allocation. No caller Decimal context is used
+    for arithmetic or output construction. Reductions use the existing path.
     """
-    if config != configuration(config['mode'],'base' if config['fee']=='0.0006' else 'stress'):
+    if not isinstance(config, dict) or config.get('mode') not in MODES:
         raise SourceError('cost configuration drift')
-    E=Decimal(str(equity));c=Decimal(config['fee'])+Decimal(config['slippage'])
-    a={p:Decimal(str(actual[p])) for p in PAIRS};d={p:Decimal(str(desired[p])) for p in PAIRS}
-    px={p:Decimal(str(prices[p])) for p in PAIRS};step={p:Decimal(str(steps[p])) for p in PAIRS}
-    if E<=0 or any(px[p]<=0 or step[p]<=0 for p in PAIRS):raise SourceError('invalid addition inputs')
-    if any(a[p]*d[p]<0 or abs(d[p])<abs(a[p]) for p in PAIRS):
+    if config != configuration(config['mode'], 'base' if config.get('fee') == '0.0006' else 'stress'):
+        raise SourceError('cost configuration drift')
+
+    def finite(value):
+        try:
+            value = Decimal(str(value))
+            if not value.is_finite():
+                raise ValueError('nonfinite')
+            return value
+        except (ValueError, TypeError, InvalidOperation) as exc:
+            raise SourceError('invalid addition inputs') from exc
+
+    try:
+        E = Fraction(finite(equity))
+        a = {p: Fraction(finite(actual[p])) for p in PAIRS}
+        d = {p: Fraction(finite(desired[p])) for p in PAIRS}
+        px = {p: Fraction(finite(prices[p])) for p in PAIRS}
+        lots = {p: finite(steps[p]) for p in PAIRS}
+    except (KeyError, TypeError) as exc:
+        raise SourceError('invalid addition inputs') from exc
+    step = {p: Fraction(lots[p]) for p in PAIRS}
+    c = Fraction(config['fee']) + Fraction(config['slippage'])
+    if E <= 0 or any(px[p] <= 0 or step[p] <= 0 for p in PAIRS):
+        raise SourceError('invalid addition inputs')
+    if any(a[p] * d[p] < 0 or abs(d[p]) < abs(a[p]) for p in PAIRS):
         raise SourceError('reduction/reversal must use actual V2 execution path first')
+
     def valid(q):
-        cost=sum(abs(q[p]-a[p])*px[p]*c for p in PAIRS)
-        net=E-cost
-        ns=[abs(q[p])*px[p] for p in PAIRS]
-        return net>0 and sum(ns)<=Decimal('.8')*net and all(n<=Decimal('.4')*net for n in ns)
-    if not valid(a):raise SourceError('existing exposure breach: no additions')
-    low,high=Decimal(0),Decimal(1)
-    for _ in range(96):
-        mid=(low+high)/2;q={p:a[p]+mid*(d[p]-a[p]) for p in PAIRS}
-        if valid(q):low=mid
-        else:high=mid
-    q={p:a[p]+low*(d[p]-a[p]) for p in PAIRS}
-    q={p:(abs(q[p])/step[p]).to_integral_value(rounding=ROUND_FLOOR)*step[p]*(1 if q[p]>=0 else -1) for p in PAIRS}
-    if any(abs(q[p])<abs(a[p]) for p in PAIRS) or not valid(q):raise SourceError('quantized cap check failed')
-    return q
+        net = E - sum(abs(q[p] - a[p]) * px[p] * c for p in PAIRS)
+        ns = [abs(q[p]) * px[p] for p in PAIRS]
+        return net > 0 and sum(ns) <= Fraction(4, 5) * net and all(
+            n <= Fraction(2, 5) * net for n in ns)
+
+    if not valid(a):
+        raise SourceError('existing exposure breach: no additions')
+    scale = Fraction(1)
+    if not valid(d):
+        base = {p: abs(a[p]) * px[p] for p in PAIRS}
+        added = {p: (abs(d[p]) - abs(a[p])) * px[p] for p in PAIRS}
+        cost = sum(added.values()) * c
+        constraints = [(base[p], added[p], Fraction(2, 5)) for p in PAIRS]
+        constraints.append((sum(base.values()), sum(added.values()), Fraction(4, 5)))
+        for exposure, increase, cap in constraints:
+            slope = increase + cap * cost
+            if slope:
+                scale = min(scale, (cap * E - exposure) / slope)
+    q = {p: a[p] + scale * (d[p] - a[p]) for p in PAIRS}
+    units = {p: abs(q[p]) // step[p] for p in PAIRS}
+    q = {p: units[p] * step[p] * (-1 if q[p] < 0 else 1) for p in PAIRS}
+    if any(abs(q[p]) < abs(a[p]) or abs(q[p]) > abs(d[p]) for p in PAIRS) or not valid(q):
+        raise SourceError('quantized cap check failed')
+
+    # Multiplication/unary minus on Decimal would round under caller context.
+    # Construct the exact integer coefficient at the original lot exponent.
+    result = {}
+    for p in PAIRS:
+        parts = lots[p].as_tuple()
+        coefficient = int(''.join(map(str, parts.digits))) * units[p]
+        result[p] = Decimal((int(q[p] < 0), tuple(map(int, str(coefficient))), parts.exponent))
+    return result
 
 
 from lab.portfolio_source_continuation import continuation_allowance, ContinuationBudget

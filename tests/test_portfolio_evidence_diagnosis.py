@@ -59,7 +59,8 @@ def test_missing_interval_mapping_is_not_given_a_math_bound():
 
 def test_original_valid_one_lot_can_disappear_in_reserve_without_a_fill():
     from decimal import Decimal,localcontext
-    from lab.portfolio_short import reserve_additions,configuration
+    from lab.portfolio_short import configuration
+    reserve_additions = legacy_reserve()
     from lab.portfolio_causal import PAIRS
     with localcontext() as c:
         c.prec=60
@@ -84,7 +85,8 @@ def test_changed_input_fails_before_output_creation(tmp_path,monkeypatch):
 
 def test_endpoint_defect_depends_on_actual_decimal60_context():
     from decimal import Decimal,localcontext
-    from lab.portfolio_short import reserve_additions,configuration
+    from lab.portfolio_short import configuration
+    reserve_additions = legacy_reserve()
     from lab.portfolio_causal import PAIRS
     actual={p:Decimal(0) for p in PAIRS};desired={PAIRS[0]:Decimal('.001'),PAIRS[1]:Decimal(0)}
     results={}
@@ -94,3 +96,21 @@ def test_endpoint_defect_depends_on_actual_decimal60_context():
             results[precision]=reserve_additions(1000,actual,desired,{PAIRS[0]:60000,PAIRS[1]:3000},
                 {p:'.001' for p in PAIRS},configuration('A-trend','base'))[PAIRS[0]]
     assert results=={28:Decimal('.001'),60:Decimal(0)}
+
+
+def legacy_reserve():
+    """Freeze old defect evidence independently of the repaired production code."""
+    import hashlib, json
+    from pathlib import Path
+    from decimal import Decimal, ROUND_FLOOR
+    from lab.portfolio_short import configuration
+    from lab.portfolio_causal import PAIRS
+    from lab.portfolio_source import SourceError
+    root = Path(__file__).parent / 'fixtures'
+    source = (root / 'reserve_additions_legacy.py.txt').read_bytes()
+    receipt = json.loads((root / 'reserve_additions_legacy.json').read_text())
+    assert hashlib.sha256(source).hexdigest() == receipt['sha256']
+    namespace = dict(Decimal=Decimal, ROUND_FLOOR=ROUND_FLOOR,
+                     PAIRS=PAIRS, SourceError=SourceError, configuration=configuration)
+    exec(compile(source, 'reserve_additions_legacy.py.txt', 'exec'), namespace)
+    return namespace['reserve_additions']

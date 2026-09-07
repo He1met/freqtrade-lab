@@ -1,0 +1,7 @@
+{
+  "source_commit": "fe01a6b543e26512aa8180c7226d2678eb80a93d",
+  "source_path": "lab/portfolio_short.py",
+  "symbol": "reserve_additions",
+  "sha256": "6bea7ce7f22128e8c1a569674a7f806ce57c21d1c07854684e948cb94433e978",
+  "provenance": "Exact function text from tracked original source; pure synthetic test code, no market data or credentials."
+}
