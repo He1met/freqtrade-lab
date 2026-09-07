@@ -191,3 +191,19 @@ def test_integrity_uses_new_prepared_and_activation_paths(tmp_path,monkeypatch):
     assert str(prepared/'data/input.feather') in hashes
     assert str(prepared/'plan.json') in hashes and str(activation) in hashes
     assert str(integrity.PREPARED/'plan.json') not in hashes and str(integrity.ACTIVATION) not in hashes
+
+
+def test_all_retired_sealed_completed_and_corrected_identities_are_disjoint():
+    old=corrected.old.jobs();new=corrected.mapping()
+    retired={j['replaces_unused_key_on_approval'] for j in old}
+    completed={j['key'] for j in old[:10]}
+    sealed={j['key'] for j in old[10:]}
+    new_keys={j['key'] for j in new}
+    resources={j['replaces_unused_key_on_approval'] for j in new}
+    assert len(retired)==20 and all(len(x)==10 for x in (completed,sealed,new_keys,resources))
+    groups=[retired,completed,sealed,new_keys,resources]
+    for i,a in enumerate(groups):
+        for b in groups[i+1:]:assert a.isdisjoint(b)
+    assert [j['original_key'] for j in new]==[j['key'] for j in old[:10]]
+    # Historical slots include validation identities, not twenty training slots.
+    assert any('/validate/' in k for k in retired)

@@ -10,6 +10,8 @@
 
 ## 预算一对一映射
 
+历史说明纠错：旧#121说明将退休资源称作“原24 training前20槽”不准确。已冻结机器列表实际包括fold-1 training、fold-1 validation base/stress及fold-2 training前2槽；始终以机器key列表为准。本次不改旧activation或追改原映射。退休是未用预算slot重分配，不表示已读取原validation数据；新批不是原验证，其实际日期/用途仍是已见92日探索片。
+
 新键前缀均为 `CORRECTED_IMPLEMENTATION_EXPLORATORY_REEVALUATION/`；右列均有前缀 `BTC_ETH_PORTFOLIO_V1/`。资源名称是原预算槽身份，不表示本次执行对应原fold或改变窗口。映射验证原96目录和此前20个映射，拒绝重复/未知/已占用资源。
 
 | 新键后缀 | 替换的精确未激活资源后缀 |
@@ -29,7 +31,7 @@
 
 ## 原入口复用与失败保护
 
-新薄入口为 `scripts/run_portfolio_corrected.py`，准备路径固定`issue131-corrected-prepared`，输出固定`corrected-exploration-jobs/01..10`，审批固定`corrected-exploration-activation.json`，均在原Git外budget根。原native函数只将data/assembly路径改为读取经审核manifest绑定的prepared_root；原匹配/回调/资金费路径不变。原终态审计支持显式新prepared/activation路径，继续复用于成功与异常；并核对全部旧执行证据SHA，禁止覆盖。
+新薄入口为 `scripts/run_portfolio_corrected.py`，准备路径固定`issue131-corrected-prepared`，输出固定`corrected-exploration-jobs/01..10`，审批固定`corrected-exploration-activation.json`，均在原Git外budget根。原native函数只将data/assembly路径改为读取经审核manifest绑定的prepared_root；原匹配/回调/资金费路径不变。原终态审计支持显式新prepared/activation路径，继续复用于成功与异常；并核对原冻结清单中的140份旧执行证据SHA，禁止覆盖。
 
 旧入口的activation/key白名单不扩展；新入口明确排除旧已用键、后片键和原资源键。新plan/完整manifest等值验证当前全代码包、固定环境和原模型字段；run时再次执行原source/QC及protected-view检查。调用锁前后重复anchor与manifest校验，冻结当前代码commit和全部输入/控制SHA之后才允许durable reservation。准备阶段不创建真实activation；CLI无绕过参数。
 
@@ -45,6 +47,6 @@
 PYTHONDONTWRITEBYTECODE=1 uv run --with pytest python -m pytest -q -p no:cacheprovider tests/test_portfolio_corrected.py tests/test_portfolio_observed_budget.py tests/test_portfolio_observed_terminal.py
 ```
 
-31 passed（7新集成/预算/准备测试+4原budget+20原terminal）。用真实observed控制函数和纯合成bar/episode确认实际60精度调用已合并修复，保留合法0.001BTC且不超过desired；原native padding门仍拒绝不够stake的一手，未凑大数量。临时18+10账本验证兼容历史、累计28、拒绝旧/后片/重复键、失败停批、审批漂移、prefix截断和锁竞争。未重复上轮69tests，未增加synthetic native调用。
+32 passed（8新集成/预算/准备测试+4原budget+20原terminal）。用真实observed控制函数和纯合成bar/episode确认实际60精度调用已合并修复，保留合法0.001BTC且不超过desired；原native padding门仍拒绝不够stake的一手，未凑大数量。临时18+10账本验证兼容历史、累计28、拒绝旧/后片/重复键、失败停批、审批漂移、prefix截断和锁竞争。未重复上轮69tests，未增加synthetic native调用。
 
 真实准备命令使用原固定Python：`/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python scripts/run_portfolio_corrected.py --prepare`。新plan/manifests/SHA和实际准备结果另见`issue131-preparation-receipt.json`。固定包交监督审阅，不自行合并、关闭或执行native。
