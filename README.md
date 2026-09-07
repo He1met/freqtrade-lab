@@ -851,3 +851,5 @@ Development proceeds in small, dependent slices:
 3. Show the latest honest three-scenario summary in a local strategy library.
 4. Add strategy details, research history, and restricted artifact download.
 5. Optionally open the general FreqUI backtest page when a real loopback instance is available.
+
+文献发现的离线入口、真实来源限制和当前执行域判定见 [有界文献发现](docs/literature-discovery.md)。
