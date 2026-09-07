@@ -7,7 +7,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/precheck_mechanism.py \
   --card tests/fixtures/research_precheck/candidate-card-v1.json
 ```
 
-CLI只读机制卡和仓库内已绑定知识来源，向stdout输出JSON，无数据库/网络/市场执行/后台进程。正常业务阻塞也exit0，必须读取JSON状态；非法或漂移输入exit2并输出`PRECHECK_BLOCKED / INVALID_OR_DRIFTED_INPUT`。无`--run`、审批、自动写库或输出覆盖参数。
+CLI只读机制卡和仓库内已绑定知识来源，向stdout输出JSON，无数据库/网络/市场执行/后台进程。正常业务阻塞也exit0，必须读取JSON状态；非法或漂移输入exit2并输出`PRECHECK_BLOCKED / INVALID_OR_DRIFTED_INPUT`。无`--run`、审批、自动写库或输出覆盖参数。卡片最多读取`MAX_CARD_BYTES+1`（65537）字节后检查上限；`sizing_case_id`只能是字符串或null，数组/对象等非法类型及过深JSON均返回结构化错误，不泄露未捕获traceback。
 
 ## 可复用知识和适用范围
 
@@ -59,6 +59,6 @@ ETH校准即便算术过门，整体仍`NEEDS_EVIDENCE`。所有数值使用Frac
 - DELETE：未新增需要删除的旧组件，不做无关重构。
 - UNKNOWN：互联网摄取、语义去重、持续运行与自动晋级资格，不用当前CLI绿色结果冒充完成。
 
-风险相称的验证仅为该纯输入/算术模块的快速测试和真实CLI示例：23项定向测试，包括手算native最小门、算术过门仍缺证据、LLM数值声明无效、旧源码、样本类型、窗口/warmup/半开边界、旧key及预算、SHA漂移、非法JSON和CLI确定性。无需DB矩阵、原生回测或重跑旧69/32测试。实际CLI的输出SHA、代码提交及控制不变证据见本Issue交付收据。
+风险相称的验证仅为该纯输入/算术模块的快速测试和真实CLI示例：29项定向测试，包括手算native最小门、算术过门仍缺证据、LLM数值声明无效、旧源码、样本类型、窗口/warmup/半开边界、旧key及预算、SHA漂移、非法JSON和CLI确定性。无需DB矩阵、原生回测或重跑旧69/32测试。实际CLI的输出SHA、代码提交及控制不变证据见本Issue交付收据。
 
 回滚只需撤销本Issue新增JSON/模块/CLI/fixture及README入口，不涉及数据库或运行台账。本切片完成后交监督固定SHA审阅；不自行合并关闭、不扩大执行授权。

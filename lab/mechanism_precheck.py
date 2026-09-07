@@ -28,11 +28,12 @@ def _pairs(items):
 
 
 def read_card(path):
-    raw=Path(path).read_bytes()
+    with Path(path).open('rb') as source:
+        raw=source.read(MAX_CARD_BYTES+1)
     if len(raw)>MAX_CARD_BYTES:raise PrecheckError('card too large')
     def invalid(value):raise PrecheckError('nonfinite JSON constant')
     try:return json.loads(raw,object_pairs_hook=_pairs,parse_constant=invalid),hashlib.sha256(raw).hexdigest()
-    except (ValueError,UnicodeError) as exc:raise PrecheckError(str(exc)) from exc
+    except (ValueError,UnicodeError,RecursionError) as exc:raise PrecheckError(str(exc)) from exc
 
 
 def load_knowledge():
@@ -116,7 +117,10 @@ def precheck(card):
     elif code==knowledge['reserve']['fixed_source_sha256']:
         add('RESERVE_ENDPOINT','SATISFIED','REVIEWED_SIZING_SOURCE','Known fixed source identity only; does not qualify this candidate.')
     else:add('RESERVE_ENDPOINT','UNKNOWN','UNBOUND_EXECUTION_SOURCE','Need reviewed source and actual-context sizing evidence.')
-    case=knowledge['sizing_cases'].get(card.get('sizing_case_id'))
+    case_id=card.get('sizing_case_id')
+    if case_id is not None and not isinstance(case_id,str):
+        raise PrecheckError('sizing_case_id must be a string or null')
+    case=knowledge['sizing_cases'].get(case_id)
     calculation=None
     if case is None:add('NATIVE_CELL_MINIMUM','UNKNOWN','MISSING_FROZEN_SIZING_CASE','No verified sizing inputs; no invented price or risk distance.')
     elif (case['exchange']!=card.get('exchange') or case['instrument_type']!=card.get('instrument_type') or

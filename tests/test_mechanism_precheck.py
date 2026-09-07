@@ -109,3 +109,38 @@ def test_cli_deterministic_example_no_output_side_effect(tmp_path):
     two=subprocess.run(command,cwd=tmp_path,capture_output=True,text=True,check=True)
     assert one.stdout==two.stdout and not list(tmp_path.iterdir())
     assert json.loads(one.stdout)['status']=='PRECHECK_BLOCKED'
+
+
+@pytest.mark.parametrize('value',[[],{},1,True])
+def test_cli_invalid_sizing_id_is_structured_and_has_no_side_effects(value,tmp_path):
+    c=card();c['sizing_case_id']=value
+    path=tmp_path/'card.json';path.write_text(json.dumps(c));before=path.read_bytes()
+    out=subprocess.run([sys.executable,str(m.ROOT/'scripts/precheck_mechanism.py'),'--card',str(path)],
+                       cwd=tmp_path,capture_output=True,text=True)
+    result=json.loads(out.stdout)
+    assert out.returncode==2 and not out.stderr
+    assert result['status']=='PRECHECK_BLOCKED' and result['reason_code']=='INVALID_OR_DRIFTED_INPUT'
+    assert 'string or null' in result['detail']
+    assert list(tmp_path.iterdir())==[path] and path.read_bytes()==before
+
+
+def test_deep_json_cli_error_is_structured(tmp_path):
+    path=tmp_path/'deep.json';raw='['*2000+'0'+']'*2000;path.write_text(raw)
+    out=subprocess.run([sys.executable,str(m.ROOT/'scripts/precheck_mechanism.py'),'--card',str(path)],
+                       cwd=tmp_path,capture_output=True,text=True)
+    assert out.returncode==2 and not out.stderr
+    assert json.loads(out.stdout)['reason_code']=='INVALID_OR_DRIFTED_INPUT'
+    assert path.read_text()==raw and list(tmp_path.iterdir())==[path]
+
+
+def test_card_read_is_bounded_before_json_parsing(monkeypatch):
+    from io import BytesIO
+    requests=[]
+    class Input(BytesIO):
+        def read(self,size=-1):
+            requests.append(size)
+            assert 0<=size<=m.MAX_CARD_BYTES+1
+            return super().read(size)
+    monkeypatch.setattr(Path,'open',lambda *args,**kwargs:Input(b' '* (m.MAX_CARD_BYTES*2)))
+    with pytest.raises(m.PrecheckError,match='too large'):m.read_card('unused')
+    assert requests==[m.MAX_CARD_BYTES+1]
