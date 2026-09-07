@@ -1,0 +1,99 @@
+{
+  "schema": "btc-eth-observed-exploration-semantics-v3",
+  "status": "SUPERVISOR_APPROVED_IMPLEMENTATION_NOT_NATIVE_ACTIVATION",
+  "issue": 125,
+  "base_protocol_sha256": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+  "risk_v2_sha256": "9773d03346b89822a8495a3d5e6566cd8895c3c83e377be63b74b9f80477e784",
+  "source_grade": "OBSERVED_API_COMPLETE_FOR_EXPLORATORY_MODEL",
+  "old_source_qc": "PRESERVED_BLOCKED_DATA",
+  "historical_interval_truth": "UNKNOWN",
+  "pairs": [
+    "BTC/USDT:USDT",
+    "ETH/USDT:USDT"
+  ],
+  "modes": [
+    "A-trend",
+    "A-reversal",
+    "B",
+    "C",
+    "half-risk-B"
+  ],
+  "selection": {
+    "trend": 63,
+    "reversal": "2"
+  },
+  "source_start": "2023-11-01T00:00:00Z",
+  "explore_start": "2024-08-01T00:00:00Z",
+  "explore_end_exclusive": "2024-11-01T00:00:00Z",
+  "reserved_start": "2024-11-01T00:00:00Z",
+  "reserved_end_exclusive": "2025-01-01T00:00:00Z",
+  "reserved_authorized": false,
+  "signal_close_hour_utc": 0,
+  "freeze_signal_at_00": [
+    "signal",
+    "ATR",
+    "target",
+    "candidate",
+    "units",
+    "equity"
+  ],
+  "activate_new_episodes_hour_utc": 1,
+  "activation_units": "NO_GREATER_THAN_00_FROZEN_UNITS; SCALE_DOWN_FOR_NET_EQUITY_AND_COST_CAPS_ONLY",
+  "existing_families_00": "EXIT_AGING_C_UPDATE_AND_V2_PAUSE_RESUME_STILL_RUN",
+  "activation_reference": "ACTUAL_01_OPEN",
+  "funding_hours_no_adds": [
+    0,
+    8,
+    16
+  ],
+  "reduce_only_at_funding_hours": true,
+  "funding_ordering": "ORIGINAL_TIMESTAMP; DELTA_POSITIVE_AFTER_OPEN_FILL; DELTA_ZERO_FILL_THEN_FEE",
+  "source_event_model": "ONE_REGULAR_EVENT_PER_NOMINAL_8H_SLOT; EVENT_MUST_PRECEDE_NEXT_HOURLY_ACTION; OTHERWISE_REJECT",
+  "event_availability": "ASSUME_RATE_AND_ASSOCIATED_MARK_KNOWN_AT_ORIGINAL_EVENT_TIME",
+  "eligibility_uncertain_cash": "MIN(0,-Q_BEFORE_HOUR*RATE*MARK,-Q_AFTER_HOUR*RATE*MARK)",
+  "unchanged_inventory_cash": "-Q*RATE*ASSOCIATED_MARK",
+  "no_future_15s_fills": true,
+  "fill_times": "INTEGER_HOUR_OPEN_ONLY; OTHER_FILL_INVALIDATES_MODEL",
+  "funding_native_reconciliation": "EXPLICIT_MODEL_MINUS_NATIVE_CASH_DELTA; NO_DOUBLE_COUNT",
+  "risk_observation": "HOUR_PRE_ACTION_AND_ORIGINAL_FUNDING_EVENT; ACTION_NEXT_EXECUTABLE_HOUR_AFTER_EVENT",
+  "intrahour_price_risk_coverage": "UNKNOWN_NOT_CONTINUOUS_PRICE_PROOF",
+  "max_drawdown_fraction": "0.20",
+  "net_floor": "0",
+  "money_arithmetic": "EXACT_RATIONAL_FROM_DECIMAL_STRINGS; DECIMAL_60_FOR_CORE_BOUNDARY; NO_GATE_EPSILON",
+  "real_rounding_error_bound": "UNKNOWN",
+  "real_publication_delay_bound": "UNKNOWN",
+  "qualified_real_pnl_lower_bound": false,
+  "label": "SIMULATED_UNDER_ASSUMPTIONS",
+  "economic_qualification": "NO_REAL_ECONOMIC_QUALIFICATION",
+  "final_flat_hour": "LAST_AVAILABLE_HOUR_OPEN_BEFORE_PHASE_END",
+  "failed_final_exit": "RETAIN_ACTUAL_INVENTORY_AND_BLOCK",
+  "native_activation_authorized": false,
+  "engine_only_tier_assumption": {
+    "minNotional": "0",
+    "maxNotional": "1000000",
+    "maintenanceMarginRate": "0.005",
+    "maxLeverage": "1",
+    "maintAmt": "0",
+    "historical_exchange_rules_verified": false
+  },
+  "invalid_native_exit_reasons": [
+    "liquidation",
+    "stop_loss",
+    "trailing_stop_loss",
+    "force_exit"
+  ],
+  "execution_price_rule": "EXACT_CURRENT_HOUR_OPEN_AFTER_FROZEN_TICK_QUANTIZATION; NO_INTRABAR_PRICE",
+  "native_funding_loader": "DIRECT_EVENT_DATE_OPEN_FUND_ASSOCIATED_OPEN_MARK; NO_HOURLY_JOIN_OR_DATE_ROUNDING",
+  "family_natural_cluster_gate": "NOT_EVALUATED_HARD_GATE_FOR_ECONOMIC_RESEARCH_CONCLUSIONS",
+  "minimum_natural_clusters_per_family": 30,
+  "independent_confirmation": "FUTURE_SEPARATE_FREEZE_ONLY",
+  "negative_model_path": "NEGATIVE_FIXED_SIMULATED_PATH_NOT_SUFFICIENT_MECHANISM_REJECTION",
+  "evidence": [
+    "stable_episode_id_pair_family_direction_activation_exit_reason",
+    "unnetted_family_intents_net_targets_risk_scale_and_pauses",
+    "actual_order_fill_id_time_quantity_side_fee",
+    "actual_position_cycles_not_independent_family_samples",
+    "unique_funding_events_and_exact_posting_times"
+  ],
+  "family_attribution": "REQUIRES_FROZEN_RULES_BEFORE_ANY_LATER_READ_ONLY_COUNTING"
+}
