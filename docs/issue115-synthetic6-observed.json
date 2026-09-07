@@ -1,0 +1,85 @@
+{
+  "schema": "issue115-synthetic6-observed-v1",
+  "execution_head": "ac29b2fc7b2ceaaf6355707cae35c5602bedde0a",
+  "slot": "synthetic/6",
+  "budget_status": "FAILED",
+  "constructor_calls_this_attempt": 1,
+  "backtesting_start_calls_this_attempt": 1,
+  "total_consumed_slots": 7,
+  "total_actual_native_calls": 6,
+  "additional_native_calls_for_readonly_audit": 0,
+  "failure_class": "POSTPROCESSING_TYPE_ERROR_THEN_FULL_AUDIT_BLOCKED_BY_UNEXECUTABLE_REDUCTIONS",
+  "error": "ZIP config strategy:null membership TypeError; native report and trace retained",
+  "original_failed_evidence_sha256": "f92d2f7642cbf0c5aef9c8dbc1206dd8880a8279665f98bf71483c36a8bdb8d7",
+  "input_sha256": "b3a14a673303bcb3f7406d0599756b2c4b1bfb5b35900f96573e841fd079cfce",
+  "artifact_sha256": {
+    "runs/synthetic-6/exports/backtest-result-2026-09-08_01-03-30.zip": "4a4d2cc35665e12593b087f4e5e6ba6a7eedac35dc5b870d5faa9a3aec75058f",
+    "runs/synthetic-6/trace.json": "6d7b9113a18572f2f6e3bc9065aeb3e730bed234bbe9bc706dd9dbe9a95fcc97",
+    "runs/synthetic-6/bindings.json": "b7b48d83d499689b3f1fdba071a53b6d4c7916df8efe4481ccf51d115536229f",
+    "synthetic-6-dispatch.log": "5ece59a30d27451fc7770a4a66dcedb25e13d4e5b49bc5d7ece3efad968cb8c8"
+  },
+  "budget_sha256": "d69b8b19322960297631227c02d3f3237ca60d52b762c9c306e83f70fc1003ca",
+  "actual_trades": 8,
+  "actual_orders": 16,
+  "trace_hours": 120,
+  "fatal_callback_errors": 0,
+  "native_profit_synthetic_only": -34.433464380000004,
+  "native_funding_implementation_only": 0.05060942083333336,
+  "fees_and_slippage": "5.821480999999979520",
+  "slippage": "2.910740499999989760",
+  "final_net_equity_synthetic_only": "962.655795087552353840",
+  "final_net_profit_synthetic_only": "-37.344204912447646160",
+  "max_mark_drawdown_fraction": "0.31978991274579857756",
+  "risk_limit_satisfied": false,
+  "full_control_verdict": "NOT_PASS_UNEXECUTED_REDUCTIONS_REQUIRE_REVIEW",
+  "halt_liquidation": {
+    "halt_time": "2019-10-07T01:00:00+00:00",
+    "earliest_execution_time": "2019-10-07T01:00:00+00:00",
+    "inventory_before": {
+      "BTC/USDT:USDT": "2.645",
+      "ETH/USDT:USDT": "2.645"
+    },
+    "actual_delta_at_earliest_time": {
+      "BTC/USDT:USDT": "-2.645",
+      "ETH/USDT:USDT": "-2.645"
+    },
+    "residual_at_earliest_time": {
+      "BTC/USDT:USDT": "0.000",
+      "ETH/USDT:USDT": "0.000"
+    },
+    "next_hour_inventory": {
+      "BTC/USDT:USDT": "0.000",
+      "ETH/USDT:USDT": "0.000"
+    }
+  },
+  "unexecutable_reduction_hours": 2,
+  "first_unexecutable_reduction": {
+    "time": "2019-10-03T01:00:00+00:00",
+    "inventory": {
+      "BTC/USDT:USDT": "-3.883",
+      "ETH/USDT:USDT": "-3.883"
+    },
+    "targets": {
+      "BTC/USDT:USDT": "-3.883",
+      "ETH/USDT:USDT": "-3.883"
+    },
+    "unexecutable_reductions": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ]
+  },
+  "cash_insufficiency": "NOT_COVERED_NATIVE",
+  "funding_real_settlement": "UNVERIFIED",
+  "market_execution_allowed": false,
+  "economic_result": null,
+  "remaining_fresh_synthetic_slots": [
+    "synthetic/7",
+    "synthetic/8"
+  ],
+  "remaining_retry_slots": [
+    "retry/2",
+    "retry/3",
+    "retry/4"
+  ],
+  "retry_authorized": false
+}

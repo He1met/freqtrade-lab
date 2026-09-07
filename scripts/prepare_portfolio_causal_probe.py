@@ -13,7 +13,7 @@ from lab.portfolio_causal_fixture import input_sha, expand
 from scripts.run_portfolio_synthetic import verify_environment, SOURCE_COMMIT, sha
 
 REPO=Path(__file__).resolve().parents[1]
-CODE_FILES=("lab/portfolio_causal.py","lab/portfolio_causal_audit.py","lab/portfolio_causal_account.py","lab/portfolio_causal_fixture.py",
+CODE_FILES=("lab/portfolio_causal.py","lab/portfolio_native_export.py","lab/portfolio_causal_audit.py","lab/portfolio_causal_account.py","lab/portfolio_causal_fixture.py",
             "lab/portfolio_causal_strategy.py","lab/portfolio_causal_native.py","lab/portfolio_execution.py",
             "lab/portfolio_budget.py","lab/portfolio_preflight.py","lab/bounded_research.py",
             "scripts/prepare_portfolio_causal_probe.py","scripts/dispatch_portfolio_causal_probe.py","scripts/run_portfolio_synthetic.py")
@@ -136,18 +136,11 @@ def run_reserved(root,source,binding):
         bt=CausalBacktesting(config,exchange=exchange)
         bt.start()
         (root/"trace.json").write_bytes(canonical(bt.strategylist[0].trace))
-        import zipfile
+        from lab.portfolio_native_export import read_strategy_export
         from lab.portfolio_causal_audit import audit_causal
         archives=list((root/"exports").glob("*.zip"))
         if len(archives)!=1: raise ValueError("one native archive required")
-        results=[]
-        with zipfile.ZipFile(archives[0]) as archive:
-            for info in archive.infolist():
-                if info.filename.endswith(".json") and info.file_size<16*1024*1024:
-                    value=json.loads(archive.read(info))
-                    if "PortfolioCausalProbe" in value.get("strategy",{}):
-                        results.append(value["strategy"]["PortfolioCausalProbe"])
-        if len(results)!=1: raise ValueError("native strategy export missing")
+        results=[read_strategy_export(archives[0],"PortfolioCausalProbe")]
         (root/"native-result.json").write_bytes(canonical(results[0]))
         evidence=audit_causal(results[0],bt.strategylist[0].trace,start)
         evidence["archive_sha256"]=sha(archives[0])
