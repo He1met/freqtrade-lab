@@ -1,0 +1,230 @@
+{
+  "protocol_id": "PERP_INDEPENDENT_CONFIRMATION_V2",
+  "issue": 162,
+  "frozen_at": "2026-09-08T16:10:13.068639Z",
+  "freeze_context": "After development-only third-round selection and before any scored future observation, calculation or signal. New family admission is explicit; no V1 outcome or criterion changed.",
+  "authorization": "Current user-authorized optimization and BTC/ETH perpetual research; old spot #139/#155 calendars confer no authority",
+  "policy_path": "docs/protocols/perp-autonomous-policy-v2.json",
+  "policy_sha256": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+  "status": "FROZEN_CANDIDATE_REGISTERED_WAITING_TIMELY_RUNNER_ACCEPTANCE",
+  "activated": false,
+  "scope": {
+    "exchange": "Binance USD-M provisional research source; execution venue unconfirmed",
+    "pairs": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ],
+    "timeframe": "1h",
+    "wallet_usdt": 1000,
+    "wallet_status": "RESEARCH_ASSUMPTION",
+    "nominal_leverage": 1,
+    "market_workers": 1,
+    "candidate_count_max": 1,
+    "live_trading_authorized": false
+  },
+  "window": {
+    "kind": "GENUINELY_FUTURE",
+    "start_inclusive": "2026-09-10T00:00:00Z",
+    "end_exclusive": "2026-12-09T00:00:00Z",
+    "days": 90,
+    "candidate_registration_deadline_exclusive": "2026-09-10T00:00:00Z",
+    "warmup_start": "2026-09-03T00:00:00Z",
+    "warmup_end_exclusive": "2026-09-10T00:00:00Z",
+    "warmup_use": "Price features only; no scored warmup returns. Some warmup hours are still future at freeze and are not claimed acquired.",
+    "initial_positions": "FLAT",
+    "last_new_entry_exclusive": "2026-12-06T00:00:00Z",
+    "maximum_holding_hours": 72,
+    "terminal_accounting": "Exit existing positions under frozen rules, force remaining virtual position at end boundary with actual boundary open after publication. Preserve native actual force-exit timestamp if data ends earlier; do not relabel one-hour-early exit as end-boundary execution.",
+    "missed_activation": "NOT_ACTIVATED_MISSED_START; never backdate candidate registration or silently roll start. A later window requires a pre-start versioned protocol, with this missed window retained.",
+    "warmup_auxiliary_buffer_start": "2026-09-02T00:00:00Z",
+    "warmup_auxiliary_buffer_reason": "One non-scoring engineering buffer day before original seven-day warmup, for 168 return observations plus lag. This does not move, extend or score the 90-day confirmation window."
+  },
+  "historical_windows": [
+    {
+      "start": "2023-11-01T00:00:00Z",
+      "end_exclusive": "2024-11-01T00:00:00Z",
+      "status": "EXPOSED_DEVELOPMENT",
+      "evidence": "docs/research-knowledge/btc-eth-1000-central-v1.json windows"
+    },
+    {
+      "start": "2024-11-01T00:00:00Z",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "status": "LEGACY_SEALED_NOT_RELEASED",
+      "evidence": "docs/research-knowledge/btc-eth-1000-central-v1.json windows; not opened by this protocol"
+    },
+    {
+      "start": "2025-01-01T00:00:00Z",
+      "end_exclusive": "2026-07-01T00:00:00Z",
+      "status": "EXPOSED_DEVELOPMENT_INCLUDING_2026_DIAGNOSTIC",
+      "evidence": "round-001 native manifest and docs/protocols/perp-first-experiment-v1.json"
+    },
+    {
+      "start": null,
+      "end_exclusive": "2026-09-10T00:00:00Z",
+      "status": "OTHER_HISTORY_UNSEEN_STATUS_NOT_ESTABLISHED",
+      "evidence": "Scoped audit is not a proof of universal historical freedom; no unreviewed past window admitted"
+    }
+  ],
+  "candidate_selection": {
+    "eligible_family": [
+      "Frozen parent persistence 12h exit",
+      "Predeclared V2 persistence 24h exit",
+      "Predeclared V2 persistence 48h exit",
+      "Frozen carry_nonpaying settled-funding sign gate on persistence with 12h exit"
+    ],
+    "eligibility": "One retained native shared-wallet run with reconciled fees/funding and positive full-development net USDT under complete 8bp/side cost. Exposed 2026 diagnostics are disclosed, never holdout. Any unavailable native semantics or unverified accounting blocks selection.",
+    "ranking": [
+      "Highest full-development net USDT among eligible candidates",
+      "If net differs by <=1 USDT, lower turnover notional",
+      "If still tied, shorter exit channel"
+    ],
+    "risk": "About 20% is a diagnostic target. A result slightly above target is not disqualified. Development drawdown >=30% mandates RISK_RECALIBRATION_REQUIRED before activation; 30% is a conservative mandatory review trigger, not accepted real-account risk or an economic pass threshold. Recalibration must be frozen and fully recalculated before future start, otherwise no activation.",
+    "if_none": "NO_COST_SUPPORTED_CANDIDATE; no confirmation activation, no forced replacement. Preserve future-window reservation and report the inactive state.",
+    "registration_fields": [
+      "candidate_id",
+      "strategy_sha256",
+      "runner_sha256",
+      "cost_sha256",
+      "data_receipt_sha256",
+      "policy_sha256",
+      "candidate_protocol_sha256",
+      "development_report_sha256",
+      "registered_at",
+      "confirmation_protocol_sha256"
+    ],
+    "freeze_rule": "Choose once using development only before start. Do not switch winners, retune exits/factors, add coins, or use this confirmation outcome to select the candidate.",
+    "selection_for_this_version": {
+      "candidate_id": "perp-carry-nonpaying-v1",
+      "variant": "carry_nonpaying",
+      "development_only": true,
+      "reason": "Only the frozen new family has positive complete-cost net and reconciled native accounting. Select once before future start; no future evidence was consulted.",
+      "development_manifest_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-003/manifest.json",
+      "development_manifest_sha256": "0a05a8d7ce1565b7f6c6fb6961696399e1ff54c30a7425145ac64d184969c0b5",
+      "development_input_fingerprint": "34db403acf5ab8d6f0d5400b9811ee07605346ff6e32e1c36ffbdbc1d3e504d9",
+      "strategy_path": "lab/perp_funding_premium.py",
+      "strategy_sha256": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+      "runner_path": "scripts/run_perp_funding_premium_v1.py",
+      "runner_sha256": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca",
+      "candidate_protocol_path": "docs/protocols/perp-funding-premium-v1.json",
+      "candidate_protocol_sha256": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+      "development_summary_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-003/carry_nonpaying/summary.json",
+      "development_summary_sha256": "2ff690b204ae7a588feb69419a06ad5965f427fb8464877c7f004252b1d383e3"
+    }
+  },
+  "time_and_data": {
+    "event_timezone": "UTC",
+    "features": "Source candle t OHLCV price/persistence features; latest settled funding satisfying the frozen sign rule; same-source-hour premium completeness only. Preserve publication assumption separately from real fetched/observed availability. Actual effective available_at <= actual decision_at; no future fitting or revision overwrite.",
+    "signal_timing": "nominal_cutoff=t+1h+60s selects exactly the historical model eligible source/publication records; planned_entry=t+2h remains unchanged. actual_decision_at=max(observed_at,required fetched_at,effective observed available_at), strictly before planned_entry; +10/+30min capture can be timely without claiming it occurred at nominal +60s. Save durable signal/NO_TRADE before planned_entry. At or after planned_entry classify LATE and do not retrospectively simulate timely intent.",
+    "evidence_grade": "Precommitted future signals evaluated with native offline fill assumptions can establish future economic evidence; they do not establish actual fills, live execution, or protection timing. Future data with only late replay remains FUTURE_DATA_DELAYED_REPLAY_ONLY, not this protocol primary confirmation.",
+    "scheduler_gate": "30-minute heartbeat alone does not prove signal capture. Before activation, exercise actual incremental data->feature->precommitted signal->native reconciliation on a non-scoring interval with durable timestamps and single writer.",
+    "minimum_timely_decision_coverage": 0.95,
+    "missing": "At a missing decision do not open new virtual risk; record the omission immediately. Never drop losing/missing dates based on later outcomes. Report all scheduled decisions and a same-availability comparator. Unknown execution/valuation/funding while a position is open blocks complete primary net equity until bounded reconstruction is explicitly separated; never zero-fill funding.",
+    "sensitive_features": "Only selected frozen price/persistence, lagged settled-funding sign and premium completeness in primary confirmation. OI/onchain/news or premium sign cannot be added. Revised data preserve original vintages; historical non-PIT assumptions do not prove actual timely future knowledge.",
+    "funding_signal": "Use latest settled event whose declared_available_at (at least event_time+1h) <= nominal_cutoff. Keep nominal_cutoff-event_time<=12h exactly as frozen historical align_factors. The chosen event must actually have been observed/fetched by actual_decision_at. Long rate<=0; short rate>=0. This signal lag never postpones or duplicates funding cash flow.",
+    "premium_role": "Required for exact inherited factor_valid completeness: same source-hour finite premium close and declared_available_at<=nominal_cutoff, actually fetched by actual_decision_at. Its SIGN is not used by carry_nonpaying; do not add premium-agreement gate. Missing premium is missing required input even when funding sign is known.",
+    "timely_coverage_definition": {
+      "denominator": "90 days * 24 scheduled hourly planned-entry slots * 2 pairs = 4320 pair-hours, anchored at window start; include flat periods, no-trade and final 72h with new entries disabled.",
+      "numerator": "Unique immutable TIMELY_SIGNAL or TIMELY_NO_TRADE records with every required input valid/actually available and persisted before planned_entry. A timely omission/WAIT_DATA/LATE/INVALID record does not count as complete timely coverage.",
+      "minimum": 0.95,
+      "required_timely_pair_hours": 4104,
+      "no_trade_rule": "No trade is an observed strategy decision with complete valid data; it is not a substitute for missing features.",
+      "duplicates": "Stable candidate/pair/planned_entry key; count once, preserve first valid record and revisions separately; never insert hindsight records into primary numerator."
+    },
+    "activation_acceptance": "Before future start bind final forward-recorder code, data reader, provenance and tests to a separate immutable activation receipt; exercise actual non-scoring 8-day seed plus real observed-at signal recording. Protocol/candidate registration alone is not runtime acceptance, native confirmation, automatic scheduling proof or live trading."
+  },
+  "cost_and_wallet": {
+    "native_engine": "Pinned Freqtrade, one shared wallet, two pairs, 1x isolated research assumption. Preserve full lifecycle peak and fees/funding.",
+    "taker_fee_each_side": 0.0006,
+    "cash_slippage_allowance_each_side": 0.0002,
+    "base_fee_equivalent_each_side": 0.0008,
+    "actual_spread_impact": "UNKNOWN; no order-book execution claim",
+    "funding": "Actual settled events and mark, signed cash flow once per held amount; preserve milliseconds and declared same-timestamp event-before-fill order.",
+    "stress": "Additional 4bp/side conditional same-fill arithmetic only; report separately, not independent samples or full account rerun.",
+    "risk_observation": "Hourly mark-to-market equity includes open PnL, fees and funding. Intrahour drawdown remains UNKNOWN unless separately verified. Current contract filters are not historical PIT."
+  },
+  "sample_and_decision": {
+    "opportunity_unit": "Complete native position episodes and synchronized BTC/ETH 72-hour blocks anchored at window start. Same block across coins and multiple cost scenarios are not independent samples.",
+    "minimum_nonempty_synchronized_72h_blocks": 12,
+    "sample_rationale": "A modest predeclared planning floor across 90 days, not an industry standard or a guarantee of statistical power. Fewer natural opportunities yield UNDERPOWERED; no trades are manufactured and no fixed annual trade quota applies.",
+    "uncertainty": "Report concentration, exposure, duration, tails and block dependence. If feasible report synchronized 72h block bootstrap 95% interval using a preregistered fixed seed, 2000 resamples; show estimator limits. CI unavailable remains UNKNOWN and never becomes a fabricated significance claim.",
+    "precedence": [
+      "Data/accounting/execution-semantic failure -> BLOCKED_DATA or BLOCKED_RUNTIME; economic metrics unavailable stay NULL",
+      "Fewer than 12 nonempty synchronized blocks or timely coverage below 95% -> UNDERPOWERED; keep descriptive economic sign separately",
+      "Adequate observations and gross price effect <=0 -> GROSS_NOT_SUPPORTED",
+      "Adequate observations, gross positive, base net <=0 -> COST_NOT_SUPPORTED",
+      "Adequate observations and base net >0 -> CONFIRMATION_POSITIVE_LIMITED; stress negative adds COST_SENSITIVE, it is not a universal profitability claim"
+    ],
+    "risk_dimension": "Independently report WITHIN_TARGET / ABOVE_TARGET_REVIEW / RISK_RECALIBRATION_REQUIRED. 20.1% or 21% is not an automatic economic fail; >=30% requires recalibration review and cannot graduate. Report DD duration/tail/exposure and uncertainties at every level.",
+    "positive_is_not_live_permission": true,
+    "calendar_end": "Generate terminal report at fixed end even when samples are insufficient; no automatic extension. A subsequent independent window is a new predeclared budget, never relabeling or appending until positive.",
+    "bootstrap_spec": {
+      "seed": 162,
+      "resamples": 2000,
+      "block_hours": 72,
+      "synchronize_pairs": true,
+      "series": "One frozen shared-wallet hourly log-return series; resample the 30 complete nonoverlapping 72h blocks with replacement. Include zero-exposure blocks.",
+      "estimand": "Conditional realized-path 90-day compounded return, not a new native account execution or probability of future profit.",
+      "unknown_rule": "Any missing primary equity blocks or nonpositive equity makes this estimator unavailable; report UNKNOWN rather than selectively dropping blocks."
+    }
+  },
+  "reporting_and_scheduler_provenance": {
+    "immediate_reports": "Persist technical blockers, budget end and final economics in Chinese Markdown plus machine summary; next direction exactly one with actual queued/waiting/inactive ID.",
+    "interim": "Health/data status may be read; no candidate replacement, threshold tuning or repeated PnL-driven decisions within confirmation.",
+    "current_optimization_trigger": "USER_STEERED_EXPLICIT_OPTIMIZATION; not evidence of heartbeat execution",
+    "first_automatic_run_status": "UNKNOWN",
+    "verified_next_trigger": "UNKNOWN",
+    "automation_receipt_required": [
+      "automation_id",
+      "target_thread_id",
+      "actual_turn_id",
+      "actual_started_at",
+      "scheduler_trigger_evidence_source",
+      "cause_classification",
+      "checkpoint_receipt_sha256"
+    ],
+    "proof_rule": "Only scheduler/provider metadata that identifies the trigger may prove automatic execution. Prompt similarity, elapsed 30 minutes, ACTIVE config or a user-started tick do not. If trigger origin is unavailable record UNKNOWN; do not derive it from cadence."
+  },
+  "audit_boundaries": {
+    "market_calculations": 0,
+    "new_http_requests": 0,
+    "credentials_or_sensitive_databases_read": false,
+    "old_registry_or_frozen_evidence_mutated": false,
+    "runtime_activation": false,
+    "new_future_data_requests": 0,
+    "future_signal_calculations": 0,
+    "confirmation_native_calls": 0,
+    "scheduler_changes": 0
+  },
+  "predecessor": {
+    "path": "docs/protocols/perp-independent-confirmation-v1.json",
+    "sha256": "60ca5096404bb0f33a9fdbf36b74336a8f4cf62ee5107811613feb6ece4710e5",
+    "status_at_supersession": "NOT_ACTIVATED_NO_COST_SUPPORTED_CANDIDATE",
+    "activated": false,
+    "confirmation_native_calls": 0,
+    "scored_future_observations": 0,
+    "original_bytes_unchanged": true,
+    "reservation": "Explicitly supersede only the unactivated reservation before its future start; preserve V1 record. No active parallel candidate or reused scored observations."
+  },
+  "same_window_rationale": "2026-09-10 has not begun, V1 was never activated and no confirmation observation/result exists; retain its 90-day window without a result-dependent calendar change. If timely-runner gate is not met before the original start, retain NOT_ACTIVATED_MISSED_START and require a separately pre-start later protocol, never retroactive activation.",
+  "candidate_registration_path": "docs/research/perp-carry-nonpaying-registration-v1.json",
+  "research_risk_explanation": {
+    "classification": "ABOVE_TARGET_REVIEW",
+    "research_only": true,
+    "observed_hourly_mtm_drawdown": 0.214538901198996,
+    "drawdown_duration_hours": 10748,
+    "net_usdt": 80.17886209544349,
+    "gross_price_effect_usdt": 222.66391999999934,
+    "funding_usdt": 6.745412655444216,
+    "conditional_same_fill_stress_net_usdt": 5.563626815443428,
+    "by_pair_side_net_usdt": {
+      "BTC_long": 15.24129538,
+      "BTC_short": -25.46163841,
+      "ETH_long": -118.85277042,
+      "ETH_short": 209.25197557
+    },
+    "interpretation": "21.4539% is slightly above the unchanged about-20% target, below the unchanged 30% mandatory recalibration trigger. 10748 underwater hours, ETH-short concentration and only 5.56 USDT stress surplus make support fragile. Future confirmation keeps both assets/directions and all rules; no after-result risk increase, dropping losers, leverage/fund increase or live admission.",
+    "risk_protection_change": false,
+    "parameter_recalibration_performed": false,
+    "economic_qualification": false
+  }
+}

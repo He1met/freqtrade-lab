@@ -40,3 +40,17 @@ def test_partial_or_unknown_capture_never_marks_data_ready(tmp_path):
     state=schedule.read_status(root/'scheduler',POLICY)
     assert state['due']['hourly_data']['status']=='DUE'
     assert result['freshness']['status']=='UNKNOWN'
+
+
+def test_acquisition_holds_same_lock_as_research_claim(tmp_path):
+    root=tmp_path/'runtime'
+    task=dict(id='pending',kind='research',mechanism='breakout',code_sha256='a'*64,data_sha256='b'*64,
+              policy_sha256=schedule.load_policy(POLICY)[1],hypothesis='test',variants=4,max_seconds=1800)
+    schedule.enqueue(root/'scheduler',POLICY,task)
+    def during_acquisition(_):
+        import pytest
+        with pytest.raises(BlockingIOError): schedule.claim(root/'scheduler',POLICY,'pending')
+        return dict(status='DATA_CAPTURED',requests=0,root='/synthetic',core_complete=True)
+    pulse.run(root,POLICY,updater=during_acquisition)
+    assert schedule.read_status(root/'scheduler',POLICY)['tasks'][0]['status']=='QUEUED'
+    assert schedule.claim(root/'scheduler',POLICY,'pending')['status']=='RUNNING'

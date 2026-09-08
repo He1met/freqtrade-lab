@@ -24,7 +24,8 @@
 
 ## Current research policy (new batches from 2026-09-08)
 
-- Read `docs/protocols/perp-autonomous-policy-v1.json`, the latest perpetual report and the Git-external scheduler state at each new research session. Issue #162 owns this migration and first slice.
+- Read `docs/protocols/perp-autonomous-policy-v3.json`, `docs/research-knowledge/perp-autonomous-v3.json`, the latest perpetual report and the Git-external scheduler state at each new research session. Issue #162 owns this migration and first slice.
+- Budget is cumulative across policies: 8 exploration variants per UTC day / 28 per UTC week; every 3 finished rounds is a review checkpoint, not a round cap. Fixed candidate acceptance and one-shot confirmation have separate bounded budgets, one market worker. Finish/report/enqueue the unique successor and continue in the same invocation when budget and real gates permit. Daily idea ranking is not a one-round-per-day restriction. Preserve V1 frozen code, protocols, results and consumed budget.
 - Active trading research is BTC/ETH USDT linear perpetual only, 1h, initial nominal leverage 1x. Spot #139/#155/#161 and other assets are archived research scopes; do not restart their acquisitions or forward strategy scoring from historical README examples or old scheduler prompts.
 - New research uses an approximately 20% drawdown target as a diagnostic, not an automatic 20.1% rejection. Old frozen risk verdicts and actual production protections remain unchanged.
 - The user's 2026-09-08 authority permits bounded public acquisition, finite transient retries, research code, isolated native backtests and project research scheduling without repeated per-step approval. No credentials, sensitive DBs, paid APIs, account access, orders, live deployment or production risk increase.

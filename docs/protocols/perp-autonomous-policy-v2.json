@@ -1,0 +1,99 @@
+{
+  "policy_version": "BTC_ETH_PERP_AUTONOMOUS_V2",
+  "effective_at": "2026-09-08T15:51:35Z",
+  "issue": 162,
+  "authority": "User explicit authorization in supervisor task 01a081ae-feb7-7911-844e-6b3d7b810c05: 按照你的建议，执行所有的优化。 Verified by read_thread; cumulative consumed budget remains counted.",
+  "source_attachment": "freqtrade_lab_btc_eth_perpetual_codex_final_prompt.md",
+  "instruments": [
+    "BTC/USDT:USDT",
+    "ETH/USDT:USDT"
+  ],
+  "product": "USDT_LINEAR_PERPETUAL",
+  "research_exchange": "binance",
+  "execution_exchange_status": "UNCONFIRMED",
+  "capital_usdt": 1000,
+  "capital_status": "RESEARCH_ASSUMPTION_NOT_ACCOUNT_BALANCE",
+  "timeframe": "1h",
+  "nominal_leverage": 1,
+  "research_drawdown_target": 0.2,
+  "drawdown_policy": "TARGET_AND_DIAGNOSTIC_NOT_AUTOMATIC_REJECTION; slightly above target requires full risk/cost/exposure explanation; no inferred permission for arbitrary risk",
+  "production_risk_change_authorized": false,
+  "live_trading_authorized": false,
+  "paid_data_or_api_authorized": false,
+  "preserve_frozen_batches": true,
+  "historical_exposure_default": "DEVELOPMENT_ONLY",
+  "active_mechanisms_max": 2,
+  "market_workers": 1,
+  "daily_rounds": 3,
+  "daily_variants": 8,
+  "weekly_rounds": 21,
+  "weekly_variants": 28,
+  "bootstrap_data_budget": {
+    "requests": 120,
+    "seconds": 1200,
+    "bytes": 104857600
+  },
+  "incremental_data_budget": {
+    "requests_per_tick": 24,
+    "seconds_per_tick": 300,
+    "bytes_per_tick": 20971520,
+    "requests_per_day": 576,
+    "requests_per_week": 4032
+  },
+  "retry": {
+    "max_attempts_per_request": 3,
+    "transient_backoff_seconds": [
+      2,
+      5
+    ],
+    "permanent_permission_or_semantics": "CIRCUIT_BREAK_UNTIL_CHANGED_PREREQUISITE"
+  },
+  "native_round_budget_seconds": 1800,
+  "disk_soft_cap_bytes": 5368709120,
+  "disk_policy": "Do not delete source/receipt/history; when cap exceeded stop new acquisition and report capacity blocker. Temporary request files may be removed after committed checksum receipt only.",
+  "scheduler_id": "freqtrade-lab-2",
+  "scheduler_kind": "heartbeat",
+  "heartbeat_minutes": 30,
+  "health_minutes": 30,
+  "health_cadence_reason": "Reuse supported existing heartbeat without a second daemon; suggested 15-minute script scheduling is not independently installed. No production order protection depends on this research cadence.",
+  "market_available_delay_minutes": 10,
+  "display_timezone": "Asia/Shanghai",
+  "storage_timezone": "UTC",
+  "daily_report_local": "20:00",
+  "weekly_review_local": "SUN 17:00",
+  "schedule_time_migration": "Attachment 21:00 Asia/Tokyo = 20:00 Asia/Shanghai = 12:00 UTC; Sunday 18:00 Asia/Tokyo = Sunday 17:00 Asia/Shanghai = 09:00 UTC. Preserve intended absolute time.",
+  "research_discovery": "Daily idea ranking is not a research-round limit. After each report, continue the unique frozen next experiment in the same invocation whenever cumulative budget and genuine data/time gates permit.",
+  "next_direction_rule": "Exactly one prioritized hypothesis with parent, single change, data, information value, predeclared budget and stopping condition; explicitly queued/waiting/paused/blocked",
+  "spot_research_status": "ARCHIVED_NO_NEW_EXPERIMENTS_OR_FORWARD_SCORING",
+  "other_assets_research_status": "INACTIVE",
+  "superseded_active_scopes": [
+    139,
+    155,
+    161
+  ],
+  "new_batch_permissions": [
+    "research_code_and_config",
+    "targeted_tests",
+    "public_source_search",
+    "free_public_data",
+    "bounded_offline_native_backtests",
+    "isolated_shadow_observation",
+    "project_research_schedule_update",
+    "branch_commit_and_review"
+  ],
+  "forbidden": [
+    "credentials_or_sensitive_database_access",
+    "real_account_changes",
+    "orders_or_live_trading",
+    "new_funds",
+    "account_leverage_increase",
+    "production_loss_limit_increase",
+    "paid_subscriptions_or_servers",
+    "rewriting_old_results",
+    "calling_exposed_history_independent",
+    "silent_runtime_restart_of_uncertain_experiment"
+  ],
+  "source_attachment_sha256": "aa6fe5438cb9504d7f584ac734687307d5622ae470a6010bc090c00a2e36b27a",
+  "supersedes_policy_version": "BTC_ETH_PERP_AUTONOMOUS_V1",
+  "budget_migration": "Count all research tasks started in each UTC day/week, including V1. Preserve old policy/results. Only the unused parent-bound round-002 budget wait is superseded; never clear genuine data/time waits."
+}

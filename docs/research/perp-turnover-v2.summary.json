@@ -1,0 +1,558 @@
+{
+  "artifact_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-002",
+  "benchmark_reused": {
+    "by_pair": {
+      "BTC/USDT:USDT": {
+        "net_usdt": -182.7216889282736,
+        "price_return": -0.39754288887974665
+      },
+      "ETH/USDT:USDT": {
+        "net_usdt": -235.60788223294247,
+        "price_return": -0.5406091742688824
+      }
+    },
+    "funding_usdt": -42.08895456197207,
+    "gross_usdt": -375.2608252594516,
+    "label": "ARITHMETIC_LONG_BTC40_ETH40_CASH20_REFERENCE_NOT_NATIVE_OR_PIT_EXECUTABLE",
+    "minimum_precision_and_historical_margin_checks": false,
+    "net_usdt": -418.3295711612161,
+    "transaction_cost_usdt": 0.9797913397924389
+  },
+  "binding": {
+    "code": {
+      "docs/protocols/perp-autonomous-policy-v1.json": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+      "docs/protocols/perp-autonomous-policy-v2.json": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+      "docs/protocols/perp-first-experiment-v1.json": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+      "docs/protocols/perp-turnover-v2.json": "a484b7fdec2069e554215f331c87effe6a07719e9dd00c39abcd425597468216",
+      "lab/perp_baseline.py": "046e0343ef6669e72334309522f25799e2e6adfd957ed42d8a687205a38d3522",
+      "lab/perp_baseline_report.py": "d6a03131fb386c800a4aacae723e97dd6b642ec86f19305cd5bd168bc03aac50",
+      "lab/perp_baseline_runner.py": "5da2896c64f9fbc32be32db9496a42c2a821b889c1bb1a47c88948b857b3b6f2",
+      "lab/perp_variant_v2.py": "30a66227038093288d0e3315483ad26c67da4dbfb4ac10fdf9483fc15db1fa48",
+      "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+      "scripts/run_perp_experiment.py": "687aa5beef8be460c7324a260198c4435407efd9f9298dd1aee453648e5f6b92",
+      "scripts/run_perp_round_v2.py": "9e0dec1e0d669d9fc94be6847e3e8773f1b8a4e94e75a394dbf2e46463b3b5bb"
+    },
+    "environment": {
+      "interpreter": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/bin/python",
+      "packages": {
+        "ccxt": "4.5.68",
+        "freqtrade": "2026.7",
+        "pandas": "3.0.3",
+        "pyarrow": "25.0.0"
+      },
+      "python": "3.13.13",
+      "source_commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5"
+    },
+    "idempotency_key": "f4ee74cc4bb20a40b5636dd5bdc510db61921d7cdeaa5e1aff08ba616dc29273",
+    "market_native_calls": 0,
+    "parent_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-001",
+    "parent_summary_sha256": "a8181616bdde5d3b51c712f480ea4f28a7d22b0e97f1c16c347d63ff4518f2e0",
+    "planned_new_native_calls": 2,
+    "preparation_seconds": 1.4998389160027727,
+    "prepared_at": "2026-09-08T15:56:07.934295+00:00",
+    "source": {
+      "BTCUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-funding.jsonl",
+        "rows": 1638,
+        "sha256": "ac5abe935d420a8c3e955b0d76366978ce8a2625376ecd6d1d11c0baa1b1f528"
+      },
+      "BTCUSDT-mark": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-mark.jsonl",
+        "rows": 13104,
+        "sha256": "0fe6cb26c594011fe489e91c3eeb7bdc9a674af006223c1562b31a2a0a704ba1"
+      },
+      "BTCUSDT-ohlcv": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-ohlcv.jsonl",
+        "rows": 13104,
+        "sha256": "3853f0e18d941f71c475a448a63e0f8a2e0c71398c639f073cfa05ea2289d3a7"
+      },
+      "ETHUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-funding.jsonl",
+        "rows": 1638,
+        "sha256": "cf3ed3083c40a6b143bb8a4c710e8ead8811a05a04528d0ca1162a88660320ed"
+      },
+      "ETHUSDT-mark": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-mark.jsonl",
+        "rows": 13104,
+        "sha256": "7d3797a170bffcfc6c2b1b3b50d5e19e69aa5d74f016e978aeaf14291647d73e"
+      },
+      "ETHUSDT-ohlcv": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-ohlcv.jsonl",
+        "rows": 13104,
+        "sha256": "c04eb1b691bcec15e4320d2f525cdc89e85d9402719aaa56e26d0e89fcb69dc1"
+      },
+      "instrument_rules": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/instrument-rules.json",
+        "sha256": "f295957934864c2d15f3ea5fc3e1c585df6d8e6e62fb8494606194eb42584149"
+      }
+    },
+    "status": "READY_V2_OFFLINE_DEVELOPMENT"
+  },
+  "conclusion": "换手和成本下降但毛价格效应转负，关闭延长退出通道的成本分支",
+  "event_diagnostics_reused": {
+    "all": {
+      "common_72h_entry_clusters": 180,
+      "fifth_percentile_net": -0.04961816334102259,
+      "mean_cost": 0.0015987591838596367,
+      "mean_gross_return": -0.0010367911237361594,
+      "mean_net_return": -0.0026623130158375764,
+      "signal_events": 1952
+    },
+    "confidence_interval": null,
+    "dynamic_reduced": {
+      "common_72h_entry_clusters": 143,
+      "fifth_percentile_net": -0.053788417443507354,
+      "mean_cost": 0.0016010977906535506,
+      "mean_gross_return": -0.001303782070693565,
+      "mean_net_return": -0.0029208918454567607,
+      "signal_events": 836
+    },
+    "fixed_horizon_hours": 24,
+    "label": "OVERLAPPING_24H_EVENTS_NOT_WALLET_RETURNS_NOT_INDEPENDENT_SAMPLES",
+    "later_development": {
+      "common_72h_entry_clusters": 60,
+      "fifth_percentile_net": -0.04082825698738292,
+      "mean_cost": 0.0015965525239899595,
+      "mean_gross_return": 0.0007666810945012158,
+      "mean_net_return": -0.0008460905339626657,
+      "signal_events": 610
+    },
+    "no_volatility_reduction": {
+      "common_72h_entry_clusters": 169,
+      "fifth_percentile_net": -0.04694816370666294,
+      "mean_cost": 0.0015970073242900019,
+      "mean_gross_return": -0.0008367871527178876,
+      "mean_net_return": -0.0024686105950834213,
+      "signal_events": 1116
+    },
+    "persistence_fail": {
+      "common_72h_entry_clusters": 172,
+      "fifth_percentile_net": -0.04981603930403621,
+      "mean_cost": 0.0015982108226191322,
+      "mean_gross_return": -0.002880794629735029,
+      "mean_net_return": -0.004491623190717566,
+      "signal_events": 641
+    },
+    "persistence_pass": {
+      "common_72h_entry_clusters": 177,
+      "fifth_percentile_net": -0.049439921310583695,
+      "mean_cost": 0.0015990272994623545,
+      "mean_gross_return": -0.00013518452774433944,
+      "mean_net_return": -0.0017678905733523938,
+      "signal_events": 1311
+    },
+    "reason": "Overlapping fixed labels and two synchronized assets; descriptive diagnostics only.",
+    "train_boundary_purged": 1,
+    "training": {
+      "common_72h_entry_clusters": 120,
+      "fifth_percentile_net": -0.05270720901015564,
+      "mean_cost": 0.001599757305449381,
+      "mean_gross_return": -0.0018520252986833922,
+      "mean_net_return": -0.003483523382561576,
+      "signal_events": 1341
+    }
+  },
+  "idempotency_key": "f4ee74cc4bb20a40b5636dd5bdc510db61921d7cdeaa5e1aff08ba616dc29273",
+  "independent_confirmation": {
+    "frozen_unchanged": true,
+    "native_calls": 0,
+    "protocol": "docs/protocols/perp-independent-confirmation-v1.json",
+    "sha256": "60ca5096404bb0f33a9fdbf36b74336a8f4cf62ee5107811613feb6ece4710e5",
+    "status": "NOT_ACTIVATED_NO_COST_SUPPORTED_CANDIDATE"
+  },
+  "issue": 162,
+  "market_native_calls_total": 2,
+  "native_execution_status": "COMPLETED_DEVELOPMENT",
+  "new_native_calls_this_invocation": 2,
+  "next_task": {
+    "budget_claimed": false,
+    "hypothesis": "Lagged settled funding/premium context may identify crowded or persistent conditions within the parent persistence entry signals",
+    "id": "perp-round-003-funding-premium-v1",
+    "max_new_variants": 2,
+    "parent": "round-001/persistence 12h exit",
+    "queued": false,
+    "requires": "Separate causal feature freeze and single-worker supervisor budget claim; no implicit execution by V2 worker",
+    "status": "PREPARING"
+  },
+  "parent": {
+    "accounting_reconciliation": "PASS",
+    "actual_bid_ask_impact": null,
+    "annualization_is_descriptive_development": true,
+    "annualized_return": -0.05741933490282547,
+    "artifacts": {
+      "backtest-result-2026-09-08_23-16-54.zip": "f8eb8d0b5fb9fa26393ba01f787905a22d0608c9eb3ea071620687c32d73fef6"
+    },
+    "by_pair": {
+      "BTC/USDT:USDT": {
+        "funding_usdt": -0.20191755972194567,
+        "net_usdt": -121.71342005,
+        "position_cycles": 228
+      },
+      "ETH/USDT:USDT": {
+        "funding_usdt": -5.725201329592604,
+        "net_usdt": 38.09394757000001,
+        "position_cycles": 223
+      }
+    },
+    "by_side": {
+      "long": {
+        "funding_usdt": -11.900116696655315,
+        "net_usdt": -145.86535014999998,
+        "position_cycles": 219
+      },
+      "short": {
+        "funding_usdt": 5.972997807340766,
+        "net_usdt": 62.245877670000006,
+        "position_cycles": 232
+      }
+    },
+    "clusters_are_approximately_dependent": true,
+    "common_72h_entry_clusters": 172,
+    "completed_position_cycles": 451,
+    "conditional_same_fill_stress_net_usdt": -211.60467933731064,
+    "confidence_interval": null,
+    "drawdown_duration_hours": 5072,
+    "duration_seconds": 4.5215339589631185,
+    "filled_orders": 902,
+    "fixed_multiplier": 0.9222908868475919,
+    "funding_usdt": -5.927118889314541,
+    "gross_price_effect_usdt": 178.27806000000382,
+    "historical_contract_rules_verified": false,
+    "independent_confirmation": false,
+    "max_gross_exposure_fraction": 0.8426413846043881,
+    "mean_gross_exposure_fraction": 0.3768473102215212,
+    "monthly_returns": {
+      "2025-01-31": -0.07516160872153688,
+      "2025-02-28": -0.0330900360012798,
+      "2025-03-31": -0.009780500946976689,
+      "2025-04-30": -0.04063568664143946,
+      "2025-05-31": 0.05739099765513056,
+      "2025-06-30": -0.003312572594174723,
+      "2025-07-31": 0.0733678247514753,
+      "2025-08-31": 0.06843517004124644,
+      "2025-09-30": -0.018699567708563514,
+      "2025-10-31": 0.0011308802476961421,
+      "2025-11-30": -0.08166648055559966,
+      "2025-12-31": -0.0900556096732652,
+      "2026-01-31": 0.15959657039935338,
+      "2026-02-28": 0.060890228694905346,
+      "2026-03-31": 0.015562075744745885,
+      "2026-04-30": -0.13469686942178505,
+      "2026-05-31": -0.04121932255876459,
+      "2026-06-30": 0.04890961473358946,
+      "2026-07-31": 0.0
+    },
+    "native_exit_reasons": {
+      "exit_signal": 432,
+      "force_exit": 1,
+      "holding_72h": 18
+    },
+    "native_orders": 902,
+    "native_position_cycles": 451,
+    "native_profit_usdt": -83.61947247999998,
+    "net_usdt": -83.61947252131063,
+    "observed_hourly_mtm_drawdown": 0.22557684232867603,
+    "slippage_allowance_usdt": 63.99260340799998,
+    "source_fingerprint": "ed3edb564999041221cef5643dd424950a979bd777167abc76d49e5bf1103341",
+    "stage": "DEVELOPMENT_ONLY_ALL_HISTORY_EXPOSED_NO_INDEPENDENT_CONFIRMATION",
+    "taker_fee_usdt": 191.97781022399994,
+    "total_return": -0.08361947252131063,
+    "training_signal_rows": 1342,
+    "true_intrahour_drawdown": null,
+    "turnover_notional_usdt": 319963.01704,
+    "turnover_starting_capital": 319.96301704,
+    "uncertainty": "Development only; overlapping two-asset signals and selection prohibit independent-sample significance. No return CI fabricated.",
+    "variant": "persistence",
+    "worst_hour_equity_return": -0.027123526260092068,
+    "worst_position_net_usdt": -28.2456173
+  },
+  "parent_12h_recomputed": false,
+  "periods": {
+    "exit24": {
+      "independently_validated": false,
+      "later_development": {
+        "final_equity": 660.8316340450765,
+        "initial_equity": 681.3449928905701,
+        "return_fraction": -0.03010715431908695,
+        "version_period_drawdown": 0.3530739453515829
+      },
+      "note": "Same continuous native account; period returns are descriptive, later period was not a fresh unseen holdout. Lifecycle DD is retained separately.",
+      "phase_boundary_positions_carried": true,
+      "training": {
+        "final_equity": 681.3449928905701,
+        "initial_equity": 1000.0,
+        "return_fraction": -0.31865500710942996,
+        "version_period_drawdown": 0.3431170284574002
+      }
+    },
+    "exit48": {
+      "independently_validated": false,
+      "later_development": {
+        "final_equity": 631.7768529572484,
+        "initial_equity": 741.4567070635213,
+        "return_fraction": -0.14792482563230303,
+        "version_period_drawdown": 0.40701414876520536
+      },
+      "note": "Same continuous native account; period returns are descriptive, later period was not a fresh unseen holdout. Lifecycle DD is retained separately.",
+      "phase_boundary_positions_carried": true,
+      "training": {
+        "final_equity": 741.4567070635213,
+        "initial_equity": 1000.0,
+        "return_fraction": -0.2585432929364787,
+        "version_period_drawdown": 0.4019700717126897
+      }
+    }
+  },
+  "policy": "BTC_ETH_PERP_AUTONOMOUS_V2",
+  "preparation_seconds": 1.4998389160027727,
+  "production_risk_changed": false,
+  "raw_monthly_endpoint_note": "July 2026 0% in raw monthly table is flat terminal carry, not researched July data",
+  "receipts": {
+    "attempts.jsonl": "9959c5d1e8f0e275f822a217acc2765461a5b54f0e687dd868201d0adf1201ab",
+    "equity-comparison.png": "ffa3bccc274d82bfd1427a021e35b45f5249f24d5d74c52735976cdf83dce4aa",
+    "manifest.json": "021d2d025a459c0eeda6ade31eecd03b2d13e343b2b544677ce2e76ffb5ebb88",
+    "summary.json": "30484b5eb44af8ed18fafa46c276876ab41137abb516c7258c722b559949f6d7"
+  },
+  "report": "docs/research/perp-turnover-v2.md",
+  "report_schema_adaptation": "One first finish rejection (COMPLETED_DEVELOPMENT/missing conclusion/task_binding); no state change or native rerun. Added scheduler envelope; raw native summaries unchanged.",
+  "report_sha256": "3ab9c90903738816de4780479426fc9f53a7c3e1a11c35e91c5be62db7f644a6",
+  "research_status": "STOP_TURNOVER_BRANCH_GROSS_EFFECT_DISAPPEARED",
+  "resource": {
+    "audit_seconds": 0.37224445800529793,
+    "budget_utc_date": "2026-09-08",
+    "check_only_prepared_at": "2026-09-08T15:53:20.202609Z",
+    "check_only_seconds": 1.439814875018783,
+    "cpu_seconds": null,
+    "daily_variant_budget": 8,
+    "execution_preparation_seconds": 1.4998389160027727,
+    "implementation_first_written_at": "2026-09-08T15:49:19Z",
+    "market_native_calls_today_after_round": 6,
+    "market_technical_retries": 0,
+    "model_cost_usd": null,
+    "native_contract_tests": 2,
+    "native_seconds": 12.518942166992929,
+    "new_market_data_requests": 0,
+    "new_market_native_calls": 2,
+    "preparation_cli_errors": 1,
+    "preparation_error_explanation": "Missing check-only option hit sandbox mkdir denial before output, reservation or native; new CLI defaults to read-only and needs explicit --execute",
+    "process_seconds": 14.444997040962335,
+    "synthetic_native_calls": 2,
+    "test_entrypoint": "1 passed in 2.53s"
+  },
+  "risk_target": 0.2,
+  "risk_target_automatic_rejection": false,
+  "schema": "perp-turnover-v2-terminal-v1",
+  "status": "COMPLETED",
+  "task_binding": {
+    "code_sha256": "715c6857d67dfc77ac789c0645c389dae1964b91b15a1467a7fec16346c6d77f",
+    "data_sha256": "5021609028036b2b7d0979c5163d1ab81e882bdd8b0d7037ce09993a00e79fc8",
+    "policy_sha256": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+    "task_id": "perp-round-002-turnover-v2"
+  },
+  "task_id": "perp-round-002-turnover-v2",
+  "technical_retries": 0,
+  "total_seconds": 14.444997040962335,
+  "variants": {
+    "exit24": {
+      "accounting_reconciliation": "PASS",
+      "actual_bid_ask_impact": null,
+      "annualization_is_descriptive_development": true,
+      "annualized_return": -0.24461368747769063,
+      "artifacts": {
+        "backtest-result-2026-09-08_23-56-14.zip": "892a53117a4e65463d8a188193ceb7c229d2c2f0179700f2394900d959de9ec6"
+      },
+      "audit_seconds": 0.20977145800134167,
+      "by_pair": {
+        "BTC/USDT:USDT": {
+          "funding_usdt": 0.15391048920662037,
+          "net_usdt": -162.38780047,
+          "position_cycles": 201
+        },
+        "ETH/USDT:USDT": {
+          "funding_usdt": -4.629871844129449,
+          "net_usdt": -176.78056552,
+          "position_cycles": 198
+        }
+      },
+      "by_side": {
+        "long": {
+          "funding_usdt": -12.145511190744687,
+          "net_usdt": -333.72440991,
+          "position_cycles": 200
+        },
+        "short": {
+          "funding_usdt": 7.669549835821859,
+          "net_usdt": -5.443956079999994,
+          "position_cycles": 199
+        }
+      },
+      "clusters_are_approximately_dependent": true,
+      "common_72h_entry_clusters": 167,
+      "completed_position_cycles": 399,
+      "conditional_same_fill_stress_net_usdt": -426.8831832549236,
+      "confidence_interval": null,
+      "delta_net_vs_parent_usdt": -255.54889343361288,
+      "drawdown_duration_hours": 12891,
+      "exit_hours": 24,
+      "files": {
+        "entry-audit.json": "09b69b7df719dfa916a2e87c16013618626d6a5f5271ee6cb720ef83916fc42b",
+        "equity.json": "27bf61a848724e8e34d6882f3f9ec521e0b2d10f09a48f059cdb7fc0a67fc6e9",
+        "exports/backtest-result-2026-09-08_23-56-14.zip": "892a53117a4e65463d8a188193ceb7c229d2c2f0179700f2394900d959de9ec6",
+        "native-result.json": "048225a38dca67f11f0273010af1f011138b9a211801c5ad470f96a0a36784e6"
+      },
+      "filled_orders": 798,
+      "funding_usdt": -4.4759613549228305,
+      "gross_price_effect_usdt": -159.26277000000078,
+      "historical_contract_rules_verified": false,
+      "independent_confirmation": false,
+      "max_gross_exposure_fraction": 0.8498211405603042,
+      "mean_gross_exposure_fraction": 0.5056476500675197,
+      "monthly_returns": {
+        "2025-01-31": -0.09026710961302908,
+        "2025-02-28": -0.05130565134652265,
+        "2025-03-31": -0.11159918730878848,
+        "2025-04-30": -0.07991230163949292,
+        "2025-05-31": 0.01574215663262013,
+        "2025-06-30": 0.0371544272034825,
+        "2025-07-31": 0.0060825922427247825,
+        "2025-08-31": 0.05149745320870025,
+        "2025-09-30": -0.020708916187395565,
+        "2025-10-31": -0.017194005537986556,
+        "2025-11-30": 0.012477545589617556,
+        "2025-12-31": -0.1106864138378304,
+        "2026-01-31": 0.18208215078702428,
+        "2026-02-28": -0.042795091806984265,
+        "2026-03-31": -0.029702786613621135,
+        "2026-04-30": -0.17445718116689124,
+        "2026-05-31": -0.040138632046971545,
+        "2026-06-30": 0.11485472422586018,
+        "2026-07-31": 0.0
+      },
+      "native_exit_reasons": {
+        "exit_signal": 302,
+        "force_exit": 1,
+        "holding_72h": 96
+      },
+      "native_orders": 798,
+      "native_position_cycles": 399,
+      "native_profit_usdt": -339.16836599,
+      "native_seconds": 6.218267041957006,
+      "net_usdt": -339.1683659549235,
+      "observed_hourly_mtm_drawdown": 0.43853702780186876,
+      "parent_net_usdt": -83.61947252131063,
+      "slippage_allowance_usdt": 43.857408649999975,
+      "source_fingerprint": "f4ee74cc4bb20a40b5636dd5bdc510db61921d7cdeaa5e1aff08ba616dc29273",
+      "stage": "DEVELOPMENT_ONLY_PARENT_HISTORY_REUSED",
+      "taker_fee_usdt": 131.57222594999993,
+      "total_return": -0.3391683659549235,
+      "true_intrahour_drawdown": null,
+      "turnover_notional_usdt": 219287.04325000025,
+      "turnover_starting_capital": 219.28704325000024,
+      "uncertainty": "Development only; overlapping two-asset signals and selection prohibit independent-sample significance. No return CI fabricated.",
+      "variant": "exit24",
+      "worst_hour_equity_return": -0.03591317557605944,
+      "worst_position_net_usdt": -51.4144561
+    },
+    "exit48": {
+      "accounting_reconciliation": "PASS",
+      "actual_bid_ask_impact": null,
+      "annualization_is_descriptive_development": true,
+      "annualized_return": -0.2672670178582768,
+      "artifacts": {
+        "backtest-result-2026-09-08_23-56-20.zip": "b55dfdbf0ef690efb454006fbc853c48b4a1bc31d3b341c0ae33acea33cda033"
+      },
+      "audit_seconds": 0.16247300000395626,
+      "by_pair": {
+        "BTC/USDT:USDT": {
+          "funding_usdt": 0.2936503246294368,
+          "net_usdt": -264.84123375,
+          "position_cycles": 171
+        },
+        "ETH/USDT:USDT": {
+          "funding_usdt": -3.753338711380675,
+          "net_usdt": -103.3819133,
+          "position_cycles": 164
+        }
+      },
+      "by_side": {
+        "long": {
+          "funding_usdt": -12.83642968372253,
+          "net_usdt": -296.43017985,
+          "position_cycles": 166
+        },
+        "short": {
+          "funding_usdt": 9.376741296971291,
+          "net_usdt": -71.7929672,
+          "position_cycles": 169
+        }
+      },
+      "clusters_are_approximately_dependent": true,
+      "common_72h_entry_clusters": 165,
+      "completed_position_cycles": 335,
+      "conditional_same_fill_stress_net_usdt": -438.7383063707517,
+      "confidence_interval": null,
+      "delta_net_vs_parent_usdt": -284.603674521441,
+      "drawdown_duration_hours": 12891,
+      "exit_hours": 48,
+      "files": {
+        "entry-audit.json": "c80884ad7825d905a2a5a56b5d03ed6bf628af803f50ca9e16fe556c90efa857",
+        "equity.json": "073d7930eb668347d9fa780b06feee57d529aff80d6e8c42c10eccd7f19c1134",
+        "exports/backtest-result-2026-09-08_23-56-20.zip": "b55dfdbf0ef690efb454006fbc853c48b4a1bc31d3b341c0ae33acea33cda033",
+        "native-result.json": "922fab03a2e559e5135c09da59703957d50c2a29615f01d5f875578e363b63b4"
+      },
+      "filled_orders": 670,
+      "funding_usdt": -3.4596883867512416,
+      "gross_price_effect_usdt": -223.73314000000042,
+      "historical_contract_rules_verified": false,
+      "independent_confirmation": false,
+      "max_gross_exposure_fraction": 0.8873805030729973,
+      "mean_gross_exposure_fraction": 0.5583868931262708,
+      "monthly_returns": {
+        "2025-01-31": -0.07209873531248945,
+        "2025-02-28": -0.043050755167512667,
+        "2025-03-31": -0.25628282190474405,
+        "2025-04-30": -0.03214871233329952,
+        "2025-05-31": 0.13633207743767817,
+        "2025-06-30": -0.03285084100445501,
+        "2025-07-31": 0.035895082310263504,
+        "2025-08-31": 0.030798821105029406,
+        "2025-09-30": -0.006636048698338781,
+        "2025-10-31": 0.030829037686184613,
+        "2025-11-30": 0.07727295627234865,
+        "2025-12-31": -0.10387317899008208,
+        "2026-01-31": 0.11378398291260639,
+        "2026-02-28": -0.17647905156490729,
+        "2026-03-31": -0.021884411315016616,
+        "2026-04-30": -0.1421400760626318,
+        "2026-05-31": -0.02680030606291184,
+        "2026-06-30": 0.13761096413691076,
+        "2026-07-31": 0.0
+      },
+      "native_exit_reasons": {
+        "exit_signal": 154,
+        "force_exit": 1,
+        "holding_72h": 180
+      },
+      "native_orders": 670,
+      "native_position_cycles": 335,
+      "native_profit_usdt": -368.22314704999997,
+      "native_seconds": 6.300675125035923,
+      "net_usdt": -368.22314704275163,
+      "observed_hourly_mtm_drawdown": 0.46754187328652796,
+      "parent_net_usdt": -83.61947252131063,
+      "slippage_allowance_usdt": 35.25757966399999,
+      "source_fingerprint": "f4ee74cc4bb20a40b5636dd5bdc510db61921d7cdeaa5e1aff08ba616dc29273",
+      "stage": "DEVELOPMENT_ONLY_PARENT_HISTORY_REUSED",
+      "taker_fee_usdt": 105.77273899199997,
+      "total_return": -0.3682231470427516,
+      "true_intrahour_drawdown": null,
+      "turnover_notional_usdt": 176287.89832000007,
+      "turnover_starting_capital": 176.28789832000007,
+      "uncertainty": "Development only; overlapping two-asset signals and selection prohibit independent-sample significance. No return CI fabricated.",
+      "variant": "exit48",
+      "worst_hour_equity_return": -0.059413389142649486,
+      "worst_position_net_usdt": -53.16270307
+    }
+  },
+  "verdict_zh": "换手和成本下降但毛价格效应转负，关闭延长退出通道的成本分支"
+}

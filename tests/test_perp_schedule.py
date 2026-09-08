@@ -179,3 +179,64 @@ def test_wrong_experiment_summary_cannot_finish(env,tmp_path):
         s.finish(root,policy,'round-1',summary,report,now=NOW)
     assert s.read_status(root,policy)['tasks'][0]['status']=='RUNNING'
     assert not (root/'reports').exists()
+
+
+def test_policy_migration_preserves_spent_budget_and_replaces_parent_only(env,tmp_path):
+    root,old=env
+    config=json.loads(old.read_bytes());config['policy_version']='V1';old.write_bytes(s.canonical(config))
+    s.enqueue(root,old,task(env),NOW);s.claim(root,old,'round-1',NOW)
+    s.finish(root,old,'round-1',*terminal(tmp_path),now=NOW)
+    parent=task(env,'parent-prep',variants=2,data_sha256='c'*64,
+                code_binding_role='PARENT_CODE_AND_PREPARATION_REFERENCE_NOT_YET_V2_EXECUTOR',
+                budget_not_before='2026-09-09T00:00:00Z')
+    s.enqueue(root,old,parent,NOW)
+    before=s.read_status(root,old);completed=before['tasks'][0].copy()
+    config.update(policy_version='V2',supersedes_policy_version='V1',daily_rounds=3,daily_variants=8,weekly_rounds=21)
+    new=tmp_path/'v2.json';new.write_bytes(s.canonical(config))
+    receipt=s.migrate_policy(root,old,new,'parent-prep',NOW)
+    assert json.loads(Path(receipt['before_state']).read_bytes())==before
+    state=s.read_status(root,new)
+    assert state['tasks'][0]==completed and state['tasks'][1]['status']=='SUPERSEDED'
+    assert receipt['spent_variants_preserved']==4
+    nxt=task((root,new),'actual-v2',variants=2,data_sha256='d'*64)
+    s.enqueue(root,new,nxt,NOW)
+    assert s.claim(root,new,'actual-v2',NOW)['status']=='RUNNING'
+    # New policy cannot erase consumed work or migrate an active computation.
+    with pytest.raises(ValueError,match='idle writer'): s.migrate_policy(root,new,old,now=NOW)
+    result,report=terminal(tmp_path)
+    payload=json.loads(result.read_bytes());payload['task_binding']={k:nxt[k] for k in ['code_sha256','data_sha256','policy_sha256']};payload['task_binding']['task_id']='actual-v2';result.write_bytes(s.canonical(payload))
+    s.finish(root,new,'actual-v2',result,report,now=NOW)
+    s.enqueue(root,new,task((root,new),'too-many',variants=3,data_sha256='e'*64),NOW)
+    with pytest.raises(ValueError,match='daily budget'): s.claim(root,new,'too-many',NOW)
+
+
+def test_migration_does_not_clear_real_wait_or_mutate_on_rejection(env,tmp_path):
+    root,old=env
+    config=json.loads(old.read_bytes());config['policy_version']='V1';old.write_bytes(s.canonical(config))
+    s.enqueue(root,old,task(env,status='WAITING_DATA'),NOW)
+    config.update(policy_version='V2',supersedes_policy_version='V1')
+    new=tmp_path/'v2.json';new.write_bytes(s.canonical(config));before=(root/'state.json').read_bytes()
+    with pytest.raises(ValueError,match='only unused'): s.migrate_policy(root,old,new,'round-1',NOW)
+    assert (root/'state.json').read_bytes()==before and not (root/'policy-migrations').exists()
+
+
+def test_invalid_migration_budget_rejected_before_snapshot(env,tmp_path):
+    root,old=env
+    config=json.loads(old.read_bytes());config['policy_version']='V1';old.write_bytes(s.canonical(config))
+    s.tick(root,old,NOW);before=(root/'state.json').read_bytes()
+    config.update(policy_version='V2',supersedes_policy_version='V1',daily_rounds='three')
+    new=tmp_path/'v2.json';new.write_bytes(s.canonical(config))
+    with pytest.raises(ValueError,match='positive integer'): s.migrate_policy(root,old,new,now=NOW)
+    assert before==(root/'state.json').read_bytes() and not (root/'policy-migrations').exists()
+
+
+def test_corrupt_terminal_report_blocks_read_and_next_mutation(env,tmp_path):
+    root,policy=env
+    s.enqueue(root,policy,task(env),NOW);s.claim(root,policy,'round-1',NOW)
+    done=s.finish(root,policy,'round-1',*terminal(tmp_path),now=NOW)
+    Path(done['report']).write_text('changed after completion')
+    before=(root/'state.json').read_bytes()
+    with pytest.raises(ValueError,match='evidence SHA drift'): s.read_status(root,policy)
+    with pytest.raises(ValueError,match='evidence SHA drift'): s.tick(root,policy,NOW)
+    with pytest.raises(ValueError,match='evidence SHA drift'): s.enqueue(root,policy,task(env,'next',data_sha256='e'*64),NOW)
+    assert (root/'state.json').read_bytes()==before
