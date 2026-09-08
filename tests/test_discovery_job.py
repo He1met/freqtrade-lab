@@ -4,8 +4,8 @@ import multiprocessing
 from pathlib import Path
 import sys
 import pytest
-from lab.discovery_job import (MANIFEST, REGISTRY, atomic, bounded_process, canonical, check_manifest,
-                               fetch, locked, overrides, run_job, sha)
+from lab.discovery_job import (MANIFEST, REGISTRY, atomic, canonical, check_manifest,
+                               fetch, locked, run_job, sha)
 from lab.mechanism_precheck import ROOT, PrecheckError
 
 
@@ -136,22 +136,6 @@ def test_concurrent_worker_excluded(tmp_path):
         assert p.exitcode == 0 and q.get(timeout=1) == 'busy'
 
 
-def test_process_timeout_and_output_limit(tmp_path):
-    with pytest.raises(TimeoutError):
-        bounded_process([sys.executable,'-c','import time;time.sleep(5)'], cwd=tmp_path, seconds=.05, cap=1024)
-    with pytest.raises(PrecheckError, match='OUTPUT_TOO_LARGE'):
-        bounded_process([sys.executable,'-c','print("x"*10000)'], cwd=tmp_path, seconds=2, cap=100)
-
-
-def test_auth_and_tools_argv():
-    args = overrides()
-    assert 'forced_login_method="chatgpt"' in args and 'web_search="disabled"' in args
-    assert 'mcp_servers={}' in args and 'model_providers.openai.request_max_retries=0' in args
-    assert args[args.index('--enable')+1] == 'skip_host_skill_discovery'
-    for name in ('shell_tool','apps','plugins','code_mode_host','auth_elicitation','unbounded_connection_retries'):
-        i = args.index(name); assert args[i-1] == '--disable'
-
-
 def test_terminal_drift_blocked(setup):
     m, registry, calls, http = setup; p = FakeProvider()
     run_job(m, registry=registry, http=http, provider=p)
@@ -170,38 +154,7 @@ def test_auth_gate_before_http(setup):
     assert 'AUTH_MODE' in result['status']
 
 
-@pytest.mark.parametrize('status', [b'Logged in using an API key', b'Unknown'])
-def test_real_adapter_rejects_non_chatgpt_without_model(tmp_path, monkeypatch, status):
-    from lab import discovery_job as module
-    m = json.loads(MANIFEST.read_bytes())
-    calls = []
-    def process(argv, **kwargs):
-        calls.append(argv); return 0, status, b''
-    monkeypatch.setattr(module, 'bounded_process', process)
-    with pytest.raises(PrecheckError, match='BLOCKED_AUTH_MODE'):
-        module.CodexProvider(m)._auth_feature_diagnostics(tmp_path)
-    assert len(calls) == 1 and calls[0][-2:] == ['login', 'status']
-
-
 def test_redirect_rejected_without_following():
     from lab.discovery_job import NoRedirect
     with pytest.raises(PrecheckError, match='HTTP_REDIRECT_BLOCKED'):
         NoRedirect().redirect_request(None, None, 302, 'redirect', {}, 'https://example.org/')
-
-
-def test_live_adapter_blocks_before_any_auth_http_or_provider(setup, monkeypatch):
-    from lab import discovery_job as module
-    m, registry, calls, http = setup
-    monkeypatch.setattr(module, 'bounded_process', lambda *a, **k: pytest.fail('external process'))
-    result = run_job(m, registry=registry, http=http)
-    assert result['status'] == 'BLOCKED_TOOL_ISOLATION' and not result['attempts'] and not calls
-    with pytest.raises(PrecheckError, match='BLOCKED_TOOL_ISOLATION'):
-        module.CodexProvider(m)(b'prompt', registry, 1, 100)
-
-
-def test_medium_bound_in_manifest_and_argv(setup):
-    m, _, _, _ = setup
-    assert m['model_reasoning_effort'] == 'medium'
-    assert 'model_reasoning_effort="medium"' in overrides()
-    m['model_reasoning_effort'] = 'high'
-    with pytest.raises(PrecheckError, match='UNREVIEWED_REASONING_EFFORT'): check_manifest(m)

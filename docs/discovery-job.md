@@ -1,3 +1,7 @@
+# 历史CLI方案（已停止）
+
+当前API方案见 [Responses API协议](discovery-api.md)。以下保留9382c92的阻塞原因，不是当前可执行说明；原manifest身份及预算未被复用。
+
 # 一次性来源到提案作业（Issue #137）
 
 单命令负责固定URL获取、有限HTML文本提取、一次拟议的受限Codex提案、已有离线预筛及收据。当前只完成工程和合成验证；真实provider明确BLOCKED_TOOL_ISOLATION，审批参数也不能绕过代码硬阻塞。不创建调度器，不写Generation或数据库，不运行市场研究。两个已知BIS/MIT页面用于provider集成验证，不当作新发现或独立证据。
