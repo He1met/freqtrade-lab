@@ -1,0 +1,25 @@
+# Issue139 V3 B diagnostic entry binding
+
+Implementation authority: https://github.com/He1met/freqtrade-lab/issues/139#issuecomment-5579864666 . This package supplies the runnable V3 entry, not permission to run it. The reviewed `SpotResidualV3`, `ReconcilerV3`, numerical rejection rule and V2 results remain unchanged. The same source history is already exposed development data, never independent confirmation.
+
+`python3 scripts/run_spot139_v3.py <manifest> --manifest-sha256 <published SHA> --cost base` (or `stress`) defaults to check-only. It hashes all39 source files and code/native/precision dependencies; validates exact V3 model, mapper, B cost pair, two keys and fixed training window; reads the old28 and V2 two-slot histories; rejects pending/duplicate/invalid terminals; and verifies their exact linked global checkpoint. The derived consumed count must be30, rather than being accepted solely from a constant. Check-only creates no V3 root, reservation or native instance and does not decode market prices.
+
+Execution requires `--execute --grant <external JSON> --grant-sha256 <fixed SHA>`. The external grant must carry `market_execution_authorized=true`, this exact `manifest_sha256`, `costs=["base","stress"]`, the manifest's two `keys` in order and a nonempty `authorization_reference`. There is no grant in this package. A V2 grant, changed manifest/cost/model, ancestor drift, exhausted key or failed batch does not authorize execution.
+
+The parent acquires nonblocking locks in fixed order: old native writer, V2 spot writer, global control writer, V3 suffix writer. It revalidates hashes/counts under those locks before reservation. A V3 append-only hash chain retains exact key, grant, ancestor SHA, derived total count, timestamps and RESERVED→SUCCEEDED/FAILED. Reservation and directory entry are fsynced before worker spawn. Four lock descriptors are inherited by the worker, which must also find its pending reservation. A public worker flag alone cannot start native. Existing artifact evidence with a missing suffix ledger refuses reset; unresolved/failed/duplicate keys do not retry or reclaim. Completed result SHA is checked before admitting the next cost.
+
+Base must technically succeed before stress. Economic losses remain completed results and do not change the rules. Each worker has180 seconds and0 retries; constructor, data, native exact-fill, numerical rejection, timeout or other technical failure consumes its slot and stops the batch. Failure receipts retain error and available partial confirmed rows/hourly evidence with `economic_result=null`; partial state is not published as a completed economic result.
+
+Ancestor SHA anchors are: global `f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8`, old calls `ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738`, V2 calls `1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0`. V3 suffix is fixed at `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/calls.jsonl`, max2. After two future slots,32 consumed +10 old sealed +6 Issue139 pending +48 unallocated=96. Current consumed remains30. No ancestor/global record is appended between cost workers; after a separately authorized completed batch, supervision can append its linked checkpoint. Any intervening external global drift makes stress refuse rather than silently accepting new budget.
+
+## One-pass outputs
+
+The same normal hourly loop calls the existing causal model and mapper once, collecting:
+
+- Actual modeled fills and mapped native rows, episode start/end identifiers and stop/expiry/nonpositive/risk/residual exit causes. An episode end never implies an exchange-flat or independent sample. Residual cleanup allocations are labeled with the last asset cycle, not claimed as an independent episode.
+- Every hour's cash/NAV/peak, active/residual quantity and pooled basis, source mark and age, risk latches, actual blocking reasons and observed DD, streamed to a hashed Git-external JSONL file.
+- Gate-ineligible calendar days per asset, nonpositive-signal days, any-asset/per-asset stale hours and maximum mark age; blocked hours counted once globally and separately by reason. Missing dependencies are not mislabeled as known positive signals rejected.
+- Per-asset realized/unrealized/net contribution, realized calendar-month and cycle concentration. The concentration denominator is explicitly positive realized contributions, with NULL when absent. These reporting groupings are not independence claims.
+- Modeled terminal cash/inventory/basis and estimated exit costs, native gross positions/stake/cash/profit separately, every numerical residual and rejection bound. Real DD remains UNKNOWN and independent qualification false.
+
+No source replay is used to fill report gaps. A failure in the loop cannot promote its partial model account. Reporting unit tests use synthetic prices and a controller-only observer, explicitly not a replacement for real native evidence. No additional native synthetic instance is authorized or used for this runner slice. V3 market result qualification cannot rely on V2's positive return.
