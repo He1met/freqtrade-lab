@@ -1,0 +1,68 @@
+{
+  "actions": {
+    "acceptance-preflight": {
+      "elapsed_seconds": 1.4859479590086266,
+      "native_calls": 0,
+      "receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/01a0821e-81a6-7bf0-90db-2ae25450457f/acceptance-preflight.json",
+        "sha256": "d01c3aa3a494f37b116ab83e8c2db9ff0be91c8ed5957cb1c3aaa696871d2614"
+      },
+      "status": "WAITING_DATA"
+    },
+    "observer": {
+      "elapsed_seconds": 0.04178224998759106,
+      "native_calls": 0,
+      "receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/01a0821e-81a6-7bf0-90db-2ae25450457f/observer.json",
+        "sha256": "9031b539c582b0a45c9a6ac61bc5fdb0634a58953047adaac767a800b972ac3d"
+      },
+      "status": "OBSERVATION_RECORDED"
+    },
+    "tick": {
+      "elapsed_seconds": 0.06399008398875594,
+      "native_calls": 0,
+      "receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/01a0821e-81a6-7bf0-90db-2ae25450457f/tick.json",
+        "sha256": "51598debd4a4a309e7ec29f969eb8f0821bab1e711328ecd2f0a10b25fccf1fb"
+      },
+      "status": "HEARTBEAT_CHECKPOINT"
+    }
+  },
+  "activation_observed_receipt": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/activation-observed.json",
+    "sha256": "3c1af1d42d5b8ba4ec8ce6934f77ff24c5a110029d75daf238ef1ba172caa3e1"
+  },
+  "actual_turn_id": "01a0821e-81a6-7bf0-90db-2ae25450457f",
+  "automatic_native_chain_completed": false,
+  "automation_id": "freqtrade-lab-2",
+  "candidate_activated": false,
+  "checkpoint_receipt": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/01a0821e-81a6-7bf0-90db-2ae25450457f/summary.json",
+    "sha256": "fe5d5a2645f9a76d488284d334dbbf2396e1a3463331d0408932df3c2ec7f663"
+  },
+  "code_head_at_trigger": "7bb6d220a7e1861a8c5cdcce310e5853115c04ea",
+  "cpu_seconds": null,
+  "immutable_intent_receipts_unchanged": true,
+  "independent_confirmation": false,
+  "market_retries": 0,
+  "model_cost_usd": null,
+  "native_calls": 0,
+  "next_provider_trigger": null,
+  "observed_at": "2026-09-08T17:46:21.913775+00:00",
+  "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+  "provider_observed_at": "2026-09-08T17:43:52.484Z",
+  "provider_tool_event_id": "fco_01a0821e-81b3-7263-ac41-413fbe99f0f6",
+  "provider_trigger_id": null,
+  "public_gets_this_trigger": 0,
+  "queue": {
+    "earliest_ready_at": "2026-09-09T00:10:00Z",
+    "status": "UNCHANGED_WAITING_DATA",
+    "task_id": "perp-forward-native-acceptance-v1"
+  },
+  "recorded_intent_hours": 2,
+  "recorded_pair_hours": 4,
+  "schema": "perp-first-automatic-heartbeat-report-v1",
+  "status": "AUTOMATIC_WAKE_AND_READINESS_CHECK_VERIFIED",
+  "trigger_id": "01a0821e-81a6-7bf0-90db-2ae25450457f",
+  "trigger_id_basis": "ACTUAL_TURN_ID_LOCAL_CORRELATION_NOT_PROVIDER_TRIGGER_ID"
+}

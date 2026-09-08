@@ -10,10 +10,22 @@
     "timeframe": "1h"
   },
   "automatic_wake": {
-    "current_continuation_origin": "USER_AUTHORIZED_SUPERVISOR_MESSAGE",
-    "first_verified_trigger": null,
+    "automatic_native_chain_completed": false,
+    "current_continuation_origin": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+    "evidence": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/activation-observed.json",
+      "sha256": "3c1af1d42d5b8ba4ec8ce6934f77ff24c5a110029d75daf238ef1ba172caa3e1"
+    },
+    "first_verified_trigger": {
+      "actual_turn_id": "01a0821e-81a6-7bf0-90db-2ae25450457f",
+      "automation_id": "freqtrade-lab-2",
+      "provider_observed_at": "2026-09-08T17:43:52.484Z",
+      "provider_tool_event_id": "fco_01a0821e-81b3-7263-ac41-413fbe99f0f6"
+    },
+    "latest_report": "docs/research/perp-first-automatic-heartbeat-v1.md",
     "next_provider_trigger": null,
-    "status": "UNKNOWN"
+    "provider_trigger_id": null,
+    "status": "AUTOMATIC_WAKE_AND_READINESS_CHECK_VERIFIED"
   },
   "avoid_repeating": [
     "Do not rename unfiltered breakout or rejected volatility scaling as a new independent trial",
@@ -32,7 +44,7 @@
   },
   "current_issue": 162,
   "data_collection": {
-    "last_complete_end": "2026-09-08T16:00:00Z",
+    "last_complete_end": "2026-09-08T17:00:00Z",
     "new_capture_priority_tested": true,
     "required": [
       "ohlcv",
@@ -63,13 +75,15 @@
     "active": false,
     "binding": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/observer-binding.json",
     "binding_sha256": "3a48c439149fa9e3b7394e583fc6267e305c8f91dce3815d777bb960e111f2a4",
+    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1800Z.receipt.json",
+    "latest_receipt_sha256": "a062eede7bbc3b61678d3cd0acc050b8d6c858496c0426f470c0bc3899ce5897",
     "native_calls": 0,
     "phase": "PRE_CONFIRMATION",
     "production_orders": 0,
     "published_at": "2026-09-08T16:40:26.706541+00:00",
     "receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1700Z.receipt.json",
     "receipt_sha256": "210c1b236c8a67fa2c9dd637bbe4c58d225af8cbe62da5af57243e312a324749",
-    "recorded_pair_hours": 2
+    "recorded_pair_hours": 4
   },
   "heartbeat_entrypoint": "scripts/perp_tick.py",
   "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
