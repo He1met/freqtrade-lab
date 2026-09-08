@@ -1,0 +1,51 @@
+# Issue141 单规则小时响应预筛草案 V1
+
+状态 `FROZEN_CONDITIONAL_ONE_SHOT_AUTHORIZATION`。依据监督[唯一执行授权](https://github.com/He1met/freqtrade-lab/issues/141#issuecomment-5583397608)，最小实现和合成检查通过、固定推送与发布SHA后允许一次预筛；文献v1的 `UNKNOWN`保留，但不作为禁止探索的门槛。研究不要求先有同币同所同小时的盈利论文。信息扩散合理但未证实、小时可能太慢，均由下述固定规则待证伪；不建策略/钱包平台。
+
+## 文献补充及判定纠正
+
+监督另行消耗2搜索+2作者来源操作，不计入执行端已满的3搜索/6读取：打开[Guo作者页](https://guoli0618.github.io/publication/paper4_JEDC_crypto)，确认Guo/Sang/Tu/Wang（2024），JEDC163:104863及Download Paper指向SSRN3974583；点击该链接返回403。此项为监督提供的来源核验，本执行轮没有重复联网。目标正文及方法/成本结果仍UNKNOWN。原机制卡不追改成已证实优势，也不再试其他URL；由一次有界暴露数据预筛回答经验问题，而不是无限检索。
+
+## 唯一信号、时序与两条件
+
+`t`表示UTC小时槽 `[t,t+1)`；每币该小时收益固定为 `close_t/open_t - 1`，是本小时开到收的简单收益，非前收收益。只用两币完整闭合的同一小时，open/close有效且为正。候选C固定 `BTC_return_t > 0 AND ETH_return_t <= 0`；唯一参照R固定 `ETH_return_t <= 0`。零阈值和1小时为本次待验证设计，非论文推荐；不试反向、不调阈值、不扩持有期。
+
+同一共同可评分集合内比较C与R，R仍要求BTC小时完整以避免缺口可用性差异；C是R的子集。最早用ETH的实际 `open_(t+1)`入场，`open_(t+2)`退出，固定持有1小时。信号只能在t完整结束后确定；t+1 open是理想化最早执行代理，不保证能以真实首笔成交。未来若实施，数据接收/决策迟延必须另验。本次不以t+1信息决定是否触发；其open可用性只决定事件是否可评分，不参与方向筛选。无同close成交、无止损/加仓/方向切换。
+
+缺信号字段→`INPUT_UNSCORABLE`，不推断条件；信号已知但必要入/出open不存在→`ENTRY_OPEN_MISSING`或`EXIT_OPEN_MISSING`，保留事件且不算收益。共同完整t但不满足R也计总数。禁止前填、插值、删缺小时后压缩时序、借后续价延迟退出。只要实际入/出open存在且合法，未来该槽完整性不是事前过滤条件；但短槽身份必须披露。终点无open不造清仓，不向窗外取值。
+
+## 暴露来源及准入
+
+仅拟议复用既有Binance SPOT BTCUSDT/ETHUSDT小时原始源，`EXPOSED_DEVELOPMENT`：信号槽范围 `[2021-01-01T00:00Z,2023-01-01T00:00Z)`，小时号 `[447072,464592)`，入/出open也只能来自该范围。末端事件所缺open计不可评分，绝不请求新源。此规则不需旧2020 warmup，不把旧数据重新包装成独立样本。
+
+源清单身份固定引用 `docs/issue139-v3-first-diagnostics-manifest.json` SHA `63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10` 的sources数组（39条含metadata控制响应及各raw精确SHA/request）；根 `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1`。结构收据 `docs/issue139-source-inventory-v3-terminal.json` SHA `a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552`。本轮只读这两份控制文件及绑定代码，未打开或哈希raw价格文件。
+
+纠正旧草案误引V2例外：仅按上述SOURCE_INVENTORY_V3终态中两币完整anomalies数组核对，**每币13缺小时、4短K、7不完整日，原因UNKNOWN**；不恢复仅Feb11范围的旧门。已知短/缺槽令该小时信号不可评分；缺失入/出open令触发事件不可评分。实际open存在的短槽可用于入/出价，披露短槽身份，不按未来小时最终完整性过滤。清单外缺口/短槽、重复/乱序/非法值或SHA漂移停止整个任务。metadata及2020日线warmup仅哈希，不解码价格。
+
+旧V3 manifest的历史global绑定已过期，**不得调用旧runner或复用其市场grant**。这里只引用不可变sources身份；未来外部准入须绑定本协议、分析脚本、源清单、现时global读校验值和独立分析授权。不得为方便写global导致forward grant失效，控制漂移交监督裁定。
+
+## 四固定cells与单位
+
+一次事件表、两个条件×两个成本，且仅四cells：C/base、C/stress、R/base、R/stress。每个可评分事件的gross为 `P_exit/P_entry - 1`。成本参考固定base每边fee `f=.001` / adverse slippage `s=.0006`，stress `f=.002` / `s=.0012`。
+
+定义以单位入场quote预算衡量的无精度理想化回报：
+
+`net = (P_exit/P_entry) * ((1-s)/(1+s)) * (1-f)^2 - 1`。
+
+买价乘`1+s`、卖价乘`1-s`，买入base数量扣一次fee、退出quote再扣一次fee；无资金费，无重复扣slippage。线性往返32/64bp仅直观近似，不用于精确评分。这是分数单位、无最小单/lot/dust模型；费用是已有设计假设非实际账户费率。1000本金不进入该事件平均，更不生成1000钱包曲线。
+
+候选与参照按同成本同延迟报告 `mean(C)-mean(R)`，只称条件均值差，非随机因果效应。共同信息、ETH自身动量/反转及条件筛选均可能解释差异。C⊂R、base/stress共享事件，不能当四组独立样本；相邻1小时事件可共享边界open并具有波动依赖，同条件持有区间不重叠也不证明独立。不同cells中的重复事件绝不累加成组合PnL。
+
+## 固定描述输出与谨慎结论
+
+逐cell固定输出：事件/可评分/各缺失原因数、gross与net均值/中位数/标准差/正回报比例、最差事件、2021/2022及所有自然月的事件数和均值（包括无事件为NULL）、最长连续触发串与按相邻触发串合并的簇数。报告最大正事件及最大正月份在总正事件回报中的占比；分母为0记NULL；所有分项完整展示，不选月份。另给固定条件均值差及共享事件数。簇只是依赖描述，不冒充有效独立样本数；不做参数扫描、bootstrap或显著性挑选。
+
+事件回报均值不是钱包净收益，回报和也只用于上述贡献分母，不能作为资金PnL；不报告伪钱包DD或年化。输入缺失可能造成选择偏差，必须列数量与时间位置，不能把不可评分填0。
+
+结果解释事前固定：候选成本后平均不为正，或对预定参照没有正增量，则这个规则不支持所称成本后条件优势，终止不调参。此为本预筛设计判断，不是用户硬门或盈利资格线。即便四cell方向都看似有利，也**没有自动PASS**：少量事件、单簇/月贡献、跨年方向变化、尾部及相关性会使证据不足；不凭一个正均值或巨大名义事件数晋级。本轮不发明独立性/样本数量阈值；最多得“值得监督考虑下一研究”，还需共享资金/风险、执行可行性及未消费独立确认。缺少支持时保留 `INSUFFICIENT_EVIDENCE`，不能延长样本到满意。
+
+## 一次任务预算（监督条件授权）
+
+一个analysis invocation、1个串行worker、4cells、180秒整个任务硬上限、0重试；输入解析一次，共享事件表。先耐久预记Git外独立analysis attempt，再读取市场源；失败/超时计已尝试，停止，不另名重算。原始SHA/脚本/协议/授权/起止UTC/四cell状态/输出SHA和失败原因写收据；同授权已成功只读终态，失败不可自动重跑。分析调用单列为Issue141预筛1次/4cells，不占native调用却也不从总研究记录隐去；旧native32/96不变，GitHub记录并交监督核账。唯一Git外root `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue141-hourly-prescreen-v1`，最小脚本 `scripts/issue141_prescreen.py`。已有root一律不再次执行；成功后仅只读收据，失败不得重试。
+
+固定推送前新GET/native/市场读取/统计均0。完成7项定向合成检查后固定脚本/协议/manifest SHA并发布，随后按该评论创建精确Git外grant并执行一次；不再要求第二次确认。分析用50位Decimal，非最小单钱包，公式测试与精确有理数误差小于1e-48。源SHA前后核、异常数组精确匹配；无网络audithook、旧source/native/global/forward锁串行排他。超时/失败保留attempt，无自动retry。不改forward manifest/global/grant，不开sealed、不另写钱包或服务，前向到期优先。
