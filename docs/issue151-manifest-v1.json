@@ -1,0 +1,312 @@
+{
+  "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1",
+  "url": "https://markets.newyorkfed.org/api/rates/unsecured/effr/search.json?startDate=2021-01-01&endDate=2022-10-31&type=rate",
+  "budget": {
+    "macro_get": 1,
+    "bytes": 1048576,
+    "download_seconds": 20,
+    "analysis": 1,
+    "seconds": 180,
+    "units": 21,
+    "retries": 0
+  },
+  "authorization": "https://github.com/He1met/freqtrade-lab/issues/151#issuecomment-5584698800",
+  "calendar_path": "docs/issue151-calendar-v1.json",
+  "bindings": {
+    "scripts/issue151_diagnostic.py": "680f35e702baab6f0d783cfb454ff53ba15f9624150665f27fdd00c033acaf90",
+    "scripts/issue147_diagnostic.py": "bfe80a84256df7d0b9732fe5f270aa36efcd57869cfdb42a2af63e28c78f8e6b",
+    "docs/issue151-calendar-v1.json": "6f66bf30077366a314505cfaedcc528587a3881eb5635a6425f465b10fd5d453",
+    "docs/protocols/issue151-effr-diagnostic-v1.md": "f5e2b1fdc601f8e1a72c118d4c8d9d374e66153ad0c917fc26b88cb6f8185a5d",
+    "docs/issue139-v3-first-diagnostics-manifest.json": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+    "docs/issue139-source-inventory-v3-terminal.json": "a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552",
+    "lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "lab/spot139_residual_v3.py": "1027365f693fee313b54f2db9906e52a7692caa60f56d59e06de83a84037f9be",
+    "lab/spot139_daily.py": "7e5c63191175cf9f95a25181ebb7b578addf2676b4aecb2e931b8615aab4b7f3",
+    "lab/spot139_forward.py": "054c1bc93c49be430b14b64fe3f9c25c0e0156f9387fb27ca18903147e5b116e",
+    "scripts/spot139_forward.py": "dccfd8e32a3dc66490b7e95ffd9fe13b978e2912240ee48f197519630686b21f",
+    "docs/issue139-forward-v1-manifest.json": "7576da10d07642d3e4e791492514bc1e84b89b9746b608cdbd91c2a6471522e1",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "fe34ac57e25416a674110cb8c132168c33fd9ccd17749e640ef6686293ae778f",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-forward-control-v1/first7-grant.json": "2e5d633efa123c95a3b1857515a0d35ba979d3b7601e02fde3ac5f4ab145d4e5"
+  },
+  "sources": [
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/raw/004-klines.json",
+      "sha256": "47c0851f4b2f38ce620c5c4d454c711d774cc68348fddffbd52380a8b891ae81",
+      "bytes": 181240,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1609459200000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/continuation-v2/raw/005-klines.json",
+      "sha256": "74bc04b810500293d57e459927606921ebb052d58f1135179470c2252bc1afa1",
+      "bytes": 181186,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1613062800000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/006-klines.json",
+      "sha256": "3b3a94fd52d01f904235be539327a6fd2751f1893e469dc6d014e1caf1c0a096",
+      "bytes": 180729,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1616666400000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/007-klines.json",
+      "sha256": "2fea73bfcce7b79e2c816a1645162851d879c16e3fda8be0690998250343aa33",
+      "bytes": 181440,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1620284400000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/008-klines.json",
+      "sha256": "197866e2e37c7348ecd25397cdd6ce059ab058a7f6988a40cf4232faa524b1b7",
+      "bytes": 180141,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1623884400000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/009-klines.json",
+      "sha256": "f0b13b1f82a85f1afe5b1132068a217d9fa23d2602ed148e00e0fd76259af752",
+      "bytes": 179989,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1627484400000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/010-klines.json",
+      "sha256": "ccec752090e195bfcdb31d3a94a87082d419d06f5a218d62bbd1988b76a8383c",
+      "bytes": 179798,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1631098800000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/011-klines.json",
+      "sha256": "a8a7d0fec8385021f1c4e62f23cecb03f6d1c362981957b0f901a801406c3f5b",
+      "bytes": 179681,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1634706000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/012-klines.json",
+      "sha256": "c5cf11151eac6cbbaa5e8d86999760962bcc8081224be47042106e6a2f167f9f",
+      "bytes": 179131,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1638306000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/013-klines.json",
+      "sha256": "8ffff2a99489bf57f93ffe56dacf9b6696cb16dda3586b9f47c4baf7bbabfaa6",
+      "bytes": 179162,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1641906000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/014-klines.json",
+      "sha256": "c20defcdba3ff4ee54ab645b53ef99c4674bac771247fce974240d1d1cec457e",
+      "bytes": 179556,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1645506000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/015-klines.json",
+      "sha256": "f12dc6848bae1392b6d13f121dfc8e6af1f5333e88a47c0ed2c0fa4738a6f386",
+      "bytes": 179594,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1649106000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/016-klines.json",
+      "sha256": "16ea20b507f20676a862a12eed71b644419096a3d7f732b3294b71e79e32aa79",
+      "bytes": 179952,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1652706000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/017-klines.json",
+      "sha256": "26be1353a308cb7c3f8b699836e763e580501b78b077ef63ab93ae230202a63b",
+      "bytes": 181524,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1656306000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/018-klines.json",
+      "sha256": "a69dc1d4b2bfb69ae11581855db37b7f8d7b0386c9c8c7cf7f26169465e3fd43",
+      "bytes": 182761,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1659906000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/019-klines.json",
+      "sha256": "79cd10ee4566db98cedc9f791dd04e79949cd65c9e717e18b3db3e3815d6b1c1",
+      "bytes": 182904,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1663506000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    },
+    {
+      "path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/inventory-v3/raw/020-klines.json",
+      "sha256": "2e241e23213f1d51abb0db7a9744b5d0d31d347ebe9ad0e626248698e7c84306",
+      "bytes": 182722,
+      "request": {
+        "endTime": 1672531199999,
+        "interval": "1h",
+        "limit": 1000,
+        "startTime": 1667106000000,
+        "symbol": "BTCUSDT"
+      },
+      "status": 200
+    }
+  ],
+  "anomalies": [
+    {
+      "kind": "MISSING",
+      "open_ms": 1618884000000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1618887600000
+    },
+    {
+      "kind": "SHORT",
+      "open_ms": 1619323200000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1619326800000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1619330400000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1619334000000
+    },
+    {
+      "kind": "SHORT",
+      "open_ms": 1628816400000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1628820000000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1628823600000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1628827200000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1628830800000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1632898800000
+    },
+    {
+      "kind": "MISSING",
+      "open_ms": 1632902400000
+    },
+    {
+      "kind": "SHORT",
+      "open_ms": 1640318400000
+    }
+  ]
+}
