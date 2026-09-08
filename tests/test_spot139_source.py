@@ -97,3 +97,11 @@ def test_manifest_own_registration_hash_and_drift(tmp_path,monkeypatch):
     ledger.write_bytes(b'old\n'+encoded({'own':True}));cli.verify(m,manifest,digest(b'fixed'),post=True)
     ledger.write_bytes(ledger.read_bytes()+b'foreign\n')
     with pytest.raises(SourceError):cli.verify(m,manifest,digest(b'fixed'),post=True)
+
+
+def test_retained_timestamp_shape_is_rejected_without_timezone_conversion():
+    # Only observed timestamp structure is retained; prices/volumes are synthetic.
+    rows=[candle(1613012400000,3600000),candle(1613019600000,3600000)]
+    rows[0][6]=1613014854773
+    with pytest.raises(SourceError,match='UTC coverage'):
+        validate_page(rows,1613012400000,3600000,2)
