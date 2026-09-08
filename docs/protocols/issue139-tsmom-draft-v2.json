@@ -1,0 +1,354 @@
+{
+  "protocol_id": "ISSUE139_TSMOM84_DRAFT_V2",
+  "issue": 139,
+  "status": "FROZEN_DESIGN_DRAFT_NOT_EXECUTION_AUTHORITY",
+  "frozen_at_utc": "2026-09-08T04:02:03.431394+00:00",
+  "base_commit": "4934e1a0c2fecdc563f564a05921a53d264f2bec",
+  "authorization": {
+    "this_delivery": "literature, sanitized control metadata, code review, protocol publication",
+    "market_reads": false,
+    "acquisition": false,
+    "native": false,
+    "registration_mutation": false,
+    "api": false,
+    "next_decision_owner": "supervisor task 01a07c6a-d535-7030-814c-7775d0f27f99"
+  },
+  "identity": {
+    "exchange": "binance",
+    "instrument": "USDT_PERPETUAL",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "leverage": 1,
+    "capital_usdt": 1000,
+    "signal_family": "trend/time-series-momentum; same family as prior trend; not independent discovery"
+  },
+  "signal": {
+    "variants": [
+      {
+        "id": "return-sign-84",
+        "lookback_calendar_days": 84
+      }
+    ],
+    "variant_count": 1,
+    "selection_rounds_max": 1,
+    "selection": "no parameter competition; reject or retain the one joint rule; do not select a different parameter per asset",
+    "direction": "sign(close[t]/close[t-84]-1); exactly zero -> flat",
+    "decision": "UTC daily close t; use only closed bars; first eligible fill at t+1 hour, never same-close fill",
+    "entry": "one position per asset; no pyramid; eligible on initial scoring date or direction change; after stop/time exit wait for next direction change",
+    "exit": "zero/opposite daily direction, fixed entry stop distance 3*ATR20, or 84 calendar days; stop detection from completed prior-hour high/low or current known open; execute next legal hourly open, never assumed trigger-price fill",
+    "atr": "mean of last 20 true ranges, including last closed day",
+    "stop": "fixed at entry, never widened",
+    "reversal": "close first; opposite entry only at next hourly open after close",
+    "warmup_daily_bars": 273,
+    "missing_or_zero_vol": "fail closed, never zero-fill"
+  },
+  "risk": {
+    "capital_source": "inherited supervisor-adopted protocol",
+    "drawdown_source": "20% user limit; 10%/15% inherited supervisor protocol",
+    "drawdown_halve": 0.1,
+    "drawdown_stop_new": 0.15,
+    "drawdown": "inherited hourly pre-action and original funding-event observations; 10% latch half risk, 15% latch zero new risk, no peak reset or economic restart; >20% fails risk criterion, not an invented immediate-exit guarantee",
+    "nominal_caps_source": "design, retained from old portfolio envelope",
+    "total_notional_cap_equity": 0.8,
+    "asset_notional_cap_equity": 0.4,
+    "A_entry_stop_risk_equity": 0.01,
+    "B_asset_entry_stop_risk_equity": 0.005,
+    "half_B_risk_multiplier": 0.5,
+    "C_multiplier": "min(1, median(previous 252 daily sigma20 estimates)/current closed-day sigma20), per asset; reductions only for held quantity, never increase until next natural entry",
+    "quantity": "floor(min(stop-risk budget/stop-distance, asset cap/entry price, available shared cash after reserves/entry price)/lot_step)*lot_step; never round up to minimum",
+    "shared_wallet": "B/C/half-B each one 1000 USDT wallet; simultaneous orders proportional downscale then floor, BTC first only for equal residual priority; cost/funding deducted once; no combining standalone equity curves",
+    "drawdown_limit": 0.2,
+    "execution_inheritance": "hour-open fills only; completed prior-hour OHLC stop observation then next executable hour; do not assume intrabar stop-price fills; legal reduction failures retain actual inventory and block new risk"
+  },
+  "cost": {
+    "source": "inherited supervisor-adopted floors; net >=0 is explicit user target",
+    "fee_each_side": 0.0006,
+    "slippage_each_side": 0.0006,
+    "stress_multiplier": 2,
+    "round_trip_floor_bps_base": 24,
+    "round_trip_floor_bps_stress": 48,
+    "funding": "actual signed event cashflow and associated mark; no default zero or proxy mark",
+    "known_higher_fee": "refreeze higher fee before any score; account applicable fee UNKNOWN",
+    "settlement": "bind existing reviewed precision and conservative cashflow consumer before native; avoid double-counting native fees/funding"
+  },
+  "windows": {
+    "train": {
+      "start": "2021-01-01T00:00:00Z",
+      "end_exclusive": "2023-01-01T00:00:00Z",
+      "warmup_start": "2020-04-02T00:00:00Z",
+      "purpose": "EXPLORATORY_ONLY",
+      "binding": "old Issue119 source registration is not this protocol registration",
+      "quality": "BLOCKED_DATA in checked old terminal; complete current usable pool UNKNOWN",
+      "nominal_scoring_days": 730,
+      "full_84_day_blocks_upper_bound": 8
+    },
+    "old_exposed": {
+      "start": "2023-11-01T00:00:00Z",
+      "end_exclusive": "2024-11-01T00:00:00Z",
+      "use": "exposure disclosure only; not an extra fold or independent evidence"
+    },
+    "old_sealed": {
+      "start": "2024-11-01T00:00:00Z",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "use": "NO_READ; old 10 slots preserved"
+    },
+    "forward": {
+      "start": null,
+      "end_exclusive": null,
+      "admitted": false,
+      "status": "NOT_FROZEN_NO_POWER_JUSTIFICATION",
+      "withdrawn_v1_calendar": "2026-10-01 to 2029-10-01; not approved, not retained as deadline",
+      "requirements": "before independent observations, freeze legal warmup/state, dependence assessment, target precision/power, minimum information and finite calendar stop; no retrospective registration",
+      "insufficient_sample": "UNDERPOWERED is permissible; no automatic extension, lookback shortening or protection release"
+    }
+  },
+  "samples": {
+    "status": "TRAINING_DIAGNOSTICS_ONLY_INDEPENDENT_GATE_UNRESOLVED",
+    "old_issue131": "30-cluster old gate and UNDERPOWERED unchanged",
+    "new_thresholds": null,
+    "withdrawn_v1_thresholds": "12 blocks and 30 merged episodes do not have a new power justification; 84-day lookback/holding cap does not establish dependence length",
+    "unit": "report natural asset episodes and joint overlapping episodes; hourly bars, partial reductions, native chunks and correlated assets are not independent replicates",
+    "training": "nominal730 days; report net costs, feasibility, turnover, exposure and dependence diagnostics if later authorized; no independent qualification from training",
+    "confirmation": "must predefine cost-after nonloss lower confidence bound and risk evaluation on separate future evidence; estimator/block lengths/information requirement/calendar need justification before any independent read; no parameter selection to make intervals pass",
+    "C_claim": "C vs B and half-B paired diagnostics only until a justified predeclared joint inference contract exists; B remains primary",
+    "stop": "insufficient data/source/sample -> explicit blocker or UNDERPOWERED, not threshold relaxation"
+  },
+  "stage_gates": [
+    "control-only current slice; no market access",
+    "resolve source contract and complete evidence with new scoped authorization before any price read/request/native",
+    "shared technical sizing/cash/funding/risk preflight; contract or technical invalidity blocks all dependent jobs; do not confuse economic negative with technical invalidity",
+    "B base and stress first: fixed two-asset primary; valid negative B remains recorded simulated path, not a universal mechanism rejection",
+    "A-BTC and A-ETH base/stress are secondary diagnostics; either negative does not veto B, delete asset, change parameter or switch primary",
+    "C and half-B base/stress are secondary controls; technical/model/control integrity error stops dependent batch; valid negative result alone does not stop other frozen diagnostics",
+    "risk violation in a mode fails that mode; shared risk implementation defect blocks all; A mode failure alone is not evidence B violated its own limits",
+    "independent protocol must be justified and separately frozen; no forward allocation/calendar activated"
+  ],
+  "native_budget": {
+    "global_max": 96,
+    "already_reserved_calls": 28,
+    "old_sealed_preserved": 10,
+    "unallocated_before_draft": 58,
+    "draft_new_calls_max": 10,
+    "unallocated_if_approved": 48,
+    "global_reconciliation": "28 consumed + 10 old sealed + 10 proposed training + 48 unallocated = 96",
+    "technical_retries_new": 0,
+    "failures": "any reservation/attempt charges its slot even on error; no replacement keys or unmetered jobs; old technical-retry budget is not new authorization",
+    "rows": [
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/B/base",
+        "fold": "train-2021-2023",
+        "mode": "B",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "base",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/B/stress",
+        "fold": "train-2021-2023",
+        "mode": "B",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "stress",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/A-BTC/base",
+        "fold": "train-2021-2023",
+        "mode": "A-BTC",
+        "assets": [
+          "BTCUSDT"
+        ],
+        "cost": "base",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/A-BTC/stress",
+        "fold": "train-2021-2023",
+        "mode": "A-BTC",
+        "assets": [
+          "BTCUSDT"
+        ],
+        "cost": "stress",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/A-ETH/base",
+        "fold": "train-2021-2023",
+        "mode": "A-ETH",
+        "assets": [
+          "ETHUSDT"
+        ],
+        "cost": "base",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/A-ETH/stress",
+        "fold": "train-2021-2023",
+        "mode": "A-ETH",
+        "assets": [
+          "ETHUSDT"
+        ],
+        "cost": "stress",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/C/base",
+        "fold": "train-2021-2023",
+        "mode": "C",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "base",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/C/stress",
+        "fold": "train-2021-2023",
+        "mode": "C",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "stress",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/half-B/base",
+        "fold": "train-2021-2023",
+        "mode": "half-B",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "base",
+        "native_calls": 1,
+        "authorized": false
+      },
+      {
+        "key": "ISSUE139_TSMOM84_DRAFT_V2/train-2021-2023/half-B/stress",
+        "fold": "train-2021-2023",
+        "mode": "half-B",
+        "assets": [
+          "BTCUSDT",
+          "ETHUSDT"
+        ],
+        "cost": "stress",
+        "native_calls": 1,
+        "authorized": false
+      }
+    ],
+    "actually_called_this_issue": 0,
+    "actually_reserved_this_issue": 0,
+    "forward_calls": 0
+  },
+  "acquisition_budget": {
+    "authorized_requests": 0,
+    "authorized_bytes": 0,
+    "recommendation": "no repeated request while historical associated-mark source contract is unresolved; see issue139-source-audit-v2.json for conditional diagnostic ceiling and full-path arithmetic"
+  },
+  "evidence": {
+    "execution_implemented": false,
+    "actual_training_length_days": null,
+    "actual_order_sizing": null,
+    "natural_event_count": null,
+    "net_pnl": null,
+    "qualification": "NOT_RUN",
+    "controls": {
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": {
+        "sha256": "692c595eb32e928332d4d7759aabcf726e28f1d5ddda07a74a2a5a3a420d7439",
+        "bytes": 201846
+      },
+      "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": {
+        "sha256": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+        "bytes": 35263
+      },
+      "docs/issue117-exchange-metadata.json": {
+        "sha256": "58d0680b27de08d7d3e0ae2c9a34b6ada00096afef0cb16f3af6aee418aa4d9a",
+        "bytes": 3813
+      },
+      "docs/issue119-capture-terminal.json": {
+        "sha256": "52d41c4b28ad747a9a842ac4cbfad2548f6de5a42801651b5d821e6a411c0e9c",
+        "bytes": 7841
+      },
+      "docs/issue121-scope-snapshot.json": {
+        "sha256": "4514729c0a2210f596d21572ba4acdf9bb5055c29c9883f346fd4261b829f799",
+        "bytes": 23716
+      },
+      "docs/issue131-corrected-terminal.json": {
+        "sha256": "4421e64a235668f2b032995e243bdc638057c7b026a59bb05c066b4cc1e2fa66",
+        "bytes": 108375
+      },
+      "lab/portfolio_causal.py": {
+        "sha256": "9ef9125921bace1d3238cc1ce15a28b751c893b753d21b51f70bc72f8ac62ad0",
+        "bytes": 17178
+      },
+      "lab/portfolio_short.py": {
+        "sha256": "9bc45d4fdb227143b215933e05d083cc993491cbf011a88776dddaa2e3996d48",
+        "bytes": 6587
+      }
+    }
+  },
+  "literature_audit": {
+    "query_limit": 4,
+    "queries_used": 4,
+    "source_attempts_before_reopening": 5,
+    "successful_unique_sources": 3,
+    "failed_unique_sources": 2,
+    "cached_existing_source_line_expansions": 2,
+    "strict_open_attempts_total": 7,
+    "strict_open_limit": 6,
+    "deviation": "One over the limit if each open invocation counts; two final calls expanded previously opened PDF and official configuration; no further retrieval. Requires supervisor acceptance, not a compliant-budget claim."
+  },
+  "supersedes": "962c75462741fb296754ec5711de78d91d604e67:docs/protocols/issue139-tsmom-draft-v1.json",
+  "parameter_provenance": {
+    "user_explicit": {
+      "net_floor": 0,
+      "max_drawdown_fraction": 0.2
+    },
+    "inherited_supervisor_adopted_before_scoring": {
+      "source": "docs/protocols/btc-eth-portfolio-v1.json#threshold_sources; semantics-v1/v2; issue125-observed-semantics-v3",
+      "capital_usdt": 1000,
+      "leverage": 1,
+      "fee_each_side": 0.0006,
+      "slippage_each_side": 0.0006,
+      "stress_multiplier": 2,
+      "notional_caps": [
+        0.4,
+        0.8
+      ],
+      "stop_risk_cells": [
+        0.01,
+        0.005
+      ],
+      "dd_warning": 0.1,
+      "warning_multiplier": 0.5,
+      "dd_halt": 0.15,
+      "actual_funding": true
+    },
+    "new_design_not_user_requirements": {
+      "signal_lookback_days": 84,
+      "maximum_holding_days": 84,
+      "no_reentry_until_direction_change": true,
+      "B": "same signal two-asset fixed portfolio",
+      "A": "individual asset diagnostic",
+      "C": "proposed reduction-only variant of inherited volatility factor; not identical inherited recovery",
+      "independent_sample_thresholds": "NOT_FROZEN; power and dependence unresolved"
+    }
+  }
+}

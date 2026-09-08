@@ -1,0 +1,82 @@
+{
+  "status": "V3_ACTUAL_CHECK_ONLY_PASS",
+  "at_utc": "2026-09-08T05:55:34.194429+00:00",
+  "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+  "market_calls": 0,
+  "reservations": 0,
+  "new_gets": 0,
+  "native_synthetic_instances": 0,
+  "v3_runtime_root_created": false,
+  "tests": "40 passed (10 V3 entry/report,12 V3 model,18 previous related tests)",
+  "initial_check_failures": {
+    "count": 2,
+    "costs": [
+      "base",
+      "stress"
+    ],
+    "manifest_sha256": "a920adf0cb5dbd9474deeec1d8a30ba65204a81308eb9a4b27fe58bb91bafae9",
+    "reason": "Legacy global control JSONL blank lines95 and98 were initially parsed as JSON. Parser now permits blank separators only for global control; exact byte SHA unchanged.",
+    "native_calls": 0,
+    "reservations": 0
+  },
+  "checks": [
+    {
+      "cost": "base",
+      "command": [
+        "python3",
+        "scripts/run_spot139_v3.py",
+        "docs/issue139-v3-first-diagnostics-manifest.json",
+        "--manifest-sha256",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+        "--cost",
+        "base"
+      ],
+      "returncode": 0,
+      "stdout": {
+        "status": "CHECK_ONLY_READY_FOR_REVIEW",
+        "model": "SpotResidualV3",
+        "mapper": "ReconcilerV3",
+        "cost": "base",
+        "execution_gate": "EXTERNAL_GRANT_REQUIRED",
+        "source_integrity": "PASS",
+        "ancestor_consumed": 30,
+        "v3_reserved": 0,
+        "v3_status": {},
+        "global_consumed": 30,
+        "market_calls_this_check": 0,
+        "reservations_this_check": 0,
+        "economic_result": null
+      },
+      "stderr": ""
+    },
+    {
+      "cost": "stress",
+      "command": [
+        "python3",
+        "scripts/run_spot139_v3.py",
+        "docs/issue139-v3-first-diagnostics-manifest.json",
+        "--manifest-sha256",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+        "--cost",
+        "stress"
+      ],
+      "returncode": 0,
+      "stdout": {
+        "status": "CHECK_ONLY_READY_FOR_REVIEW",
+        "model": "SpotResidualV3",
+        "mapper": "ReconcilerV3",
+        "cost": "stress",
+        "execution_gate": "BASE_SUCCESS_REQUIRED",
+        "source_integrity": "PASS",
+        "ancestor_consumed": 30,
+        "v3_reserved": 0,
+        "v3_status": {},
+        "global_consumed": 30,
+        "market_calls_this_check": 0,
+        "reservations_this_check": 0,
+        "economic_result": null
+      },
+      "stderr": ""
+    }
+  ]
+}

@@ -1,0 +1,552 @@
+{
+  "status": "NATIVE_SYNTHETIC_MAPPING_PASS",
+  "cases": [
+    {
+      "cost": "base",
+      "orders": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 1,
+          "side": "buy",
+          "gross_amount": "1.234",
+          "price": "100.06",
+          "native_order_cost": "123.59751404",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.234",
+          "native_cash": "876.5259599999999",
+          "native_realized": "0",
+          "native_entry_price": "100.06",
+          "native_orders": 1,
+          "reference_fee_base": "0.001234",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "876.5259600",
+          "model_inventory": {
+            "BTC/USDT": "1.232766"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.001234"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.001234"
+          },
+          "model_minus_native_cash": "1E-13",
+          "expected_cash_difference": "0",
+          "native_profit_rounding_residual": "0",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": 0,
+            "stake": 123.47404,
+            "recomputed_cash": 876.5259599999999
+          },
+          "native_rounding_cash_residual": "1E-13",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 1,
+          "side": "buy",
+          "gross_amount": "1.234",
+          "price": "100.06",
+          "native_order_cost": "123.59751404",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.234",
+          "native_cash": "753.05192",
+          "native_realized": "0",
+          "native_entry_price": "100.06",
+          "native_orders": 1,
+          "reference_fee_base": "0.001234",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "753.0519200",
+          "model_inventory": {
+            "BTC/USDT": "1.232766",
+            "ETH/USDT": "1.232766"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.234",
+            "ETH/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.001234",
+            "ETH/USDT": "0.001234"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.001234",
+            "ETH/USDT": "0.001234"
+          },
+          "model_minus_native_cash": "0E-7",
+          "expected_cash_difference": "0",
+          "native_profit_rounding_residual": "0",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": 0,
+            "stake": 246.94808,
+            "recomputed_cash": 753.05192
+          },
+          "native_rounding_cash_residual": "0E-7",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 2,
+          "side": "sell",
+          "gross_amount": "1.232",
+          "price": "99.94",
+          "native_order_cost": "123.24920608",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "0.002",
+          "native_cash": "875.9316",
+          "native_realized": "-0.39424",
+          "native_entry_price": "100.06",
+          "native_orders": 2,
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.123127",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "876.0548730",
+          "model_inventory": {
+            "BTC/USDT": "0.000766",
+            "ETH/USDT": "1.232766"
+          },
+          "native_inventory": {
+            "BTC/USDT": "0.002",
+            "ETH/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.001234",
+            "ETH/USDT": "0.001234"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.001234",
+            "ETH/USDT": "0.001234"
+          },
+          "model_minus_native_cash": "0.1232730",
+          "expected_cash_difference": "0.1232730000",
+          "native_profit_rounding_residual": "0E-10",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": -0.39424,
+            "stake": 123.67416,
+            "recomputed_cash": 875.9316
+          },
+          "native_rounding_cash_residual": "0E-10",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        }
+      ],
+      "terminal": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "0.002",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "1.234",
+          "is_open": true
+        }
+      ],
+      "model_terminal": {
+        "cash": "876.0548730",
+        "marked_inventory": "123.353200",
+        "equity": "999.4080730",
+        "estimated_exit_cost": "0.1973651200",
+        "inventory": {
+          "BTC/USDT": "0.000766",
+          "ETH/USDT": "1.232766"
+        },
+        "synthetic_exit_executed": false,
+        "realized_pnl": "-0.3943643173173173173173173",
+        "unrealized_pnl": "-0.1975626826826826826826827",
+        "mark_age_hours": {
+          "BTC/USDT": 0,
+          "ETH/USDT": 0
+        },
+        "real_max_drawdown": "UNKNOWN",
+        "engine": "REFERENCE_MODEL_NOT_FREQTRADE_MATCHING"
+      },
+      "global_dust_block": true,
+      "missing_open_rejected": true,
+      "no_terminal_order": true
+    },
+    {
+      "cost": "stress",
+      "orders": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 1,
+          "side": "buy",
+          "gross_amount": "1.234",
+          "price": "100.12",
+          "native_order_cost": "123.79517616",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.234",
+          "native_cash": "876.45192",
+          "native_realized": "0",
+          "native_entry_price": "100.12",
+          "native_orders": 1,
+          "reference_fee_base": "0.002468",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "876.4519200",
+          "model_inventory": {
+            "BTC/USDT": "1.231532"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.002468"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.002468"
+          },
+          "model_minus_native_cash": "0E-7",
+          "expected_cash_difference": "0",
+          "native_profit_rounding_residual": "0",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": 0,
+            "stake": 123.54808,
+            "recomputed_cash": 876.45192
+          },
+          "native_rounding_cash_residual": "0E-7",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 1,
+          "side": "buy",
+          "gross_amount": "1.234",
+          "price": "100.12",
+          "native_order_cost": "123.79517616",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.234",
+          "native_cash": "752.90384",
+          "native_realized": "0",
+          "native_entry_price": "100.12",
+          "native_orders": 1,
+          "reference_fee_base": "0.002468",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "752.9038400",
+          "model_inventory": {
+            "BTC/USDT": "1.231532",
+            "ETH/USDT": "1.231532"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.234",
+            "ETH/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.002468",
+            "ETH/USDT": "0.002468"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.002468",
+            "ETH/USDT": "0.002468"
+          },
+          "model_minus_native_cash": "0E-7",
+          "expected_cash_difference": "0",
+          "native_profit_rounding_residual": "0",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": 0,
+            "stake": 247.09616,
+            "recomputed_cash": 752.90384
+          },
+          "native_rounding_cash_residual": "0E-7",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 2,
+          "side": "sell",
+          "gross_amount": "1.231",
+          "price": "99.88",
+          "native_order_cost": "123.19818456",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "0.003",
+          "native_cash": "875.3637200000001",
+          "native_realized": "-0.78784",
+          "native_entry_price": "100.12",
+          "native_orders": 2,
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.245905",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "875.6102150",
+          "model_inventory": {
+            "BTC/USDT": "0.000532",
+            "ETH/USDT": "1.231532"
+          },
+          "native_inventory": {
+            "BTC/USDT": "0.003",
+            "ETH/USDT": "1.234"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.002468",
+            "ETH/USDT": "0.002468"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.002468",
+            "ETH/USDT": "0.002468"
+          },
+          "model_minus_native_cash": "0.2464949999999",
+          "expected_cash_difference": "0.2464950000",
+          "native_profit_rounding_residual": "0E-10",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": -0.78784,
+            "stake": 123.84844,
+            "recomputed_cash": 875.3637200000001
+          },
+          "native_rounding_cash_residual": "-1E-13",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        }
+      ],
+      "terminal": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "0.003",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "1.234",
+          "is_open": true
+        }
+      ],
+      "model_terminal": {
+        "cash": "875.6102150",
+        "marked_inventory": "123.206400",
+        "equity": "998.8166150",
+        "estimated_exit_cost": "0.3942604800",
+        "inventory": {
+          "BTC/USDT": "0.000532",
+          "ETH/USDT": "1.231532"
+        },
+        "synthetic_exit_executed": false,
+        "realized_pnl": "-0.7883344188376753507014028",
+        "unrealized_pnl": "-0.3950505811623246492985972",
+        "mark_age_hours": {
+          "BTC/USDT": 0,
+          "ETH/USDT": 0
+        },
+        "real_max_drawdown": "UNKNOWN",
+        "engine": "REFERENCE_MODEL_NOT_FREQTRADE_MATCHING"
+      },
+      "global_dust_block": true,
+      "missing_open_rejected": true,
+      "no_terminal_order": true
+    },
+    {
+      "cost": "base_accounting_exact_lot_reentry",
+      "orders": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 1,
+          "side": "buy",
+          "gross_amount": "1.0",
+          "price": "100.0",
+          "native_order_cost": "100.1",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.0",
+          "native_cash": "900.0",
+          "native_realized": "0",
+          "native_entry_price": "100.0",
+          "native_orders": 1,
+          "reference_fee_base": "0.001",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "900",
+          "model_inventory": {
+            "BTC/USDT": "0.999"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.0"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.001"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.001"
+          },
+          "model_minus_native_cash": "0.0",
+          "expected_cash_difference": "0",
+          "native_profit_rounding_residual": "0",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": 0,
+            "stake": 100.0,
+            "recomputed_cash": 900.0
+          },
+          "native_rounding_cash_residual": "0.0",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 2,
+          "side": "sell",
+          "gross_amount": "0.999",
+          "price": "100.0",
+          "native_order_cost": "99.9999",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "0.001",
+          "native_cash": "999.7002",
+          "native_realized": "-0.1998",
+          "native_entry_price": "100.0",
+          "native_orders": 2,
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.099900",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "999.800100",
+          "model_inventory": {
+            "BTC/USDT": "0.000"
+          },
+          "native_inventory": {
+            "BTC/USDT": "0.001"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.001"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.001"
+          },
+          "model_minus_native_cash": "0.099900",
+          "expected_cash_difference": "0.0999000",
+          "native_profit_rounding_residual": "0E-7",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": -0.1998,
+            "stake": 0.1,
+            "recomputed_cash": 999.7002
+          },
+          "native_rounding_cash_residual": "0E-7",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 3,
+          "side": "buy",
+          "gross_amount": "1.0",
+          "price": "200.0",
+          "native_order_cost": "200.2",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "1.001",
+          "native_cash": "799.7002",
+          "native_realized": "-0.1998",
+          "native_entry_price": "199.9001",
+          "native_orders": 3,
+          "reference_fee_base": "0.001",
+          "reference_fee_quote": "0",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "799.800100",
+          "model_inventory": {
+            "BTC/USDT": "0.999"
+          },
+          "native_inventory": {
+            "BTC/USDT": "1.001"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.002"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.002"
+          },
+          "model_minus_native_cash": "0.099900",
+          "expected_cash_difference": "0.0999000",
+          "native_profit_rounding_residual": "0E-7",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": -0.1998,
+            "stake": 200.1,
+            "recomputed_cash": 799.7002
+          },
+          "native_rounding_cash_residual": "0E-7",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 4,
+          "side": "sell",
+          "gross_amount": "0.999",
+          "price": "200.0",
+          "native_order_cost": "199.9998",
+          "native_ft_fee_base": null,
+          "native_trade_amount": "0.002",
+          "native_cash": "999.1006998001998",
+          "native_realized": "-0.49950000000000006",
+          "native_entry_price": "199.9001",
+          "native_orders": 4,
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.199800",
+          "classification": "NATIVE_ORDER_PLUS_EXPLICIT_BASE_FEE_MODEL_NOT_IDENTICAL_STATISTICS",
+          "model_cash": "999.400300",
+          "model_inventory": {
+            "BTC/USDT": "0.000"
+          },
+          "native_inventory": {
+            "BTC/USDT": "0.002"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.002"
+          },
+          "cumulative_entry_base_fee": {
+            "BTC/USDT": "0.002"
+          },
+          "model_minus_native_cash": "0.2996001998002",
+          "expected_cash_difference": "0.2996001999",
+          "native_profit_rounding_residual": "9.989999994E-8",
+          "native_wallet_components": {
+            "initial": 1000,
+            "realized": -0.49950000000000006,
+            "stake": 0.3998001998001998,
+            "recomputed_cash": 999.1006998001998
+          },
+          "native_rounding_cash_residual": "-9.98E-11",
+          "cash_formula": "model-native = native entry quote fee realized - modeled sell quote rounding + reported native arithmetic/rounding residual"
+        }
+      ],
+      "model_flat_native_fee_reserve": true
+    }
+  ],
+  "native_synthetic_instances": 3,
+  "market_native_calls": 0,
+  "evidence_type": "SYNTHETIC_ONLY_NOT_MARKET_PNL",
+  "native_commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+  "native_version": "2026.7",
+  "attempt_history": [
+    {
+      "instances": 2,
+      "result": "FAILED_STAKE_CALLBACK_NOT_BOUND",
+      "details": "native filled5.0 versus requested1.234; both rejected by exact gross check"
+    },
+    {
+      "instances": 1,
+      "result": "PASS_INTEGER_PRICE_EXPLICIT_STAKE"
+    },
+    {
+      "instances": 2,
+      "result": "PASS_BASE_STRESS_SLIPPAGE_DUST"
+    },
+    {
+      "instances": 2,
+      "result": "PASS_FINAL_NATIVE_WALLET_COMPONENT_CHECK"
+    },
+    {
+      "instances": 3,
+      "result": "PASS_FINAL_BASE_STRESS_AND_EXACT_LOT_REENTRY"
+    }
+  ],
+  "budget_reservations": 0,
+  "total_synthetic_engine_instances_this_mapping_slice": 10,
+  "synthetic_python_processes_this_mapping_slice": 6,
+  "code_sha256": {
+    "lab/Spot139Native.py": "b7d5bee4b886b1c9730989321c43156b847d6c657cb57c94ab920a451fcc9dec",
+    "lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "lab/spot139_native_bridge.py": "e7a1feefe8def154b97c3c08ecfba634853a1f3ce94aa7eb1d4b6f10472dfd00",
+    "scripts/probe_spot139_native.py": "6298b3fd921f75d16c39b9eb74d0a938e7154c7717cdebf579da9f044165296b"
+  }
+}

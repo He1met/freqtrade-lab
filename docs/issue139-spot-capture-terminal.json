@@ -1,0 +1,294 @@
+{
+  "budget_sha256": "c66ad06906688d5a946262ee0378d39e584931fbd4402edf002716967ce3145b",
+  "cumulative_active_seconds": 169.1827094554901,
+  "cumulative_charged_bytes": 14894857,
+  "cumulative_gets": 77,
+  "economic_result": null,
+  "launch_sha256": "a30513666e44521813cd92b3bbfd08278355f5a22ffc5f4172834331ef64e8e1",
+  "ledger_after": "8456411bc6020bc6ccb2d81e5b789d4f2926ad196cb8a5492bfee3caa9732020",
+  "native_calls": 0,
+  "new_active_seconds": 3.4234702587127686,
+  "new_charged_bytes": 290928,
+  "new_gets": 4,
+  "parent_sha256": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+  "reason": "UTC coverage/gap/duplicate/schema",
+  "responses": [
+    {
+      "bytes": 10245,
+      "endpoint": "exchangeInfo",
+      "number": 1,
+      "sha256": "39b1adcf5d167250083ebb5eb7ad4dca59026c765989716dc4a0ceef58fe28e8",
+      "status": 200
+    },
+    {
+      "bytes": 50434,
+      "endpoint": "klines",
+      "number": 2,
+      "sha256": "593dc8eaf03b8e51fbc76f721eebc224985f999514e391c2700b7b4bcfc72347",
+      "status": 200
+    },
+    {
+      "bytes": 49009,
+      "endpoint": "klines",
+      "number": 3,
+      "sha256": "9cc2f33afbfc81bf279bf56c7e288bce442fe34455407e481f8c7e3221d2f045",
+      "status": 200
+    },
+    {
+      "bytes": 181240,
+      "endpoint": "klines",
+      "number": 4,
+      "sha256": "47c0851f4b2f38ce620c5c4d454c711d774cc68348fddffbd52380a8b891ae81",
+      "status": 200
+    }
+  ],
+  "status": "BLOCKED_DATA",
+  "structure_audit": {
+    "source_response_file": "004-klines.json",
+    "response_sha256": "47c0851f4b2f38ce620c5c4d454c711d774cc68348fddffbd52380a8b891ae81",
+    "request": {
+      "endTime": 1672531199999,
+      "interval": "1h",
+      "limit": 1000,
+      "startTime": 1609459200000,
+      "symbol": "BTCUSDT"
+    },
+    "zero_based_indices": true,
+    "rows": [
+      {
+        "index": 985,
+        "open_ms": 1613005200000,
+        "open_utc": "2021-02-11T01:00:00.000+00:00",
+        "close_ms": 1613008799999,
+        "close_utc": "2021-02-11T01:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 986,
+        "open_ms": 1613008800000,
+        "open_utc": "2021-02-11T02:00:00.000+00:00",
+        "close_ms": 1613012399999,
+        "close_utc": "2021-02-11T02:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 987,
+        "open_ms": 1613012400000,
+        "open_utc": "2021-02-11T03:00:00.000+00:00",
+        "close_ms": 1613014854773,
+        "close_utc": "2021-02-11T03:40:54.773+00:00",
+        "columns": 12
+      },
+      {
+        "index": 988,
+        "open_ms": 1613019600000,
+        "open_utc": "2021-02-11T05:00:00.000+00:00",
+        "close_ms": 1613023199999,
+        "close_utc": "2021-02-11T05:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 989,
+        "open_ms": 1613023200000,
+        "open_utc": "2021-02-11T06:00:00.000+00:00",
+        "close_ms": 1613026799999,
+        "close_utc": "2021-02-11T06:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 990,
+        "open_ms": 1613026800000,
+        "open_utc": "2021-02-11T07:00:00.000+00:00",
+        "close_ms": 1613030399999,
+        "close_utc": "2021-02-11T07:59:59.999+00:00",
+        "columns": 12
+      }
+    ],
+    "missing_expected_open_ms": 1613016000000,
+    "missing_expected_open_utc": "2021-02-11T04:00:00.000+00:00",
+    "short_candle_duration_ms": 2454774,
+    "timestamp_fields": "array index0 openTime and index6 closeTime are JSON integers in milliseconds; UTC conversion only for display; no seconds/milliseconds or timezone offset applied by validator",
+    "diagnosis": "source timestamp/coverage deviation in retained HTTP200 body; cause UNKNOWN, exchange downtime unverified; no retry or fill"
+  },
+  "completed_coverage": {
+    "BTCUSDT": {
+      "warmup_daily": 274,
+      "training_hourly_complete": false,
+      "first_page_rows": 1000,
+      "first_page_valid_prefix_before_short_close": 987
+    },
+    "ETHUSDT": {
+      "warmup_daily": 274,
+      "training_hourly": "NOT_REQUESTED_AFTER_STOP"
+    }
+  },
+  "metadata_identity": {
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "status": "TRADING",
+      "baseAsset": "BTC",
+      "quoteAsset": "USDT",
+      "isSpotTradingAllowed": true,
+      "baseAssetPrecision": 8,
+      "quoteAssetPrecision": 8,
+      "baseCommissionPrecision": 8,
+      "quoteCommissionPrecision": 8,
+      "filters": [
+        {
+          "filterType": "PRICE_FILTER",
+          "minPrice": "0.01000000",
+          "maxPrice": "1000000.00000000",
+          "tickSize": "0.01000000"
+        },
+        {
+          "filterType": "LOT_SIZE",
+          "minQty": "0.00001000",
+          "maxQty": "9000.00000000",
+          "stepSize": "0.00001000"
+        },
+        {
+          "filterType": "ICEBERG_PARTS",
+          "limit": 100
+        },
+        {
+          "filterType": "MARKET_LOT_SIZE",
+          "minQty": "0.00000000",
+          "maxQty": "117.69434414",
+          "stepSize": "0.00000000"
+        },
+        {
+          "filterType": "TRAILING_DELTA",
+          "minTrailingAboveDelta": 10,
+          "maxTrailingAboveDelta": 2000,
+          "minTrailingBelowDelta": 10,
+          "maxTrailingBelowDelta": 2000
+        },
+        {
+          "filterType": "PERCENT_PRICE_BY_SIDE",
+          "bidMultiplierUp": "1.2",
+          "bidMultiplierDown": "0.5",
+          "askMultiplierUp": "2",
+          "askMultiplierDown": "0.8",
+          "avgPriceMins": 5
+        },
+        {
+          "filterType": "NOTIONAL",
+          "minNotional": "5.00000000",
+          "applyMinToMarket": true,
+          "maxNotional": "9000000.00000000",
+          "applyMaxToMarket": false,
+          "avgPriceMins": 5
+        },
+        {
+          "filterType": "MAX_NUM_ORDERS",
+          "maxNumOrders": 200
+        },
+        {
+          "filterType": "MAX_NUM_ORDER_LISTS",
+          "maxNumOrderLists": 20
+        },
+        {
+          "filterType": "MAX_NUM_ALGO_ORDERS",
+          "maxNumAlgoOrders": 5
+        },
+        {
+          "filterType": "MAX_NUM_ORDER_AMENDS",
+          "maxNumOrderAmends": 10
+        }
+      ],
+      "orderTypes": [
+        "LIMIT",
+        "LIMIT_MAKER",
+        "MARKET",
+        "STOP_LOSS",
+        "STOP_LOSS_LIMIT",
+        "TAKE_PROFIT",
+        "TAKE_PROFIT_LIMIT"
+      ]
+    },
+    "ETHUSDT": {
+      "symbol": "ETHUSDT",
+      "status": "TRADING",
+      "baseAsset": "ETH",
+      "quoteAsset": "USDT",
+      "isSpotTradingAllowed": true,
+      "baseAssetPrecision": 8,
+      "quoteAssetPrecision": 8,
+      "baseCommissionPrecision": 8,
+      "quoteCommissionPrecision": 8,
+      "filters": [
+        {
+          "filterType": "PRICE_FILTER",
+          "minPrice": "0.01000000",
+          "maxPrice": "1000000.00000000",
+          "tickSize": "0.01000000"
+        },
+        {
+          "filterType": "LOT_SIZE",
+          "minQty": "0.00010000",
+          "maxQty": "9000.00000000",
+          "stepSize": "0.00010000"
+        },
+        {
+          "filterType": "ICEBERG_PARTS",
+          "limit": 100
+        },
+        {
+          "filterType": "MARKET_LOT_SIZE",
+          "minQty": "0.00000000",
+          "maxQty": "2160.13660871",
+          "stepSize": "0.00000000"
+        },
+        {
+          "filterType": "TRAILING_DELTA",
+          "minTrailingAboveDelta": 10,
+          "maxTrailingAboveDelta": 2000,
+          "minTrailingBelowDelta": 10,
+          "maxTrailingBelowDelta": 2000
+        },
+        {
+          "filterType": "PERCENT_PRICE_BY_SIDE",
+          "bidMultiplierUp": "1.2",
+          "bidMultiplierDown": "0.5",
+          "askMultiplierUp": "2",
+          "askMultiplierDown": "0.8",
+          "avgPriceMins": 5
+        },
+        {
+          "filterType": "NOTIONAL",
+          "minNotional": "5.00000000",
+          "applyMinToMarket": true,
+          "maxNotional": "9000000.00000000",
+          "applyMaxToMarket": false,
+          "avgPriceMins": 5
+        },
+        {
+          "filterType": "MAX_NUM_ORDERS",
+          "maxNumOrders": 200
+        },
+        {
+          "filterType": "MAX_NUM_ORDER_LISTS",
+          "maxNumOrderLists": 20
+        },
+        {
+          "filterType": "MAX_NUM_ALGO_ORDERS",
+          "maxNumAlgoOrders": 5
+        },
+        {
+          "filterType": "MAX_NUM_ORDER_AMENDS",
+          "maxNumOrderAmends": 10
+        }
+      ],
+      "orderTypes": [
+        "LIMIT",
+        "LIMIT_MAKER",
+        "MARKET",
+        "STOP_LOSS",
+        "STOP_LOSS_LIMIT",
+        "TAKE_PROFIT",
+        "TAKE_PROFIT_LIMIT"
+      ]
+    }
+  },
+  "publication": "sanitized control/structure only; no prices or volumes"
+}

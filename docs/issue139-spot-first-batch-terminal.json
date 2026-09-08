@@ -1,0 +1,567 @@
+{
+  "status": "B_FIRST_BATCH_COMPLETED_SAMPLE_INSUFFICIENT",
+  "execution_type": "REFERENCE_CONTROLLER_PRIVATE_NATIVE_ORDERS_SIMULATED_PRICE_ROWS_EXPLICIT_ACCOUNTING_NOT_STANDARD_BACKTEST_EQUIVALENCE",
+  "code_commit": "2eebeb146b23b2cb30edf42206358719ee3fb2ca",
+  "native_commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+  "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+  "grant": {
+    "market_execution_authorized": true,
+    "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+    "costs": [
+      "base",
+      "stress"
+    ],
+    "authorization_reference": "https://github.com/He1met/freqtrade-lab/issues/139#issuecomment-5579593229"
+  },
+  "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+  "source_inventory_sha256": "a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552",
+  "model_sha256": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+  "native_bridge_sha256": "e7a1feefe8def154b97c3c08ecfba634853a1f3ce94aa7eb1d4b6f10472dfd00",
+  "calls_sha256": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+  "new_calls": 2,
+  "new_success": 2,
+  "new_failures": 0,
+  "retries": 0,
+  "new_gets": 0,
+  "acquisition_gets_cumulative": 112,
+  "budget": {
+    "global_limit": 96,
+    "old_consumed": 28,
+    "new_consumed": 2,
+    "total_consumed": 30,
+    "old_sealed": 10,
+    "issue139_remaining_pending": 8,
+    "unallocated": 48
+  },
+  "terminal_marks": {
+    "BTC/USDT": "16520.28000000",
+    "ETH/USDT": "1196.18000000"
+  },
+  "cases": {
+    "base": {
+      "model_net": "57.7395704392000000",
+      "model_return_fraction": "0.0577395704392000",
+      "cash": "1057.5173458100000000",
+      "marked_inventory": "0.2222246292000000",
+      "equity": "1057.7395704392000000",
+      "realized": "57.82184709298298298298298298",
+      "unrealized": "-0.08227665378298298298298298",
+      "estimated_exit_cost": "0.00035555940672000000",
+      "native_cash": "1057.45832788",
+      "native_gross_inventory": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "1e-05",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "0.0001",
+          "is_open": true
+        }
+      ],
+      "native_realized": "57.82190618",
+      "native_gross_marked_inventory": "0.2848208000000",
+      "native_closed_trades": 0,
+      "assets": {
+        "BTC/USDT": {
+          "buys": 1,
+          "sells": 1,
+          "entered_episodes": 1,
+          "expired_episodes_with_dust": 1,
+          "completely_flat_episodes": 0,
+          "entry_utc": "2021-01-01T01:00:00+00:00",
+          "expiry_exit_utc": "2021-03-26T01:00:00+00:00",
+          "holding_hours": 2016,
+          "dust": "0.00000889",
+          "marked_dust_value": "0.1468652892000000",
+          "modeled_realized": "25.25408220127127127127127127",
+          "modeled_unrealized": "-0.1113142820712712712712712713",
+          "modeled_net": "25.14276791920000000000000000",
+          "native_realized_quote_stat": "25.25411415",
+          "share_of_realized_profit": "0.4367567532157927352148456472"
+        },
+        "ETH/USDT": {
+          "buys": 1,
+          "sells": 1,
+          "entered_episodes": 1,
+          "expired_episodes_with_dust": 1,
+          "completely_flat_episodes": 0,
+          "entry_utc": "2021-01-01T01:00:00+00:00",
+          "expiry_exit_utc": "2021-03-26T01:00:00+00:00",
+          "holding_hours": 2016,
+          "dust": "0.00006300",
+          "marked_dust_value": "0.0753593400000000",
+          "modeled_realized": "32.56776489171171171171171171",
+          "modeled_unrealized": "0.02903762828828828828828828829",
+          "modeled_net": "32.59680252000000000000000000",
+          "native_realized_quote_stat": "32.56779203",
+          "share_of_realized_profit": "0.5632432467842072647851543528"
+        }
+      },
+      "merged_overlapping_episodes": 1,
+      "profit_concentration": "100% of realized profit in the same Jan01-Mar26 episode; base/stress are paired cost scenarios, not independent samples",
+      "global_dust_block_first_utc": "2021-03-26T01:00:00+00:00",
+      "global_dust_block_first_hour": 449089,
+      "blocked_hours_until_exclusive_end": 15503,
+      "subsequent_entry_count": 0,
+      "dust_block_timing_evidence": "Derived from first exit positive sub-lot remainder plus frozen _sell latch and terminal global_dust_block; no rerun",
+      "stale_hours": 13,
+      "terminal_mark_age_hours": {
+        "BTC/USDT": 0,
+        "ETH/USDT": 0
+      },
+      "max_abs_native_cash_mapping_residual": "1.0001000000E-9",
+      "max_abs_native_profit_rounding_residual": "1.0000000000E-9",
+      "observed_open_drawdown": "0.03860324618414750298600576684",
+      "real_drawdown": "UNKNOWN",
+      "accounting_assessment": "No obvious beyond-rounding discrepancy observed in these four orders; no rejection bound was implemented or certified",
+      "sample_assessment": "INSUFFICIENT_FOR_CONTINUATION_OR_INDEPENDENT_QUALIFICATION",
+      "result_sha256": "690a1497797363211d002c30a2a011a3ea84967b340e18f9ed4fdd9042babbee",
+      "per_order_reconciliation": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.00111",
+          "price": "29012.53",
+          "reference_fee_base": "0.00000111",
+          "reference_fee_quote": "0",
+          "model_cash": "967.7960917000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110889"
+          },
+          "native_cash": "967.7960917",
+          "native_inventory": {
+            "BTC/USDT": "0.00111"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000111"
+          },
+          "model_minus_native_cash": "0E-16",
+          "expected_cash_difference": "0",
+          "native_rounding_cash_residual": "0E-16",
+          "native_profit_rounding_residual": "0"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.037",
+          "price": "734.53",
+          "reference_fee_base": "0.00003700",
+          "reference_fee_quote": "0",
+          "model_cash": "940.6184817000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110889",
+            "ETH/USDT": "0.03696300"
+          },
+          "native_cash": "940.6184817",
+          "native_inventory": {
+            "BTC/USDT": "0.00111",
+            "ETH/USDT": "0.037"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "model_minus_native_cash": "0E-16",
+          "expected_cash_difference": "0",
+          "native_rounding_cash_residual": "0E-16",
+          "native_profit_rounding_residual": "0"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0011",
+          "price": "52051.88",
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.05725707",
+          "model_cash": "997.8182926300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000889",
+            "ETH/USDT": "0.03696300"
+          },
+          "native_cash": "997.7863788500001",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.037"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "model_minus_native_cash": "0.0319137799999000",
+          "expected_cash_difference": "0.0319137810000000000",
+          "native_rounding_cash_residual": "-1.0001000000E-9",
+          "native_profit_rounding_residual": "1.0000000000E-9"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0369",
+          "price": "1619.48",
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.05975882",
+          "model_cash": "1057.5173458100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000889",
+            "ETH/USDT": "0.00006300"
+          },
+          "native_cash": "1057.45832788",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "model_minus_native_cash": "0.0590179300000000",
+          "expected_cash_difference": "0.0590179300000000000",
+          "native_rounding_cash_residual": "0E-19",
+          "native_profit_rounding_residual": "0E-19"
+        }
+      ]
+    },
+    "stress": {
+      "model_net": "57.4543367284000000",
+      "model_return_fraction": "0.0574543367284000",
+      "cash": "1057.2947082700000000",
+      "marked_inventory": "0.1596284584000000",
+      "equity": "1057.4543367284000000",
+      "realized": "57.54016125136272545090180361",
+      "unrealized": "-0.08582452296272545090180361",
+      "estimated_exit_cost": "0.00051081106688000000",
+      "native_cash": "1057.1766016499998",
+      "native_gross_inventory": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "1e-05",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "0.0001",
+          "is_open": true
+        }
+      ],
+      "native_realized": "57.54039795",
+      "native_gross_marked_inventory": "0.2848208000000",
+      "native_closed_trades": 0,
+      "assets": {
+        "BTC/USDT": {
+          "buys": 1,
+          "sells": 1,
+          "entered_episodes": 1,
+          "expired_episodes_with_dust": 1,
+          "completely_flat_episodes": 0,
+          "entry_utc": "2021-01-01T01:00:00+00:00",
+          "expiry_exit_utc": "2021-03-26T01:00:00+00:00",
+          "holding_hours": 2016,
+          "dust": "0.00000778",
+          "marked_dust_value": "0.1285277784000000",
+          "modeled_realized": "25.11133077633266533066132265",
+          "modeled_unrealized": "-0.0977776879326653306613226453",
+          "modeled_net": "25.01355308840000000000000000",
+          "native_realized_quote_stat": "25.11145877",
+          "share_of_realized_profit": "0.4364139799093446734668215805"
+        },
+        "ETH/USDT": {
+          "buys": 1,
+          "sells": 1,
+          "entered_episodes": 1,
+          "expired_episodes_with_dust": 1,
+          "completely_flat_episodes": 0,
+          "entry_utc": "2021-01-01T01:00:00+00:00",
+          "expiry_exit_utc": "2021-03-26T01:00:00+00:00",
+          "holding_hours": 2016,
+          "dust": "0.00002600",
+          "marked_dust_value": "0.0311006800000000",
+          "modeled_realized": "32.42883047503006012024048096",
+          "modeled_unrealized": "0.01195316496993987975951903808",
+          "modeled_net": "32.44078364000000000000000000",
+          "native_realized_quote_stat": "32.42893918",
+          "share_of_realized_profit": "0.5635860200906553265331784195"
+        }
+      },
+      "merged_overlapping_episodes": 1,
+      "profit_concentration": "100% of realized profit in the same Jan01-Mar26 episode; base/stress are paired cost scenarios, not independent samples",
+      "global_dust_block_first_utc": "2021-03-26T01:00:00+00:00",
+      "global_dust_block_first_hour": 449089,
+      "blocked_hours_until_exclusive_end": 15503,
+      "subsequent_entry_count": 0,
+      "dust_block_timing_evidence": "Derived from first exit positive sub-lot remainder plus frozen _sell latch and terminal global_dust_block; no rerun",
+      "stale_hours": 13,
+      "terminal_mark_age_hours": {
+        "BTC/USDT": 0,
+        "ETH/USDT": 0
+      },
+      "max_abs_native_cash_mapping_residual": "5.9998000000E-9",
+      "max_abs_native_profit_rounding_residual": "6.0000000000E-9",
+      "observed_open_drawdown": "0.03857083192179976085427764865",
+      "real_drawdown": "UNKNOWN",
+      "accounting_assessment": "No obvious beyond-rounding discrepancy observed in these four orders; no rejection bound was implemented or certified",
+      "sample_assessment": "INSUFFICIENT_FOR_CONTINUATION_OR_INDEPENDENT_QUALIFICATION",
+      "result_sha256": "e21373df8fc31171ae760e040962690d3b47a6c110a86c19a4a81e577a45838a",
+      "per_order_reconciliation": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.00111",
+          "price": "29029.93",
+          "reference_fee_base": "0.00000222",
+          "reference_fee_quote": "0",
+          "model_cash": "967.7767777000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110778"
+          },
+          "native_cash": "967.7767777",
+          "native_inventory": {
+            "BTC/USDT": "0.00111"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000222"
+          },
+          "model_minus_native_cash": "0E-16",
+          "expected_cash_difference": "0",
+          "native_rounding_cash_residual": "0E-16",
+          "native_profit_rounding_residual": "0"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.037",
+          "price": "734.97",
+          "reference_fee_base": "0.00007400",
+          "reference_fee_quote": "0",
+          "model_cash": "940.5828877000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110778",
+            "ETH/USDT": "0.03692600"
+          },
+          "native_cash": "940.5828877",
+          "native_inventory": {
+            "BTC/USDT": "0.00111",
+            "ETH/USDT": "0.037"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "model_minus_native_cash": "0E-16",
+          "expected_cash_difference": "0",
+          "native_rounding_cash_residual": "0E-16",
+          "native_profit_rounding_residual": "0"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0011",
+          "price": "52020.63",
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.11444539",
+          "model_cash": "997.6911353100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000778",
+            "ETH/USDT": "0.03692600"
+          },
+          "native_cash": "997.6272694699999",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.037"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "model_minus_native_cash": "0.0638658400001000",
+          "expected_cash_difference": "0.0638658420000000000",
+          "native_rounding_cash_residual": "-1.9999000000E-9",
+          "native_profit_rounding_residual": "2.0000000000E-9"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0369",
+          "price": "1618.51",
+          "reference_fee_base": "0",
+          "reference_fee_quote": "0.11944604",
+          "model_cash": "1057.2947082700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000778",
+            "ETH/USDT": "0.00002600"
+          },
+          "native_cash": "1057.1766016499998",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "native_minus_model_inventory": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "model_minus_native_cash": "0.1181066200002000",
+          "expected_cash_difference": "0.1181066260000000000",
+          "native_rounding_cash_residual": "-5.9998000000E-9",
+          "native_profit_rounding_residual": "6.0000000000E-9"
+        }
+      ]
+    }
+  },
+  "source_manifest_path": "docs/issue139-spot-first-batch-v2.json",
+  "all_source_and_code_bindings": {
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_binding.py": "5fbca87d93b3180be355c3d02c580e2b8a0c134a26e987fe9ece77f4e62c89e0",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/check_spot139_execution.py": "68d12df9c805ec15e73b4c30152270de2528e702051598a9126eb047530162de",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/protocols/issue139-spot-execution-binding-v1.md": "76534226505e2826900c04ed04fd81cef3f88e11167119da45047fa8e71545e0",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue139-source-inventory-v3-terminal.json": "a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue139-spot-inventory-launch-v3.json": "64c905079328df2648b4e1095e60e11f90bf610f27d1f38d60be27bc144ccc78",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-spot139-inventory-v3.json": "4d1815652327779ac4eedb32707eb05ea3f1b287b4961c1d5e96a97abc8620fa",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "55561891e70d5cddb83a36caa2f45ebd35224c2d277376453165fb247da5d2c2",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/Spot139Native.py": "b7d5bee4b886b1c9730989321c43156b847d6c657cb57c94ab920a451fcc9dec",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_feed.py": "cd1185b821c526e2122822aaa465f91fb85a67dba731bd89ab147beeafd7dd62",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_native_bridge.py": "e7a1feefe8def154b97c3c08ecfba634853a1f3ce94aa7eb1d4b6f10472dfd00",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_spot139_native.py": "b39b8d8952ef6a22f0eb314627d1f9b383a8e07486f8d3b071906c8b7e0b3598",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/probe_spot139_native.py": "6298b3fd921f75d16c39b9eb74d0a938e7154c7717cdebf579da9f044165296b",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/protocols/issue139-spot-native-mapping-v2.md": "7d86c168bcb335c850ff9ef23073da5761b43ee07e5a816f0ede238ee355652e",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue139-native-synthetic-mapping-v2.json": "231c93ffd52aa8dd1945eaba6054a48961fa04f1b42cb049481f1ea164892952"
+  },
+  "receipt_type": "SANITIZED_DERIVED_RESEARCH_RECEIPT_NATIVE_ARTIFACTS_REMAIN_OUTSIDE_GIT",
+  "calls": [
+    {
+      "cost": "base",
+      "event": "RESERVED",
+      "first_batch_limit": 2,
+      "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+      "historical_market_calls": 28,
+      "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+      "old_sealed": 10,
+      "technical_retries": 0,
+      "timeout_seconds": 180
+    },
+    {
+      "cost": "base",
+      "event": "SUCCEEDED",
+      "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+      "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+      "result_sha256": "690a1497797363211d002c30a2a011a3ea84967b340e18f9ed4fdd9042babbee"
+    },
+    {
+      "cost": "stress",
+      "event": "RESERVED",
+      "first_batch_limit": 2,
+      "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+      "historical_market_calls": 28,
+      "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+      "old_sealed": 10,
+      "technical_retries": 0,
+      "timeout_seconds": 180
+    },
+    {
+      "cost": "stress",
+      "event": "SUCCEEDED",
+      "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+      "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+      "result_sha256": "e21373df8fc31171ae760e040962690d3b47a6c110a86c19a4a81e577a45838a"
+    }
+  ],
+  "global_checkpoint": {
+    "record": {
+      "record_type": "ISSUE139_SPOT_NATIVE_FIRST_BATCH_CHECKPOINT",
+      "at_utc": "2026-09-08T05:13:16.892066+00:00",
+      "authorization_reference": "https://github.com/He1met/freqtrade-lab/issues/139#issuecomment-5579593229",
+      "previous_prefix_sha256": "55561891e70d5cddb83a36caa2f45ebd35224c2d277376453165fb247da5d2c2",
+      "historical_calls_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl",
+      "historical_calls_sha256": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+      "issue139_calls_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl",
+      "issue139_calls_sha256": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+      "manifest_sha256": "e24a55fb85a2b614b8365f269ec41fc89c2ffc82fe39ce38956623781255f8d0",
+      "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+      "analysis_sha256": "10a06cf8418dce83bb3234918f64f599d7122f75dc8991406261f6b5d21fac82",
+      "result_sha256": {
+        "base": "690a1497797363211d002c30a2a011a3ea84967b340e18f9ed4fdd9042babbee",
+        "stress": "e21373df8fc31171ae760e040962690d3b47a6c110a86c19a4a81e577a45838a"
+      },
+      "new_reserved": 2,
+      "new_succeeded": 2,
+      "new_failed": 0,
+      "old_consumed": 28,
+      "total_consumed": 30,
+      "old_sealed": 10,
+      "issue139_remaining_pending": 8,
+      "remaining_unallocated": 48,
+      "global_limit": 96,
+      "new_gets": 0,
+      "qualification": false
+    },
+    "record_sha256": "8389f40cc532ad489e6938ddf1490e004340324796e963efbdb6d4f18365cf15",
+    "global_after_sha256": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8",
+    "global_prefix_bytes": 204025,
+    "old_calls_unchanged": true
+  },
+  "commands": {
+    "base": {
+      "cost": "base",
+      "started_at_utc": "2026-09-08T05:11:01.547408+00:00",
+      "finished_at_utc": "2026-09-08T05:11:03.501014+00:00",
+      "elapsed_seconds": 1.9535093330000002,
+      "returncode": 0,
+      "stdout": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/base-result.json\n",
+      "stderr": ""
+    },
+    "stress": {
+      "cost": "stress",
+      "started_at_utc": "2026-09-08T05:11:03.501295+00:00",
+      "finished_at_utc": "2026-09-08T05:11:04.825589+00:00",
+      "elapsed_seconds": 1.3242949160000002,
+      "returncode": 0,
+      "stdout": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/stress-result.json\n",
+      "stderr": ""
+    }
+  },
+  "runtime_receipt_sha256": {
+    "base-command-receipt.json": "1d17451edb416f72b06c0c83173731fe25d1022b46f85d4e11a59225e45dfc1a",
+    "stress-result.json": "e21373df8fc31171ae760e040962690d3b47a6c110a86c19a4a81e577a45838a",
+    "stress-command-receipt.json": "78d5fe2f68d37c8852446397b1332ac893dd2cc6ed9b8427f40cb9d779c7bfd5",
+    "grant.json": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e",
+    "global-checkpoint-receipt.json": "6936947de9ef6a8501d7a28be4d57d3fb21c2dc7cf69ea508d841c2e55d9f8ca",
+    "analysis.json": "10a06cf8418dce83bb3234918f64f599d7122f75dc8991406261f6b5d21fac82",
+    "preflight.json": "f3235ff15a6adc780593132e2df69f80158b264e216fb7197686850a23b8881f",
+    "base-result.json": "690a1497797363211d002c30a2a011a3ea84967b340e18f9ed4fdd9042babbee"
+  },
+  "preflight": {
+    "at_utc": "2026-09-08T05:11:01.517221+00:00",
+    "code_commit": "2eebeb146b23b2cb30edf42206358719ee3fb2ca",
+    "source_check": "PASS",
+    "old_reserved": 28,
+    "old_success": 25,
+    "old_failed": 3,
+    "old_unresolved": 0,
+    "new_calls_existed": false,
+    "old_calls_sha256": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "global_before_sha256": "55561891e70d5cddb83a36caa2f45ebd35224c2d277376453165fb247da5d2c2",
+    "writer_check": "No other active Codex research task or native research process observed; existing Python services classified as legacy UI/API, hermes CLI and wake_on_dingtalk. lsof old budget/control returned no holders.",
+    "grant_sha256": "9e52a3e6ea981384fa67bb5839e14152efac5ce407b94921aaad48d3286d634e"
+  },
+  "native_source_sha256": {
+    "freqtrade/optimize/backtesting.py": "7afec2d7c6f924642d410ff3974bf9932982bc9cf2f8c194b266a0b8c77ebf55",
+    "freqtrade/wallets.py": "625e02dfbef5ec04137f54e697f8e1f2a79203d08a124758083159701221265e",
+    "freqtrade/persistence/trade_model.py": "e38684b50d63f27ad68de5745bbb21756b4a7de164c7befc704bdce8befbace3",
+    "freqtrade/exchange/binance.py": "1d786db40fb8993d22345c77e6c8045fbbc602e5daaae7580dc71c90ffddeefe"
+  },
+  "limitations": [
+    "No pre-frozen numerical residual rejection bound; observed residuals are not a bounded rounding proof.",
+    "Real drawdown UNKNOWN; only original opening marks and stale carry are observed.",
+    "Estimated exit cost is not a valid exchange liquidation quote for sub-minimum dust.",
+    "One overlapping episode; no independent confirmation; no A/C/half-B or additional execution authorized.",
+    "Global ledger was appended only after both workers completed; the old manifest now intentionally binds the pre-checkpoint global snapshot and is not reusable."
+  ]
+}

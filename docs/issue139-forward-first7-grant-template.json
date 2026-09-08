@@ -1,0 +1,24 @@
+{
+  "authorized": false,
+  "authorization_reference": "SUPERVISOR_MUST_SUPPLY_GITHUB_COMMENT",
+  "authorized_at_utc": "SUPERVISOR_MUST_SUPPLY_PRE_W_UTC",
+  "manifest_sha256": "7576da10d07642d3e4e791492514bc1e84b89b9746b608cdbd91c2a6471522e1",
+  "candidate_sha256": "2a5475a5b3f93b4dc95fb29a5683a7cf68d27112511fdb7d1f4045f15c51e3e5",
+  "rules_sha256": "1b0c367a2ba1202017e053c079b11f58b62bb9b2172a61ed4c80ad6f1b768d42",
+  "run_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-forward-v1",
+  "start_day": 20705,
+  "end_day": 20712,
+  "cumulative_caps": {
+    "normal_gets": 21,
+    "recovery_gets": 0,
+    "gets": 21,
+    "bytes": 2752512,
+    "task_seconds": 1260,
+    "cost_updates": 0,
+    "recovery_cost_updates": 0,
+    "data_days": 7
+  },
+  "registration_path": "SUPERVISOR_MUST_SUPPLY_CONTROL_LEDGER_PATH",
+  "registration_sha256": "SUPERVISOR_MUST_SUPPLY_POST_REGISTRATION_SHA",
+  "resume_stop_sha256": null
+}
