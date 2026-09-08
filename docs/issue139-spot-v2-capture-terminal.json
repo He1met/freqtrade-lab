@@ -1,0 +1,113 @@
+{
+  "budget_sha256": "486bc2a541d52fd72a454699f8bc339fbaf225f02ccf23e71d7dac7ee1413924",
+  "economic_result": null,
+  "global_cumulative_bytes": 15076043,
+  "global_cumulative_gets": 78,
+  "global_cumulative_seconds": 169.6002914905548,
+  "launch_sha256": "18b30f426fbdaaeac75b483ae913c946310ce76e9ccd826964ff714629be360a",
+  "ledger_after": "2410984776b3d7942de5671d50954a6b227c01d88c87137997c2cb175e8bdb46",
+  "native_calls": 0,
+  "new_active_seconds": 0.41758203506469727,
+  "new_charged_bytes": 181186,
+  "new_gets": 1,
+  "reason": "QUARANTINE_UNKNOWN_GAP_STOP",
+  "responses": [
+    {
+      "bytes": 181186,
+      "endpoint": "klines",
+      "number": 5,
+      "sha256": "74bc04b810500293d57e459927606921ebb052d58f1135179470c2252bc1afa1",
+      "status": 200
+    }
+  ],
+  "reused_hashes": {
+    "001-exchangeInfo.json": "39b1adcf5d167250083ebb5eb7ad4dca59026c765989716dc4a0ceef58fe28e8",
+    "002-klines.json": "593dc8eaf03b8e51fbc76f721eebc224985f999514e391c2700b7b4bcfc72347",
+    "003-klines.json": "9cc2f33afbfc81bf279bf56c7e288bce442fe34455407e481f8c7e3221d2f045",
+    "004-klines.json": "47c0851f4b2f38ce620c5c4d454c711d774cc68348fddffbd52380a8b891ae81"
+  },
+  "spot_cumulative_bytes": 472114,
+  "spot_cumulative_gets": 5,
+  "spot_cumulative_seconds": 3.841052293777466,
+  "status": "BLOCKED_DATA",
+  "structure_audit": {
+    "request": {
+      "endTime": 1672531199999,
+      "interval": "1h",
+      "limit": 1000,
+      "startTime": 1613062800000,
+      "symbol": "BTCUSDT"
+    },
+    "response_file": "005-klines.json",
+    "response_rows": 1000,
+    "response_sha256": "74bc04b810500293d57e459927606921ebb052d58f1135179470c2252bc1afa1",
+    "zero_based_indices": true,
+    "rows": [
+      {
+        "index": 535,
+        "open_ms": 1614988800000,
+        "close_ms": 1614992399999,
+        "open_utc": "2021-03-06T00:00:00.000+00:00",
+        "close_utc": "2021-03-06T00:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 536,
+        "open_ms": 1614992400000,
+        "close_ms": 1614995999999,
+        "open_utc": "2021-03-06T01:00:00.000+00:00",
+        "close_utc": "2021-03-06T01:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 537,
+        "open_ms": 1614999600000,
+        "close_ms": 1615003199999,
+        "open_utc": "2021-03-06T03:00:00.000+00:00",
+        "close_utc": "2021-03-06T03:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 538,
+        "open_ms": 1615003200000,
+        "close_ms": 1615006799999,
+        "open_utc": "2021-03-06T04:00:00.000+00:00",
+        "close_utc": "2021-03-06T04:59:59.999+00:00",
+        "columns": 12
+      },
+      {
+        "index": 539,
+        "open_ms": 1615006800000,
+        "close_ms": 1615010399999,
+        "open_utc": "2021-03-06T05:00:00.000+00:00",
+        "close_utc": "2021-03-06T05:59:59.999+00:00",
+        "columns": 12
+      }
+    ],
+    "missing_open_utc": "2021-03-06T02:00:00.000+00:00",
+    "expected_open_ms": 1614996000000,
+    "cause": "UNKNOWN; no official lookup authorized or performed",
+    "classification": "OUTSIDE_ONLY_APPROVED_2021_02_11_EXCEPTION",
+    "parser": "JSON integer milliseconds at columns0/6; direct integer continuity comparison, no timezone arithmetic"
+  },
+  "coverage": {
+    "warmup_daily_rows_each": 274,
+    "BTC_initial_reused_rows": 1000,
+    "BTC_new_page_rows_quarantined": 1000,
+    "BTC_new_page_valid_prefix_rows_before_unknown_gap": 537,
+    "BTC_training_complete": false,
+    "ETH_hourly": "NOT_REQUESTED_AFTER_STOP",
+    "full_signal_availability": "UNKNOWN_INCOMPLETE_SOURCE",
+    "known_Feb11_exception_signal_mask": "85 calendar decision days under conservative rule if full later source existed; not finalized observed signal count",
+    "conservative_85_rule": "design choice, not mathematical necessity or anti-overfitting theorem"
+  },
+  "integrity": {
+    "old_v1_terminal_and_budget_unchanged": true,
+    "old_73_global_and_4_spot_attempts_preserved": true,
+    "all_launch_protected_controls_unchanged": true,
+    "new_market_native_calls": 0,
+    "new_official_queries": 0,
+    "no_retry": true,
+    "no_exception_expansion": true
+  }
+}
