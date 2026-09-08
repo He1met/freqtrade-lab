@@ -21,3 +21,11 @@
 - Database tests: `PYTHONDONTWRITEBYTECODE=1 uv run --with pytest python -m pytest -q -p no:cacheprovider`.
 - Database smoke: run `scripts/init_database.py` against a temporary path, never the default workspace database during tests.
 - Before closing an Issue, verify the scoped diff, targeted tests, the actual user entrypoint, failure behavior, pushed commit SHA, and remote Issue state. Leave unavailable evidence explicit and keep the Issue open when acceptance is incomplete.
+
+## Current research policy (new batches from 2026-09-08)
+
+- Read `docs/protocols/perp-autonomous-policy-v1.json`, the latest perpetual report and the Git-external scheduler state at each new research session. Issue #162 owns this migration and first slice.
+- Active trading research is BTC/ETH USDT linear perpetual only, 1h, initial nominal leverage 1x. Spot #139/#155/#161 and other assets are archived research scopes; do not restart their acquisitions or forward strategy scoring from historical README examples or old scheduler prompts.
+- New research uses an approximately 20% drawdown target as a diagnostic, not an automatic 20.1% rejection. Old frozen risk verdicts and actual production protections remain unchanged.
+- The user's 2026-09-08 authority permits bounded public acquisition, finite transient retries, research code, isolated native backtests and project research scheduling without repeated per-step approval. No credentials, sensitive DBs, paid APIs, account access, orders, live deployment or production risk increase.
+- Use the existing native Freqtrade engine and thin file-based policy/factor/report/checkpoint artifacts; no new business tables or platform services are needed. Preserve historical exposure and all old result evidence. Only one market calculation worker.

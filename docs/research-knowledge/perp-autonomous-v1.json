@@ -1,0 +1,75 @@
+{
+  "schema": "research-knowledge-v1",
+  "knowledge_id": "BTC_ETH_PERP_AUTONOMOUS_V1",
+  "version": 1,
+  "policy_path": "docs/protocols/perp-autonomous-policy-v1.json",
+  "policy_sha256": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+  "active_scope": {
+    "products": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ],
+    "timeframe": "1h",
+    "leverage": 1,
+    "spot_status": "ARCHIVED",
+    "other_assets_status": "INACTIVE"
+  },
+  "current_issue": 162,
+  "latest_report": "docs/research/perp-first-experiment-v1.md",
+  "latest_summary": "docs/research/perp-first-experiment-v1.summary.json",
+  "mechanism_card": "docs/discovery/perp-breakout-risk-card-v1.md",
+  "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
+  "terminal": {
+    "task_id": "perp-round-001",
+    "status": "COMPLETED_DEVELOPMENT",
+    "native_calls": 4,
+    "independent_confirmation": false,
+    "profitable_qualified_strategy": false
+  },
+  "lessons": [
+    {
+      "mechanism": "unfiltered-24h-breakout",
+      "verdict": "GROSS_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "mechanism": "entry-volatility-reduction",
+      "verdict": "NO_INCREMENT_OVER_TRAINING_FIXED_REDUCTION",
+      "net_increment_usdt": -12.656415028545894
+    },
+    {
+      "mechanism": "direction-persistence-breakout",
+      "verdict": "COST_UNSUPPORTED_CONDITIONAL_TURNOVER_DIAGNOSTIC",
+      "gross_price_usdt": 178.27806000000382,
+      "net_usdt": -83.61947252131063,
+      "observed_hourly_mtm_dd": 0.22557684232867603,
+      "risk_target_is_hard_gate": false
+    }
+  ],
+  "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
+  "next_task": {
+    "id": "perp-round-002-turnover",
+    "status": "QUEUED",
+    "budget_not_before": "2026-09-09T00:00:00Z",
+    "new_native_variants": 2,
+    "reuse_parent_variant": "persistence",
+    "change_only": "exit channel 12h -> 24h / 48h; all entry/risk/cost/window and 72h cap unchanged",
+    "requires": "Minimal V2 parameterization and new code/protocol freeze before any native call",
+    "stop": "Both new variants net-negative or gross disappears: stop this cost branch",
+    "queue_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler",
+    "queued_at": "2026-09-08T15:25:41.324273+00:00",
+    "fingerprint": "c97bfa802178c3d9f044a51c27ccdd93e2485f54819c7f35736c4edaf1f4230a",
+    "code_binding_role": "PARENT_CODE_AND_PREPARATION_REFERENCE_NOT_YET_V2_EXECUTOR"
+  },
+  "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1",
+  "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
+  "heartbeat_entrypoint": "scripts/perp_tick.py",
+  "scheduler_id": "freqtrade-lab-2",
+  "historical_knowledge_preserved": "docs/research-knowledge/btc-eth-1000-central-v1.json",
+  "avoid_repeating": [
+    "Do not rename unfiltered breakout or rejected volatility scaling as a new independent trial",
+    "Do not relabel spot results as perpetual",
+    "Do not treat hourly orders/two assets/cost scenarios as independent samples",
+    "Do not rerun round-001; its 4 native calls are consumed",
+    "Do not upgrade revised chain history or recent-only OI to independent evidence"
+  ]
+}

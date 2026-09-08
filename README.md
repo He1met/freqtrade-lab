@@ -1,3 +1,15 @@
+# 当前研究入口：BTC / ETH USDT 线性永续
+
+2026-09-08 起，当前活动方向由 [新研究政策 V1](docs/protocols/perp-autonomous-policy-v1.json) 与 [Issue #162](https://github.com/He1met/freqtrade-lab/issues/162) 管理。仅 BTC/ETH、1h、首轮1x，约20%是研究风险目标，实际交易权限不扩展。当前历史数据均按开发暴露处理。
+
+- [现状与政策迁移记录](docs/research/perp-migration-v1.md)
+- [数据与因子目录](docs/research/perp-factor-catalog-v1.json)
+- [首批实验协议](docs/protocols/perp-first-experiment-v1.json)
+- [首轮中文报告](docs/research/perp-first-experiment-v1.md)
+- [真实调度盘点](docs/research/perp-schedule-audit-v1.md)
+
+旧现货 #139/#155/#161 的策略实验、前向评分和队列已退出活动研究；它们的协议、数据、代码、失败结论与原报告是只读历史证据。下文保留旧产品和研究入口的说明供追溯，不代表它们仍获活动调度授权。旧冻结批次的哈希与判决不按新政策重写。
+
 # freqtrade-lab
 
 A small, local-first research workbench for recording Freqtrade strategy lineage, research runs, backtest evidence, and releases.
