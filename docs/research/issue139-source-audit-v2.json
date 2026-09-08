@@ -1,0 +1,98 @@
+{
+  "schema": "issue139-control-source-audit-v2",
+  "checked_at_utc": "2026-09-08T04:02:03.431394+00:00",
+  "status": "BLOCKED_DATA",
+  "scope": "known contracts and sanitized receipts only; no raw market files read",
+  "training_domain": "Binance BTC/ETH USDT perpetual, source 2020-04-02 to 2023-01-01; score 2021-01-01 to 2023-01-01",
+  "old_source": {
+    "BTC_hourly_trade_and_mark_rows_each": 24096,
+    "BTC_funding_first_page_events": 1000,
+    "BTC_events_missing_associated_mark": 1000,
+    "ETH": "not captured after stop",
+    "executable_source_published": false,
+    "proximate_cause": "API rows had absent/empty markPrice according to frozen terminal; validator rejects rather than joining hourly mark",
+    "upstream_cause": "UNKNOWN; no proof of provider retention policy or historical backfill",
+    "runtime_receipt_matches_old_blocker": true
+  },
+  "continuation": {
+    "source": "2023-11-01 to 2025-01-01, different window",
+    "per_asset_hourly_trade_and_mark_rows_each": 10248,
+    "per_asset_funding_events": 1281,
+    "associated_mark_complete_in_receipt": true,
+    "historical_interval_evidence": "UNKNOWN",
+    "old_source_status_preserved": "BLOCKED_DATA",
+    "later_observed_v3": "explicit assumed event/eligibility model for 2024-08 to 2024-11 exploration; not old missing-mark repair or economic qualification"
+  },
+  "verified_repair_of_2021_2023": false,
+  "complete_admissible_2021_2023_source": "NOT_ESTABLISHED_IN_REVIEWED_CHAIN",
+  "raw_byte_integrity_rechecked": false,
+  "minimal_path": [
+    "keep old source/ledger intact; bind existing receipts and unresolved associated-mark identity",
+    "obtain a demonstrable authorized same-event associated-mark source contract before repeat probe; hourly interpolation/nearby mark/zero fill forbidden",
+    "if source contract established, supervisor may separately authorize one diagnostic funding page, then stop and review; do not activate old hardcoded v2 collector on old dates",
+    "only after positive source evidence propose complete per-asset funding-first bounded manifest; verify any reused old hourly bytes only under separate permission",
+    "new protocol registration and exact risk/execution binding before any training consumer"
+  ],
+  "request_proposal": {
+    "current_recommended_gets": 0,
+    "current_authorized_gets": 0,
+    "conditional_diagnostic": {
+      "gets_max": 1,
+      "response_bytes_max": 5242880,
+      "total_bytes_max": 5242880,
+      "active_seconds_max": 20,
+      "retries": 0,
+      "redirects": 0,
+      "workers": 1,
+      "precondition": "new evidence of same-event source availability; supervisor authorization and exact page contract; known failed request is not silently repeated"
+    },
+    "global_existing": {
+      "original_get_limit": 122,
+      "cumulative_used": 73,
+      "remaining": 49,
+      "original_bytes_limit": 67108864,
+      "charged_bytes": 14603929,
+      "remaining_bytes": 52504935,
+      "remaining_active_seconds_conservative": 1634.2407608032227,
+      "continuation_v2_remaining_gets": 18,
+      "remaining_is_authorization": false
+    },
+    "full_path_upper_bound_not_authorization": {
+      "four_hourly_streams_pages": 68,
+      "two_funding_streams_pages_including_tail": 52,
+      "metadata_pages": 2,
+      "total_gets": 122,
+      "derivation": "24096 hourly rows per stream: ceil(24096/1500)=17; funding conservative hourly event cap ceil(24096/1000)+1 tail=26 per asset; denser/irregular source invalidates this bound and stops",
+      "with_old_BTC_hourly_reuse_gets": 88,
+      "exceeds_remaining_49": true,
+      "new_bytes_or_time_budget": "NOT_PROPOSED until source established; no global reset; cap any newly approved segment within remaining 52504935 bytes and floor1634 seconds, response <=5MiB, request<=20s"
+    }
+  },
+  "controls": {
+    "docs/protocols/issue119-source-contract.json": "30d90dcfa7b5fab8eda64c5e0463a931275a0c7c6d1d948039651743e0d3e046",
+    "docs/issue119-capture-terminal.json": "52d41c4b28ad747a9a842ac4cbfad2548f6de5a42801651b5d821e6a411c0e9c",
+    "docs/protocols/issue123-source-continuation-v2.json": "93484a949fff7eed23d10b8ede1b39c7cb74c1b2c3dd1e3cc9ba6ad11d1c52be",
+    "docs/issue123-capture-terminal.json": "36687a2d8ab37856b1ba8951bb3f75976ecb181e5fb39199d65304248237b098",
+    "docs/protocols/issue125-observed-semantics-v3.json": "f8c723b5d7f567fa85939c6e789ee73c2e0c20bb464f74c6d6642055dfdb8fda",
+    "docs/protocols/btc-eth-portfolio-v1.json": "e664b6447879a350663fa7940036a2682d3970af65f7c218c540e2e62ff28e85",
+    "docs/protocols/btc-eth-portfolio-semantics-v1.json": "5fb7ee5d01920eaa91eafd936569c6c7a15fbdf5708c16162fd49537d8b7848a",
+    "docs/protocols/btc-eth-portfolio-semantics-v2.json": "9773d03346b89822a8495a3d5e6566cd8895c3c83e377be63b74b9f80477e784",
+    "lab/portfolio_source.py": "6ba3d35f379d984467c9f89e6d8e1b40873eb8c3734ca72828d241dc6cb5092d",
+    "scripts/capture_portfolio_source_v2.py": "0156cffbc1fb222c983162a01dd8cd0b4e080ed8e48d297d48808dd74fce543f",
+    "lab/portfolio_observed_money.py": "ee00789ec443478c14379bf5d180ef2459ccde03d0e07fb4b41b05224967ffda",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source/qc-receipt.json": "a9e86872be2b3a3124e41d2e3625377d5f4d9ebea51203ec40a0f7832561245e",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue119-btc-eth-source/continuation-v2/qc-v2-receipt.json": "e8131a85703b9b5667327e52e19025d4894c9b14f6830a4ce152c5b0e5195b71",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897"
+  },
+  "activity": {
+    "new_search_queries": 0,
+    "new_source_opens": 0,
+    "new_market_requests": 0,
+    "native_calls": 0,
+    "api_calls": 0,
+    "market_raw_reads": 0,
+    "database_reads": 0
+  },
+  "literature_violation": "v1 7 opens exceeded6 by1; retained, not retroactively expanded"
+}
