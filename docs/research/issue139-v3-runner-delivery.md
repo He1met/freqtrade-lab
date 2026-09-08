@@ -2,14 +2,14 @@
 
 本轮新增独立`run_spot139_v3.py`和单循环报告器，未改已审V3模型/映射、V2入口或历史结果。市场执行仍未授权；没有grant、V3运行目录、预约、原生实例或新增GET。
 
-固定manifest：`docs/issue139-v3-first-diagnostics-manifest.json`，SHA256 `22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc`。实际执行并通过的两个check-only命令（工作目录为本隔离checkout）：
+固定manifest：`docs/issue139-v3-first-diagnostics-manifest.json`，SHA256 `63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10`。实际执行并通过的两个check-only命令（工作目录为本隔离checkout）：
 
 ```
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_spot139_v3.py docs/issue139-v3-first-diagnostics-manifest.json --manifest-sha256 22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc --cost base
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_spot139_v3.py docs/issue139-v3-first-diagnostics-manifest.json --manifest-sha256 22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc --cost stress
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_spot139_v3.py docs/issue139-v3-first-diagnostics-manifest.json --manifest-sha256 63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10 --cost base
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_spot139_v3.py docs/issue139-v3-first-diagnostics-manifest.json --manifest-sha256 63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10 --cost stress
 ```
 
-两者返回`source_integrity=PASS`、实际祖先占槽30、V3预约0、模型`SpotResidualV3`/映射`ReconcilerV3`，经济结果NULL。base仍须外部grant，stress先须base成功。实际检查收据`docs/issue139-v3-runner-check-receipt.json` SHA `520334672f8bd620167f98964c34c1df6cd95d730d7e65742bcaf534038d8e77`。
+两者返回`source_integrity=PASS`、实际祖先占槽30、V3预约0、模型`SpotResidualV3`/映射`ReconcilerV3`，经济结果NULL。base仍须外部grant，stress先须base成功。实际检查收据`docs/issue139-v3-runner-check-receipt.json` SHA `0ce80638716c83cc84657b440ee6a38f97bf22c5aee5169aca29e17c26efcfe5`。
 
 只在监督下一份明确执行授权之后，上述命令才追加`--execute --grant <Git外JSON> --grant-sha256 <固定SHA>`。grant必须绑定这个manifest SHA、`market_execution_authorized=true`、`costs=["base","stress"]`、以下keys和新的市场授权评论URL作为`authorization_reference`：
 

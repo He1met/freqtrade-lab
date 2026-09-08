@@ -59,7 +59,7 @@ def preflight(manifest):
 
 
 def suffix(manifest_sha):
-    
+
     if not (BUDGET/'calls.jsonl').exists() and BUDGET.exists() and any(any(BUDGET.glob(pattern)) for pattern in ['*-result.json','*-hourly.jsonl','*-failure.json','*-command.json']):raise BindingError('V3 ledger missing with existing result; no reset')
     rows=events(BUDGET/'calls.jsonl');previous='0'*64;opened={};ended={}
     for row in rows:

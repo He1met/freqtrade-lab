@@ -1,7 +1,7 @@
 {
   "status": "V3_ACTUAL_CHECK_ONLY_PASS",
-  "at_utc": "2026-09-08T05:52:17.086270+00:00",
-  "manifest_sha256": "22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc",
+  "at_utc": "2026-09-08T05:55:34.194429+00:00",
+  "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
   "market_calls": 0,
   "reservations": 0,
   "new_gets": 0,
@@ -27,7 +27,7 @@
         "scripts/run_spot139_v3.py",
         "docs/issue139-v3-first-diagnostics-manifest.json",
         "--manifest-sha256",
-        "22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
         "--cost",
         "base"
       ],
@@ -56,7 +56,7 @@
         "scripts/run_spot139_v3.py",
         "docs/issue139-v3-first-diagnostics-manifest.json",
         "--manifest-sha256",
-        "22a6bf920a55905503921f99d53e3b5902657ba3164dd52cad2920749ed887cc",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
         "--cost",
         "stress"
       ],
