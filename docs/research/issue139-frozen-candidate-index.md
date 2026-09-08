@@ -4,11 +4,10 @@
 
 ## 可携带代码包
 
-下列16个文件以及本索引和前向方案组成18文件代码包。导出包不包含 raw、runtime、数据库、凭据、旧采集器、旧launch/grant。固定策略代码与已消费历史复算入口保留原样；native外部依赖不复制进包。迁移到其他目录可运行纯合成检查，不能直接启动前向。
+下列15个文件以及本索引和前向方案组成17文件代码包。导出包不包含 raw、runtime、数据库、凭据、旧采集器、旧launch/grant。固定策略代码与已消费历史复算入口保留原样；native外部依赖不复制进包。迁移到其他目录可运行纯合成检查，不能直接启动前向。
 
 |文件|SHA-256|
 |---|---|
-|`lab/__init__.py`|`0f3361d5ccc8e002084410a079acb93f0d564ee16ec68765511f7cff206cc380`|
 |`lab/spot139_model.py`|`fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83`|
 |`lab/spot139_residual_v3.py`|`1027365f693fee313b54f2db9906e52a7692caa60f56d59e06de83a84037f9be`|
 |`lab/spot139_binding.py`|`5fbca87d93b3180be355c3d02c580e2b8a0c134a26e987fe9ece77f4e62c89e0`|
@@ -69,3 +68,5 @@ Freqtrade 2026.7，源码commit `52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`；CCX
 本轮当前global SHA `f98fcacfe8a189138c5b0a98f23536aa0ed2225442ffcfd21ab96064f9a767ee`；32 consumed +10 old sealed +6 pending +48 unallocated=96。旧调用账本/结果不变，本次不追加窗口或执行记录。完整月度/经济解释在 `docs/research/issue139-attribution-v1-results.md`，本索引不重复编造评分。
 
 本轮仅新增两份Markdown，未改候选代码、native库、结果或状态文件；可携带tar在Git外生成并核对每个成员字节。包SHA和本索引/方案最终SHA写入GitHub里程碑（避免文件自哈希循环），不是增加一层manifest。PR140仍draft/open，Issue139仍open，未merge/close。
+
+首次独立解包检查失败于 lab/__init__.py 隐式导入未打包的 lab.database，发生于测试收集阶段，无市场/native调用。修订导出时明确省去该仓库级初始化文件，由Python命名空间包加载lab模块；不修改任何冻结策略代码，不携带无关数据库模块。初版失败tar保留，修订包另名，不掩盖该失败。
