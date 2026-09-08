@@ -94,3 +94,42 @@ def test_first_signal_next_hour_and_expiry_queues_during_missing_price():
     assert m.exits=={'BTC','ETH'} and len(m.fills)==2
     m.on_hour(hour+2+84*24,{'BTC':D(50),'ETH':D(50)})
     assert any(f['side']=='sell' for f in m.fills)
+
+
+def test_C_new_daily_multiplier_never_fills_at_decision_hour(monkeypatch):
+    import lab.spot139_model as module
+    m=model('C');m.wallet.inventory={'BTC':D(2)};m.wallet.cash=D(800);m.basis={'BTC':D(200)}
+    m.episodes['BTC'].active=True;m.episodes['BTC'].armed=False;m.started={'BTC':1};m.stop_prices={'BTC':D(50)};m.c_baseline={'BTC':D(2)}
+    monkeypatch.setattr(module,'signal',lambda *a:dict(positive=True,multiplier=D('.5'),stop_distance=D(10)))
+    m.on_hour(24,{'BTC':D(100),'ETH':D(100)})
+    assert not m.fills and m.c_pending['BTC']['hour']==25
+    m.on_hour(25,{'BTC':D(100),'ETH':D(100)})
+    assert m.fills[0]['hour']==25 and m.fills[0]['side']=='sell'
+
+
+def test_negative_exit_preserves_rearm_then_positive_reenters(monkeypatch):
+    import lab.spot139_model as module
+    m=model();m.fee=D(0);m.slip=D(0)
+    m.pending={'BTC':dict(hour=1,units=D(1),distance=D(5),multiplier=D(1))};m.on_hour(1,{'BTC':D(100)})
+    monkeypatch.setattr(module,'signal',lambda *a:dict(positive=False,multiplier=D(1),stop_distance=D(5)))
+    m.last_hour=23;m.on_hour(24,{'BTC':D(100)});m.on_hour(25,{'BTC':D(100)})
+    assert m.episodes['BTC'].armed and not m.episodes['BTC'].active
+    monkeypatch.setattr(module,'signal',lambda *a:dict(positive=True,multiplier=D(1),stop_distance=D(5)))
+    m.last_hour=47;m.on_hour(48,{'BTC':D(100)});m.on_hour(49,{'BTC':D(100)})
+    assert m.fills[-1]['side']=='buy' and m.fills[-1]['hour']==49
+
+
+def test_C_missing_next_open_cancels_reduction_without_catchup(monkeypatch):
+    import lab.spot139_model as module
+    m=model('C');m.wallet.inventory={'BTC':D(2)};m.wallet.cash=D(800);m.basis={'BTC':D(200)}
+    m.episodes['BTC'].active=True;m.started={'BTC':1};m.stop_prices={'BTC':D(50)};m.c_baseline={'BTC':D(2)}
+    monkeypatch.setattr(module,'signal',lambda *a:dict(positive=True,multiplier=D('.5'),stop_distance=D(10)))
+    m.on_hour(24,{'BTC':D(100)});m.on_hour(25,{});m.on_hour(26,{'BTC':D(100)})
+    assert not m.fills and not m.c_pending
+
+
+def test_execution_price_rounds_against_wallet_on_tick_grid():
+    r=Rule(D('.001'),D('.001'),D(5),D(1000),D('.00001'),D('.00001'),D('.01'))
+    m=SpotReference('B',{'BTC':r});m.pending={'BTC':dict(hour=1,units=D(1),distance=D(5),multiplier=D(1))}
+    m.on_hour(1,{'BTC':D('100.01')});assert m.fills[0]['price']==D('100.08')
+    m.exits.add('BTC');m.on_hour(2,{'BTC':D('100.01')});assert m.fills[-1]['price']==D('99.94')

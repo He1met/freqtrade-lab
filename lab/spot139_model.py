@@ -1,4 +1,4 @@
-"""Synthetic-only spot semantics; not wired to native or market data.
+"""Causal spot intent and explicitly modeled base-fee accounting.
 
 Closed UTC daily decisions at t activate no earlier than t+1h. The first
 positive eligible signal may enter. Stop/84-day expiry locks reentry until a
@@ -98,6 +98,7 @@ class Rule:
     max_qty: D
     base_fee_step: D
     quote_fee_step: D
+    price_tick: D = D(".00000001")
 
 
 def signal(closed_day, daily, mode):
@@ -152,6 +153,8 @@ class SpotReference:
     basis: dict = field(default_factory=dict)
     warning_pending: set = field(default_factory=set)
     c_baseline: dict = field(default_factory=dict)
+    c_pending: dict = field(default_factory=dict)
+    seen_nonpositive: set = field(default_factory=set)
 
     def __post_init__(self):
         if self.mode not in ('B','A-BTC','A-ETH','C','half-B'):raise ValueError('unfrozen mode')
@@ -164,7 +167,7 @@ class SpotReference:
     def _sell(self,s,price,hour,requested=None):
         rule=self.rules[s];held=self.wallet.inventory.get(s,D(0))
         q=floor_grid(min(held,held if requested is None else requested,rule.max_qty),rule.step)
-        p=price*(1-self.slip)
+        p=floor_grid(price*(1-self.slip),rule.price_tick)
         if q<rule.min_qty or q*p<rule.min_notional:
             self.blocked=True;return
         fee=ceil_grid(q*p*self.fee,rule.quote_fee_step)
@@ -177,6 +180,7 @@ class SpotReference:
         self.fills.append(dict(hour=hour,symbol=s,side='sell',quantity=q,price=p,fee_quote=fee))
         if requested is None:
             self.episodes[s].stopped_or_expired()
+            if s in self.seen_nonpositive:self.episodes[s].armed=True
             if self.wallet.inventory[s]>0:self.blocked=True  # dust remains explicit
             else:self.exits.discard(s)
 
@@ -211,6 +215,11 @@ class SpotReference:
                 if floor_grid(reduction,self.rules[s].step)==0:self._sell(s,opens[s],hour)
                 else:self._sell(s,opens[s],hour,ceil_grid(reduction,self.rules[s].step))
                 self.warning_pending.discard(s)
+        due={s:v for s,v in self.c_pending.items() if v['hour']==hour and s in opens}
+        self.c_pending={s:v for s,v in self.c_pending.items() if v['hour']>hour}
+        for s,v in due.items():
+            held=self.wallet.inventory.get(s,D(0))
+            if held>v['target'] and s not in self.exits:self._sell(s,opens[s],hour,ceil_grid(held-v['target'],self.rules[s].step))
         if hour%24==0:
             for s in self.rules:
                 if not self.selected(s):continue
@@ -221,12 +230,13 @@ class SpotReference:
                 e=self.episodes[s]
                 if not sig['positive']:
                     e.armed=True
+                    self.seen_nonpositive.add(s)
                     if self.wallet.inventory.get(s,D(0))>0:self.exits.add(s)
                     continue
                 if self.mode=='C' and self.wallet.inventory.get(s,D(0))>0 and s in opens:
                     # At most reduce by current factor; never restore old size.
                     target=min(self.wallet.inventory[s],self.c_baseline[s]*sig['multiplier']*(D('.5') if self.wallet.warned else D(1)))
-                    if target<self.wallet.inventory[s]:self._sell(s,opens[s],hour,ceil_grid(self.wallet.inventory[s]-target,self.rules[s].step))
+                    if target<self.wallet.inventory[s]:self.c_pending[s]=dict(hour=hour+1,target=target)
                 if e.armed and not e.active and not self.wallet.inventory.get(s,D(0)):
                     mult=(D('.5') if self.mode=='half-B' else D(1))*sig['multiplier']*(D('.5') if self.wallet.warned else D(1))
                     cell=D('.01') if self.mode.startswith('A-') else D('.005')
@@ -237,19 +247,20 @@ class SpotReference:
         if stale or self.blocked or self.wallet.halted:return dict(stale=stale,risk_pass_observed=risk_pass,real_dd='UNKNOWN')
         equity=self.equity();desired={}
         for s,v in eligible.items():
-            p=opens[s]*(1+self.slip);desired[s]=min(v['units'],D('.4')*equity/p,self.rules[s].max_qty)
-        requested=sum((q*opens[s]*(1+self.slip) for s,q in desired.items()),D(0))
+            p=ceil_grid(opens[s]*(1+self.slip),self.rules[s].price_tick);desired[s]=min(v['units'],D('.4')*equity/p,self.rules[s].max_qty)
+        requested=sum((q*ceil_grid(opens[s]*(1+self.slip),self.rules[s].price_tick) for s,q in desired.items()),D(0))
         held=sum((q*self.marks[s] for s,q in self.wallet.inventory.items()),D(0))
         free=max(D(0),min(self.wallet.cash,D('.8')*equity-held))
         scale=min(D(1),free/requested) if requested else D(1)
         for s in sorted(desired):
-            rule=self.rules[s];p=opens[s]*(1+self.slip);q=floor_grid(desired[s]*scale,rule.step)
+            rule=self.rules[s];p=ceil_grid(opens[s]*(1+self.slip),rule.price_tick);q=floor_grid(desired[s]*scale,rule.step)
             if q<rule.min_qty or q*p<rule.min_notional:continue
             fee_base=ceil_grid(q*self.fee,rule.base_fee_step)
             if fee_base>=q:continue
             self.wallet.cash-=q*p;self.wallet.inventory[s]=q-fee_base;self.basis[s]=q*p
             self.wallet.fees_quote_equivalent+=fee_base*p
             self.episodes[s].active=True;self.episodes[s].armed=False
+            self.seen_nonpositive.discard(s)
             self.stop_prices[s]=p-eligible[s]['distance'];self.started[s]=hour
             self.c_baseline[s]=(q-fee_base)/(eligible[s]['multiplier'] or D(1))
             self.fills.append(dict(hour=hour,symbol=s,side='buy',quantity=q,price=p,fee_base=fee_base))
