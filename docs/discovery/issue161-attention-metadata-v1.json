@@ -1,0 +1,38 @@
+{
+  "url": "https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&prop=info&titles=Bitcoin",
+  "http_status": "200",
+  "returncode": 0,
+  "bytes": 257,
+  "sha256": "62817c9697ab9eaa6349d75114eadf5ddf74fdda8370f6824d4c2ba30fdd81e4",
+  "at": "2026-09-08T14:58:13.734164+00:00",
+  "stderr": "",
+  "issue": 161,
+  "kind": "metadata_only",
+  "budget": 2,
+  "attempt": 1,
+  "remaining": 1,
+  "feature_gets": 0,
+  "price_gets": 0,
+  "model_runs": 0,
+  "native_runs": 0,
+  "scope": "Current article identity only; historical coverage and PIT UNKNOWN",
+  "response": {
+    "batchcomplete": true,
+    "query": {
+      "pages": [
+        {
+          "pageid": 28249265,
+          "ns": 0,
+          "title": "Bitcoin",
+          "contentmodel": "wikitext",
+          "pagelanguage": "en",
+          "pagelanguagehtmlcode": "en",
+          "pagelanguagedir": "ltr",
+          "touched": "2026-09-07T09:47:40Z",
+          "lastrevid": 1371413925,
+          "length": 114413
+        }
+      ]
+    }
+  }
+}
