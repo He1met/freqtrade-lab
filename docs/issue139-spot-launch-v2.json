@@ -1,0 +1,69 @@
+{
+  "budget": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-spot139-continuation-v2.json",
+  "controls": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-budget.json": "117eb7e1ea07e8bd3647195043d4047a093bb80952119400dbc67f778e7120f0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-continuation-v2.json": "9f9ed03a227070842591370bb6a2d07f7175d9057d0b2e3a2b025319794b3897",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/acquisition-spot139-v1.json": "c66ad06906688d5a946262ee0378d39e584931fbd4402edf002716967ce3145b",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/corrected-exploration-activation.json": "249b874b70fe2a75fb4a217a405f17cd630c2fc7e3e23d6ac9b7ccbd5d583210",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/observed-v3-activation.json": "e22107afbda5e2918b27e3b6ef2781058f8cee14e68b181070de6947462f4e44",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/terminal.json": "e357a2ef4a93b03d2053c79ca338838854d6293ce5e324c06a940b86f24d1a44"
+  },
+  "files": {
+    "docs/protocols/issue139-spot-gap-continuation-v2.md": "4823660ddd077aaa628e5b8b3fa8dd1c8c0ba7ab7583c1f736a91cdfc6ab0d3b",
+    "lab/__init__.py": "0f3361d5ccc8e002084410a079acb93f0d564ee16ec68765511f7cff206cc380",
+    "lab/database.py": "983ea522c1d9007ac06ca7395488b58cb0983ca8a23840ad04f9669b79c65c54",
+    "lab/portfolio_source.py": "6ba3d35f379d984467c9f89e6d8e1b40873eb8c3734ca72828d241dc6cb5092d",
+    "lab/spot139_continuation.py": "d4f98474c1b68fad4bd3b3f0f6d2f1f221bab04c463dd0e8ff6828d1b8c94036",
+    "lab/spot139_gap_proposal.py": "a9253ba0c629865250dfca62f3a292c843a7e0f5834a73b5670cd65505b2594f",
+    "lab/spot139_source.py": "4be3eb48c860a1dae52b083fa08452623d1a8d8eed941bd5ec3c6c99665c5585",
+    "scripts/capture_spot139.py": "c5e488c8db1c363ce6e59e1e78392f2542181007fd12477d135262ff80dcaf91",
+    "scripts/capture_spot139_v2.py": "bf5fba12ee0c4f7b1214ddca58828fbd986393132d74d4958f4d87c9f99fd71e"
+  },
+  "ledger_after": "2410984776b3d7942de5671d50954a6b227c01d88c87137997c2cb175e8bdb46",
+  "ledger_before": "8456411bc6020bc6ccb2d81e5b789d4f2926ad196cb8a5492bfee3caa9732020",
+  "limits": {
+    "new_bytes": 16486288,
+    "new_gets": 35,
+    "new_seconds": 896,
+    "redirects": 0,
+    "request_seconds": 20,
+    "response_bytes": 1048576,
+    "retries": 0
+  },
+  "native_authorized": false,
+  "python": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3.9",
+  "python_sha256": "bdea59019a38eb6600cc9e71e984a97fedadc406448431281e7657030f54987e",
+  "registration": {
+    "authorization": "supervisor:01a07c6a-d535-7030-814c-7775d0f27f99/cc68645-continuation-approved",
+    "exchange": "binance",
+    "independent_evidence": false,
+    "instrument_type": "SPOT",
+    "issue": 139,
+    "native_authorized": false,
+    "prepared_at_utc": "2026-09-08T04:31:06.423151+00:00",
+    "prior_ledger_sha256": "8456411bc6020bc6ccb2d81e5b789d4f2926ad196cb8a5492bfee3caa9732020",
+    "protocol_sha256": "4823660ddd077aaa628e5b8b3fa8dd1c8c0ba7ab7583c1f736a91cdfc6ab0d3b",
+    "purpose": "EXPLORATORY_EXPOSED_TRAINING_GAP_MODEL",
+    "record_type": "SPOT_EXPLORATORY_SOURCE_CONTINUATION_REGISTERED",
+    "source_window": [
+      "2020-04-02T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "training_window": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ]
+  },
+  "reuse_hashes": {
+    "001-exchangeInfo.json": "39b1adcf5d167250083ebb5eb7ad4dca59026c765989716dc4a0ceef58fe28e8",
+    "002-klines.json": "593dc8eaf03b8e51fbc76f721eebc224985f999514e391c2700b7b4bcfc72347",
+    "003-klines.json": "9cc2f33afbfc81bf279bf56c7e288bce442fe34455407e481f8c7e3221d2f045",
+    "004-klines.json": "47c0851f4b2f38ce620c5c4d454c711d774cc68348fddffbd52380a8b891ae81"
+  },
+  "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1/continuation-v2"
+}
