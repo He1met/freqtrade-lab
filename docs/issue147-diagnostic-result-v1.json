@@ -1,0 +1,1880 @@
+{
+  "version": "ISSUE147_SANITIZED_DIAGNOSTIC_V1",
+  "execution_commit": "8f5d0482a30656d3e56b875c33c8b4fa991f9e17",
+  "authorization_reference": "https://github.com/He1met/freqtrade-lab/issues/147#issuecomment-5584307244",
+  "freeze_reference": "https://github.com/He1met/freqtrade-lab/issues/147#issuecomment-5584336727",
+  "root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue147-relative-events-v1",
+  "terminal": {
+    "status": "SUCCEEDED",
+    "elapsed_seconds": 0.28658312500920147,
+    "at_utc": "2026-09-08T11:21:01.701414+00:00",
+    "manifest_sha256": "2d5c13fc2b6a92bf203864a4484681708d2205b98da8a00691e6d6cabe781a06",
+    "grant_sha256": "688eaf5bff435ed920ec38c2975289a2cfdeb05e560cede7bf7878166f9c8cf8",
+    "summary_sha256": "0728fe1c35310e8bb1765d030f66c4da833c109c2dc82235900e5d9e5dfe5fd3",
+    "events_sha256": "413f04a86d985931dd609e62b8ec7cfc63be7b83a12c664d5c51fbed489122c4",
+    "source_code_postcheck": "PASS",
+    "units_completed": 17,
+    "verdict": "EXPOSED_DIAGNOSTIC_ONLY"
+  },
+  "summary": {
+    "verdict": "EXPOSED_DIAGNOSTIC_ONLY",
+    "independent_qualification": false,
+    "planned_units": 17,
+    "status_counts": {
+      "UNKNOWN": 6,
+      "SCORED": 11
+    },
+    "direction_counts": {
+      "BTCUSDT": 6,
+      "ETHUSDT": 5
+    },
+    "cost_cases": {
+      "base": {
+        "stronger_net": {
+          "n": 11,
+          "mean": "-0.016839885778074248686152307849454067632658039214996",
+          "median": "-0.03319457909601646030681726611417065414149857794355",
+          "positive_count": 2,
+          "largest_absolute_unit": 13,
+          "largest_absolute_share": "0.20610677165627894450324163415983132647565571627711",
+          "largest_positive_unit": 13,
+          "largest_positive_share": "0.56279120036629046334375042933550001924333298221426"
+        },
+        "paired_net": {
+          "n": 11,
+          "mean": "0.028086683384943676614283156553522203568213450976556",
+          "median": "0.01356562543490724821657555811089544865450171158421",
+          "positive_count": 8,
+          "largest_absolute_unit": 7,
+          "largest_absolute_share": "0.28815925976557683850275957539362750907363199787521",
+          "largest_positive_unit": 7,
+          "largest_positive_share": "0.31437239497631156692040803091604901191635864032118"
+        }
+      },
+      "stress": {
+        "stronger_net": {
+          "n": 11,
+          "mean": "-0.019983915350180548945676116843261823739770037205646",
+          "median": "-0.03628630829640250095013519421238997413928489122797",
+          "positive_count": 2,
+          "largest_absolute_unit": 13,
+          "largest_absolute_share": "0.19514325011444703826858286763213132304332613439613",
+          "largest_positive_unit": 13,
+          "largest_positive_share": "0.56442143554495559827418860991528498527885209600698"
+        },
+        "paired_net": {
+          "n": 11,
+          "mean": "0.027996865498856490719034996261360783465637312438855",
+          "median": "0.01352224417186117802217388768752837633225831777835",
+          "positive_count": 8,
+          "largest_absolute_unit": 7,
+          "largest_absolute_share": "0.28815925976557683850275957539362750907363199787514",
+          "largest_positive_unit": 7,
+          "largest_positive_share": "0.31437239497631156692040803091604901191635864032116"
+        }
+      }
+    },
+    "sample_status": "FINITE_SMALL_SAMPLE_NO_POWER_CLAIM",
+    "actual_rotation_count": {
+      "base": 0,
+      "stress": 0
+    },
+    "action_coverage_counts": {
+      "base": {
+        "OBSERVED": 12,
+        "NOT_OBSERVED": 5
+      },
+      "stress": {
+        "OBSERVED": 12,
+        "NOT_OBSERVED": 5
+      }
+    },
+    "not_wallet_or_dd": true,
+    "source_grade": "EXPOSED_DEVELOPMENT",
+    "batch_history_exploration": "CONCLUDED_NO_AUTOMATIC_FOLLOWUP",
+    "source_anomalies": {
+      "BTCUSDT": [
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1613012400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1613016000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1614996000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1618884000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1618887600000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1619323200000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619326800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619330400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619334000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1628816400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628820000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628823600000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628827200000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628830800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1632898800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1632902400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1640318400000
+        }
+      ],
+      "ETHUSDT": [
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1613012400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1613016000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1614996000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1618884000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1618887600000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1619323200000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619326800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619330400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1619334000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1628816400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628820000000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628823600000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628827200000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1628830800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1632898800000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "MISSING",
+          "open_ms": 1632902400000
+        },
+        {
+          "cause": "UNKNOWN",
+          "kind": "SHORT",
+          "open_ms": 1640318400000
+        }
+      ]
+    }
+  },
+  "units": [
+    {
+      "unit": 0,
+      "decision_utc": "2021-02-08T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-02-08T00:00:00+00:00",
+      "entry_open_utc": "2021-02-08T01:00:00+00:00",
+      "exit_open_utc": "2021-02-15T01:00:00+00:00",
+      "Q": "1.2635424240499399276713802901438534697616613474957",
+      "status": "UNKNOWN",
+      "reasons": [
+        "HELD_7_DAYS_UNKNOWN_OR_SHORT"
+      ],
+      "signal_bad_hours": [],
+      "event_bad_hours": [
+        448059,
+        448060
+      ],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": false,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 2,
+          "sell_count": 0,
+          "trades": [
+            {
+              "hour": 447985,
+              "utc": "2021-02-08T01:00:00+00:00",
+              "side": "BUY",
+              "symbol": "BTCUSDT",
+              "quantity": "0.0025776059144714271095577885069191964365113753615414",
+              "reference": "38725.40000000",
+              "price": "38748.635240000000",
+              "fee_base": "0.0000025776059144714271095577885069191964365113753615414",
+              "fee_quote": "0",
+              "fee_value_at_reference": "0.099818820080271803388469183045848649682477615425835",
+              "slippage_loss": "0.059891292048163082033081509827509189809486569255501",
+              "cash_before": "1000",
+              "cash_after": "900.12128862768003352949773544432384112771289800491",
+              "quantity_before": "0",
+              "quantity_after": "0.0025750283085569556824482307184122772400748639861799",
+              "reason": "WEEKLY"
+            },
+            {
+              "hour": 447985,
+              "utc": "2021-02-08T01:00:00+00:00",
+              "side": "BUY",
+              "symbol": "ETHUSDT",
+              "quantity": "0.18614809942790484109157245504523398816098087638525",
+              "reference": "1596.46000000",
+              "price": "1597.417876000000",
+              "fee_base": "0.00018614809942790484109157245504523398816098087638525",
+              "fee_quote": "0",
+              "fee_value_at_reference": "0.29717799481267296260905176158151425273947952991400",
+              "slippage_loss": "0.17830679688760377756543105694890855164368771794840",
+              "cash_before": "900.12128862768003352949773544432384112771289800491",
+              "cash_after": "602.76498701811946714288054280586067983658968037297",
+              "quantity_before": "0",
+              "quantity_after": "0.18596195132847693625048088259018875417281989550886",
+              "reason": "WEEKLY"
+            }
+          ],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": false,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 2,
+          "sell_count": 0,
+          "trades": [
+            {
+              "hour": 447985,
+              "utc": "2021-02-08T01:00:00+00:00",
+              "side": "BUY",
+              "symbol": "BTCUSDT",
+              "quantity": "0.0025776059144714271095577885069191964365113753615414",
+              "reference": "38725.40000000",
+              "price": "38771.870480000000",
+              "fee_base": "0.0000051552118289428542191155770138383928730227507230828",
+              "fee_quote": "0",
+              "fee_value_at_reference": "0.19963764016054360677693836609169729936495523085167",
+              "slippage_loss": "0.11978258409632616406616301965501837961897313851100",
+              "cash_before": "1000",
+              "cash_after": "900.06139733563187044746465393449633193790341143565",
+              "quantity_before": "0",
+              "quantity_after": "0.0025724507026424842553386729299053580436383526108183",
+              "reason": "WEEKLY"
+            },
+            {
+              "hour": 447985,
+              "utc": "2021-02-08T01:00:00+00:00",
+              "side": "BUY",
+              "symbol": "ETHUSDT",
+              "quantity": "0.18614809942790484109157245504523398816098087638525",
+              "reference": "1596.46000000",
+              "price": "1598.375752000000",
+              "fee_base": "0.00037229619885580968218314491009046797632196175277050",
+              "fee_quote": "0",
+              "fee_value_at_reference": "0.59435598962534592521810352316302850547895905982799",
+              "slippage_loss": "0.35661359377520755513086211389781710328737543589680",
+              "cash_before": "900.06139733563187044746465393449633193790341143565",
+              "cash_after": "602.52678892918370028328203023908426209513650608576",
+              "quantity_before": "0",
+              "quantity_after": "0.18577580322904903140938931013514352018465891463248",
+              "reason": "WEEKLY"
+            }
+          ],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 1,
+      "decision_utc": "2021-03-22T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-03-22T00:00:00+00:00",
+      "entry_open_utc": "2021-03-22T01:00:00+00:00",
+      "exit_open_utc": "2021-03-29T01:00:00+00:00",
+      "Q": null,
+      "status": "UNKNOWN",
+      "reasons": [
+        "SIGNAL_29_DAY_INCOMPLETE"
+      ],
+      "signal_bad_hours": [
+        448610
+      ],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": null,
+      "weaker": null,
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 2,
+      "decision_utc": "2021-05-03T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-05-03T00:00:00+00:00",
+      "entry_open_utc": "2021-05-03T01:00:00+00:00",
+      "exit_open_utc": "2021-05-10T01:00:00+00:00",
+      "Q": null,
+      "status": "UNKNOWN",
+      "reasons": [
+        "SIGNAL_29_DAY_INCOMPLETE"
+      ],
+      "signal_bad_hours": [
+        449690,
+        449691,
+        449812,
+        449813,
+        449814,
+        449815
+      ],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": null,
+      "weaker": null,
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": false,
+          "risk_buy_allowed": true,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 3,
+      "decision_utc": "2021-06-14T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-06-14T00:00:00+00:00",
+      "entry_open_utc": "2021-06-14T01:00:00+00:00",
+      "exit_open_utc": "2021-06-21T01:00:00+00:00",
+      "Q": "0.83356443757883766615851911754616157326783767452097",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.09066542542735976692511334360371952592633490098586",
+              "net": "-0.09357155239934570904075497102202456244218644075980",
+              "quote_spent": "1",
+              "base_acquired": "0.000025520068263671982390667327037747688936759754812620",
+              "quote_received": "0.90642844760065429095924502897797543755781355924020"
+            },
+            "ETHUSDT": {
+              "gross": "-0.10427454401395769473945369710842023545606607495858",
+              "net": "-0.10713717783425295725733052913292001109668815234401",
+              "quote_spent": "1",
+              "base_acquired": "0.00039952338931257768880276808744483839752411508380728",
+              "quote_received": "0.89286282216574704274266947086707998890331184765599"
+            }
+          },
+          "stronger": {
+            "gross": "-0.09066542542735976692511334360371952592633490098586",
+            "net": "-0.09357155239934570904075497102202456244218644075980",
+            "quote_spent": "1",
+            "base_acquired": "0.000025520068263671982390667327037747688936759754812620",
+            "quote_received": "0.90642844760065429095924502897797543755781355924020"
+          },
+          "weaker": {
+            "gross": "-0.10427454401395769473945369710842023545606607495858",
+            "net": "-0.10713717783425295725733052913292001109668815234401",
+            "quote_spent": "1",
+            "base_acquired": "0.00039952338931257768880276808744483839752411508380728",
+            "quote_received": "0.89286282216574704274266947086707998890331184765599"
+          },
+          "paired_net": "0.01356562543490724821657555811089544865450171158421",
+          "paired_gross": "0.01360911858659792781434035350470070952973117397272"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.09066542542735976692511334360371952592633490098586",
+              "net": "-0.09647020319185698646796325806418282843137473711692",
+              "quote_spent": "1",
+              "base_acquired": "0.000025479244270259997521434262847648284396083625619403",
+              "quote_received": "0.90352979680814301353203674193581717156862526288308"
+            },
+            "ETHUSDT": {
+              "gross": "-0.10427454401395769473945369710842023545606607495858",
+              "net": "-0.10999244736371816449013714575171120476363305489527",
+              "quote_spent": "1",
+              "base_acquired": "0.00039888427894481867499262911413282108512978049338976",
+              "quote_received": "0.89000755263628183550986285424828879523636694510473"
+            }
+          },
+          "stronger": {
+            "gross": "-0.09066542542735976692511334360371952592633490098586",
+            "net": "-0.09647020319185698646796325806418282843137473711692",
+            "quote_spent": "1",
+            "base_acquired": "0.000025479244270259997521434262847648284396083625619403",
+            "quote_received": "0.90352979680814301353203674193581717156862526288308"
+          },
+          "weaker": {
+            "gross": "-0.10427454401395769473945369710842023545606607495858",
+            "net": "-0.10999244736371816449013714575171120476363305489527",
+            "quote_spent": "1",
+            "base_acquired": "0.00039888427894481867499262911413282108512978049338976",
+            "quote_received": "0.89000755263628183550986285424828879523636694510473"
+          },
+          "paired_net": "0.01352224417186117802217388768752837633225831777835",
+          "paired_gross": "0.01360911858659792781434035350470070952973117397272"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 1,
+          "trades": [
+            {
+              "hour": 451009,
+              "utc": "2021-06-14T01:00:00+00:00",
+              "side": "SELL",
+              "symbol": "ETHUSDT",
+              "quantity": "0.038786088744633083456536313353011423261895554745883",
+              "reference": "2498.98000000",
+              "price": "2497.480612000000",
+              "fee_base": "0",
+              "fee_quote": "0.096867504655032544986477387273102741411109946346827",
+              "fee_value_at_reference": "0.096867504655032544986477387273102741411109946346827",
+              "slippage_loss": "0.058155396030637909737729069805745091901807052039320",
+              "cash_before": "893.42146270614796392454041618620295487185668594392",
+              "cash_after": "990.19209985652547636603132607203259354155552234440",
+              "quantity_before": "0.060352035391398993653423653157384272713790987027626",
+              "quantity_after": "0.021565946646765910196887339804372849451895432281743",
+              "reason": "WEEKLY"
+            }
+          ],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 1,
+          "trades": [
+            {
+              "hour": 451009,
+              "utc": "2021-06-14T01:00:00+00:00",
+              "side": "SELL",
+              "symbol": "ETHUSDT",
+              "quantity": "0.038746021143722734294397634899374416505959173456071",
+              "reference": "2498.98000000",
+              "price": "2495.981224000000",
+              "fee_base": "0",
+              "fee_quote": "0.19341868255887790052151477019769134588965956211382",
+              "fee_value_at_reference": "0.19341868255887790052151477019769134588965956211382",
+              "slippage_loss": "0.11619063830128828625641656199300641523207422633990",
+              "cash_before": "892.45556851708583392796291370725777940209758773357",
+              "cash_after": "988.97149111396590628819878403590576100103770922837",
+              "quantity_before": "0.060288747917211540009408100091434254448418082422789",
+              "quantity_after": "0.021542726773488805715010465192059837942458908966718",
+              "reason": "WEEKLY"
+            }
+          ],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 4,
+      "decision_utc": "2021-07-26T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-07-26T00:00:00+00:00",
+      "entry_open_utc": "2021-07-26T01:00:00+00:00",
+      "exit_open_utc": "2021-08-02T01:00:00+00:00",
+      "Q": "1.0834299826619622640990353759783417051027574217707",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0750842044869341242202872623727751203591636598979",
+              "net": "0.0716483610788201519690458980515798198359279955294",
+              "quote_spent": "1",
+              "base_acquired": "0.000027160920941075640882161636029397703855514407383844",
+              "quote_received": "1.0716483610788201519690458980515798198359279955294"
+            },
+            "ETHUSDT": {
+              "gross": "0.1144158177489445688442033154256684397320045668971",
+              "net": "0.1108542751038845392703309042038113621865557681331",
+              "quote_spent": "1",
+              "base_acquired": "0.00044182116501205687059765344471616303585581222270382",
+              "quote_received": "1.1108542751038845392703309042038113621865557681331"
+            }
+          },
+          "stronger": {
+            "gross": "0.1144158177489445688442033154256684397320045668971",
+            "net": "0.1108542751038845392703309042038113621865557681331",
+            "quote_spent": "1",
+            "base_acquired": "0.00044182116501205687059765344471616303585581222270382",
+            "quote_received": "1.1108542751038845392703309042038113621865557681331"
+          },
+          "weaker": {
+            "gross": "0.0750842044869341242202872623727751203591636598979",
+            "net": "0.0716483610788201519690458980515798198359279955294",
+            "quote_spent": "1",
+            "base_acquired": "0.000027160920941075640882161636029397703855514407383844",
+            "quote_received": "1.0716483610788201519690458980515798198359279955294"
+          },
+          "paired_net": "0.0392059140250643873012850061522315423506277726037",
+          "paired_gross": "0.0393316132620104446239160530528933193728409069992"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0750842044869341242202872623727751203591636598979",
+              "net": "0.0682213565763058032933990320405180890581647940299",
+              "quote_spent": "1",
+              "base_acquired": "0.000027117472105198492233901451536427869932329513488936",
+              "quote_received": "1.0682213565763058032933990320405180890581647940299"
+            },
+            "ETHUSDT": {
+              "gross": "0.1144158177489445688442033154256684397320045668971",
+              "net": "0.1073018947329707576942522540176336353220727867317",
+              "quote_spent": "1",
+              "base_acquired": "0.00044111439165458104579866723766257942741980000237689",
+              "quote_received": "1.1073018947329707576942522540176336353220727867317"
+            }
+          },
+          "stronger": {
+            "gross": "0.1144158177489445688442033154256684397320045668971",
+            "net": "0.1073018947329707576942522540176336353220727867317",
+            "quote_spent": "1",
+            "base_acquired": "0.00044111439165458104579866723766257942741980000237689",
+            "quote_received": "1.1073018947329707576942522540176336353220727867317"
+          },
+          "weaker": {
+            "gross": "0.0750842044869341242202872623727751203591636598979",
+            "net": "0.0682213565763058032933990320405180890581647940299",
+            "quote_spent": "1",
+            "base_acquired": "0.000027117472105198492233901451536427869932329513488936",
+            "quote_received": "1.0682213565763058032933990320405180890581647940299"
+          },
+          "paired_net": "0.0390805381566649544008532219771155462639079927018",
+          "paired_gross": "0.0393316132620104446239160530528933193728409069992"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 5,
+      "decision_utc": "2021-09-06T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-09-06T00:00:00+00:00",
+      "entry_open_utc": "2021-09-06T01:00:00+00:00",
+      "exit_open_utc": "2021-09-13T01:00:00+00:00",
+      "Q": null,
+      "status": "UNKNOWN",
+      "reasons": [
+        "SIGNAL_29_DAY_INCOMPLETE"
+      ],
+      "signal_bad_hours": [
+        452449,
+        452450,
+        452451,
+        452452,
+        452453
+      ],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": null,
+      "weaker": null,
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 6,
+      "decision_utc": "2021-10-18T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-10-18T00:00:00+00:00",
+      "entry_open_utc": "2021-10-18T01:00:00+00:00",
+      "exit_open_utc": "2021-10-25T01:00:00+00:00",
+      "Q": null,
+      "status": "UNKNOWN",
+      "reasons": [
+        "SIGNAL_29_DAY_INCOMPLETE"
+      ],
+      "signal_bad_hours": [
+        453583,
+        453584
+      ],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": null,
+      "weaker": null,
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 7,
+      "decision_utc": "2021-11-29T00:00:00+00:00",
+      "last_signal_close_known_utc": "2021-11-29T00:00:00+00:00",
+      "entry_open_utc": "2021-11-29T01:00:00+00:00",
+      "exit_open_utc": "2021-12-06T01:00:00+00:00",
+      "Q": "1.0721635401936771028278254952252641643588073127278",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.15618464442499038789953835950831055021723087373777",
+              "net": "-0.15888137963421183411439007197507180228352010917813",
+              "quote_spent": "1",
+              "base_acquired": "0.000017283620572688086738700288132131321782738885358719",
+              "quote_received": "0.84111862036578816588560992802492819771647989082187"
+            },
+            "ETHUSDT": {
+              "gross": "-0.04899611152935001070538100796342213043988755896593",
+              "net": "-0.05203540875616769771133376250020602403695536758074",
+              "quote_spent": "1",
+              "base_acquired": "0.00022985511116889992259073475638072991328521969332715",
+              "quote_received": "0.94796459124383230228866623749979397596304463241926"
+            }
+          },
+          "stronger": {
+            "gross": "-0.04899611152935001070538100796342213043988755896593",
+            "net": "-0.05203540875616769771133376250020602403695536758074",
+            "quote_spent": "1",
+            "base_acquired": "0.00022985511116889992259073475638072991328521969332715",
+            "quote_received": "0.94796459124383230228866623749979397596304463241926"
+          },
+          "weaker": {
+            "gross": "-0.15618464442499038789953835950831055021723087373777",
+            "net": "-0.15888137963421183411439007197507180228352010917813",
+            "quote_spent": "1",
+            "base_acquired": "0.000017283620572688086738700288132131321782738885358719",
+            "quote_received": "0.84111862036578816588560992802492819771647989082187"
+          },
+          "paired_net": "0.10684597087804413640305630947486577824656474159739",
+          "paired_gross": "0.10718853289564037719415735154488841977734331477184"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.15618464442499038789953835950831055021723087373777",
+              "net": "-0.16157117733636145081694008595550028251004049518907",
+              "quote_spent": "1",
+              "base_acquired": "0.000017255972276253117071888129928170859007886143867154",
+              "quote_received": "0.83842882266363854918305991404449971748995950481093"
+            },
+            "ETHUSDT": {
+              "gross": "-0.04899611152935001070538100796342213043988755896593",
+              "net": "-0.05506688721533910666093406181487572438266259344622",
+              "quote_spent": "1",
+              "base_acquired": "0.00022948741608881160427227129130737732791793435814246",
+              "quote_received": "0.94493311278466089333906593818512427561733740655378"
+            }
+          },
+          "stronger": {
+            "gross": "-0.04899611152935001070538100796342213043988755896593",
+            "net": "-0.05506688721533910666093406181487572438266259344622",
+            "quote_spent": "1",
+            "base_acquired": "0.00022948741608881160427227129130737732791793435814246",
+            "quote_received": "0.94493311278466089333906593818512427561733740655378"
+          },
+          "weaker": {
+            "gross": "-0.15618464442499038789953835950831055021723087373777",
+            "net": "-0.16157117733636145081694008595550028251004049518907",
+            "quote_spent": "1",
+            "base_acquired": "0.000017255972276253117071888129928170859007886143867154",
+            "quote_received": "0.83842882266363854918305991404449971748995950481093"
+          },
+          "paired_net": "0.10650429012102234415600602414062455812737790174285",
+          "paired_gross": "0.10718853289564037719415735154488841977734331477184"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 8,
+      "decision_utc": "2022-01-10T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-01-10T00:00:00+00:00",
+      "entry_open_utc": "2022-01-10T01:00:00+00:00",
+      "exit_open_utc": "2022-01-17T01:00:00+00:00",
+      "Q": null,
+      "status": "UNKNOWN",
+      "reasons": [
+        "SIGNAL_29_DAY_INCOMPLETE"
+      ],
+      "signal_bad_hours": [
+        455644
+      ],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": null,
+      "weaker": null,
+      "cost_cases": null,
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "CANCELLED_INVALID_INPUT",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 9,
+      "decision_utc": "2022-02-21T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-02-21T00:00:00+00:00",
+      "entry_open_utc": "2022-02-21T01:00:00+00:00",
+      "exit_open_utc": "2022-02-28T01:00:00+00:00",
+      "Q": "0.97504891530154947213279707402490333342936940826624",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.03009487572970161447490523397560412130567382934759",
+              "net": "-0.03319457909601646030681726611417065414149857794355",
+              "quote_spent": "1",
+              "base_acquired": "0.000025771737058951640423806861748416107285201867110290",
+              "quote_received": "0.96680542090398353969318273388582934585850142205645"
+            },
+            "ETHUSDT": {
+              "gross": "-0.02327743251043923503084915773927776236777593690729",
+              "net": "-0.02639892362812028430923693461802235853800746667771",
+              "quote_spent": "1",
+              "base_acquired": "0.00037423850163217360720151336865414542909372188233566",
+              "quote_received": "0.97360107637187971569076306538197764146199253332229"
+            }
+          },
+          "stronger": {
+            "gross": "-0.03009487572970161447490523397560412130567382934759",
+            "net": "-0.03319457909601646030681726611417065414149857794355",
+            "quote_spent": "1",
+            "base_acquired": "0.000025771737058951640423806861748416107285201867110290",
+            "quote_received": "0.96680542090398353969318273388582934585850142205645"
+          },
+          "weaker": {
+            "gross": "-0.02327743251043923503084915773927776236777593690729",
+            "net": "-0.02639892362812028430923693461802235853800746667771",
+            "quote_spent": "1",
+            "base_acquired": "0.00037423850163217360720151336865414542909372188233566",
+            "quote_received": "0.97360107637187971569076306538197764146199253332229"
+          },
+          "paired_net": "-0.00679565546789617599758033149614829560349111126584",
+          "paired_gross": "-0.00681744321926237944405607623632635893789789244030"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.03009487572970161447490523397560412130567382934759",
+              "net": "-0.03628630829640250095013519421238997413928489122797",
+              "quote_spent": "1",
+              "base_acquired": "0.000025730510475502107566260850916572012119664452960847",
+              "quote_received": "0.96371369170359749904986480578761002586071510877203"
+            },
+            "ETHUSDT": {
+              "gross": "-0.02327743251043923503084915773927776236777593690729",
+              "net": "-0.02951238452962381824195833544101644676312333110096",
+              "quote_spent": "1",
+              "base_acquired": "0.00037363983904368472102056372005444041776342439046531",
+              "quote_received": "0.97048761547037618175804166455898355323687666889904"
+            }
+          },
+          "stronger": {
+            "gross": "-0.03009487572970161447490523397560412130567382934759",
+            "net": "-0.03628630829640250095013519421238997413928489122797",
+            "quote_spent": "1",
+            "base_acquired": "0.000025730510475502107566260850916572012119664452960847",
+            "quote_received": "0.96371369170359749904986480578761002586071510877203"
+          },
+          "weaker": {
+            "gross": "-0.02327743251043923503084915773927776236777593690729",
+            "net": "-0.02951238452962381824195833544101644676312333110096",
+            "quote_spent": "1",
+            "base_acquired": "0.00037363983904368472102056372005444041776342439046531",
+            "quote_received": "0.97048761547037618175804166455898355323687666889904"
+          },
+          "paired_net": "-0.00677392376677868270817685877137352737616156012701",
+          "paired_gross": "-0.00681744321926237944405607623632635893789789244030"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 10,
+      "decision_utc": "2022-04-04T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-04-04T00:00:00+00:00",
+      "entry_open_utc": "2022-04-04T01:00:00+00:00",
+      "exit_open_utc": "2022-04-11T01:00:00+00:00",
+      "Q": "1.1428735291232744922877858336588217145482673387439",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.07759831215679707505634284358668424982033087029633",
+              "net": "-0.08054620009486024417417872387948136650423452415479",
+              "quote_spent": "1",
+              "base_acquired": "0.000021769639742121277376960255513114587446640298742070",
+              "quote_received": "0.91945379990513975582582127612051863349576547584521"
+            },
+            "ETHUSDT": {
+              "gross": "-0.07826129485143501576561025570208750489079150268130",
+              "net": "-0.08120706397432858382050104329448177948164471475231",
+              "quote_spent": "1",
+              "base_acquired": "0.00028723358403655590254215902413257562275449754658701",
+              "quote_received": "0.91879293602567141617949895670551822051835528524769"
+            }
+          },
+          "stronger": {
+            "gross": "-0.07826129485143501576561025570208750489079150268130",
+            "net": "-0.08120706397432858382050104329448177948164471475231",
+            "quote_spent": "1",
+            "base_acquired": "0.00028723358403655590254215902413257562275449754658701",
+            "quote_received": "0.91879293602567141617949895670551822051835528524769"
+          },
+          "weaker": {
+            "gross": "-0.07759831215679707505634284358668424982033087029633",
+            "net": "-0.08054620009486024417417872387948136650423452415479",
+            "quote_spent": "1",
+            "base_acquired": "0.000021769639742121277376960255513114587446640298742070",
+            "quote_received": "0.91945379990513975582582127612051863349576547584521"
+          },
+          "paired_net": "-0.00066086387946833964632231941500041297741019059752",
+          "paired_gross": "-0.00066298269463794070926741211540325507046063238497"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.07759831215679707505634284358668424982033087029633",
+              "net": "-0.08348650442095166972401557765342729257548858324496",
+              "quote_spent": "1",
+              "base_acquired": "0.000021734815241644578100973185333845242852431003072062",
+              "quote_received": "0.91651349557904833027598442234657270742451141675504"
+            },
+            "ETHUSDT": {
+              "gross": "-0.07826129485143501576561025570208750489079150268130",
+              "net": "-0.08414525493602480126336370761861526255032201593765",
+              "quote_spent": "1",
+              "base_acquired": "0.00028677410164719641776366553419976214507745254705838",
+              "quote_received": "0.91585474506397519873663629238138473744967798406235"
+            }
+          },
+          "stronger": {
+            "gross": "-0.07826129485143501576561025570208750489079150268130",
+            "net": "-0.08414525493602480126336370761861526255032201593765",
+            "quote_spent": "1",
+            "base_acquired": "0.00028677410164719641776366553419976214507745254705838",
+            "quote_received": "0.91585474506397519873663629238138473744967798406235"
+          },
+          "weaker": {
+            "gross": "-0.07759831215679707505634284358668424982033087029633",
+            "net": "-0.08348650442095166972401557765342729257548858324496",
+            "quote_spent": "1",
+            "base_acquired": "0.000021734815241644578100973185333845242852431003072062",
+            "quote_received": "0.91651349557904833027598442234657270742451141675504"
+          },
+          "paired_net": "-0.00065875051507313153934812996518796997483343269269",
+          "paired_gross": "-0.00066298269463794070926741211540325507046063238497"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 11,
+      "decision_utc": "2022-05-16T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-05-16T00:00:00+00:00",
+      "entry_open_utc": "2022-05-16T01:00:00+00:00",
+      "exit_open_utc": "2022-05-23T01:00:00+00:00",
+      "Q": "0.90929075015939759672624601983152271218221212339828",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.02671005898140558957298748051363643668739855037526",
+              "net": "-0.02982057982626190160258986597338159468717785769405",
+              "quote_spent": "1",
+              "base_acquired": "0.000032091058271839846769340642372206491446725908816120",
+              "quote_received": "0.97017942017373809839741013402661840531282214230595"
+            },
+            "ETHUSDT": {
+              "gross": "-0.03760844057621352132056000339281759364412170790668",
+              "net": "-0.04068413146783886616944367361949603244419593478653",
+              "quote_spent": "1",
+              "base_acquired": "0.00047047115842306804614436504604472970960535552116634",
+              "quote_received": "0.95931586853216113383055632638050396755580406521347"
+            }
+          },
+          "stronger": {
+            "gross": "-0.02671005898140558957298748051363643668739855037526",
+            "net": "-0.02982057982626190160258986597338159468717785769405",
+            "quote_spent": "1",
+            "base_acquired": "0.000032091058271839846769340642372206491446725908816120",
+            "quote_received": "0.97017942017373809839741013402661840531282214230595"
+          },
+          "weaker": {
+            "gross": "-0.03760844057621352132056000339281759364412170790668",
+            "net": "-0.04068413146783886616944367361949603244419593478653",
+            "quote_spent": "1",
+            "base_acquired": "0.00047047115842306804614436504604472970960535552116634",
+            "quote_received": "0.95931586853216113383055632638050396755580406521347"
+          },
+          "paired_net": "0.01086355164157696456685380764611443775701807709248",
+          "paired_gross": "0.01089838159480793174757252287918115695672315753142"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.02671005898140558957298748051363643668739855037526",
+              "net": "-0.03292309867660111243073247897967852651998804526673",
+              "quote_spent": "1",
+              "base_acquired": "0.000032039722784099865722741761201987600575916264319340",
+              "quote_received": "0.96707690132339888756926752102032147348001195473327"
+            },
+            "ETHUSDT": {
+              "gross": "-0.03760844057621352132056000339281759364412170790668",
+              "net": "-0.04375190996701335090177368154666078971880932261767",
+              "quote_spent": "1",
+              "base_acquired": "0.00046971855418731320533288738373032624547865534032842",
+              "quote_received": "0.95624809003298664909822631845333921028119067738233"
+            }
+          },
+          "stronger": {
+            "gross": "-0.02671005898140558957298748051363643668739855037526",
+            "net": "-0.03292309867660111243073247897967852651998804526673",
+            "quote_spent": "1",
+            "base_acquired": "0.000032039722784099865722741761201987600575916264319340",
+            "quote_received": "0.96707690132339888756926752102032147348001195473327"
+          },
+          "weaker": {
+            "gross": "-0.03760844057621352132056000339281759364412170790668",
+            "net": "-0.04375190996701335090177368154666078971880932261767",
+            "quote_spent": "1",
+            "base_acquired": "0.00046971855418731320533288738373032624547865534032842",
+            "quote_received": "0.95624809003298664909822631845333921028119067738233"
+          },
+          "paired_net": "0.01082881129041223847104120256698226319882127735094",
+          "paired_gross": "0.01089838159480793174757252287918115695672315753142"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        },
+        "stress": {
+          "status": "OBSERVED",
+          "prior_half": true,
+          "prior_no_buy": true,
+          "risk_buy_allowed": false,
+          "week_execution": "EXECUTED",
+          "risk_permission_is_not_data_or_execution_permission": true,
+          "actual_rotation": false,
+          "buy_count": 0,
+          "sell_count": 0,
+          "trades": [],
+          "original_log_last_close_known": "2022-06-18T10:00:00+00:00"
+        }
+      }
+    },
+    {
+      "unit": 12,
+      "decision_utc": "2022-06-27T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-06-27T00:00:00+00:00",
+      "entry_open_utc": "2022-06-27T01:00:00+00:00",
+      "exit_open_utc": "2022-07-04T01:00:00+00:00",
+      "Q": "0.92507264014046836226559023032771840551739762091398",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.08481802447750954809107066418797161441247468372171",
+              "net": "-0.08774283905919554177546867075944603561839994837183",
+              "quote_spent": "1",
+              "base_acquired": "0.000047432881132589379242924692067252684779485921566344",
+              "quote_received": "0.91225716094080445822453132924055396438160005162817"
+            },
+            "ETHUSDT": {
+              "gross": "-0.11332887026522195498913160265469903217541510665906",
+              "net": "-0.11616256751753911576586814269822475858166139715143",
+              "quote_spent": "1",
+              "base_acquired": "0.00082517249710672963953645367514062983696975288829331",
+              "quote_received": "0.88383743248246088423413185730177524141833860284857"
+            }
+          },
+          "stronger": {
+            "gross": "-0.08481802447750954809107066418797161441247468372171",
+            "net": "-0.08774283905919554177546867075944603561839994837183",
+            "quote_spent": "1",
+            "base_acquired": "0.000047432881132589379242924692067252684779485921566344",
+            "quote_received": "0.91225716094080445822453132924055396438160005162817"
+          },
+          "weaker": {
+            "gross": "-0.11332887026522195498913160265469903217541510665906",
+            "net": "-0.11616256751753911576586814269822475858166139715143",
+            "quote_spent": "1",
+            "base_acquired": "0.00082517249710672963953645367514062983696975288829331",
+            "quote_received": "0.88383743248246088423413185730177524141833860284857"
+          },
+          "paired_net": "0.02841972845834357399039947193877872296326144877960",
+          "paired_gross": "0.02851084578771240689806093846672741776294042293735"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.08481802447750954809107066418797161441247468372171",
+              "net": "-0.09066012938645164106369802968327989219483908905683",
+              "quote_spent": "1",
+              "base_acquired": "0.000047357003607229277824298035539262844864013939921789",
+              "quote_received": "0.90933987061354835893630197031672010780516091094317"
+            },
+            "ETHUSDT": {
+              "gross": "-0.11332887026522195498913160265469903217541510665906",
+              "net": "-0.11898897492001853526101342262401744488317093219675",
+              "quote_spent": "1",
+              "base_acquired": "0.00082385248353005791445214211039947537073848805912008",
+              "quote_received": "0.88101102507998146473898657737598255511682906780325"
+            }
+          },
+          "stronger": {
+            "gross": "-0.08481802447750954809107066418797161441247468372171",
+            "net": "-0.09066012938645164106369802968327989219483908905683",
+            "quote_spent": "1",
+            "base_acquired": "0.000047357003607229277824298035539262844864013939921789",
+            "quote_received": "0.90933987061354835893630197031672010780516091094317"
+          },
+          "weaker": {
+            "gross": "-0.11332887026522195498913160265469903217541510665906",
+            "net": "-0.11898897492001853526101342262401744488317093219675",
+            "quote_spent": "1",
+            "base_acquired": "0.00082385248353005791445214211039947537073848805912008",
+            "quote_received": "0.88101102507998146473898657737598255511682906780325"
+          },
+          "paired_net": "0.02832884553356689419731539294073755268833184313992",
+          "paired_gross": "0.02851084578771240689806093846672741776294042293735"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        },
+        "stress": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        }
+      }
+    },
+    {
+      "unit": 13,
+      "decision_utc": "2022-08-08T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-08-08T00:00:00+00:00",
+      "entry_open_utc": "2022-08-08T01:00:00+00:00",
+      "exit_open_utc": "2022-08-15T01:00:00+00:00",
+      "Q": "1.3100207997911714436249368291831917941208214441373",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0489225543343926743409782705416223005826017317711",
+              "net": "0.0455703205010886032889662928101362301071106022813",
+              "quote_spent": "1",
+              "base_acquired": "0.000042918182539845453112848033720784573999396167549807",
+              "quote_received": "1.0455703205010886032889662928101362301071106022813"
+            },
+            "ETHUSDT": {
+              "gross": "0.1463593185398621384354996456828949757248859450311",
+              "net": "0.1426956882014228397445079168919050207347699888948",
+              "quote_spent": "1",
+              "base_acquired": "0.00058471163239122780701977815366405014239729964224673",
+              "quote_received": "1.1426956882014228397445079168919050207347699888948"
+            }
+          },
+          "stronger": {
+            "gross": "0.1463593185398621384354996456828949757248859450311",
+            "net": "0.1426956882014228397445079168919050207347699888948",
+            "quote_spent": "1",
+            "base_acquired": "0.00058471163239122780701977815366405014239729964224673",
+            "quote_received": "1.1426956882014228397445079168919050207347699888948"
+          },
+          "weaker": {
+            "gross": "0.0489225543343926743409782705416223005826017317711",
+            "net": "0.0455703205010886032889662928101362301071106022813",
+            "quote_spent": "1",
+            "base_acquired": "0.000042918182539845453112848033720784573999396167549807",
+            "quote_received": "1.0455703205010886032889662928101362301071106022813"
+          },
+          "paired_net": "0.0971253677003342364555416240817687906276593866135",
+          "paired_gross": "0.0974367642054694640945213751412726751422842132600"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0489225543343926743409782705416223005826017317711",
+              "net": "0.0422267104829242052385682653884248225090194635084",
+              "quote_spent": "1",
+              "base_acquired": "0.000042849527096483840676419838791983164401225250060124",
+              "quote_received": "1.0422267104829242052385682653884248225090194635084"
+            },
+            "ETHUSDT": {
+              "gross": "0.1463593185398621384354996456828949757248859450311",
+              "net": "0.1390414827636169367869706506510463763973302373490",
+              "quote_spent": "1",
+              "base_acquired": "0.00058377627972751138935237878761215877817267181883043",
+              "quote_received": "1.1390414827636169367869706506510463763973302373490"
+            }
+          },
+          "stronger": {
+            "gross": "0.1463593185398621384354996456828949757248859450311",
+            "net": "0.1390414827636169367869706506510463763973302373490",
+            "quote_spent": "1",
+            "base_acquired": "0.00058377627972751138935237878761215877817267181883043",
+            "quote_received": "1.1390414827636169367869706506510463763973302373490"
+          },
+          "weaker": {
+            "gross": "0.0489225543343926743409782705416223005826017317711",
+            "net": "0.0422267104829242052385682653884248225090194635084",
+            "quote_spent": "1",
+            "base_acquired": "0.000042849527096483840676419838791983164401225250060124",
+            "quote_received": "1.0422267104829242052385682653884248225090194635084"
+          },
+          "paired_net": "0.0968147722806927315484023852626215538883107738406",
+          "paired_gross": "0.0974367642054694640945213751412726751422842132600"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        },
+        "stress": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        }
+      }
+    },
+    {
+      "unit": 14,
+      "decision_utc": "2022-09-19T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-09-19T00:00:00+00:00",
+      "entry_open_utc": "2022-09-19T01:00:00+00:00",
+      "exit_open_utc": "2022-09-26T01:00:00+00:00",
+      "Q": "0.91389919904161060810172203975130522076542750765868",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.03523682563306133734046915968347190088505762484698",
+              "net": "-0.03832009592873243575703506545689054744238984770949",
+              "quote_spent": "1",
+              "base_acquired": "0.000051308929380621307819585427700571893517876042192752",
+              "quote_received": "0.96167990407126756424296493454310945255761015229051"
+            },
+            "ETHUSDT": {
+              "gross": "-0.03787343279139848952714014658283418281930131329291",
+              "net": "-0.04094827679888960109555011812288347814258727028748",
+              "quote_spent": "1",
+              "base_acquired": "0.00074288549382368792943512883303910283763891001312007",
+              "quote_received": "0.95905172320111039890444988187711652185741272971252"
+            }
+          },
+          "stronger": {
+            "gross": "-0.03523682563306133734046915968347190088505762484698",
+            "net": "-0.03832009592873243575703506545689054744238984770949",
+            "quote_spent": "1",
+            "base_acquired": "0.000051308929380621307819585427700571893517876042192752",
+            "quote_received": "0.96167990407126756424296493454310945255761015229051"
+          },
+          "weaker": {
+            "gross": "-0.03787343279139848952714014658283418281930131329291",
+            "net": "-0.04094827679888960109555011812288347814258727028748",
+            "quote_spent": "1",
+            "base_acquired": "0.00074288549382368792943512883303910283763891001312007",
+            "quote_received": "0.95905172320111039890444988187711652185741272971252"
+          },
+          "paired_net": "0.00262818087015716533851505266599293070019742257799",
+          "paired_gross": "0.00263660715833715218667098689936228193424368844593"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.03523682563306133734046915968347190088505762484698",
+              "net": "-0.04139543433349802865298930977574020682432879490272",
+              "quote_spent": "1",
+              "base_acquired": "0.000051226851410712731552036079826608322446176494395345",
+              "quote_received": "0.95860456566650197134701069022425979317567120509728"
+            },
+            "ETHUSDT": {
+              "gross": "-0.03787343279139848952714014658283418281930131329291",
+              "net": "-0.04401521059258819845145236408671661047927055411775",
+              "quote_spent": "1",
+              "base_acquired": "0.00074169711328362139397528204444781222167314175182942",
+              "quote_received": "0.95598478940741180154854763591328338952072944588225"
+            }
+          },
+          "stronger": {
+            "gross": "-0.03523682563306133734046915968347190088505762484698",
+            "net": "-0.04139543433349802865298930977574020682432879490272",
+            "quote_spent": "1",
+            "base_acquired": "0.000051226851410712731552036079826608322446176494395345",
+            "quote_received": "0.95860456566650197134701069022425979317567120509728"
+          },
+          "weaker": {
+            "gross": "-0.03787343279139848952714014658283418281930131329291",
+            "net": "-0.04401521059258819845145236408671661047927055411775",
+            "quote_spent": "1",
+            "base_acquired": "0.00074169711328362139397528204444781222167314175182942",
+            "quote_received": "0.95598478940741180154854763591328338952072944588225"
+          },
+          "paired_net": "0.00261977625909016979846305431097640365494175921503",
+          "paired_gross": "0.00263660715833715218667098689936228193424368844593"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        },
+        "stress": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        }
+      }
+    },
+    {
+      "unit": 15,
+      "decision_utc": "2022-10-31T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-10-31T00:00:00+00:00",
+      "entry_open_utc": "2022-10-31T01:00:00+00:00",
+      "exit_open_utc": "2022-11-07T01:00:00+00:00",
+      "Q": "1.1508677743898968648285984866035752615627660581600",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "ETHUSDT",
+      "weaker": "BTCUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0173328777045656339081265479695312865087153605309",
+              "net": "0.0140816007839945899276640380555068052677436017010",
+              "quote_spent": "1",
+              "base_acquired": "0.000048600448591072469934554057975981269502703256778584",
+              "quote_received": "1.0140816007839945899276640380555068052677436017010"
+            },
+            "ETHUSDT": {
+              "gross": "-0.00620301939233150148442928431558334912513423030762",
+              "net": "-0.00937907833782959331848304320420823117272331314116",
+              "quote_spent": "1",
+              "base_acquired": "0.00063066196666309480940202223180020356177424869694443",
+              "quote_received": "0.99062092166217040668151695679579176882727668685884"
+            }
+          },
+          "stronger": {
+            "gross": "-0.00620301939233150148442928431558334912513423030762",
+            "net": "-0.00937907833782959331848304320420823117272331314116",
+            "quote_spent": "1",
+            "base_acquired": "0.00063066196666309480940202223180020356177424869694443",
+            "quote_received": "0.99062092166217040668151695679579176882727668685884"
+          },
+          "weaker": {
+            "gross": "0.0173328777045656339081265479695312865087153605309",
+            "net": "0.0140816007839945899276640380555068052677436017010",
+            "quote_spent": "1",
+            "base_acquired": "0.000048600448591072469934554057975981269502703256778584",
+            "quote_received": "1.0140816007839945899276640380555068052677436017010"
+          },
+          "paired_net": "-0.02346067912182418324614708125971503644046691484216",
+          "paired_gross": "-0.02353589709689713539255583228511463563384959083852"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "0.0173328777045656339081265479695312865087153605309",
+              "net": "0.0108386879610745902991087082248346238917710168892",
+              "quote_spent": "1",
+              "base_acquired": "0.000048522703329084837124061497404261357390026931621179",
+              "quote_received": "1.0108386879610745902991087082248346238917710168892"
+            },
+            "ETHUSDT": {
+              "gross": "-0.00620301939233150148442928431558334912513423030762",
+              "net": "-0.01254696668826162316293658398879717152252872322275",
+              "quote_spent": "1",
+              "base_acquired": "0.00062965310807752066984592274880654237591915789108152",
+              "quote_received": "0.98745303331173837683706341601120282847747127677725"
+            }
+          },
+          "stronger": {
+            "gross": "-0.00620301939233150148442928431558334912513423030762",
+            "net": "-0.01254696668826162316293658398879717152252872322275",
+            "quote_spent": "1",
+            "base_acquired": "0.00062965310807752066984592274880654237591915789108152",
+            "quote_received": "0.98745303331173837683706341601120282847747127677725"
+          },
+          "weaker": {
+            "gross": "0.0173328777045656339081265479695312865087153605309",
+            "net": "0.0108386879610745902991087082248346238917710168892",
+            "quote_spent": "1",
+            "base_acquired": "0.000048522703329084837124061497404261357390026931621179",
+            "quote_received": "1.0108386879610745902991087082248346238917710168892"
+          },
+          "paired_net": "-0.02338565464933621346204529221363179541429974011195",
+          "paired_gross": "-0.02353589709689713539255583228511463563384959083852"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        },
+        "stress": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        }
+      }
+    },
+    {
+      "unit": 16,
+      "decision_utc": "2022-12-12T00:00:00+00:00",
+      "last_signal_close_known_utc": "2022-12-12T00:00:00+00:00",
+      "entry_open_utc": "2022-12-12T01:00:00+00:00",
+      "exit_open_utc": "2022-12-19T01:00:00+00:00",
+      "Q": "0.98828639006851624549977031411463148923840726974922",
+      "status": "SCORED",
+      "reasons": [],
+      "signal_bad_hours": [],
+      "event_bad_hours": [],
+      "exit_open_missing": [],
+      "stronger": "BTCUSDT",
+      "weaker": "ETHUSDT",
+      "cost_cases": {
+        "base": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.01035471888687509439661682525298293309167799426069",
+              "net": "-0.01351750948624619122953051911490169785758812043993",
+              "quote_spent": "1",
+              "base_acquired": "0.000058903545502965551887716486555733075786607781592938",
+              "quote_received": "0.98648249051375380877046948088509830214241187956007"
+            },
+            "ETHUSDT": {
+              "gross": "-0.05170324062260780811431487624393978055626435315131",
+              "net": "-0.05473388618138762060446814330386203082947373703870",
+              "quote_spent": "1",
+              "base_acquired": "0.00079612222459838717846097648887064801180531793197621",
+              "quote_received": "0.94526611381861237939553185669613796917052626296130"
+            }
+          },
+          "stronger": {
+            "gross": "-0.01035471888687509439661682525298293309167799426069",
+            "net": "-0.01351750948624619122953051911490169785758812043993",
+            "quote_spent": "1",
+            "base_acquired": "0.000058903545502965551887716486555733075786607781592938",
+            "quote_received": "0.98648249051375380877046948088509830214241187956007"
+          },
+          "weaker": {
+            "gross": "-0.05170324062260780811431487624393978055626435315131",
+            "net": "-0.05473388618138762060446814330386203082947373703870",
+            "quote_spent": "1",
+            "base_acquired": "0.00079612222459838717846097648887064801180531793197621",
+            "quote_received": "0.94526611381861237939553185669613796917052626296130"
+          },
+          "paired_net": "0.04121637669514142937493762418896033297188561659877",
+          "paired_gross": "0.04134852173573271371769805099095684746458635889062"
+        },
+        "stress": {
+          "assets": {
+            "BTCUSDT": {
+              "gross": "-0.01035471888687509439661682525298293309167799426069",
+              "net": "-0.01667216362413793223090756580700048629154454316502",
+              "quote_spent": "1",
+              "base_acquired": "0.000058809318562476576213060261834718440574829310702403",
+              "quote_received": "0.98332783637586206776909243419299951370845545683498"
+            },
+            "ETHUSDT": {
+              "gross": "-0.05170324062260780811431487624393978055626435315131",
+              "net": "-0.05775673522943684725560763674557614302489984715458",
+              "quote_spent": "1",
+              "base_acquired": "0.00079484868221925473050609235745378064821831052035847",
+              "quote_received": "0.94224326477056315274439236325442385697510015284542"
+            }
+          },
+          "stronger": {
+            "gross": "-0.01035471888687509439661682525298293309167799426069",
+            "net": "-0.01667216362413793223090756580700048629154454316502",
+            "quote_spent": "1",
+            "base_acquired": "0.000058809318562476576213060261834718440574829310702403",
+            "quote_received": "0.98332783637586206776909243419299951370845545683498"
+          },
+          "weaker": {
+            "gross": "-0.05170324062260780811431487624393978055626435315131",
+            "net": "-0.05775673522943684725560763674557614302489984715458",
+            "quote_spent": "1",
+            "base_acquired": "0.00079484868221925473050609235745378064821831052035847",
+            "quote_received": "0.94224326477056315274439236325442385697510015284542"
+          },
+          "paired_net": "0.04108457160529891502470007093857565673335530398956",
+          "paired_gross": "0.04134852173573271371769805099095684746458635889062"
+        }
+      },
+      "action_coverage": {
+        "base": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        },
+        "stress": {
+          "status": "NOT_OBSERVED",
+          "prior_half": null,
+          "prior_no_buy": null,
+          "risk_buy_allowed": null,
+          "actual_rotation": null,
+          "trades": null
+        }
+      }
+    }
+  ],
+  "artifact_formula_audit": "PASS; existing scores only, no source reload",
+  "publication_contents": "Public exposed price-derived diagnostics and bounded prior synthetic-wallet action excerpts; no raw source payload or credentials"
+}
