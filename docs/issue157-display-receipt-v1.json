@@ -1,0 +1,101 @@
+{
+  "status": "SUPERVISOR_BROWSER_LOAD_COMPARE_VERIFIED",
+  "classification": "ORDER_DISPLAY_REPLAY_NOT_SIGNAL_BACKTEST",
+  "results": {
+    "base": {
+      "status": "DISPLAY_EXPORT_ONLY",
+      "zip_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue157-native-display-v1/base/export/backtest-result-2026-09-08_14-00-53.zip",
+      "zip_sha256": "5024feb9a796b0a8d381acda587ff96642774e7a1fcea2777f867168311e9472",
+      "terminal_extra_orders": 2,
+      "native_trades": 2,
+      "synthetic_terminal_impact": {
+        "before_cash": 1048.7877528153597,
+        "before_native_mark_equity": 1049.3573944153597,
+        "after_native_balance": 1049.35615968,
+        "change": -0.001234735359730621
+      },
+      "official_summary": {
+        "profit_total": 0.049356159680000004,
+        "profit_total_abs": 49.356159680000005,
+        "final_balance": 1049.35615968,
+        "max_drawdown_account": 0.0
+      },
+      "note": "DISPLAY ONLY: archived native order reconstruction, NOT signal backtest. Official terminal force_exit added for residual positions; not executable dust liquidation. Native quote-fee statistics differ from B base-fee model; trade-close DD is not wallet DD. No independent or risk qualification.",
+      "cost": "base",
+      "matched_orders": 36,
+      "elapsed_seconds": 1.8044240474700928,
+      "meta_sha256": "f4f0bd8e214e2e030e2430092a0e3dbd83ebaf576f78b143f46eb7df4cc2118a",
+      "original_result_sha256": "c9fda277a20c94d3862791928705d408cfd0a8388ff5c3373c7848abad7d0d4d",
+      "before_terminal_receipt_sha256": "29ac06cec14978c875f8a2f2dca3a597e222acf6bb857e4a81a04331b49e4ff4"
+    },
+    "stress": {
+      "status": "DISPLAY_EXPORT_ONLY",
+      "zip_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue157-native-display-v1/stress/export/backtest-result-2026-09-08_14-01-29.zip",
+      "zip_sha256": "509997a750f11eb944d20ad5ed97465aada3d76a3e5cb81ae2e43c829e45d77d",
+      "terminal_extra_orders": 2,
+      "native_trades": 2,
+      "synthetic_terminal_impact": {
+        "before_cash": 1046.2445917312102,
+        "before_native_mark_equity": 1047.0990541312103,
+        "after_native_balance": 1047.09534861,
+        "change": -0.003705521210349616
+      },
+      "official_summary": {
+        "profit_total": 0.047095348610000004,
+        "profit_total_abs": 47.09534861,
+        "final_balance": 1047.09534861,
+        "max_drawdown_account": 0.0
+      },
+      "note": "DISPLAY ONLY: archived native order reconstruction, NOT signal backtest. Official terminal force_exit added for residual positions; not executable dust liquidation. Native quote-fee statistics differ from B base-fee model; trade-close DD is not wallet DD. No independent or risk qualification.",
+      "cost": "stress",
+      "matched_orders": 36,
+      "elapsed_seconds": 1.7136340141296387,
+      "meta_sha256": "e2cdc128eb0c7ac2af3be7e530927cb273ec4345a8326d05b5d68a38c114249e",
+      "original_result_sha256": "f72fc2b090f44988aa706e91a85c8708caba224345e4e8d689f82395c0efd15e",
+      "before_terminal_receipt_sha256": "5f80f46c5b8ed7d5ac351ab48e58a2f863fd184dd83a8b4088c5ccf45a55c065"
+    }
+  },
+  "real_market_gets": 0,
+  "native_display_reconstructions": 2,
+  "native_reconstruction_failures": 0,
+  "pre_execution_cli_sha_typo_rejected_before_reservation": 1,
+  "original_source_result_and_code_hashes_rechecked": true,
+  "protected_sha256": {
+    "lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "lab/spot139_residual_v3.py": "1027365f693fee313b54f2db9906e52a7692caa60f56d59e06de83a84037f9be",
+    "lab/spot139_daily.py": "7e5c63191175cf9f95a25181ebb7b578addf2676b4aecb2e931b8615aab4b7f3",
+    "lab/spot139_forward.py": "054c1bc93c49be430b14b64fe3f9c25c0e0156f9387fb27ca18903147e5b116e",
+    "scripts/spot139_forward.py": "dccfd8e32a3dc66490b7e95ffd9fe13b978e2912240ee48f197519630686b21f",
+    "docs/issue139-forward-v1-manifest.json": "7576da10d07642d3e4e791492514bc1e84b89b9746b608cdbd91c2a6471522e1",
+    "docs/issue155-freeze-v2.json": "069d50a310138eaf89cca71f724871f07b753511c7da144fa7bc8dca0267c8f8",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-forward-control-v1/first7-grant.json": "2e5d633efa123c95a3b1857515a0d35ba979d3b7601e02fde3ac5f4ab145d4e5",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "fe34ac57e25416a674110cb8c132168c33fd9ccd17749e640ef6686293ae778f"
+  },
+  "ui_version": "3.1.1",
+  "freqtrade_version": "2026.7",
+  "ui_release_sha256": "ebe048922bdb446a1c581a60364c0a268c991348625d2f87fd64fcd9be7aed3e",
+  "service": {
+    "url": "http://127.0.0.1:8080/backtest",
+    "pid": 73991,
+    "loopback_only": true,
+    "outbound_sandboxed": true,
+    "credentials_in_git": false
+  },
+  "api_history_entries": 2,
+  "api_result_loads": 2,
+  "history_sha256": "a88771da4a2628db1bba6d03bb896efb5371158e2083f5a61577be50d9a568a2",
+  "synthetic_tests": 2,
+  "screenshot": {
+    "path": "docs/research/assets/issue157-frequi-comparison.png",
+    "sha256": "f1a8031a6a07379538f58db8d948cf8b1171941d9b9b081c3b82a4de44456ffa",
+    "source": "supervisor browser login/load/compare; no credentials in inspected image"
+  },
+  "browser_observations": [
+    "two histories loaded and compared",
+    "4.936% and 4.710%",
+    "2 aggregate Trades, 100% win rate, trade-close DD 0; not B model metrics",
+    "wallet metrics N/A",
+    "Analyze settings stoploss -99% and protections false are mapper shell",
+    "Strategy not found toast: no complete matching IStrategy; do not Start backtest"
+  ]
+}
