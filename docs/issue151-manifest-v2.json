@@ -1,0 +1,22 @@
+{
+  "v1_manifest": "docs/issue151-manifest-v1.json",
+  "v1_manifest_sha256": "4a9df5ba6ba87edb21018746655f22a4ee84ae6299137c2481c6486ae34e5e75",
+  "response_sha256": "74422c92303df4cacc40823129306ebc8a90b6c53f289c238d6f4674c5f03d61",
+  "budget": {
+    "offline_validation": 1,
+    "analysis": 1,
+    "seconds": 180,
+    "units": 21,
+    "retries": 0,
+    "new_get": 0
+  },
+  "bindings": {
+    "scripts/issue151_diagnostic_v2.py": "432ea059c9863deccaf9aa5637d9dafd748944a031d3364d6c7794202d6b78fc",
+    "docs/protocols/issue151-effr-schema-v2.md": "d67195295851d056cbbd1042510271c97a21db0ef995e8054b8433a48ea3e82a",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition/headers.txt": "0bccc6a53044df0d12c2548391255d176c62f3f8ba53f7e6eaba7bb23fc7659b",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition/attempt.json": "930b12c5621adbf176543c6c5e8d624518f7c9e862f3ea08ac75f9e079fb59a1",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition/response.json": "74422c92303df4cacc40823129306ebc8a90b6c53f289c238d6f4674c5f03d61",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition/failure.json": "5d9597d31c3f3ece661f0ae2aae33267089a080d8d696cc80264283e70b25820",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition/receipt.json": "6c31509ecb503e52a72aa8f2faf78da92b15585d832769d84ef2a8595387f285"
+  }
+}

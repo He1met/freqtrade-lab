@@ -1,0 +1,70 @@
+{
+  "status": "BLOCKED_DATA_RESPONSE_SCHEMA_MISMATCH",
+  "market_analysis_started": false,
+  "macro_get_consumed": 1,
+  "crypto_get_consumed": 0,
+  "analysis_consumed": 0,
+  "manifest_sha256": "4a9df5ba6ba87edb21018746655f22a4ee84ae6299137c2481c6486ae34e5e75",
+  "freeze_commit": "cfa4f32590b88540e0457b32560b26f3c2414a8e",
+  "receipt": {
+    "returncode": 0,
+    "http_status": "200",
+    "stderr": "",
+    "sha256": "74422c92303df4cacc40823129306ebc8a90b6c53f289c238d6f4674c5f03d61",
+    "bytes": 118956,
+    "at_utc": "2026-09-08T11:56:58.565664+00:00"
+  },
+  "failure": {
+    "status": "BLOCKED_DATA",
+    "error": "[<class 'decimal.ConversionSyntax'>]",
+    "at_utc": "2026-09-08T11:56:58.571742+00:00"
+  },
+  "response_top_keys": [
+    "refRates"
+  ],
+  "first_record_fields": [
+    "effectiveDate",
+    "type",
+    "percentRate",
+    "percentPercentile1",
+    "percentPercentile25",
+    "percentPercentile75",
+    "percentPercentile99",
+    "targetRateFrom",
+    "targetRateTo",
+    "revisionIndicator"
+  ],
+  "records": 461,
+  "artifact_root": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue151-effr-v1/acquisition",
+  "artifacts": {
+    "headers.txt": "0bccc6a53044df0d12c2548391255d176c62f3f8ba53f7e6eaba7bb23fc7659b",
+    "attempt.json": "930b12c5621adbf176543c6c5e8d624518f7c9e862f3ea08ac75f9e079fb59a1",
+    "response.json": "74422c92303df4cacc40823129306ebc8a90b6c53f289c238d6f4674c5f03d61",
+    "failure.json": "5d9597d31c3f3ece661f0ae2aae33267089a080d8d696cc80264283e70b25820",
+    "receipt.json": "6c31509ecb503e52a72aa8f2faf78da92b15585d832769d84ef2a8595387f285"
+  },
+  "planned_units": [
+    "2021-03",
+    "2021-04",
+    "2021-05",
+    "2021-06",
+    "2021-07",
+    "2021-08",
+    "2021-09",
+    "2021-10",
+    "2021-11",
+    "2021-12",
+    "2022-01",
+    "2022-02",
+    "2022-03",
+    "2022-04",
+    "2022-05",
+    "2022-06",
+    "2022-07",
+    "2022-08",
+    "2022-09",
+    "2022-10",
+    "2022-11"
+  ],
+  "unit_status": "NOT_RUN_NOT_SCORED"
+}

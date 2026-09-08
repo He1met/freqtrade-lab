@@ -1,0 +1,9 @@
+# Issue151 离线schema适配v2
+
+监督151最新离线修复评论授权：原宏观GET已1/1，不再获取。原响应SHA固定74422c92303df4cacc40823129306ebc8a90b6c53f289c238d6f4674c5f03d61。v1脚本、manifest、失败收据均保留原字节。新增v2严格要求EFFR+percentRate，禁止percent存在（即使同值也拒绝），禁止非有限值/boolean；无多字段fallback。
+
+percentRate按百分比年利率解释，依据为具名官方EFFR响应结构及监督明确授权；旧YAML percent差异保留，不声称取得更完美的规范。内部显式转换给原日历检查函数不修改原始文件。没有新增静态读取。
+
+其余日历RULE_RECONSTRUCTED、effectiveDate交易日推断、EX_POST、异常月份UNKNOWN、21月/成本/UP方向/group<5优先门均不变。新增一次离线validation-v2独占目录，保存attempt/check/terminal，失败即止不循环；不伪造原acquisition CHECKED。
+
+validation通过后推送包含原响应SHA、v2manifestSHA和validation产物SHA的小binding，再执行原root/analysis唯一槽180秒/21units/0retry。v2无acquire命令，分析禁止网络。11合成测试通过（原6+严格字段适配5），无真实数据验证重放。
