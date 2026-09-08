@@ -1,4 +1,4 @@
-"""Synthetic-only daily persistence adapter. No acquisition or native engine."""
+"""Shared daily persistence; synthetic by default, explicit bound real context."""
 import dataclasses
 import hashlib
 import json
@@ -8,7 +8,7 @@ import fcntl
 from pathlib import Path
 from decimal import Decimal as D
 from datetime import datetime, timezone
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from lab.spot139_model import Wallet, Rule, Episode, signal
 from lab.spot139_binding import deny_network
 from lab.spot139_residual_v3 import SpotResidualV3
@@ -75,13 +75,19 @@ def decode(x):
     raise ValueError('unknown state encoding')
 
 
-def pack(state):
+def pack(state, contract=None):
+    if contract is not None:
+        return {'version': 'SPOT139_DAILY_REAL_V1', 'candidate_sha256': candidate_sha(), 'kind': 'REAL_FORWARD',
+                'source_contract_sha256': digest(canonical(contract)), 'payload': encode(state)}
     return {'version': VERSION, 'candidate_sha256': candidate_sha(), 'kind': 'SYNTHETIC_ONLY', 'payload': encode(state)}
 
 
-def unpack(envelope):
-    if set(envelope) != {'version', 'candidate_sha256', 'kind', 'payload'} or envelope['version'] != VERSION or envelope['candidate_sha256'] != candidate_sha() or envelope['kind'] != 'SYNTHETIC_ONLY':
-        raise ValueError('state version/candidate/synthetic boundary')
+def unpack(envelope, contract=None):
+    if contract is None:
+        if set(envelope) != {'version', 'candidate_sha256', 'kind', 'payload'} or envelope['version'] != VERSION or envelope['candidate_sha256'] != candidate_sha() or envelope['kind'] != 'SYNTHETIC_ONLY':
+            raise ValueError('state version/candidate/synthetic boundary')
+    elif set(envelope) != {'version','candidate_sha256','kind','source_contract_sha256','payload'} or envelope['version'] != 'SPOT139_DAILY_REAL_V1' or envelope['kind'] != 'REAL_FORWARD' or envelope['candidate_sha256'] != candidate_sha() or envelope['source_contract_sha256'] != digest(canonical(contract)):
+        raise ValueError('state real source contract boundary')
     s = decode(envelope['payload'])
     required = {'warmup_start', 'end_day', 'next_day', 'last_hour', 'score_start', 'models', 'daily', 'previous', 'stopped'}
     if set(s) != required or set(s['models']) != set(COSTS) or set(s['daily']) != set(SYMBOLS): raise ValueError('state shape')
@@ -99,10 +105,13 @@ def unpack(envelope):
         if model.rules != s['models']['base'].rules: raise ValueError('cost scenario rules differ')
         if s['score_start'] is not None and model.last_hour != s['last_hour']: raise ValueError('model clock')
         if model.wallet.cash != 1000-model.cost_added+model.sale_proceeds or sum(model.basis.values(), D(0)) != model.cost_added-model.cost_released or model.realized != model.sale_proceeds-model.cost_released: raise ValueError('accounting invariant')
+    if contract is not None:
+        if s['warmup_start'] != contract['window']['W'] or s['end_day'] != contract['window']['E']: raise ValueError('real calendar drift')
+        if digest(canonical(encode(s['models']['base'].rules))) != contract['rules_sha256']: raise ValueError('real rules drift')
     return s
 
 
-def initial_state(rules, first_day, history=None, warmup_start=None):
+def initial_state(rules, first_day, history=None, warmup_start=None, contract=None):
     if set(rules) != set(SYMBOLS): raise ValueError('fixed two assets required')
     w = first_day if warmup_start is None else warmup_start
     daily = history or {s: {} for s in SYMBOLS}
@@ -110,12 +119,15 @@ def initial_state(rules, first_day, history=None, warmup_start=None):
     state = dict(warmup_start=w, end_day=w+265, next_day=first_day, last_hour=first_day*24-1, score_start=None,
                  models={c: SpotResidualV3(rules, fee=f, slip=p) for c, (f, p) in COSTS.items()}, daily=daily,
                  previous={s: {} for s in SYMBOLS}, stopped=None)
-    unpack(pack(state))
+    unpack(pack(state,contract),contract)
     return state
 
 
-def validate_day(packet, state):
-    if set(packet) != {'kind', 'candidate_sha256', 'day', 'received_at_hour', 'bars'} or packet['kind'] != 'SYNTHETIC_ONLY' or packet['candidate_sha256'] != candidate_sha(): raise ValueError('unaccepted source identity')
+def validate_day(packet, state, contract=None):
+    fields = {'kind','candidate_sha256','day','received_at_hour','bars'}
+    if contract is not None: fields |= {'source_contract_sha256','source_receipts'}
+    if set(packet) != fields or packet['kind'] != ('REAL_FORWARD' if contract is not None else 'SYNTHETIC_ONLY') or packet['candidate_sha256'] != candidate_sha(): raise ValueError('unaccepted source identity')
+    if contract is not None and (packet['source_contract_sha256'] != digest(canonical(contract)) or set(packet['source_receipts']) != {'metadata',*SYMBOLS}): raise ValueError('real source provenance')
     day = packet['day']
     if type(day) is not int or day != state['next_day'] or not state['warmup_start'] <= day < state['end_day']: raise ValueError('missing/outside day; no calendar jump')
     if type(packet['received_at_hour']) is not int or packet['received_at_hour'] < (day+1)*24: raise ValueError('future or unclosed source')
@@ -132,9 +144,9 @@ def validate_day(packet, state):
     return bars
 
 
-def apply_day(state, packet, on_cost=lambda c: None, fault=lambda point: None):
-    """Pure update on caller-owned state. Only synthetic input is admitted."""
-    bars = validate_day(packet, state)
+def apply_day(state, packet, on_cost=lambda c: None, fault=lambda point: None, contract=None):
+    """Pure update on caller-owned state, using the explicitly bound source kind."""
+    bars = validate_day(packet, state, contract)
     if state['stopped']: raise ValueError('joint observation stopped')
     day = packet['day']; results = {c: {'orders': [], 'events': [], 'hourly': []} for c in COSTS}
     ready = day >= state['warmup_start']+85 and all(signal(day-1, state['daily'][s], 'B') is not None for s in SYMBOLS)
@@ -171,7 +183,7 @@ def apply_day(state, packet, on_cost=lambda c: None, fault=lambda point: None):
     for cost, model in state['models'].items():
         results[cost]['terminal'] = model.terminal(state['last_hour']) if state['score_start'] is not None else None
     return dict(day=day, input_sha256=digest(canonical(packet)), event_end_hour=state['last_hour'],
-                received_at_hour=packet['received_at_hour'], observation='DELAYED_OBSERVATION_SYNTHETIC',
+                received_at_hour=packet['received_at_hour'], observation='DELAYED_OBSERVATION_REAL' if contract is not None else 'DELAYED_OBSERVATION_SYNTHETIC',
                 qualification=False, score_start=state['score_start'], stopped=state['stopped'], costs=results)
 
 
@@ -200,8 +212,8 @@ def events(path):
     return [json.loads(line) for line in data.splitlines()]
 
 
-def initialize(root, envelope):
-    unpack(envelope)  # Validation before root creation.
+def initialize(root, envelope, contract=None):
+    unpack(envelope,contract)  # Validation before root creation.
     root = Path(root); root.mkdir()
     write(root/'initial.json', envelope); (root/'commits').mkdir(); (root/'attempts').mkdir(); (root/'writer.lock').touch()
     fsync_dir(root)
@@ -215,28 +227,28 @@ def lock(root):
         yield root
 
 
-def committed(root):
-    envelope = json.loads((root/'initial.json').read_bytes()); unpack(envelope)
+def committed(root, contract=None):
+    envelope = json.loads((root/'initial.json').read_bytes()); unpack(envelope,contract)
     for directory in sorted((root/'commits').iterdir()):
         receipt = json.loads((directory/'receipt.json').read_bytes())
         if receipt['previous_state_sha256'] != digest(canonical(envelope)): raise ValueError('commit chain drift')
         for name in ('state', 'result', 'input'):
             if digest((directory/(name+'.json')).read_bytes()) != receipt[name+'_file_sha256']: raise ValueError('committed bytes changed')
-        envelope = json.loads((directory/'state.json').read_bytes()); unpack(envelope)
+        envelope = json.loads((directory/'state.json').read_bytes()); unpack(envelope,contract)
     return envelope
 
 
-def commit_day(root, previous, packet, fault=lambda point: None):
-    with lock(root) as root:
-        unpack(previous)
+def commit_day(root, previous, packet, fault=lambda point: None, contract=None, already_locked=False, budget_guard=lambda rows,recovery,slots: None):
+    with (nullcontext(Path(root)) if already_locked else lock(root)) as root:
+        unpack(previous,contract)
         input_sha = digest(canonical(packet)); dest = root/'commits'/f'{packet["day"]:08d}'
-        current = committed(root)  # Validate committed history even for no-op.
+        current = committed(root,contract)  # Validate committed history even for no-op.
         if dest.exists():
             r = json.loads((dest/'receipt.json').read_bytes())
             if r['input_sha256'] != input_sha or r['previous_state_sha256'] != digest(canonical(previous)): raise ValueError('committed key/source revision')
             return {'status': 'NO_OP_COMMITTED', 'path': str(dest)}
         if digest(canonical(previous)) != digest(canonical(current)): raise ValueError('stale previous state')
-        state = unpack(previous); validate_day(packet, state)
+        state = unpack(previous,contract); validate_day(packet, state,contract)
         if state['stopped']: raise ValueError('joint observation stopped')
         rows = events(root/'attempts.jsonl')
         if any(r['event']=='FATAL' for r in rows): raise ValueError('joint observation stopped by accounting/control failure')
@@ -245,9 +257,10 @@ def commit_day(root, previous, packet, fault=lambda point: None):
         if any(r['input_sha256'] != input_sha or r['previous_state_sha256'] != digest(canonical(previous)) for r in same): raise ValueError('uncommitted recovery must use same input/state')
         recovery = bool(same)
         # Reserve both cost slots conservatively. Starts are recorded separately.
-        if recovery and sum(r['cost_slots'] for r in reserved if r['bucket']=='recovery')+2 > 6: raise ValueError('six recovery cost slots exhausted')
         has_update = state['score_start'] is not None or (packet['day'] >= state['warmup_start']+85 and all(signal(packet['day']-1,state['daily'][s],'B') is not None for s in SYMBOLS))
-        slots = 2 if recovery or has_update else 0
+        slots = 2 if has_update else 0
+        if recovery and sum(r['cost_slots'] for r in reserved if r['bucket']=='recovery')+slots > 6: raise ValueError('six recovery cost slots exhausted')
+        budget_guard(rows,recovery,slots)
         attempt = len(reserved)+1; stage = root/'attempts'/f'{attempt:08d}'
         append(root/'attempts.jsonl', dict(event='RESERVED', attempt=attempt, day=packet['day'], bucket='recovery' if recovery else 'normal', cost_slots=slots,
             input_sha256=input_sha, previous_state_sha256=digest(canonical(previous))))
@@ -257,11 +270,11 @@ def commit_day(root, previous, packet, fault=lambda point: None):
             write(stage/'input.json',packet)
             fault('after_reservation')
             def start(cost): append(root/'attempts.jsonl',dict(event='COST_STARTED',attempt=attempt,cost=cost))
-            result = apply_day(state, packet, start, fault)
-            envelope = pack(state); unpack(envelope)
+            result = apply_day(state, packet, start, fault, **({"contract":contract} if contract is not None else {}))
+            envelope = pack(state,contract); unpack(envelope,contract)
             write(stage/'state.json',envelope); write(stage/'result.json',encode(result))
             write(stage/'receipt.json',dict(input_sha256=input_sha, previous_state_sha256=digest(canonical(previous)),
-                computed_at_utc=datetime.now(timezone.utc).isoformat(), observation='DELAYED_OBSERVATION_SYNTHETIC',
+                computed_at_utc=datetime.now(timezone.utc).isoformat(), observation='DELAYED_OBSERVATION_REAL' if contract is not None else 'DELAYED_OBSERVATION_SYNTHETIC',
                 input_file_sha256=digest((stage/'input.json').read_bytes()),
                 state_file_sha256=digest((stage/'state.json').read_bytes()),result_file_sha256=digest((stage/'result.json').read_bytes())))
             fsync_dir(stage); fault('before_commit')
