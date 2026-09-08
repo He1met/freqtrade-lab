@@ -1,6 +1,6 @@
 # Issue141 单规则小时响应预筛草案 V1
 
-状态 `DRAFT_NOT_AUTHORIZED_FOR_MARKET_READ`。本轮只写协议；文献v1的 `UNKNOWN`保留，但不作为禁止探索的门槛。研究不要求先有同币同所同小时的盈利论文。信息扩散合理但未证实、小时可能太慢，均由下述固定规则待证伪；不建策略/钱包平台。
+状态 `FROZEN_CONDITIONAL_ONE_SHOT_AUTHORIZATION`。依据监督[唯一执行授权](https://github.com/He1met/freqtrade-lab/issues/141#issuecomment-5583397608)，最小实现和合成检查通过、固定推送与发布SHA后允许一次预筛；文献v1的 `UNKNOWN`保留，但不作为禁止探索的门槛。研究不要求先有同币同所同小时的盈利论文。信息扩散合理但未证实、小时可能太慢，均由下述固定规则待证伪；不建策略/钱包平台。
 
 ## 文献补充及判定纠正
 
@@ -20,7 +20,7 @@
 
 源清单身份固定引用 `docs/issue139-v3-first-diagnostics-manifest.json` SHA `63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10` 的sources数组（39条含metadata控制响应及各raw精确SHA/request）；根 `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-source-v1`。结构收据 `docs/issue139-source-inventory-v3-terminal.json` SHA `a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552`。本轮只读这两份控制文件及绑定代码，未打开或哈希raw价格文件。
 
-沿用已声明缺口：2021-02-11 UTC `[03:00,05:00)`每币最多2个短/缺槽，必须保持原始形态；参见 `docs/protocols/issue139-spot-gap-continuation-v2.md`。实际哪些币/槽受影响以既有清单和将来原始解析一致性核对，不本轮虚构。批准后的任务须先核源SHA、身份、完整时间索引，再解释价格；未知缺口/重复/乱序/坏数值/清单漂移则整个任务停止，不扩大例外。
+纠正旧草案误引V2例外：仅按上述SOURCE_INVENTORY_V3终态中两币完整anomalies数组核对，**每币13缺小时、4短K、7不完整日，原因UNKNOWN**；不恢复仅Feb11范围的旧门。已知短/缺槽令该小时信号不可评分；缺失入/出open令触发事件不可评分。实际open存在的短槽可用于入/出价，披露短槽身份，不按未来小时最终完整性过滤。清单外缺口/短槽、重复/乱序/非法值或SHA漂移停止整个任务。metadata及2020日线warmup仅哈希，不解码价格。
 
 旧V3 manifest的历史global绑定已过期，**不得调用旧runner或复用其市场grant**。这里只引用不可变sources身份；未来外部准入须绑定本协议、分析脚本、源清单、现时global读校验值和独立分析授权。不得为方便写global导致forward grant失效，控制漂移交监督裁定。
 
@@ -44,8 +44,8 @@
 
 结果解释事前固定：候选成本后平均不为正，或对预定参照没有正增量，则这个规则不支持所称成本后条件优势，终止不调参。此为本预筛设计判断，不是用户硬门或盈利资格线。即便四cell方向都看似有利，也**没有自动PASS**：少量事件、单簇/月贡献、跨年方向变化、尾部及相关性会使证据不足；不凭一个正均值或巨大名义事件数晋级。本轮不发明独立性/样本数量阈值；最多得“值得监督考虑下一研究”，还需共享资金/风险、执行可行性及未消费独立确认。缺少支持时保留 `INSUFFICIENT_EVIDENCE`，不能延长样本到满意。
 
-## 一次任务预算建议（待监督授权）
+## 一次任务预算（监督条件授权）
 
-一个analysis invocation、1个串行worker、4cells、180秒整个任务硬上限、0重试；输入解析一次，共享事件表。先耐久预记Git外独立analysis attempt，再读取市场源；失败/超时计已尝试，停止，不另名重算。原始SHA/脚本/协议/授权/起止UTC/四cell状态/输出SHA和失败原因写收据；同授权已成功只读终态，失败不可自动重跑。分析调用单列为Issue141预筛1次/4cells，不占native调用却也不从总研究记录隐去；旧native32/96不变，GitHub记录并交监督核账。暂无获准运行根或实现脚本。
+一个analysis invocation、1个串行worker、4cells、180秒整个任务硬上限、0重试；输入解析一次，共享事件表。先耐久预记Git外独立analysis attempt，再读取市场源；失败/超时计已尝试，停止，不另名重算。原始SHA/脚本/协议/授权/起止UTC/四cell状态/输出SHA和失败原因写收据；同授权已成功只读终态，失败不可自动重跑。分析调用单列为Issue141预筛1次/4cells，不占native调用却也不从总研究记录隐去；旧native32/96不变，GitHub记录并交监督核账。唯一Git外root `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue141-hourly-prescreen-v1`，最小脚本 `scripts/issue141_prescreen.py`。已有root一律不再次执行；成功后仅只读收据，失败不得重试。
 
-批准前本轮新GET/native/市场读取/统计均0。将来执行前先冻结最小分析脚本及合成检查，再由监督绑定准确代码SHA和授权；不直接把文档当运行许可。当前只交本短协议与SHA，不改forward manifest/global/grant，不开sealed、不另写钱包或服务，前向到期优先。
+固定推送前新GET/native/市场读取/统计均0。完成7项定向合成检查后固定脚本/协议/manifest SHA并发布，随后按该评论创建精确Git外grant并执行一次；不再要求第二次确认。分析用50位Decimal，非最小单钱包，公式测试与精确有理数误差小于1e-48。源SHA前后核、异常数组精确匹配；无网络audithook、旧source/native/global/forward锁串行排他。超时/失败保留attempt，无自动retry。不改forward manifest/global/grant，不开sealed、不另写钱包或服务，前向到期优先。
