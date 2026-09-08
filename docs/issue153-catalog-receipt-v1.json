@@ -1,0 +1,40 @@
+{
+  "kind": "CATALOG_METADATA_ONLY",
+  "url": "https://community-api.coinmetrics.io/v4/catalog-v2/asset-metrics?assets=usdc_eth&metrics=SplyCur",
+  "http_status": 200,
+  "bytes": 204,
+  "sha256": "8b53e6b04239649393c95f97f18c92c73d38b1df2bf9c64f0feae09ab152e725",
+  "budget": {
+    "requests": 1,
+    "seconds": 20,
+    "bytes": 1048576,
+    "retries": 0
+  },
+  "body": {
+    "data": [
+      {
+        "asset": "usdc_eth",
+        "metrics": [
+          {
+            "metric": "SplyCur",
+            "frequencies": [
+              {
+                "frequency": "1d",
+                "min_time": "2018-08-03T00:00:00.000000000Z",
+                "max_time": "2026-09-07T00:00:00.000000000Z",
+                "community": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "cumulative": {
+    "coinmetrics_metadata": 2,
+    "effr_macro": 1,
+    "crypto_get": 112,
+    "native": 32
+  },
+  "new_timeseries_get": 0
+}
