@@ -1,0 +1,58 @@
+{
+  "protocol": "ISSUE139_B_RESIDUAL_V3_DIAGNOSTIC_PROPOSAL",
+  "status": "PROPOSED_NOT_RESERVED_NOT_AUTHORIZED",
+  "market_execution_authorized": false,
+  "existing_results_unchanged": true,
+  "exposure": "ALREADY_EXPOSED_DEVELOPMENT_ONLY_NOT_CONFIRMATION",
+  "binding_sha256": {
+    "lab/spot139_residual_v3.py": "1027365f693fee313b54f2db9906e52a7692caa60f56d59e06de83a84037f9be",
+    "lab/spot139_native_v3.py": "0f89b3d17f2d26395c5276c861fee595d0beb7c8baeaf4e2d7590fd88606eb0b",
+    "lab/spot139_reconcile_v3.py": "6c1f8d18c9019b7d92d4cd6b4cbec70a34100a1321f25523595ec02cf164f5e6",
+    "lab/spot139_precision_v3.py": "9a53bf8924fa7b917578cf708f6d633e03bd1078cd040ec5b11cb92c6582501f",
+    "scripts/probe_spot139_residual_v3.py": "4eb42aaaa9618283fcd934fa43b96a6e1becf00a38395ac55892ef40ea4ff3cb",
+    "tests/test_spot139_residual_v3.py": "b3804241713a660134d3879bfb10a4e969e9dc04506fd35ee1bfefa281e398b6",
+    "docs/protocols/issue139-controlled-residual-v3.md": "7ec2e8d634ac7dcc245ebe80650f73a4f70621aa3d96d680c795878344a0efb2",
+    "lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "lab/spot139_native_bridge.py": "e7a1feefe8def154b97c3c08ecfba634853a1f3ce94aa7eb1d4b6f10472dfd00",
+    "lab/Spot139Native.py": "b7d5bee4b886b1c9730989321c43156b847d6c657cb57c94ab920a451fcc9dec",
+    "docs/issue139-residual-v3-synthetic-receipt.json": "5b46b06444e54dd5c56e54ba90adab92f3524f870aa7890ae76e5142fbd5a923"
+  },
+  "current_ledger_sha256": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+  },
+  "budget": {
+    "global_limit": 96,
+    "current_consumed": 30,
+    "old_sealed": 10,
+    "issue139_pending": 8,
+    "proposed_from_pending": 2,
+    "pending_after_proposal": 6,
+    "unallocated": 48,
+    "current_reserved_new": 0
+  },
+  "jobs": [
+    {
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/base",
+      "cost": "base",
+      "native_calls": 1,
+      "timeout_seconds": 180,
+      "technical_retries": 0,
+      "status": "NOT_AUTHORIZED",
+      "fee": "0.001",
+      "slippage": "0.0006"
+    },
+    {
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/stress",
+      "cost": "stress",
+      "native_calls": 1,
+      "timeout_seconds": 180,
+      "technical_retries": 0,
+      "status": "NOT_AUTHORIZED",
+      "fee": "0.002",
+      "slippage": "0.0012"
+    }
+  ],
+  "next_gate": "Supervisor review, new exact activation/runner binding required before any historical diagnostic; no V3 market runner added in this slice"
+}
