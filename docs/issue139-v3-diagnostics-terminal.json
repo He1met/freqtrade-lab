@@ -1,0 +1,4114 @@
+{
+  "receipt_type": "SANITIZED_DERIVED_DEVELOPMENT_DIAGNOSTIC",
+  "status": "V3_TWO_DEVELOPMENT_DIAGNOSTICS_COMPLETED_NOT_QUALIFIED",
+  "execution_commit": "417b13915eef183c166c42d8acd6021fb5fe3422",
+  "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+  "grant": {
+    "market_execution_authorized": true,
+    "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+    "costs": [
+      "base",
+      "stress"
+    ],
+    "keys": [
+      "ISSUE139_B_RESIDUAL_V3/development-2021-2023/base",
+      "ISSUE139_B_RESIDUAL_V3/development-2021-2023/stress"
+    ],
+    "authorization_reference": "https://github.com/He1met/freqtrade-lab/issues/139#issuecomment-5580040706"
+  },
+  "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+  "source_and_code_bindings": {
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_model.py": "fec7ca77813ae7d526765a549fe785fe3ab95d6e66369b06205f2f81e53d8c83",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/Spot139Native.py": "b7d5bee4b886b1c9730989321c43156b847d6c657cb57c94ab920a451fcc9dec",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_binding.py": "5fbca87d93b3180be355c3d02c580e2b8a0c134a26e987fe9ece77f4e62c89e0",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_feed.py": "cd1185b821c526e2122822aaa465f91fb85a67dba731bd89ab147beeafd7dd62",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_native_bridge.py": "e7a1feefe8def154b97c3c08ecfba634853a1f3ce94aa7eb1d4b6f10472dfd00",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_residual_v3.py": "1027365f693fee313b54f2db9906e52a7692caa60f56d59e06de83a84037f9be",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_native_v3.py": "0f89b3d17f2d26395c5276c861fee595d0beb7c8baeaf4e2d7590fd88606eb0b",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_reconcile_v3.py": "6c1f8d18c9019b7d92d4cd6b4cbec70a34100a1321f25523595ec02cf164f5e6",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_precision_v3.py": "9a53bf8924fa7b917578cf708f6d633e03bd1078cd040ec5b11cb92c6582501f",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/lab/spot139_report_v3.py": "18b94f95a7772c7224fdd8aaeb7b8526c49567a24394bdfd492365da8ef3c48c",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/scripts/run_spot139_v3.py": "597e7067c5624092a002b7b499bea3791bca5f168ae1147d6d701534810daddb",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/protocols/issue139-controlled-residual-v3.md": "7ec2e8d634ac7dcc245ebe80650f73a4f70621aa3d96d680c795878344a0efb2",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/protocols/issue139-v3-runner-binding.md": "763ea5971088d8501ea3208c31f253aee3c73c895d57da1389401625889c2200",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue139-source-inventory-v3-terminal.json": "a98336481fadd5e2a79694f8a4929f6340a36b17184e576dca99cc18e70d4552",
+    "/Users/shenjianpeng/.codex/worktrees/1b63/freqtrade-lab/docs/issue139-residual-v3-synthetic-receipt.json": "5b46b06444e54dd5c56e54ba90adab92f3524f870aa7890ae76e5142fbd5a923",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade/optimize/backtesting.py": "7afec2d7c6f924642d410ff3974bf9932982bc9cf2f8c194b266a0b8c77ebf55",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade/persistence/trade_model.py": "e38684b50d63f27ad68de5745bbb21756b4a7de164c7befc704bdce8befbace3",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade/wallets.py": "625e02dfbef5ec04137f54e697f8e1f2a79203d08a124758083159701221265e",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade/exchange/binance.py": "1d786db40fb8993d22345c77e6c8045fbbc602e5daaae7580dc71c90ffddeefe",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade/util/ft_precise.py": "0338b928d761ad076f79ce6cb49a4894723170f79d7894212504e248de6fee07",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/lib/python3.13/site-packages/ccxt/__init__.py": "4a04bc1da6d82c4a8249437e3680f88280e6b5065edfd06efd50d4fab82ba06c",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/lib/python3.13/site-packages/ccxt/base/precise.py": "8201200d010fc5dc92e6a2cc48fed22d08273e9551fd1776f6c415dcab5e5cb0",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/venv/lib/python3.13/site-packages/ccxt/base/decimal_to_precision.py": "dd7237d2ef58b9d1db4c0e37f37f7bbb9ae47655daddab71c1911f52eb370b89",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+  },
+  "native_commit": "52bc96f4480b1a0da6a9b455bd00b17fbb6786a5",
+  "ancestor_sha256": {
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+    "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+    "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+  },
+  "calls": [
+    {
+      "ancestor_consumed": 30,
+      "ancestor_sha256": {
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+        "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+      },
+      "at_utc": "2026-09-08T06:00:03.286974+00:00",
+      "cost": "base",
+      "event": "RESERVED",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/base",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "previous_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "technical_retries": 0,
+      "timeout_seconds": 180,
+      "total_consumed_after": 31
+    },
+    {
+      "at_utc": "2026-09-08T06:00:05.587148+00:00",
+      "cost": "base",
+      "event": "SUCCEEDED",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/base",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "previous_sha256": "46c06619e798ade6568b3db6a9fe8d6e31609f41a762a905e318ffb5487bb4d9",
+      "result_sha256": "c9fda277a20c94d3862791928705d408cfd0a8388ff5c3373c7848abad7d0d4d"
+    },
+    {
+      "ancestor_consumed": 30,
+      "ancestor_sha256": {
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+        "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+      },
+      "at_utc": "2026-09-08T06:00:05.640884+00:00",
+      "cost": "stress",
+      "event": "RESERVED",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/stress",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "previous_sha256": "fa206f7dfa12c21d3b9abc3a8f9f6570216fc889f599af5ca2d9c934d0e9e17d",
+      "technical_retries": 0,
+      "timeout_seconds": 180,
+      "total_consumed_after": 32
+    },
+    {
+      "at_utc": "2026-09-08T06:00:07.262778+00:00",
+      "cost": "stress",
+      "event": "SUCCEEDED",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/stress",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "previous_sha256": "e8752bdc2b9f141279eff25482df1f88dbadbaf1a2c777db38ee3e92a8b29dab",
+      "result_sha256": "f72fc2b090f44988aa706e91a85c8708caba224345e4e8d689f82395c0efd15e"
+    }
+  ],
+  "calls_sha256": "096b1f8d2bc46c81e4d97bfd8555fea1a2cc39ec30aafa100ecea5d459dc365c",
+  "parent_receipts": {
+    "base": {
+      "cost": "base",
+      "started_at_utc": "2026-09-08T06:00:03.224436+00:00",
+      "finished_at_utc": "2026-09-08T06:00:05.589921+00:00",
+      "elapsed_seconds": 2.365454708,
+      "returncode": 0,
+      "stdout": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/base-result.json\n",
+      "stderr": "",
+      "command": [
+        "python3",
+        "scripts/run_spot139_v3.py",
+        "docs/issue139-v3-first-diagnostics-manifest.json",
+        "--manifest-sha256",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+        "--cost",
+        "base",
+        "--execute",
+        "--grant",
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/grant.json",
+        "--grant-sha256",
+        "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56"
+      ]
+    },
+    "stress": {
+      "cost": "stress",
+      "started_at_utc": "2026-09-08T06:00:05.590165+00:00",
+      "finished_at_utc": "2026-09-08T06:00:07.265644+00:00",
+      "elapsed_seconds": 1.6755178329999998,
+      "returncode": 0,
+      "stdout": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/stress-result.json\n",
+      "stderr": "",
+      "command": [
+        "python3",
+        "scripts/run_spot139_v3.py",
+        "docs/issue139-v3-first-diagnostics-manifest.json",
+        "--manifest-sha256",
+        "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+        "--cost",
+        "stress",
+        "--execute",
+        "--grant",
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/grant.json",
+        "--grant-sha256",
+        "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56"
+      ]
+    }
+  },
+  "cases": {
+    "base": {
+      "modeled_terminal": {
+        "cash": "1049.4208015300000000",
+        "marked_inventory": "0.1771598848000000",
+        "equity": "1049.5979614148000000",
+        "estimated_exit_cost": "0.00028345581568000000",
+        "inventory": {
+          "BTC/USDT": "0.00000706",
+          "ETH/USDT": "0.00005060"
+        },
+        "synthetic_exit_executed": false,
+        "realized_pnl": "49.6296409600000000",
+        "unrealized_pnl": "-0.0316795452000000",
+        "basis": {
+          "BTC/USDT": "0.1426781200000000",
+          "ETH/USDT": "0.0661613100000000"
+        },
+        "cost_added": "633.7138729000000000",
+        "cost_released": "633.50503347",
+        "sale_proceeds": "683.1346744300000000",
+        "residual": [
+          "BTC/USDT",
+          "ETH/USDT"
+        ],
+        "active": {
+          "BTC/USDT": false,
+          "ETH/USDT": false
+        },
+        "blocked": false,
+        "block_reasons": {},
+        "mark_age_hours": {
+          "BTC/USDT": 0,
+          "ETH/USDT": 0
+        },
+        "real_drawdown": "UNKNOWN",
+        "version": "B_RESIDUAL_V3_DEVELOPMENT_ONLY"
+      },
+      "assets": {
+        "BTC/USDT": {
+          "buys": 10,
+          "sells": 10,
+          "episode_starts": 10,
+          "episode_ends": 10,
+          "realized": "22.7691935000000000",
+          "unrealized": "-0.0260449432000000",
+          "net": "22.7431485568000000",
+          "remaining_inventory": "0.00000706",
+          "remaining_basis": "0.1426781200000000"
+        },
+        "ETH/USDT": {
+          "buys": 8,
+          "sells": 8,
+          "episode_starts": 8,
+          "episode_ends": 8,
+          "realized": "26.8604474600000000",
+          "unrealized": "-0.0056346020000000",
+          "net": "26.8548128580000000",
+          "remaining_inventory": "0.00005060",
+          "remaining_basis": "0.0661613100000000"
+        }
+      },
+      "realized_by_month": {
+        "values": {
+          "2021-03": "57.8218471100000000",
+          "2021-11": "21.7201597800000000",
+          "2022-04": "-16.2601228900000000",
+          "2022-08": "-3.9886673600000000",
+          "2022-09": "-8.4989966800000000",
+          "2022-10": "0.0470578700000000",
+          "2022-12": "-1.2116368700000000"
+        },
+        "largest_positive_share": "0.7265049197947127629999304945",
+        "denominator": "sum of positive realized contributions; not independent samples"
+      },
+      "realized_by_episode": {
+        "values": {
+          "BTC/USDT/1": "25.2540822100000000",
+          "ETH/USDT/1": "32.5677649000000000",
+          "BTC/USDT/2": "9.4772067200000000",
+          "ETH/USDT/2": "12.2429530600000000",
+          "BTC/USDT/3": "-4.1231345400000000",
+          "ETH/USDT/3": "-4.3633943200000000",
+          "BTC/USDT/4": "-1.0697599800000000",
+          "BTC/USDT/5": "-2.3738259600000000",
+          "BTC/USDT/6": "-0.8685449300000000",
+          "ETH/USDT/4": "-3.4614631600000000",
+          "ETH/USDT/5": "-0.5522903900000000",
+          "ETH/USDT/6": "-3.4363769700000000",
+          "BTC/USDT/7": "-2.3891994800000000",
+          "BTC/USDT/8": "-0.7811967900000000",
+          "ETH/USDT/7": "-4.9251087900000000",
+          "BTC/USDT/9": "-0.4034916200000000",
+          "BTC/USDT/10": "0.0470578700000000",
+          "ETH/USDT/8": "-1.2116368700000000"
+        },
+        "largest_positive_share": "0.4091989898135850390409839514",
+        "denominator": "sum of positive realized contributions; not independent samples"
+      },
+      "observed_open_drawdown": "0.03860324618414750298600576684",
+      "real_drawdown": "UNKNOWN",
+      "risk_latch_first_hour": {},
+      "gate_ineligible_calendar_days": {
+        "BTC/USDT": 375,
+        "ETH/USDT": 375
+      },
+      "gate_note": "85-calendar dependency failure, not a count of actual positive signals denied",
+      "nonpositive_signal_days": {
+        "BTC/USDT": 278,
+        "ETH/USDT": 251
+      },
+      "global_new_risk_block_hours": 24,
+      "block_hours_by_reason": {
+        "STALE_INVENTORY": 13,
+        "UNRESOLVED_ACTIVE_EXIT": 11
+      },
+      "stale_hours_any_asset": 13,
+      "stale_hours_by_asset": {
+        "BTC/USDT": 13,
+        "ETH/USDT": 13
+      },
+      "maximum_mark_age_hours": {
+        "BTC/USDT": 4,
+        "ETH/USDT": 4
+      },
+      "hours_observed": 17520,
+      "independent_qualification": false,
+      "native_matching_statistics_identical": false,
+      "status": "COMPLETED_V3_DEVELOPMENT_DIAGNOSTIC",
+      "cost": "base",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/base",
+      "model": "SpotResidualV3",
+      "mapper": "ReconcilerV3",
+      "native_terminal": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "2e-05",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "0.0002",
+          "is_open": true
+        }
+      ],
+      "native_positions": [
+        {
+          "pair": "BTC/USDT",
+          "gross_amount": "2e-05",
+          "stake": "0.4036644562005126",
+          "display_open_rate": "20183.22",
+          "realized": "22.65695504"
+        },
+        {
+          "pair": "ETH/USDT",
+          "gross_amount": "0.0002",
+          "stake": "0.26142219843990794",
+          "display_open_rate": "1307.11",
+          "realized": "26.79588443"
+        }
+      ],
+      "native_cash": "1048.7877528153597",
+      "native_realized": "49.45283947",
+      "hourly_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/base-hourly.jsonl",
+      "hourly_sha256": "5da896a1006f6b08c893cbfd9b828fa2bd1e4946c981c00744861de842be1031",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "model_net": "49.5979614148000000",
+      "model_return_fraction": "0.0495979614148000",
+      "active_hours_by_asset": {
+        "BTC/USDT": 4752,
+        "ETH/USDT": 5038
+      },
+      "residual_classified_hours_by_asset": {
+        "BTC/USDT": 12767,
+        "ETH/USDT": 12481
+      },
+      "any_active_hours": 5254,
+      "merged_active_spans": 11,
+      "fully_cash_hours": 1,
+      "maximum_observed_total_notional_fraction": "0.1294123932016153555983168268",
+      "episodes": {
+        "BTC/USDT/1": {
+          "symbol": "BTC/USDT",
+          "start_hour": 447073,
+          "start_utc": "2021-01-01T01:00:00+00:00",
+          "end_hour": 449089,
+          "end_utc": "2021-03-26T01:00:00+00:00",
+          "end_with_inventory": "0.00000889",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "ETH/USDT/1": {
+          "symbol": "ETH/USDT",
+          "start_hour": 447073,
+          "start_utc": "2021-01-01T01:00:00+00:00",
+          "end_hour": 449089,
+          "end_utc": "2021-03-26T01:00:00+00:00",
+          "end_with_inventory": "0.00006300",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "BTC/USDT/2": {
+          "symbol": "BTC/USDT",
+          "start_hour": 452377,
+          "start_utc": "2021-08-10T01:00:00+00:00",
+          "end_hour": 454393,
+          "end_utc": "2021-11-02T01:00:00+00:00",
+          "end_with_inventory": "0.00000826",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "ETH/USDT/2": {
+          "symbol": "ETH/USDT",
+          "start_hour": 452425,
+          "start_utc": "2021-08-12T01:00:00+00:00",
+          "end_hour": 454441,
+          "end_utc": "2021-11-04T01:00:00+00:00",
+          "end_with_inventory": "0.00005420",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "BTC/USDT/3": {
+          "symbol": "BTC/USDT",
+          "start_hour": 457921,
+          "start_utc": "2022-03-29T01:00:00+00:00",
+          "end_hour": 458137,
+          "end_utc": "2022-04-07T01:00:00+00:00",
+          "end_with_inventory": "0.00000737",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 216
+        },
+        "ETH/USDT/3": {
+          "symbol": "ETH/USDT",
+          "start_hour": 458017,
+          "start_utc": "2022-04-02T01:00:00+00:00",
+          "end_hour": 458137,
+          "end_utc": "2022-04-07T01:00:00+00:00",
+          "end_with_inventory": "0.00004230",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 120
+        },
+        "BTC/USDT/4": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458161,
+          "start_utc": "2022-04-08T01:00:00+00:00",
+          "end_hour": 458185,
+          "end_utc": "2022-04-09T01:00:00+00:00",
+          "end_with_inventory": "0.00000636",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/4": {
+          "symbol": "ETH/USDT",
+          "start_hour": 458305,
+          "start_utc": "2022-04-14T01:00:00+00:00",
+          "end_hour": 458689,
+          "end_utc": "2022-04-30T01:00:00+00:00",
+          "end_with_inventory": "0.00003090",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 384
+        },
+        "BTC/USDT/5": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458353,
+          "start_utc": "2022-04-16T01:00:00+00:00",
+          "end_hour": 458617,
+          "end_utc": "2022-04-27T01:00:00+00:00",
+          "end_with_inventory": "0.00000542",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 264
+        },
+        "BTC/USDT/6": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458641,
+          "start_utc": "2022-04-28T01:00:00+00:00",
+          "end_hour": 458689,
+          "end_utc": "2022-04-30T01:00:00+00:00",
+          "end_with_inventory": "0.00000443",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 48
+        },
+        "ETH/USDT/5": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461233,
+          "start_utc": "2022-08-14T01:00:00+00:00",
+          "end_hour": 461257,
+          "end_utc": "2022-08-15T01:00:00+00:00",
+          "end_with_inventory": "0.00001620",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/6": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461353,
+          "start_utc": "2022-08-19T01:00:00+00:00",
+          "end_hour": 461377,
+          "end_utc": "2022-08-20T01:00:00+00:00",
+          "end_with_inventory": "0.00009950",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/7": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461737,
+          "start_utc": "2022-09-04T01:00:00+00:00",
+          "end_hour": 462167,
+          "end_utc": "2022-09-21T23:00:00+00:00",
+          "end_with_inventory": "0.00008410",
+          "exit_causes": [
+            "STOP_COMPLETED_LOW"
+          ],
+          "active_hours": 430
+        },
+        "BTC/USDT/7": {
+          "symbol": "BTC/USDT",
+          "start_hour": 461881,
+          "start_utc": "2022-09-10T01:00:00+00:00",
+          "end_hour": 461977,
+          "end_utc": "2022-09-14T01:00:00+00:00",
+          "end_with_inventory": "0.00000238",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 96
+        },
+        "BTC/USDT/8": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462001,
+          "start_utc": "2022-09-15T01:00:00+00:00",
+          "end_hour": 462025,
+          "end_utc": "2022-09-16T01:00:00+00:00",
+          "end_with_inventory": "5.9E-7",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "BTC/USDT/9": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462217,
+          "start_utc": "2022-09-24T01:00:00+00:00",
+          "end_hour": 462241,
+          "end_utc": "2022-09-25T01:00:00+00:00",
+          "end_with_inventory": "0.00000894",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "BTC/USDT/10": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462481,
+          "start_utc": "2022-10-05T01:00:00+00:00",
+          "end_hour": 462505,
+          "end_utc": "2022-10-06T01:00:00+00:00",
+          "end_with_inventory": "0.00000706",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/8": {
+          "symbol": "ETH/USDT",
+          "start_hour": 464185,
+          "start_utc": "2022-12-15T01:00:00+00:00",
+          "end_hour": 464209,
+          "end_utc": "2022-12-16T01:00:00+00:00",
+          "end_with_inventory": "0.00005060",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        }
+      },
+      "exit_cause_counts": {
+        "EXPIRY_84_DAYS": 4,
+        "NONPOSITIVE_SIGNAL": 13,
+        "STOP_COMPLETED_LOW": 1
+      },
+      "realized_by_year": {
+        "2021": "79.5420068900000000",
+        "2022": "-29.9123659300000000"
+      },
+      "winning_asset_episodes": 5,
+      "losing_asset_episodes": 13,
+      "native_gross_marked_inventory": "0.5696416000000",
+      "native_cash_plus_gross_marked": "1049.3573944153597",
+      "max_abs_native_cash_residual": "9.488952269594632796036313488E-9",
+      "max_abs_native_profit_residual": "9.489021864227428832349801568E-9",
+      "maximum_residual_to_bound_ratio": "0.2748483481573094196137923618",
+      "numeric_gate": "ALL_36_ORDERS_PASS_PRE_FROZEN_BOUND",
+      "result_sha256": "c9fda277a20c94d3862791928705d408cfd0a8388ff5c3373c7848abad7d0d4d",
+      "order_count": 36,
+      "orders": [
+        {
+          "hour": 447073,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00111000",
+          "price": "29012.53000000",
+          "fee_base": "0.00000111",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/1",
+          "exit_causes": []
+        },
+        {
+          "hour": 447073,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.03700000",
+          "price": "734.53000000",
+          "fee_base": "0.00003700",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/1",
+          "exit_causes": []
+        },
+        {
+          "hour": 449089,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00110000",
+          "price": "52051.88000000",
+          "fee_quote": "0.05725707",
+          "basis_released": "31.94572872",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/1",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 449089,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.03690000",
+          "price": "1619.48000000",
+          "fee_quote": "0.05975882",
+          "basis_released": "27.13128828",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/1",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 452377,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00063000",
+          "price": "45993.97000000",
+          "fee_base": "6.3E-7",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/2",
+          "exit_causes": []
+        },
+        {
+          "hour": 452425,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.00880000",
+          "price": "3188.16000000",
+          "fee_base": "0.00000880",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/2",
+          "exit_causes": []
+        },
+        {
+          "hour": 454393,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00063000",
+          "price": "60907.34000000",
+          "fee_quote": "0.03837163",
+          "basis_released": "28.85604585",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/2",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 454441,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.00880000",
+          "price": "4569.69000000",
+          "fee_quote": "0.04021328",
+          "basis_released": "27.93010566",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/2",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 457921,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00089000",
+          "price": "47426.33000000",
+          "fee_base": "8.9E-7",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/3",
+          "exit_causes": []
+        },
+        {
+          "hour": 458017,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01190000",
+          "price": "3513.43000000",
+          "fee_base": "0.00001190",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/3",
+          "exit_causes": []
+        },
+        {
+          "hour": 458137,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00089000",
+          "price": "42868.56000000",
+          "fee_quote": "0.03815302",
+          "basis_released": "42.23799992",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/3",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458137,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01190000",
+          "price": "3151.87000000",
+          "fee_quote": "0.03750726",
+          "basis_released": "41.83314006",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/3",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458161,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00101000",
+          "price": "43353.47000000",
+          "fee_base": "0.00000101",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/4",
+          "exit_causes": []
+        },
+        {
+          "hour": 458185,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00101000",
+          "price": "42409.56000000",
+          "fee_quote": "0.04283366",
+          "basis_released": "43.86058192",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/4",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458305,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01140000",
+          "price": "3120.79000000",
+          "fee_base": "0.00001140",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/4",
+          "exit_causes": []
+        },
+        {
+          "hour": 458353,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00094000",
+          "price": "40584.34000000",
+          "fee_base": "9.4E-7",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/5",
+          "exit_causes": []
+        },
+        {
+          "hour": 458617,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00094000",
+          "price": "38156.62000000",
+          "fee_quote": "0.03586723",
+          "basis_released": "38.20518153",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/5",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458641,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00099000",
+          "price": "39409.51000000",
+          "fee_base": "9.9E-7",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/6",
+          "exit_causes": []
+        },
+        {
+          "hour": 458689,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00099000",
+          "price": "38616.77000000",
+          "fee_quote": "0.03823061",
+          "basis_released": "39.06091662",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/6",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458689,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01140000",
+          "price": "2824.55000000",
+          "fee_quote": "0.03219987",
+          "basis_released": "35.62913329",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/4",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461233,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01470000",
+          "price": "1987.48000000",
+          "fee_base": "0.00001470",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/5",
+          "exit_causes": []
+        },
+        {
+          "hour": 461257,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01470000",
+          "price": "1956.24000000",
+          "fee_quote": "0.02875673",
+          "basis_released": "29.28026166",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/5",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461353,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01670000",
+          "price": "1827.08000000",
+          "fee_base": "0.00001670",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/6",
+          "exit_causes": []
+        },
+        {
+          "hour": 461377,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01660000",
+          "price": "1623.68000000",
+          "fee_quote": "0.02695309",
+          "basis_released": "30.36251188",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/6",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461737,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01540000",
+          "price": "1558.42000000",
+          "fee_base": "0.00001540",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/7",
+          "exit_causes": []
+        },
+        {
+          "hour": 461881,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00205000",
+          "price": "21271.15000000",
+          "fee_base": "0.00000205",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/7",
+          "exit_causes": []
+        },
+        {
+          "hour": 461977,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00205000",
+          "price": "20186.37000000",
+          "fee_quote": "0.04138206",
+          "basis_released": "43.72987592",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/7",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462001,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00179000",
+          "price": "20170.52000000",
+          "fee_base": "0.00000179",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/8",
+          "exit_causes": []
+        },
+        {
+          "hour": 462025,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00179000",
+          "price": "19775.58000000",
+          "fee_quote": "0.03539829",
+          "basis_released": "36.14408670",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/8",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462167,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01540000",
+          "price": "1243.14000000",
+          "fee_quote": "0.01914436",
+          "basis_released": "24.05032043",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/7",
+          "exit_causes": [
+            "STOP_COMPLETED_LOW"
+          ]
+        },
+        {
+          "hour": 462217,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00165000",
+          "price": "19158.39000000",
+          "fee_base": "0.00000165",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/9",
+          "exit_causes": []
+        },
+        {
+          "hour": 462241,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00164000",
+          "price": "18950.85000000",
+          "fee_quote": "0.03107940",
+          "basis_released": "31.45180622",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/9",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462481,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00188000",
+          "price": "20194.06000000",
+          "fee_base": "0.00000188",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/10",
+          "exit_causes": []
+        },
+        {
+          "hour": 462505,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00188000",
+          "price": "20254.65000000",
+          "fee_quote": "0.03807875",
+          "basis_released": "37.99360538",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/10",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 464185,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.03350000",
+          "price": "1305.59000000",
+          "fee_base": "0.00003350",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/8",
+          "exit_causes": []
+        },
+        {
+          "hour": 464209,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.03350000",
+          "price": "1272.64000000",
+          "fee_quote": "0.04263344",
+          "basis_released": "43.80244343",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/8",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        }
+      ],
+      "per_order_native_accounting": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.00111",
+          "price": "29012.53",
+          "model_cash": "967.7960917000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110889"
+          },
+          "model_basis": {
+            "BTC/USDT": "32.2039083000000000"
+          },
+          "native_cash": "967.7960917",
+          "native_inventory": {
+            "BTC/USDT": "0.00111"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000111"
+          },
+          "ideal_native_cash": "967.7960917",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "8.0216327730612607191118430539285037059688500598306E-12",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.037",
+          "price": "734.53",
+          "model_cash": "940.6184817000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110889",
+            "ETH/USDT": "0.03696300"
+          },
+          "model_basis": {
+            "BTC/USDT": "32.2039083000000000",
+            "ETH/USDT": "27.1776100000000000"
+          },
+          "native_cash": "940.6184817",
+          "native_inventory": {
+            "BTC/USDT": "0.00111",
+            "ETH/USDT": "0.037"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "ideal_native_cash": "940.6184817",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "3.5179357438294915140435737013011147261551429072235E-11",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0011",
+          "price": "52051.88",
+          "model_cash": "997.8182926300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000889",
+            "ETH/USDT": "0.03696300"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2581795800000000",
+            "ETH/USDT": "27.1776100000000000"
+          },
+          "native_cash": "997.7863788500001",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.037"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "ideal_native_cash": "997.786378849",
+          "native_cash_residual": "1.0001E-9",
+          "native_profit_residual": "1E-9",
+          "precision_rejection_bound": "5.0938142940218440563447357090361372131424483117351E-9",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0369",
+          "price": "1619.48",
+          "model_cash": "1057.5173458100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000889",
+            "ETH/USDT": "0.00006300"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2581795800000000",
+            "ETH/USDT": "0.0463217200000000"
+          },
+          "native_cash": "1057.45832788",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000111",
+            "ETH/USDT": "0.00003700"
+          },
+          "ideal_native_cash": "1057.45832788",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "1.0193983303855847741827409996374379649068529758966E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 452377,
+          "side": "buy",
+          "gross_amount": "0.00063",
+          "price": "45993.97",
+          "model_cash": "1028.5411447100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00063826",
+            "ETH/USDT": "0.00006300"
+          },
+          "model_basis": {
+            "BTC/USDT": "29.2343806800000000",
+            "ETH/USDT": "0.0463217200000000"
+          },
+          "native_cash": "1028.48212678",
+          "native_inventory": {
+            "BTC/USDT": "0.00064",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000174",
+            "ETH/USDT": "0.00003700"
+          },
+          "ideal_native_cash": "1028.48212678",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "1.0323708330213527993565386248774296509056251788740E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 452425,
+          "side": "buy",
+          "gross_amount": "0.0088",
+          "price": "3188.16",
+          "model_cash": "1000.4853367100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00063826",
+            "ETH/USDT": "0.00885420"
+          },
+          "model_basis": {
+            "BTC/USDT": "29.2343806800000000",
+            "ETH/USDT": "28.1021297200000000"
+          },
+          "native_cash": "1000.4263187800001",
+          "native_inventory": {
+            "BTC/USDT": "0.00064",
+            "ETH/USDT": "0.0089"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000174",
+            "ETH/USDT": "0.00004580"
+          },
+          "ideal_native_cash": "1000.42631878",
+          "native_cash_residual": "1E-13",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "1.0494874886474260648721093072761007358555356434699E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 454393,
+          "side": "sell",
+          "gross_amount": "0.00063",
+          "price": "60907.34",
+          "model_cash": "1038.8185892800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000826",
+            "ETH/USDT": "0.00885420"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3783348300000000",
+            "ETH/USDT": "28.1021297200000000"
+          },
+          "native_cash": "1038.73076232",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0089"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000174",
+            "ETH/USDT": "0.00004580"
+          },
+          "ideal_native_cash": "1038.73076231575",
+          "native_cash_residual": "4.25E-9",
+          "native_profit_residual": "4.25E-9",
+          "precision_rejection_bound": "1.5727071915781043800030360636954195908794039522146E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 454441,
+          "side": "sell",
+          "gross_amount": "0.0088",
+          "price": "4569.69",
+          "model_cash": "1078.9916480000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000826",
+            "ETH/USDT": "0.00005420"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3783348300000000",
+            "ETH/USDT": "0.1720240600000000"
+          },
+          "native_cash": "1078.8760078476403",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000174",
+            "ETH/USDT": "0.00004580"
+          },
+          "ideal_native_cash": "1078.8760078418623595505617977528089887640449438202",
+          "native_cash_residual": "5.7779404494382022471910112359550561797752808988764E-9",
+          "native_profit_residual": "5.7780998876404494382022471910112359550561797752809E-9",
+          "precision_rejection_bound": "2.1022865614361832183136261661358337851953073521987E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 457921,
+          "side": "buy",
+          "gross_amount": "0.00089",
+          "price": "47426.33",
+          "model_cash": "1036.7822143000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00089737",
+            "ETH/USDT": "0.00005420"
+          },
+          "model_basis": {
+            "BTC/USDT": "42.5877685300000000",
+            "ETH/USDT": "0.1720240600000000"
+          },
+          "native_cash": "1036.6665741476404",
+          "native_inventory": {
+            "BTC/USDT": "0.0009",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000263",
+            "ETH/USDT": "0.00004580"
+          },
+          "ideal_native_cash": "1036.6665741418623595505617977528089887640449438202",
+          "native_cash_residual": "5.7780404494382022471910112359550561797752808988764E-9",
+          "native_profit_residual": "5.7780998876404494382022471910112359550561797752809E-9",
+          "precision_rejection_bound": "2.1391834270930429790379542691830897232975689111895E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458017,
+          "side": "buy",
+          "gross_amount": "0.0119",
+          "price": "3513.43",
+          "model_cash": "994.9723973000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00089737",
+            "ETH/USDT": "0.01194230"
+          },
+          "model_basis": {
+            "BTC/USDT": "42.5877685300000000",
+            "ETH/USDT": "41.9818410600000000"
+          },
+          "native_cash": "994.8567571476403",
+          "native_inventory": {
+            "BTC/USDT": "0.0009",
+            "ETH/USDT": "0.012"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000263",
+            "ETH/USDT": "0.00005770"
+          },
+          "ideal_native_cash": "994.85675714186235955056179775280898876404494382022",
+          "native_cash_residual": "5.7779404494382022471910112359550561797752808988764E-9",
+          "native_profit_residual": "5.7780998876404494382022471910112359550561797752809E-9",
+          "precision_rejection_bound": "2.1837263392399978867720972819816240198647830254827E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458137,
+          "side": "sell",
+          "gross_amount": "0.00089",
+          "price": "42868.56",
+          "model_cash": "1033.0872626800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000737",
+            "ETH/USDT": "0.01194230"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3497686100000000",
+            "ETH/USDT": "41.9818410600000000"
+          },
+          "native_cash": "1032.9294298804182",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.012"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000263",
+            "ETH/USDT": "0.00005770"
+          },
+          "ideal_native_cash": "1032.9294298780795817727840199750312109862671660424",
+          "native_cash_residual": "2.3386182272159800249687890137328339575530586766542E-9",
+          "native_profit_residual": "2.3386454431960049937578027465667915106117353308365E-9",
+          "precision_rejection_bound": "2.7354429168295795414686391476487706976915994605862E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458137,
+          "side": "sell",
+          "gross_amount": "0.0119",
+          "price": "3151.87",
+          "model_cash": "1070.5570084200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000737",
+            "ETH/USDT": "0.00004230"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3497686100000000",
+            "ETH/USDT": "0.1487010000000000"
+          },
+          "native_cash": "1070.3574008051746",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000263",
+            "ETH/USDT": "0.00005770"
+          },
+          "ideal_native_cash": "1070.3574007979348252184769038701622971285892634207",
+          "native_cash_residual": "7.2397747815230961298377028714107365792759051186017E-9",
+          "native_profit_residual": "7.2399663046192259675405742821473158551810237203496E-9",
+          "precision_rejection_bound": "3.2955625713602356517791974352878711189211561350101E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458161,
+          "side": "buy",
+          "gross_amount": "0.00101",
+          "price": "43353.47",
+          "model_cash": "1026.7700037200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00101636",
+            "ETH/USDT": "0.00004230"
+          },
+          "model_basis": {
+            "BTC/USDT": "44.1367733100000000",
+            "ETH/USDT": "0.1487010000000000"
+          },
+          "native_cash": "1026.5703961051747",
+          "native_inventory": {
+            "BTC/USDT": "0.00102",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000364",
+            "ETH/USDT": "0.00005770"
+          },
+          "ideal_native_cash": "1026.5703960979348252184769038701622971285892634207",
+          "native_cash_residual": "7.2398747815230961298377028714107365792759051186017E-9",
+          "native_profit_residual": "7.2399663046192259675405742821473158551810237203496E-9",
+          "precision_rejection_bound": "3.3679286256035942681387217155255729321789020632532E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458185,
+          "side": "sell",
+          "gross_amount": "0.00101",
+          "price": "42409.56",
+          "model_cash": "1069.5608256600000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000636",
+            "ETH/USDT": "0.00004230"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2761913900000000",
+            "ETH/USDT": "0.1487010000000000"
+          },
+          "native_cash": "1069.317390901738",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000364",
+            "ETH/USDT": "0.00005770"
+          },
+          "ideal_native_cash": "1069.3173908951182620376490171599226457124672590634",
+          "native_cash_residual": "6.6197379623509828400773542875327409365743800641355E-9",
+          "native_profit_residual": "6.6197003133338229174316418202736775109544441996524E-9",
+          "precision_rejection_bound": "3.9505951351230023375169370282417938231669679651456E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458305,
+          "side": "buy",
+          "gross_amount": "0.0114",
+          "price": "3120.79",
+          "model_cash": "1033.9838196600000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000636",
+            "ETH/USDT": "0.01143090"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2761913900000000",
+            "ETH/USDT": "35.7257070000000000"
+          },
+          "native_cash": "1033.740384901738",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0115"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000364",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "1033.7403848951182620376490171599226457124672590634",
+          "native_cash_residual": "6.6197379623509828400773542875327409365743800641355E-9",
+          "native_profit_residual": "6.6197003133338229174316418202736775109544441996524E-9",
+          "precision_rejection_bound": "4.0400386594280590960492179182609438756771333513884E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458353,
+          "side": "buy",
+          "gross_amount": "0.00094",
+          "price": "40584.34",
+          "model_cash": "995.8345400600000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00094542",
+            "ETH/USDT": "0.01143090"
+          },
+          "model_basis": {
+            "BTC/USDT": "38.4254709900000000",
+            "ETH/USDT": "35.7257070000000000"
+          },
+          "native_cash": "995.591105301738",
+          "native_inventory": {
+            "BTC/USDT": "0.00095",
+            "ETH/USDT": "0.0115"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000458",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "995.59110529511826203764901715992264571246725906343",
+          "native_cash_residual": "6.6197379623509828400773542875327409365743800641355E-9",
+          "native_profit_residual": "6.6197003133338229174316418202736775109544441996524E-9",
+          "precision_rejection_bound": "4.1422289972178083552709905786382860070782740622364E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458617,
+          "side": "sell",
+          "gross_amount": "0.00094",
+          "price": "38156.62",
+          "model_cash": "1031.6658956300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000542",
+            "ETH/USDT": "0.01143090"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2202894600000000",
+            "ETH/USDT": "35.7257070000000000"
+          },
+          "native_cash": "1031.3842838013375",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0115"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000458",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "1031.3842837996386625651114641270135756516944119129",
+          "native_cash_residual": "1.6988374348885358729864243483055880871305089484378E-9",
+          "native_profit_residual": "1.6987723234244088594107726538936752176394573862136E-9",
+          "precision_rejection_bound": "4.7545066747348507737822334727342128635542919391637E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458641,
+          "side": "buy",
+          "gross_amount": "0.00099",
+          "price": "39409.51",
+          "model_cash": "992.6504807300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00099443",
+            "ETH/USDT": "0.01143090"
+          },
+          "model_basis": {
+            "BTC/USDT": "39.2357043600000000",
+            "ETH/USDT": "35.7257070000000000"
+          },
+          "native_cash": "992.3688689013376",
+          "native_inventory": {
+            "BTC/USDT": "0.001",
+            "ETH/USDT": "0.0115"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "992.36886889963866256511146412701357565169441191287",
+          "native_cash_residual": "1.6989374348885358729864243483055880871305089484378E-9",
+          "native_profit_residual": "1.6987723234244088594107726538936752176394573862136E-9",
+          "precision_rejection_bound": "4.8818467105276989355353742873199497954963395595040E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458689,
+          "side": "sell",
+          "gross_amount": "0.00099",
+          "price": "38616.77",
+          "model_cash": "1030.8428524200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.01143090"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "35.7257070000000000"
+          },
+          "native_cash": "1030.5222132626864",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0115"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "1030.5222132589073135919432494727308099138203149056",
+          "native_cash_residual": "3.7790864080567505272691900861796850943544511569001E-9",
+          "native_profit_residual": "3.7791044648072777964592762658647794488056080570082E-9",
+          "precision_rejection_bound": "5.5218161573870064761901972076210019309311233946649E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458689,
+          "side": "sell",
+          "gross_amount": "0.0114",
+          "price": "2824.55",
+          "model_cash": "1063.0105225500000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.00003090"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "0.0965737100000000"
+          },
+          "native_cash": "1062.6542677510058",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00006910"
+          },
+          "ideal_native_cash": "1062.6542677518089941000038259260771704414216827610",
+          "native_cash_residual": "-8.0319410000382592607717044142168276104369246791670E-10",
+          "native_profit_residual": "-8.0309010382975200324761186310444380473616038461368E-10",
+          "precision_rejection_bound": "6.1688498895489946301767603297042136328221437612252E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461233,
+          "side": "buy",
+          "gross_amount": "0.0147",
+          "price": "1987.48",
+          "model_cash": "1033.7945665500000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.01471620"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "29.3125297100000000"
+          },
+          "native_cash": "1033.4383117510058",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0148"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00008380"
+          },
+          "ideal_native_cash": "1033.4383117518089941000038259260771704414216827610",
+          "native_cash_residual": "-8.0319410000382592607717044142168276104369246791670E-10",
+          "native_profit_residual": "-8.0309010382975200324761186310444380473616038461368E-10",
+          "precision_rejection_bound": "6.3253128253227430770849241817756652861544571094839E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461257,
+          "side": "sell",
+          "gross_amount": "0.0147",
+          "price": "1956.24",
+          "model_cash": "1062.5225378200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.00001620"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "0.0322680500000000"
+          },
+          "native_cash": "1062.136954160632",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00008380"
+          },
+          "ideal_native_cash": "1062.1369541659793679166636709200696974090341413359",
+          "native_cash_residual": "-5.3473679166636709200696974090341413358862438615184E-9",
+          "native_profit_residual": "-5.3472785803345909897671064431754772221301053799265E-9",
+          "precision_rejection_bound": "6.9941359607639354891519649652362712618240035687529E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461353,
+          "side": "buy",
+          "gross_amount": "0.0167",
+          "price": "1827.08",
+          "model_cash": "1032.0103018200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.01669950"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "30.5445040500000000"
+          },
+          "native_cash": "1031.624718160632",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0168"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00010050"
+          },
+          "ideal_native_cash": "1031.6247181659793679166636709200696974090341413359",
+          "native_cash_residual": "-5.3473679166636709200696974090341413358862438615184E-9",
+          "native_profit_residual": "-5.3472785803345909897671064431754772221301053799265E-9",
+          "precision_rejection_bound": "7.1789748398557998212586451959285641301892597029512E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461377,
+          "side": "sell",
+          "gross_amount": "0.0166",
+          "price": "1623.68",
+          "model_cash": "1058.9364367300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.00009950"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "0.1819921700000000"
+          },
+          "native_cash": "1058.520506934579",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00010050"
+          },
+          "ideal_native_cash": "1058.5205069420354208018906523854488178931863792742",
+          "native_cash_residual": "-7.4564208018906523854488178931863792741525162753238E-9",
+          "native_profit_residual": "-7.4562176925430378342667110795656534266687915991208E-9",
+          "precision_rejection_bound": "7.8723152854808651837095908206962969040370201910884E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461737,
+          "side": "buy",
+          "gross_amount": "0.0154",
+          "price": "1558.42",
+          "model_cash": "1034.9367687300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000443",
+            "ETH/USDT": "0.01548410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1747877400000000",
+            "ETH/USDT": "24.1816601700000000"
+          },
+          "native_cash": "1034.5208389345792",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0156"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000557",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1034.5208389420354208018906523854488178931863792742",
+          "native_cash_residual": "-7.4562208018906523854488178931863792741525162753238E-9",
+          "native_profit_residual": "-7.4562176925430378342667110795656534266687915991208E-9",
+          "precision_rejection_bound": "8.0742667130284150528384354706405476219483598915170E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 461881,
+          "side": "buy",
+          "gross_amount": "0.00205",
+          "price": "21271.15",
+          "model_cash": "991.3309112300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00205238",
+            "ETH/USDT": "0.01548410"
+          },
+          "model_basis": {
+            "BTC/USDT": "43.7806452400000000",
+            "ETH/USDT": "24.1816601700000000"
+          },
+          "native_cash": "990.9149814345791",
+          "native_inventory": {
+            "BTC/USDT": "0.00206",
+            "ETH/USDT": "0.0156"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000762",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "990.91498144203542080189065238544881789318637927415",
+          "native_cash_residual": "-7.4563208018906523854488178931863792741525162753238E-9",
+          "native_profit_residual": "-7.4562176925430378342667110795656534266687915991208E-9",
+          "precision_rejection_bound": "8.3273909206238166225034255561809879656890014691215E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 461977,
+          "side": "sell",
+          "gross_amount": "0.00205",
+          "price": "20186.37",
+          "model_cash": "1032.6715876700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000238",
+            "ETH/USDT": "0.01548410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0507693200000000",
+            "ETH/USDT": "24.1816601700000000"
+          },
+          "native_cash": "1032.2118713967184",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0156"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000762",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1032.2118714030832816168607669287395913080993835947",
+          "native_cash_residual": "-6.3648816168607669287395913080993835947134210437491E-9",
+          "native_profit_residual": "-6.3648984776276956683308994074829783081344647928291E-9",
+          "precision_rejection_bound": "9.0956908692570506954270930726804518744897908491716E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462001,
+          "side": "buy",
+          "gross_amount": "0.00179",
+          "price": "20170.52",
+          "model_cash": "996.5663568700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00179059",
+            "ETH/USDT": "0.01548410"
+          },
+          "model_basis": {
+            "BTC/USDT": "36.1560001200000000",
+            "ETH/USDT": "24.1816601700000000"
+          },
+          "native_cash": "996.1066405967183",
+          "native_inventory": {
+            "BTC/USDT": "0.0018",
+            "ETH/USDT": "0.0156"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000941",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "996.10664060308328161686076692873959130809938359471",
+          "native_cash_residual": "-6.3649816168607669287395913080993835947134210437491E-9",
+          "native_profit_residual": "-6.3648984776276956683308994074829783081344647928291E-9",
+          "precision_rejection_bound": "9.3720572518444624036304230914740731727172521443053E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462025,
+          "side": "sell",
+          "gross_amount": "0.00179",
+          "price": "19775.58",
+          "model_cash": "1031.9292467800000000",
+          "model_inventory": {
+            "BTC/USDT": "5.9E-7",
+            "ETH/USDT": "0.01548410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0119134200000000",
+            "ETH/USDT": "24.1816601700000000"
+          },
+          "native_cash": "1031.4334134532478",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0156"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000941",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1031.4334134627367522695946327960363134880795848894",
+          "native_cash_residual": "-9.4889522695946327960363134880795848893849766522463E-9",
+          "native_profit_residual": "-9.4890218642274288323498015676644742743616288985655E-9",
+          "precision_rejection_bound": "1.0165563464392061793079583470891548768826025597282E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 462167,
+          "side": "sell",
+          "gross_amount": "0.0154",
+          "price": "1243.14",
+          "model_cash": "1051.0544584200000000",
+          "model_inventory": {
+            "BTC/USDT": "5.9E-7",
+            "ETH/USDT": "0.00008410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0119134200000000",
+            "ETH/USDT": "0.1313397400000000"
+          },
+          "native_cash": "1050.5345721918334",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000941",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1050.5345721980781665532156518835917957675481858040",
+          "native_cash_residual": "-6.2447665532156518835917957675481858040044550235566E-9",
+          "native_profit_residual": "-6.2447197688675354753875633157339898084594785801964E-9",
+          "precision_rejection_bound": "1.0936661582514341395727511878250160469082353702832E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462217,
+          "side": "buy",
+          "gross_amount": "0.00165",
+          "price": "19158.39",
+          "model_cash": "1019.4431149200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00164894",
+            "ETH/USDT": "0.00008410"
+          },
+          "model_basis": {
+            "BTC/USDT": "31.6232569200000000",
+            "ETH/USDT": "0.1313397400000000"
+          },
+          "native_cash": "1018.9232286918334",
+          "native_inventory": {
+            "BTC/USDT": "0.00166",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001106",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1018.9232286980781665532156518835917957675481858040",
+          "native_cash_residual": "-6.2447665532156518835917957675481858040044550235566E-9",
+          "native_profit_residual": "-6.2447197688675354753875633157339898084594785801964E-9",
+          "precision_rejection_bound": "1.1256018101555462439981597896596257979088512996085E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462241,
+          "side": "sell",
+          "gross_amount": "0.00164",
+          "price": "18950.85",
+          "model_cash": "1050.4914295200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000894",
+            "ETH/USDT": "0.00008410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1714507000000000",
+            "ETH/USDT": "0.1313397400000000"
+          },
+          "native_cash": "1049.9401134738268",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001106",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1049.9401134798761731893820500124952305941456399674",
+          "native_cash_residual": "-6.0493731893820500124952305941456399674400791441662E-9",
+          "native_profit_residual": "-6.0493625714320625077258247397856074075192233104023E-9",
+          "precision_rejection_bound": "1.2092793691889610153723233453301678189406096340022E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462481,
+          "side": "buy",
+          "gross_amount": "0.00188",
+          "price": "20194.06",
+          "model_cash": "1012.5265967200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00188706",
+            "ETH/USDT": "0.00008410"
+          },
+          "model_basis": {
+            "BTC/USDT": "38.1362835000000000",
+            "ETH/USDT": "0.1313397400000000"
+          },
+          "native_cash": "1011.9752806738268",
+          "native_inventory": {
+            "BTC/USDT": "0.0019",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001294",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1011.9752806798761731893820500124952305941456399674",
+          "native_cash_residual": "-6.0493731893820500124952305941456399674400791441662E-9",
+          "native_profit_residual": "-6.0493625714320625077258247397856074075192233104023E-9",
+          "precision_rejection_bound": "1.2470213543441167804471160449147284721001379587770E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462505,
+          "side": "sell",
+          "gross_amount": "0.00188",
+          "price": "20254.65",
+          "model_cash": "1050.5672599700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000706",
+            "ETH/USDT": "0.00008410"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1426781200000000",
+            "ETH/USDT": "0.1313397400000000"
+          },
+          "native_cash": "1049.977999476675",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001294",
+            "ETH/USDT": "0.00011590"
+          },
+          "ideal_native_cash": "1049.9779994789933250024500399257323195381379584131",
+          "native_cash_residual": "-2.3183250024500399257323195381379584130579159435677E-9",
+          "native_profit_residual": "-2.3183274524899656580518576760963714709738595112546E-9",
+          "precision_rejection_bound": "1.3370475161176464667121744950600207866123226383289E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 464185,
+          "side": "buy",
+          "gross_amount": "0.0335",
+          "price": "1305.59",
+          "model_cash": "1006.8299949700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000706",
+            "ETH/USDT": "0.03355060"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1426781200000000",
+            "ETH/USDT": "43.8686047400000000"
+          },
+          "native_cash": "1006.2407344766749",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0337"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001294",
+            "ETH/USDT": "0.00014940"
+          },
+          "ideal_native_cash": "1006.2407344789933250024500399257323195381379584131",
+          "native_cash_residual": "-2.3184250024500399257323195381379584130579159435677E-9",
+          "native_profit_residual": "-2.3183274524899656580518576760963714709738595112546E-9",
+          "precision_rejection_bound": "1.3813617452277139889953075364169823425592000160807E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 464209,
+          "side": "sell",
+          "gross_amount": "0.0335",
+          "price": "1272.64",
+          "model_cash": "1049.4208015300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000706",
+            "ETH/USDT": "0.00005060"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1426781200000000",
+            "ETH/USDT": "0.0661613100000000"
+          },
+          "native_cash": "1048.7877528153597",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001294",
+            "ETH/USDT": "0.00014940"
+          },
+          "ideal_native_cash": "1048.7877528207546404205784087027307043145694964803",
+          "native_cash_residual": "-5.3949404205784087027307043145694964802819910622385E-9",
+          "native_profit_residual": "-5.3950609989871114334350188840659767622730533007396E-9",
+          "precision_rejection_bound": "1.4778785716138096503762058197117394992570383350812E-7",
+          "residual_gate": "PASS"
+        }
+      ]
+    },
+    "stress": {
+      "modeled_terminal": {
+        "cash": "1047.5180091800000000",
+        "marked_inventory": "0.0680292808000000",
+        "equity": "1047.5860384608000000",
+        "estimated_exit_cost": "0.00021769369856000000",
+        "inventory": {
+          "BTC/USDT": "0.00000406",
+          "ETH/USDT": "8.0E-7"
+        },
+        "synthetic_exit_executed": false,
+        "realized_pnl": "47.6012407600000000",
+        "unrealized_pnl": "-0.0152022992000000",
+        "basis": {
+          "BTC/USDT": "0.0821839700000000",
+          "ETH/USDT": "0.0010476100000000"
+        },
+        "cost_added": "637.7070631000000000",
+        "cost_released": "637.62383152",
+        "sale_proceeds": "685.2250722800000000",
+        "residual": [
+          "BTC/USDT",
+          "ETH/USDT"
+        ],
+        "active": {
+          "BTC/USDT": false,
+          "ETH/USDT": false
+        },
+        "blocked": false,
+        "block_reasons": {},
+        "mark_age_hours": {
+          "BTC/USDT": 0,
+          "ETH/USDT": 0
+        },
+        "real_drawdown": "UNKNOWN",
+        "version": "B_RESIDUAL_V3_DEVELOPMENT_ONLY"
+      },
+      "assets": {
+        "BTC/USDT": {
+          "buys": 10,
+          "sells": 10,
+          "episode_starts": 10,
+          "episode_ends": 10,
+          "realized": "21.4976535200000000",
+          "unrealized": "-0.0151116332000000",
+          "net": "21.4825418868000000",
+          "remaining_inventory": "0.00000406",
+          "remaining_basis": "0.0821839700000000"
+        },
+        "ETH/USDT": {
+          "buys": 8,
+          "sells": 8,
+          "episode_starts": 8,
+          "episode_ends": 8,
+          "realized": "26.1035872400000000",
+          "unrealized": "-0.0000906660000000",
+          "net": "26.1034965740000000",
+          "remaining_inventory": "8.0E-7",
+          "remaining_basis": "0.0010476100000000"
+        }
+      },
+      "realized_by_month": {
+        "values": {
+          "2021-03": "57.5401612600000000",
+          "2021-11": "21.8137708200000000",
+          "2022-04": "-17.2042250800000000",
+          "2022-08": "-4.1849224800000000",
+          "2022-09": "-8.9380311600000000",
+          "2022-10": "-0.0758604300000000",
+          "2022-12": "-1.3496521700000000"
+        },
+        "largest_positive_share": "0.7251078774772165014056604011",
+        "denominator": "sum of positive realized contributions; not independent samples"
+      },
+      "realized_by_episode": {
+        "values": {
+          "BTC/USDT/1": "25.1113307800000000",
+          "ETH/USDT/1": "32.4288304800000000",
+          "BTC/USDT/2": "9.4976885300000000",
+          "ETH/USDT/2": "12.3160822900000000",
+          "BTC/USDT/3": "-4.3028508900000000",
+          "ETH/USDT/3": "-4.6199949200000000",
+          "BTC/USDT/4": "-1.2211711000000000",
+          "BTC/USDT/5": "-2.5610121600000000",
+          "BTC/USDT/6": "-1.0065419300000000",
+          "ETH/USDT/4": "-3.4926540800000000",
+          "ETH/USDT/5": "-0.6754003000000000",
+          "ETH/USDT/6": "-3.5095221800000000",
+          "BTC/USDT/7": "-2.5543815000000000",
+          "BTC/USDT/8": "-0.8885034500000000",
+          "ETH/USDT/7": "-4.9941018800000000",
+          "BTC/USDT/9": "-0.5010443300000000",
+          "BTC/USDT/10": "-0.0758604300000000",
+          "ETH/USDT/8": "-1.3496521700000000"
+        },
+        "largest_positive_share": "0.4086606628050535287349808665",
+        "denominator": "sum of positive realized contributions; not independent samples"
+      },
+      "observed_open_drawdown": "0.03857083192179976085427764865",
+      "real_drawdown": "UNKNOWN",
+      "risk_latch_first_hour": {},
+      "gate_ineligible_calendar_days": {
+        "BTC/USDT": 375,
+        "ETH/USDT": 375
+      },
+      "gate_note": "85-calendar dependency failure, not a count of actual positive signals denied",
+      "nonpositive_signal_days": {
+        "BTC/USDT": 278,
+        "ETH/USDT": 251
+      },
+      "global_new_risk_block_hours": 24,
+      "block_hours_by_reason": {
+        "STALE_INVENTORY": 13,
+        "UNRESOLVED_ACTIVE_EXIT": 11
+      },
+      "stale_hours_any_asset": 13,
+      "stale_hours_by_asset": {
+        "BTC/USDT": 13,
+        "ETH/USDT": 13
+      },
+      "maximum_mark_age_hours": {
+        "BTC/USDT": 4,
+        "ETH/USDT": 4
+      },
+      "hours_observed": 17520,
+      "independent_qualification": false,
+      "native_matching_statistics_identical": false,
+      "status": "COMPLETED_V3_DEVELOPMENT_DIAGNOSTIC",
+      "cost": "stress",
+      "key": "ISSUE139_B_RESIDUAL_V3/development-2021-2023/stress",
+      "model": "SpotResidualV3",
+      "mapper": "ReconcilerV3",
+      "native_terminal": [
+        {
+          "pair": "BTC/USDT",
+          "amount": "3e-05",
+          "is_open": true
+        },
+        {
+          "pair": "ETH/USDT",
+          "amount": "0.0003",
+          "is_open": true
+        }
+      ],
+      "native_positions": [
+        {
+          "pair": "BTC/USDT",
+          "gross_amount": "3e-05",
+          "stake": "0.6057026265039661",
+          "display_open_rate": "20190.09",
+          "realized": "21.26916467"
+        },
+        {
+          "pair": "ETH/USDT",
+          "gross_amount": "0.0003",
+          "stake": "0.39259637228583344",
+          "display_open_rate": "1308.65",
+          "realized": "25.973726060000004"
+        }
+      ],
+      "native_cash": "1046.2445917312102",
+      "native_realized": "47.24289073",
+      "hourly_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/stress-hourly.jsonl",
+      "hourly_sha256": "85e5704ab1838004e460c69cf1c26dec4c4c3f5fdc0ff041e099e4fe3e8b4ec5",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "model_net": "47.5860384608000000",
+      "model_return_fraction": "0.0475860384608000",
+      "active_hours_by_asset": {
+        "BTC/USDT": 4752,
+        "ETH/USDT": 5038
+      },
+      "residual_classified_hours_by_asset": {
+        "BTC/USDT": 12767,
+        "ETH/USDT": 12481
+      },
+      "any_active_hours": 5254,
+      "merged_active_spans": 11,
+      "fully_cash_hours": 1,
+      "maximum_observed_total_notional_fraction": "0.1293038613198053682263207234",
+      "episodes": {
+        "BTC/USDT/1": {
+          "symbol": "BTC/USDT",
+          "start_hour": 447073,
+          "start_utc": "2021-01-01T01:00:00+00:00",
+          "end_hour": 449089,
+          "end_utc": "2021-03-26T01:00:00+00:00",
+          "end_with_inventory": "0.00000778",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "ETH/USDT/1": {
+          "symbol": "ETH/USDT",
+          "start_hour": 447073,
+          "start_utc": "2021-01-01T01:00:00+00:00",
+          "end_hour": 449089,
+          "end_utc": "2021-03-26T01:00:00+00:00",
+          "end_with_inventory": "0.00002600",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "BTC/USDT/2": {
+          "symbol": "BTC/USDT",
+          "start_hour": 452377,
+          "start_utc": "2021-08-10T01:00:00+00:00",
+          "end_hour": 454393,
+          "end_utc": "2021-11-02T01:00:00+00:00",
+          "end_with_inventory": "0.00000650",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "ETH/USDT/2": {
+          "symbol": "ETH/USDT",
+          "start_hour": 452425,
+          "start_utc": "2021-08-12T01:00:00+00:00",
+          "end_hour": 454441,
+          "end_utc": "2021-11-04T01:00:00+00:00",
+          "end_with_inventory": "0.00000800",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ],
+          "active_hours": 2016
+        },
+        "BTC/USDT/3": {
+          "symbol": "BTC/USDT",
+          "start_hour": 457921,
+          "start_utc": "2022-03-29T01:00:00+00:00",
+          "end_hour": 458137,
+          "end_utc": "2022-04-07T01:00:00+00:00",
+          "end_with_inventory": "0.00000470",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 216
+        },
+        "ETH/USDT/3": {
+          "symbol": "ETH/USDT",
+          "start_hour": 458017,
+          "start_utc": "2022-04-02T01:00:00+00:00",
+          "end_hour": 458137,
+          "end_utc": "2022-04-07T01:00:00+00:00",
+          "end_with_inventory": "0.00008340",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 120
+        },
+        "BTC/USDT/4": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458161,
+          "start_utc": "2022-04-08T01:00:00+00:00",
+          "end_hour": 458185,
+          "end_utc": "2022-04-09T01:00:00+00:00",
+          "end_with_inventory": "0.00000264",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/4": {
+          "symbol": "ETH/USDT",
+          "start_hour": 458305,
+          "start_utc": "2022-04-14T01:00:00+00:00",
+          "end_hour": 458689,
+          "end_utc": "2022-04-30T01:00:00+00:00",
+          "end_with_inventory": "0.00006120",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 384
+        },
+        "BTC/USDT/5": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458353,
+          "start_utc": "2022-04-16T01:00:00+00:00",
+          "end_hour": 458617,
+          "end_utc": "2022-04-27T01:00:00+00:00",
+          "end_with_inventory": "7.0E-7",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 264
+        },
+        "BTC/USDT/6": {
+          "symbol": "BTC/USDT",
+          "start_hour": 458641,
+          "start_utc": "2022-04-28T01:00:00+00:00",
+          "end_hour": 458689,
+          "end_utc": "2022-04-30T01:00:00+00:00",
+          "end_with_inventory": "0.00000866",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 48
+        },
+        "ETH/USDT/5": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461233,
+          "start_utc": "2022-08-14T01:00:00+00:00",
+          "end_hour": 461257,
+          "end_utc": "2022-08-15T01:00:00+00:00",
+          "end_with_inventory": "0.00003200",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/6": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461353,
+          "start_utc": "2022-08-19T01:00:00+00:00",
+          "end_hour": 461377,
+          "end_utc": "2022-08-20T01:00:00+00:00",
+          "end_with_inventory": "0.00009880",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/7": {
+          "symbol": "ETH/USDT",
+          "start_hour": 461737,
+          "start_utc": "2022-09-04T01:00:00+00:00",
+          "end_hour": 462167,
+          "end_utc": "2022-09-21T23:00:00+00:00",
+          "end_with_inventory": "0.00006800",
+          "exit_causes": [
+            "STOP_COMPLETED_LOW"
+          ],
+          "active_hours": 430
+        },
+        "BTC/USDT/7": {
+          "symbol": "BTC/USDT",
+          "start_hour": 461881,
+          "start_utc": "2022-09-10T01:00:00+00:00",
+          "end_hour": 461977,
+          "end_utc": "2022-09-14T01:00:00+00:00",
+          "end_with_inventory": "0.00000464",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 96
+        },
+        "BTC/USDT/8": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462001,
+          "start_utc": "2022-09-15T01:00:00+00:00",
+          "end_hour": 462025,
+          "end_utc": "2022-09-16T01:00:00+00:00",
+          "end_with_inventory": "0.00000110",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "BTC/USDT/9": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462217,
+          "start_utc": "2022-09-24T01:00:00+00:00",
+          "end_hour": 462241,
+          "end_utc": "2022-09-25T01:00:00+00:00",
+          "end_with_inventory": "0.00000782",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "BTC/USDT/10": {
+          "symbol": "BTC/USDT",
+          "start_hour": 462481,
+          "start_utc": "2022-10-05T01:00:00+00:00",
+          "end_hour": 462505,
+          "end_utc": "2022-10-06T01:00:00+00:00",
+          "end_with_inventory": "0.00000406",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        },
+        "ETH/USDT/8": {
+          "symbol": "ETH/USDT",
+          "start_hour": 464185,
+          "start_utc": "2022-12-15T01:00:00+00:00",
+          "end_hour": 464209,
+          "end_utc": "2022-12-16T01:00:00+00:00",
+          "end_with_inventory": "8.0E-7",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ],
+          "active_hours": 24
+        }
+      },
+      "exit_cause_counts": {
+        "EXPIRY_84_DAYS": 4,
+        "NONPOSITIVE_SIGNAL": 13,
+        "STOP_COMPLETED_LOW": 1
+      },
+      "realized_by_year": {
+        "2021": "79.3539320800000000",
+        "2022": "-31.7526913200000000"
+      },
+      "winning_asset_episodes": 4,
+      "losing_asset_episodes": 14,
+      "native_gross_marked_inventory": "0.8544624000000",
+      "native_cash_plus_gross_marked": "1047.0990541312102",
+      "max_abs_native_cash_residual": "6.775569230769230769230769231E-9",
+      "max_abs_native_profit_residual": "6.775384615384615384615384615E-9",
+      "maximum_residual_to_bound_ratio": "0.5885787606252803626300462015",
+      "numeric_gate": "ALL_36_ORDERS_PASS_PRE_FROZEN_BOUND",
+      "result_sha256": "f72fc2b090f44988aa706e91a85c8708caba224345e4e8d689f82395c0efd15e",
+      "order_count": 36,
+      "orders": [
+        {
+          "hour": 447073,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00111000",
+          "price": "29029.93000000",
+          "fee_base": "0.00000222",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/1",
+          "exit_causes": []
+        },
+        {
+          "hour": 447073,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.03700000",
+          "price": "734.97000000",
+          "fee_base": "0.00007400",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/1",
+          "exit_causes": []
+        },
+        {
+          "hour": 449089,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00110000",
+          "price": "52020.63000000",
+          "fee_quote": "0.11444539",
+          "basis_released": "31.99691683",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/1",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 449089,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.03690000",
+          "price": "1618.51000000",
+          "fee_quote": "0.11944604",
+          "basis_released": "27.17474248",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/1",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 452377,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00064000",
+          "price": "46021.55000000",
+          "fee_base": "0.00000128",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/2",
+          "exit_causes": []
+        },
+        {
+          "hour": 452425,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.00900000",
+          "price": "3190.07000000",
+          "fee_base": "0.00001800",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/2",
+          "exit_causes": []
+        },
+        {
+          "hour": 454393,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00064000",
+          "price": "60870.77000000",
+          "fee_quote": "0.07791459",
+          "basis_released": "29.38168968",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/2",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 454441,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.00900000",
+          "price": "4566.95000000",
+          "fee_quote": "0.08220510",
+          "basis_released": "28.70426261",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/2",
+          "exit_causes": [
+            "EXPIRY_84_DAYS"
+          ]
+        },
+        {
+          "hour": 457921,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00090000",
+          "price": "47454.77000000",
+          "fee_base": "0.00000180",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/3",
+          "exit_causes": []
+        },
+        {
+          "hour": 458017,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01230000",
+          "price": "3515.54000000",
+          "fee_base": "0.00002460",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/3",
+          "exit_causes": []
+        },
+        {
+          "hour": 458137,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00090000",
+          "price": "42842.82000000",
+          "fee_quote": "0.07711708",
+          "basis_released": "42.78427181",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/3",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458137,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01220000",
+          "price": "3149.98000000",
+          "fee_quote": "0.07685952",
+          "basis_released": "42.97289140",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/3",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458161,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00103000",
+          "price": "43379.47000000",
+          "fee_base": "0.00000206",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/4",
+          "exit_causes": []
+        },
+        {
+          "hour": 458185,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00103000",
+          "price": "42384.10000000",
+          "fee_quote": "0.08731125",
+          "basis_released": "44.78948285",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/4",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458305,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01110000",
+          "price": "3122.66000000",
+          "fee_base": "0.00002220",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/4",
+          "exit_causes": []
+        },
+        {
+          "hour": 458353,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00097000",
+          "price": "40608.68000000",
+          "fee_base": "0.00000194",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/5",
+          "exit_causes": []
+        },
+        {
+          "hour": 458617,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00097000",
+          "price": "38133.71000000",
+          "fee_quote": "0.07397940",
+          "basis_released": "39.47673146",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/5",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458641,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00102000",
+          "price": "39433.14000000",
+          "fee_base": "0.00000204",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/6",
+          "exit_causes": []
+        },
+        {
+          "hour": 458689,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00101000",
+          "price": "38593.59000000",
+          "fee_quote": "0.07795906",
+          "basis_released": "39.90810877",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/6",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 458689,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01110000",
+          "price": "2822.85000000",
+          "fee_quote": "0.06266727",
+          "basis_released": "34.76362181",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/4",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461233,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01460000",
+          "price": "1988.67000000",
+          "fee_base": "0.00002920",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/5",
+          "exit_causes": []
+        },
+        {
+          "hour": 461257,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01460000",
+          "price": "1955.07000000",
+          "fee_quote": "0.05708805",
+          "basis_released": "29.16233425",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/5",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461353,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01660000",
+          "price": "1828.18000000",
+          "fee_base": "0.00003320",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/6",
+          "exit_causes": []
+        },
+        {
+          "hour": 461377,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01650000",
+          "price": "1622.71000000",
+          "fee_quote": "0.05354943",
+          "basis_released": "30.23068775",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/6",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 461737,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.01540000",
+          "price": "1559.35000000",
+          "fee_base": "0.00003080",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/7",
+          "exit_causes": []
+        },
+        {
+          "hour": 461881,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00201000",
+          "price": "21283.91000000",
+          "fee_base": "0.00000402",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/7",
+          "exit_causes": []
+        },
+        {
+          "hour": 461977,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00201000",
+          "price": "20174.25000000",
+          "fee_quote": "0.08110049",
+          "basis_released": "43.02352351",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/7",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462001,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00177000",
+          "price": "20182.62000000",
+          "fee_base": "0.00000354",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/8",
+          "exit_causes": []
+        },
+        {
+          "hour": 462025,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00177000",
+          "price": "19763.71000000",
+          "fee_quote": "0.06996354",
+          "basis_released": "35.80030661",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/8",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462167,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.01540000",
+          "price": "1242.39000000",
+          "fee_quote": "0.03826562",
+          "basis_released": "24.08864226",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/7",
+          "exit_causes": [
+            "STOP_COMPLETED_LOW"
+          ]
+        },
+        {
+          "hour": 462217,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00164000",
+          "price": "19169.88000000",
+          "fee_base": "0.00000328",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/9",
+          "exit_causes": []
+        },
+        {
+          "hour": 462241,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00163000",
+          "price": "18939.47000000",
+          "fee_quote": "0.06174268",
+          "basis_released": "31.31063775",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/9",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 462481,
+          "symbol": "BTC/USDT",
+          "side": "buy",
+          "quantity": "0.00188000",
+          "price": "20206.17000000",
+          "fee_base": "0.00000376",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "BTC/USDT/10",
+          "exit_causes": []
+        },
+        {
+          "hour": 462505,
+          "symbol": "BTC/USDT",
+          "side": "sell",
+          "quantity": "0.00188000",
+          "price": "20242.49000000",
+          "fee_quote": "0.07611177",
+          "basis_released": "38.05562986",
+          "reason": "ACTIVE_EXIT",
+          "episode": "BTC/USDT/10",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        },
+        {
+          "hour": 464185,
+          "symbol": "ETH/USDT",
+          "side": "buy",
+          "quantity": "0.03360000",
+          "price": "1306.37000000",
+          "fee_base": "0.00006720",
+          "reason": "NORMAL_SIGNAL",
+          "episode": "ETH/USDT/8",
+          "exit_causes": []
+        },
+        {
+          "hour": 464209,
+          "symbol": "ETH/USDT",
+          "side": "sell",
+          "quantity": "0.03360000",
+          "price": "1271.88000000",
+          "fee_quote": "0.08547034",
+          "basis_released": "43.99934983",
+          "reason": "ACTIVE_EXIT",
+          "episode": "ETH/USDT/8",
+          "exit_causes": [
+            "NONPOSITIVE_SIGNAL"
+          ]
+        }
+      ],
+      "per_order_native_accounting": [
+        {
+          "symbol": "BTC/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.00111",
+          "price": "29029.93",
+          "model_cash": "967.7767777000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110778"
+          },
+          "model_basis": {
+            "BTC/USDT": "32.2232223000000000"
+          },
+          "native_cash": "967.7767777",
+          "native_inventory": {
+            "BTC/USDT": "0.00111"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000222"
+          },
+          "ideal_native_cash": "967.7767777",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "8.0230980979552174060565826978390621816764240681307E-12",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 447073,
+          "side": "buy",
+          "gross_amount": "0.037",
+          "price": "734.97",
+          "model_cash": "940.5828877000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00110778",
+            "ETH/USDT": "0.03692600"
+          },
+          "model_basis": {
+            "BTC/USDT": "32.2232223000000000",
+            "ETH/USDT": "27.1938900000000000"
+          },
+          "native_cash": "940.5828877",
+          "native_inventory": {
+            "BTC/USDT": "0.00111",
+            "ETH/USDT": "0.037"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "ideal_native_cash": "940.5828877",
+          "native_cash_residual": "0",
+          "native_profit_residual": "0",
+          "precision_rejection_bound": "3.5190162997770017647488219552589256642805611058311E-11",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0011",
+          "price": "52020.63",
+          "model_cash": "997.6911353100000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000778",
+            "ETH/USDT": "0.03692600"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2263054700000000",
+            "ETH/USDT": "27.1938900000000000"
+          },
+          "native_cash": "997.6272694699999",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.037"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "ideal_native_cash": "997.627269468",
+          "native_cash_residual": "1.9999E-9",
+          "native_profit_residual": "2E-9",
+          "precision_rejection_bound": "5.0938444420721210928719445338674336731856215500831E-9",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 449089,
+          "side": "sell",
+          "gross_amount": "0.0369",
+          "price": "1618.51",
+          "model_cash": "1057.2947082700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000778",
+            "ETH/USDT": "0.00002600"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2263054700000000",
+            "ETH/USDT": "0.0191475200000000"
+          },
+          "native_cash": "1057.1766016499998",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000222",
+            "ETH/USDT": "0.00007400"
+          },
+          "ideal_native_cash": "1057.176601644",
+          "native_cash_residual": "5.9998E-9",
+          "native_profit_residual": "6E-9",
+          "precision_rejection_bound": "1.0194047766225648570917533644270738197251861349536E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 452377,
+          "side": "buy",
+          "gross_amount": "0.00064",
+          "price": "46021.55",
+          "model_cash": "1027.8409162700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00064650",
+            "ETH/USDT": "0.00002600"
+          },
+          "model_basis": {
+            "BTC/USDT": "29.6800974700000000",
+            "ETH/USDT": "0.0191475200000000"
+          },
+          "native_cash": "1027.72280965",
+          "native_inventory": {
+            "BTC/USDT": "0.00065",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000350",
+            "ETH/USDT": "0.00007400"
+          },
+          "ideal_native_cash": "1027.722809644",
+          "native_cash_residual": "6E-9",
+          "native_profit_residual": "6E-9",
+          "precision_rejection_bound": "1.0324169668937742837031173123001265276798754880132E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 452425,
+          "side": "buy",
+          "gross_amount": "0.009",
+          "price": "3190.07",
+          "model_cash": "999.1302862700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00064650",
+            "ETH/USDT": "0.00900800"
+          },
+          "model_basis": {
+            "BTC/USDT": "29.6800974700000000",
+            "ETH/USDT": "28.7297775200000000"
+          },
+          "native_cash": "999.0121796499999",
+          "native_inventory": {
+            "BTC/USDT": "0.00065",
+            "ETH/USDT": "0.0091"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000350",
+            "ETH/USDT": "0.00009200"
+          },
+          "ideal_native_cash": "999.012179644",
+          "native_cash_residual": "5.9999E-9",
+          "native_profit_residual": "6E-9",
+          "precision_rejection_bound": "1.0496239262208758463914913145520564348155110254741E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 454393,
+          "side": "sell",
+          "gross_amount": "0.00064",
+          "price": "60870.77",
+          "model_cash": "1038.0096644800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000650",
+            "ETH/USDT": "0.00900800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2984077900000000",
+            "ETH/USDT": "28.7297775200000000"
+          },
+          "native_cash": "1037.8329848853848",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0091"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000350",
+            "ETH/USDT": "0.00009200"
+          },
+          "ideal_native_cash": "1037.8329848786092307692307692307692307692307692308",
+          "native_cash_residual": "6.7755692307692307692307692307692307692307692307692E-9",
+          "native_profit_residual": "6.7753846153846153846153846153846153846153846153846E-9",
+          "precision_rejection_bound": "1.5729799692238025994001358277385137303068005619820E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 454441,
+          "side": "sell",
+          "gross_amount": "0.009",
+          "price": "4566.95",
+          "model_cash": "1079.0300093800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000650",
+            "ETH/USDT": "0.00000800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2984077900000000",
+            "ETH/USDT": "0.0255149100000000"
+          },
+          "native_cash": "1078.7963941474725",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000350",
+            "ETH/USDT": "0.00009200"
+          },
+          "ideal_native_cash": "1078.7963941427850549450549450549450549450549450549",
+          "native_cash_residual": "4.6874450549450549450549450549450549450549450549451E-9",
+          "native_profit_residual": "4.6874625274725274725274725274725274725274725274725E-9",
+          "precision_rejection_bound": "2.1028122394378418334404367459835341090847503137907E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 457921,
+          "side": "buy",
+          "gross_amount": "0.0009",
+          "price": "47454.77",
+          "model_cash": "1036.3207163800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00090470",
+            "ETH/USDT": "0.00000800"
+          },
+          "model_basis": {
+            "BTC/USDT": "43.0077007900000000",
+            "ETH/USDT": "0.0255149100000000"
+          },
+          "native_cash": "1036.0871011474724",
+          "native_inventory": {
+            "BTC/USDT": "0.00091",
+            "ETH/USDT": "0.0001"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000530",
+            "ETH/USDT": "0.00009200"
+          },
+          "ideal_native_cash": "1036.0871011427850549450549450549450549450549450549",
+          "native_cash_residual": "4.6873450549450549450549450549450549450549450549451E-9",
+          "native_profit_residual": "4.6874625274725274725274725274725274725274725274725E-9",
+          "precision_rejection_bound": "2.1399737612772459936608805520029827912133572568087E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458017,
+          "side": "buy",
+          "gross_amount": "0.0123",
+          "price": "3515.54",
+          "model_cash": "993.0795743800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00090470",
+            "ETH/USDT": "0.01228340"
+          },
+          "model_basis": {
+            "BTC/USDT": "43.0077007900000000",
+            "ETH/USDT": "43.2666569100000000"
+          },
+          "native_cash": "992.8459591474724",
+          "native_inventory": {
+            "BTC/USDT": "0.00091",
+            "ETH/USDT": "0.0124"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000530",
+            "ETH/USDT": "0.00011660"
+          },
+          "ideal_native_cash": "992.84595914278505494505494505494505494505494505495",
+          "native_cash_residual": "4.6873450549450549450549450549450549450549450549451E-9",
+          "native_profit_residual": "4.6874625274725274725274725274725274725274725274725E-9",
+          "precision_rejection_bound": "2.1851215641666868522244078377896588050346264671511E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458137,
+          "side": "sell",
+          "gross_amount": "0.0009",
+          "price": "42842.82",
+          "model_cash": "1031.5609953000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000470",
+            "ETH/USDT": "0.01228340"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2234289800000000",
+            "ETH/USDT": "43.2666569100000000"
+          },
+          "native_cash": "1031.241995005114",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0124"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000530",
+            "ETH/USDT": "0.00011660"
+          },
+          "ideal_native_cash": "1031.2419950009297717666948436179205409974640743872",
+          "native_cash_residual": "4.1842282333051563820794590025359256128486897717667E-9",
+          "native_profit_residual": "4.1843448858833474218089602704987320371935756551141E-9",
+          "precision_rejection_bound": "2.7372839981136840046629610273325583469578762642981E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458137,
+          "side": "sell",
+          "gross_amount": "0.0122",
+          "price": "3149.98",
+          "model_cash": "1069.9138917800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000470",
+            "ETH/USDT": "0.00008340"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.2234289800000000",
+            "ETH/USDT": "0.2937655100000000"
+          },
+          "native_cash": "1069.5091816693503",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000530",
+            "ETH/USDT": "0.00011660"
+          },
+          "ideal_native_cash": "1069.5091816658212995937065415973604559212499659150",
+          "native_cash_residual": "3.5290004062934584026395440787500340850216780737873E-9",
+          "native_profit_residual": "3.5289035530226597224115834537670765958607149674147E-9",
+          "precision_rejection_bound": "3.2981472712619369300781537508977070710623228664690E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458161,
+          "side": "buy",
+          "gross_amount": "0.00103",
+          "price": "43379.47",
+          "model_cash": "1025.2330376800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00103264",
+            "ETH/USDT": "0.00008340"
+          },
+          "model_basis": {
+            "BTC/USDT": "44.9042830800000000",
+            "ETH/USDT": "0.2937655100000000"
+          },
+          "native_cash": "1024.8283275693502",
+          "native_inventory": {
+            "BTC/USDT": "0.00104",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000736",
+            "ETH/USDT": "0.00011660"
+          },
+          "ideal_native_cash": "1024.8283275658212995937065415973604559212499659150",
+          "native_cash_residual": "3.5289004062934584026395440787500340850216780737873E-9",
+          "native_profit_residual": "3.5289035530226597224115834537670765958607149674147E-9",
+          "precision_rejection_bound": "3.3714132887844592175101838892584227457212241563697E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458185,
+          "side": "sell",
+          "gross_amount": "0.00103",
+          "price": "42384.1",
+          "model_cash": "1068.8013494300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000264",
+            "ETH/USDT": "0.00008340"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1148002300000000",
+            "ETH/USDT": "0.2937655100000000"
+          },
+          "native_cash": "1068.3071972611608",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000736",
+            "ETH/USDT": "0.00011660"
+          },
+          "ideal_native_cash": "1068.3071972581976784219788609939402075305873740690",
+          "native_cash_residual": "2.9631215780211390060597924694126259310454767603078E-9",
+          "native_profit_residual": "2.9631105885906420359560271757255914537838569142253E-9",
+          "precision_rejection_bound": "3.9551191862563494312470372697171997295474779658306E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458305,
+          "side": "buy",
+          "gross_amount": "0.0111",
+          "price": "3122.66",
+          "model_cash": "1034.1398234300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000264",
+            "ETH/USDT": "0.01116120"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1148002300000000",
+            "ETH/USDT": "34.9552915100000000"
+          },
+          "native_cash": "1033.6456712611607",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0113"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000736",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "1033.6456712581976784219788609939402075305873740690",
+          "native_cash_residual": "2.9630215780211390060597924694126259310454767603078E-9",
+          "native_profit_residual": "2.9631105885906420359560271757255914537838569142253E-9",
+          "precision_rejection_bound": "4.0446682267831180425904922578054571201136456284930E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458353,
+          "side": "buy",
+          "gross_amount": "0.00097",
+          "price": "40608.68",
+          "model_cash": "994.7494038300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00097070",
+            "ETH/USDT": "0.01116120"
+          },
+          "model_basis": {
+            "BTC/USDT": "39.5052198300000000",
+            "ETH/USDT": "34.9552915100000000"
+          },
+          "native_cash": "994.2552516611609",
+          "native_inventory": {
+            "BTC/USDT": "0.00098",
+            "ETH/USDT": "0.0113"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000930",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "994.25525165819767842197886099394020753058737406895",
+          "native_cash_residual": "2.9632215780211390060597924694126259310454767603078E-9",
+          "native_profit_residual": "2.9631105885906420359560271757255914537838569142253E-9",
+          "precision_rejection_bound": "4.1484290276289483962592215764675697238571366501198E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458617,
+          "side": "sell",
+          "gross_amount": "0.00097",
+          "price": "38133.71",
+          "model_cash": "1031.6651231300000000",
+          "model_inventory": {
+            "BTC/USDT": "7.0E-7",
+            "ETH/USDT": "0.01116120"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0284883700000000",
+            "ETH/USDT": "34.9552915100000000"
+          },
+          "native_cash": "1031.0921345023937",
+          "native_inventory": {
+            "BTC/USDT": "0.00001",
+            "ETH/USDT": "0.0113"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00000930",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "1031.0921344990952124765005981627006826550282031348",
+          "native_cash_residual": "3.2984875234994018372993173449717968651711265000138E-9",
+          "native_profit_residual": "3.2985592732003204869579898308702294507343765069379E-9",
+          "precision_rejection_bound": "4.7624592202401478038296661800096868939108873029819E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458641,
+          "side": "buy",
+          "gross_amount": "0.00102",
+          "price": "39433.14",
+          "model_cash": "991.4433203300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00101866",
+            "ETH/USDT": "0.01116120"
+          },
+          "model_basis": {
+            "BTC/USDT": "40.2502911700000000",
+            "ETH/USDT": "34.9552915100000000"
+          },
+          "native_cash": "990.8703317023937",
+          "native_inventory": {
+            "BTC/USDT": "0.00103",
+            "ETH/USDT": "0.0113"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "990.87033169909521247650059816270068265502820313483",
+          "native_cash_residual": "3.2984875234994018372993173449717968651711265000138E-9",
+          "native_profit_residual": "3.2985592732003204869579898308702294507343765069379E-9",
+          "precision_rejection_bound": "4.8919114352301292512335361387655983784054573524330E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 458689,
+          "side": "sell",
+          "gross_amount": "0.00101",
+          "price": "38593.59",
+          "model_cash": "1030.3448871700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.01116120"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "34.9552915100000000"
+          },
+          "native_cash": "1029.692219988869",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0113"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "1029.6922199879222619149458684513649613045696428041",
+          "native_cash_residual": "9.4673808505413154863503869543035719590345465772682E-10",
+          "native_profit_residual": "9.4678061211990586615438641060895514763078352113705E-10",
+          "precision_rejection_bound": "5.5338394245012950597539312518518611425258663549617E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 458689,
+          "side": "sell",
+          "gross_amount": "0.0111",
+          "price": "2822.85",
+          "model_cash": "1061.6158549000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.00006120"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "0.1916697000000000"
+          },
+          "native_cash": "1060.893711408232",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00013880"
+          },
+          "ideal_native_cash": "1060.8937114121835356112752313522379963483155058477",
+          "native_cash_residual": "-3.9515356112752313522379963483155058477043791299528E-9",
+          "native_profit_residual": "-3.9513412488909074712361705060684296998939441063596E-9",
+          "precision_rejection_bound": "6.1812219114211701571044704876303071344171664439228E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461233,
+          "side": "buy",
+          "gross_amount": "0.0146",
+          "price": "1988.67",
+          "model_cash": "1032.5812729000000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.01463200"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "29.2262517000000000"
+          },
+          "native_cash": "1031.859129408232",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0148"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00016800"
+          },
+          "ideal_native_cash": "1031.8591294121835356112752313522379963483155058477",
+          "native_cash_residual": "-3.9515356112752313522379963483155058477043791299528E-9",
+          "native_profit_residual": "-3.9513412488909074712361705060684296998939441063596E-9",
+          "precision_rejection_bound": "6.3387618102745522483945542329702646953872139102562E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461257,
+          "side": "sell",
+          "gross_amount": "0.0146",
+          "price": "1955.07",
+          "model_cash": "1061.0682068500000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.00003200"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "0.0639174500000000"
+          },
+          "native_cash": "1060.2875440070816",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0002"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00016800"
+          },
+          "ideal_native_cash": "1060.2875440138458372864230383869990705041941150520",
+          "native_cash_residual": "-6.7642372864230383869990705041941150520343941936247E-9",
+          "native_profit_residual": "-6.7644804979422318865343226012516410692314910059962E-9",
+          "precision_rejection_bound": "7.0086426701948425990695849196324451149642847513778E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461353,
+          "side": "buy",
+          "gross_amount": "0.0166",
+          "price": "1828.18",
+          "model_cash": "1030.7204188500000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.01659880"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "30.4117054500000000"
+          },
+          "native_cash": "1029.9397560070815",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0168"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00020120"
+          },
+          "ideal_native_cash": "1029.9397560138458372864230383869990705041941150520",
+          "native_cash_residual": "-6.7643372864230383869990705041941150520343941936247E-9",
+          "native_profit_residual": "-6.7644804979422318865343226012516410692314910059962E-9",
+          "precision_rejection_bound": "7.1946284455450134718684027090107121085300908213285E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461377,
+          "side": "sell",
+          "gross_amount": "0.0165",
+          "price": "1622.71",
+          "model_cash": "1057.4415844200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.00009880"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "0.1810177000000000"
+          },
+          "native_cash": "1056.6005225315546",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00020120"
+          },
+          "ideal_native_cash": "1056.6005225373368907580798704288072552103030493735",
+          "native_cash_residual": "-5.7822907580798704288072552103030493735212216957045E-9",
+          "native_profit_residual": "-5.7822697980150848324348603618277361341320695479433E-9",
+          "precision_rejection_bound": "7.8891111930908965029798415219042083543614070891587E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 461737,
+          "side": "buy",
+          "gross_amount": "0.0154",
+          "price": "1559.35",
+          "model_cash": "1033.4275944200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000866",
+            "ETH/USDT": "0.01546800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.3421824000000000",
+            "ETH/USDT": "24.1950077000000000"
+          },
+          "native_cash": "1032.5865325315547",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0157"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001134",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1032.5865325373368907580798704288072552103030493735",
+          "native_cash_residual": "-5.7821907580798704288072552103030493735212216957045E-9",
+          "native_profit_residual": "-5.7822697980150848324348603618277361341320695479433E-9",
+          "precision_rejection_bound": "8.0925595630067627260126739148927151830776548066341E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 461881,
+          "side": "buy",
+          "gross_amount": "0.00201",
+          "price": "21283.91",
+          "model_cash": "990.6469353200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00201464",
+            "ETH/USDT": "0.01546800"
+          },
+          "model_basis": {
+            "BTC/USDT": "43.1228415000000000",
+            "ETH/USDT": "24.1950077000000000"
+          },
+          "native_cash": "989.8058734315546",
+          "native_inventory": {
+            "BTC/USDT": "0.00203",
+            "ETH/USDT": "0.0157"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001536",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "989.80587343733689075807987042880725521030304937352",
+          "native_cash_residual": "-5.7822907580798704288072552103030493735212216957045E-9",
+          "native_profit_residual": "-5.7822697980150848324348603618277361341320695479433E-9",
+          "precision_rejection_bound": "8.3456716165816313163723372067143749571850642430424E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 461977,
+          "side": "sell",
+          "gross_amount": "0.00201",
+          "price": "20174.25",
+          "model_cash": "1031.1160773300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000464",
+            "ETH/USDT": "0.01546800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0993179900000000",
+            "ETH/USDT": "24.1950077000000000"
+          },
+          "native_cash": "1030.188734852335",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0157"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001536",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1030.1887348542953297120990382899028529285450460934",
+          "native_cash_residual": "-1.9603297120990382899028529285450460933693221727371E-9",
+          "native_profit_residual": "-1.9601817616181832413293172010680927780304085412756E-9",
+          "precision_rejection_bound": "9.1137636343260081130499642887799426487058026551644E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462001,
+          "side": "buy",
+          "gross_amount": "0.00177",
+          "price": "20182.62",
+          "model_cash": "995.3928399300000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00177110",
+            "ETH/USDT": "0.01546800"
+          },
+          "model_basis": {
+            "BTC/USDT": "35.8225553900000000",
+            "ETH/USDT": "24.1950077000000000"
+          },
+          "native_cash": "994.4654974523351",
+          "native_inventory": {
+            "BTC/USDT": "0.00179",
+            "ETH/USDT": "0.0157"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001890",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "994.46549745429532971209903828990285292854504609337",
+          "native_cash_residual": "-1.9602297120990382899028529285450460933693221727371E-9",
+          "native_profit_residual": "-1.9601817616181832413293172010680927780304085412756E-9",
+          "precision_rejection_bound": "9.3907210995915823259936084543794193921558634827097E-8",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462025,
+          "side": "sell",
+          "gross_amount": "0.00177",
+          "price": "19763.71",
+          "model_cash": "1030.3046430900000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000110",
+            "ETH/USDT": "0.01546800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0222487800000000",
+            "ETH/USDT": "24.1950077000000000"
+          },
+          "native_cash": "1029.3058035073707",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0157"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001890",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1029.3058035096452584869322127923300421664965641133",
+          "native_cash_residual": "-2.2745584869322127923300421664965641132927838467377E-9",
+          "native_profit_residual": "-2.2745019530386089573511254147786207596847072156034E-9",
+          "precision_rejection_bound": "1.0184671273090443519202871383652461750796559558782E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 462167,
+          "side": "sell",
+          "gross_amount": "0.0154",
+          "price": "1242.39",
+          "model_cash": "1049.3991834700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000110",
+            "ETH/USDT": "0.00006800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0222487800000000",
+            "ETH/USDT": "0.1063654400000000"
+          },
+          "native_cash": "1048.352156470062",
+          "native_inventory": {
+            "BTC/USDT": "0.00002",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00001890",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1048.3521564692998760010764110707826722122106088018",
+          "native_cash_residual": "7.6212399892358892921732778778939119817114534430798E-10",
+          "native_profit_residual": "7.6212346071805353788122168248499028374381749829816E-10",
+          "precision_rejection_bound": "1.0957129258389652305738397272670884472812274140278E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462217,
+          "side": "buy",
+          "gross_amount": "0.00164",
+          "price": "19169.88",
+          "model_cash": "1017.9605802700000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00163782",
+            "ETH/USDT": "0.00006800"
+          },
+          "model_basis": {
+            "BTC/USDT": "31.4608519800000000",
+            "ETH/USDT": "0.1063654400000000"
+          },
+          "native_cash": "1016.913553270062",
+          "native_inventory": {
+            "BTC/USDT": "0.00166",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002218",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1016.9135532692998760010764110707826722122106088018",
+          "native_cash_residual": "7.6212399892358892921732778778939119817114534430798E-10",
+          "native_profit_residual": "7.6212346071805353788122168248499028374381749829816E-10",
+          "precision_rejection_bound": "1.1277486618170365442705011815039309768979000926151E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462241,
+          "side": "sell",
+          "gross_amount": "0.00163",
+          "price": "18939.47",
+          "model_cash": "1048.7701736900000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000782",
+            "ETH/USDT": "0.00006800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.1502142300000000",
+            "ETH/USDT": "0.1063654400000000"
+          },
+          "native_cash": "1047.6606125509481",
+          "native_inventory": {
+            "BTC/USDT": "0.00003",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002218",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1047.6606125489781033777218271380276270720422130110",
+          "native_cash_residual": "1.9699966222781728619723729279577869889786108502053E-9",
+          "native_profit_residual": "1.9702177613646038481588369068512814782840359528679E-9",
+          "precision_rejection_bound": "1.2115153327560398349386546166711097948185569097027E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462481,
+          "side": "buy",
+          "gross_amount": "0.00188",
+          "price": "20206.17",
+          "model_cash": "1010.7825740900000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00188406",
+            "ETH/USDT": "0.00006800"
+          },
+          "model_basis": {
+            "BTC/USDT": "38.1378138300000000",
+            "ETH/USDT": "0.1063654400000000"
+          },
+          "native_cash": "1009.6730129509482",
+          "native_inventory": {
+            "BTC/USDT": "0.00191",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002594",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1009.6730129489781033777218271380276270720422130110",
+          "native_cash_residual": "1.9700966222781728619723729279577869889786108502053E-9",
+          "native_profit_residual": "1.9702177613646038481588369068512814782840359528679E-9",
+          "precision_rejection_bound": "1.2494180604799003871634707220062027461172587180053E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "BTC/USDT",
+          "hour": 462505,
+          "side": "sell",
+          "gross_amount": "0.00188",
+          "price": "20242.49",
+          "model_cash": "1048.7623435200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000406",
+            "ETH/USDT": "0.00006800"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0821839700000000",
+            "ETH/USDT": "0.1063654400000000"
+          },
+          "native_cash": "1047.5768676551968",
+          "native_inventory": {
+            "BTC/USDT": "0.00003",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002594",
+            "ETH/USDT": "0.00023200"
+          },
+          "ideal_native_cash": "1047.5768676573896062923278084010580499204970687838",
+          "native_cash_residual": "-2.1928062923278084010580499204970687838021873206961E-9",
+          "native_profit_residual": "-2.1927464562320089300830101690314606848958476687433E-9",
+          "precision_rejection_bound": "1.3395966629111126481873657983648555704043998065301E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 464185,
+          "side": "buy",
+          "gross_amount": "0.0336",
+          "price": "1306.37",
+          "model_cash": "1004.8683115200000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000406",
+            "ETH/USDT": "0.03360080"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0821839700000000",
+            "ETH/USDT": "44.0003974400000000"
+          },
+          "native_cash": "1003.6828356551968",
+          "native_inventory": {
+            "BTC/USDT": "0.00003",
+            "ETH/USDT": "0.0339"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002594",
+            "ETH/USDT": "0.00029920"
+          },
+          "ideal_native_cash": "1003.6828356573896062923278084010580499204970687838",
+          "native_cash_residual": "-2.1928062923278084010580499204970687838021873206961E-9",
+          "native_profit_residual": "-2.1927464562320089300830101690314606848958476687433E-9",
+          "precision_rejection_bound": "1.3841329648947434114081678856640778410276375279527E-7",
+          "residual_gate": "PASS"
+        },
+        {
+          "symbol": "ETH/USDT",
+          "hour": 464209,
+          "side": "sell",
+          "gross_amount": "0.0336",
+          "price": "1271.88",
+          "model_cash": "1047.5180091800000000",
+          "model_inventory": {
+            "BTC/USDT": "0.00000406",
+            "ETH/USDT": "8.0E-7"
+          },
+          "model_basis": {
+            "BTC/USDT": "0.0821839700000000",
+            "ETH/USDT": "0.0010476100000000"
+          },
+          "native_cash": "1046.2445917312102",
+          "native_inventory": {
+            "BTC/USDT": "0.00003",
+            "ETH/USDT": "0.0003"
+          },
+          "cumulative_base_fee": {
+            "BTC/USDT": "0.00002594",
+            "ETH/USDT": "0.00029920"
+          },
+          "ideal_native_cash": "1046.2445917339975795991173987137554458344931565332",
+          "native_cash_residual": "-2.7873795991173987137554458344931565332188129839422E-9",
+          "native_profit_residual": "-2.7873791578167555914783630810714231426253049550397E-9",
+          "precision_rejection_bound": "1.4808636587183799732863842895126478114719389478443E-7",
+          "residual_gate": "PASS"
+        }
+      ]
+    }
+  },
+  "budget": {
+    "global_limit": 96,
+    "old_consumed": 30,
+    "new_consumed": 2,
+    "new_succeeded": 2,
+    "new_failed": 0,
+    "total_consumed": 32,
+    "old_sealed": 10,
+    "issue139_pending": 6,
+    "unallocated": 48,
+    "new_gets": 0,
+    "acquisition_gets_cumulative": 112
+  },
+  "qualification": false,
+  "interpretation": "Already exposed data; model changed after seeing V2. Positive modeled development result is not independent confirmation or strict historical settlement proof. No automatic continuation or promotion.",
+  "global_checkpoint": {
+    "record": {
+      "record_type": "ISSUE139_V3_DEVELOPMENT_DIAGNOSTIC_CHECKPOINT",
+      "at_utc": "2026-09-08T06:03:34.361142+00:00",
+      "authorization_reference": "https://github.com/He1met/freqtrade-lab/issues/139#issuecomment-5580040706",
+      "previous_prefix_sha256": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8",
+      "ancestor_sha256": {
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/btc-eth-portfolio-v1/calls.jsonl": "ceaeda2f0170293b70a04e128b2adadc3bf022d2c9ff441a0f557b63828af738",
+        "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v1/calls.jsonl": "1306dc22add649875cfd998cf6e4e1b4215b07b397562fd11268e93c2849d6d0",
+        "/Users/shenjianpeng/Documents/freqtrade-lab-local/search-research-supervision-20260902/global-research-ledger.jsonl": "f2a6008323ddc1bfcafca71949a30b8da62ef65e12ced2649cfac56f140e7dc8"
+      },
+      "v3_calls_path": "/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue139-spot-native-v3/calls.jsonl",
+      "v3_calls_sha256": "096b1f8d2bc46c81e4d97bfd8555fea1a2cc39ec30aafa100ecea5d459dc365c",
+      "manifest_sha256": "63c34e6d64c545ba34abaf7f05737d86087dc9fdbff3c2bb5bc9f90c4827bb10",
+      "grant_sha256": "671a014ca48043ef5d4d0f3bc5f699879c5862f8be9ffd3863cb27e89c1d3f56",
+      "analysis_sha256": "48982871c7c72d21e991aac376dce97485c69b938ea982940b24598277d4016f",
+      "result_sha256": {
+        "base": "c9fda277a20c94d3862791928705d408cfd0a8388ff5c3373c7848abad7d0d4d",
+        "stress": "f72fc2b090f44988aa706e91a85c8708caba224345e4e8d689f82395c0efd15e"
+      },
+      "old_consumed": 30,
+      "new_reserved": 2,
+      "new_succeeded": 2,
+      "new_failed": 0,
+      "total_consumed": 32,
+      "old_sealed": 10,
+      "issue139_pending": 6,
+      "unallocated": 48,
+      "global_limit": 96,
+      "new_gets": 0,
+      "acquisition_gets_cumulative": 112,
+      "qualification": false,
+      "evidence_grade": "DEVELOPMENT_DIAGNOSTIC"
+    },
+    "record_sha256": "3a6a6003c44bd824d0c9695843f58918c7e020a05a0276a3d698da0fa0ee566e",
+    "previous_prefix_bytes": 205356,
+    "global_after_sha256": "f98fcacfe8a189138c5b0a98f23536aa0ed2225442ffcfd21ab96064f9a767ee",
+    "all_ancestor_calls_unchanged": true
+  },
+  "raw_artifact_policy": "Native results and hourly logs remain outside Git; this is a sanitized derived receipt with hashes and selected per-order accounting."
+}
