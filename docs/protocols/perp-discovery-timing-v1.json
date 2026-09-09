@@ -1,0 +1,31 @@
+{
+  "policy_id": "PERP_DISCOVERY_TIMING_V1",
+  "issue": 162,
+  "authority": "2026-09-09 user-approved supervisor delegation: improve phase measurement without increasing discovery budgets or refunding historical charges.",
+  "base_policy": "docs/protocols/perp-continuous-discovery-v1.json",
+  "base_policy_sha256": "74a12988f8359ae18a2df554e18bdf667b93ece826f2b69b5a0a0d1fee63ba26",
+  "entrypoint": "scripts/perp_discovery_timing.py",
+  "scope": "Prospective append-only phase observations. No scheduler, budget, data or market execution mutation.",
+  "phases": {
+    "SEARCH_READ": "Query/source-action preparation, calls including waits/failures, reading, extraction and mechanism judgment; charged as discovery work.",
+    "REPORT": "Organize existing discovery findings, mechanism cards and terminal receipts; separately displayed but still charged as discovery work. New source interpretation returns to SEARCH_READ.",
+    "MAINTENANCE_WAIT": "A prospective phase boundary before necessary maintenance or its known waiting interval; no discovery may run during it. Record receipt evidence; no automatic exclusion.",
+    "USER_IDLE": "Explicitly waiting for user input with discovery stopped; ordinary reasoning, tool latency and report preparation are never user idle. Record evidence; no automatic exclusion."
+  },
+  "time_source": "Real UTC and monotonic nanoseconds with boot/source identity, recorded by the CLI; no backdated timestamp option. Monotonic time is elapsed time, not CPU usage.",
+  "continuity": "Each phase marker closes the preceding phase and opens the next at the same instant. Finish is terminal. No unrecorded gap is inferred as idle.",
+  "conservative_charge": "Preserve actual UTC elapsed and monotonic elapsed for every interval. If clocks agree within 2 seconds on the same verified boot, charge max(UTC elapsed, monotonic elapsed); phase_wall_seconds remains the UTC observation, phase_conservative_seconds is the charging basis. All reliable intervals remain charged by default, including waits. The helper never refunds or mutates the budget.",
+  "wait_exclusion": "The existing policy permits exclusion only when prospective start/end and independently verified maintenance/user-wait receipts cover the interval and no discovery overlapped. The helper never applies a refund, edits a budget ledger, or reclassifies old time. Unverified intervals remain charged/reserved.",
+  "unknown": "Open intervals, inconsistent UTC/monotonic clocks, boot changes, corrupt logs or reference drift require reconciliation. Preserve unknown/null and pending reservations; known closed subtotals do not imply a complete batch or released budget.",
+  "historical_ledger": "Keep the existing 1059.921780 legacy proxy plus 91.806242 and 33.149510 seconds unchanged. No evidence-backed retrospective phase split exists; no refund authorized.",
+  "engineering_boundary": "This separately authorized meter implementation/acceptance is engineering work with its own reference and observations, not a new source-validation batch. Do not move an unfinished discovery report into engineering to stop its clock. Post-terminal git/scheduler delivery cannot retroactively shorten the completed batch.",
+  "future_usage": "Begin the timing sidecar immediately with the exclusive new discovery starter, before query design. Record phase changes before the relevant work. Close REPORT only after its compact terminal content is ready; retain timing sidecar SHA with the delivery. Keep search/page operation events and all prior day usage independently.",
+  "daily_budget_unchanged": {
+    "queries": 12,
+    "page_open_attempts": 16,
+    "charged_seconds": 1200
+  },
+  "cpu_seconds": null,
+  "model_money_cost": null,
+  "additional_budget_authorized": false
+}

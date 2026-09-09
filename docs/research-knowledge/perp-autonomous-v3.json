@@ -172,14 +172,15 @@
     "daily_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
     "last_local_day": "2026-09-09",
     "last_status": "BLOCKED_SOURCE",
-    "latest_report": "docs/research/perp-continuous-discovery-automatic-v1.md",
+    "latest_report": "docs/research/perp-discovery-timing-v1.md",
     "next_budget_recheck": "2026-09-10T00:00:00+08:00",
     "next_regular_after": null,
-    "next_source_question": "Locate an authoritative readable liquidation-event schema and historical coverage statement for BTC/ETH USD-M before assessing any one-hour mechanism.",
+    "next_source_question": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
     "next_status": "WAIT_DISCOVERY_BUDGET",
     "pages_opened": 5,
     "queries_used": 4,
     "report": "docs/discovery/perp-funding-change-review-v1.md",
+    "research_branch_status": "BLOCKED_DATA",
     "supplemental_new_information": "The selected funding-change card became a genuine negative terminal in round005; one separately registered supplemental slot was then used.",
     "supplemental_pages_opened": 5,
     "supplemental_queries_used": 3,
@@ -187,6 +188,8 @@
     "supplemental_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
     "supplemental_reuses_daily": false,
     "supplemental_status": "COMPLETED_NO_DEFENSIBLE_HYPOTHESIS",
+    "timing_policy_path": "docs/protocols/perp-discovery-timing-v1.json",
+    "timing_policy_sha256": "416c7dac9667597516459b8f4e4c45037d44409a5310753eb96b9775eb47c3f9",
     "total_pages_today": 13,
     "total_queries_today": 9,
     "unique_card": null
@@ -200,7 +203,7 @@
     "exploration_status": "NONE",
     "maximum_open_confirmation": 1,
     "maximum_open_exploration": 1,
-    "next_condition": "Continue hourly capture and fixed confirmation observation. At the next actual local budget boundary, locate the current official liquidation-event document or official repository copy before retrying this source; do not repeat the unchanged portal URL. No daily batch-count or 09:00 gate.",
+    "next_condition": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
     "policy_path": "docs/protocols/perp-dispatch-policy-v1.json",
     "priority_exploration": null,
     "reason": "WAIT_DISCOVERY_BUDGET",
@@ -268,8 +271,8 @@
     "task_id": "perp-round-005-funding-change-v1",
     "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
   },
-  "latest_delivery_report": "docs/research/perp-continuous-discovery-automatic-v1.md",
-  "latest_delivery_summary": "docs/research/perp-continuous-discovery-automatic-v1.summary.json",
+  "latest_delivery_report": "docs/research/perp-discovery-timing-v1.md",
+  "latest_delivery_summary": "docs/research/perp-discovery-timing-v1.summary.json",
   "latest_report": "docs/research/perp-funding-change-v1.md",
   "latest_summary": "docs/research/perp-funding-change-v1.summary.json",
   "lessons": [
@@ -357,26 +360,42 @@
       "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/discovery-budget.json",
       "sha256": "5d4019677e3808b1bde6fe93aac30f8f080144f880f314c81b700cfd89f2a0b1"
     },
+    "current_gap": "No liquidation event records in admitted manifest; hourly original mechanism evidence and free historical event coverage/availability remain UNKNOWN. Only existing metadata and prior returned portal evidence were inspected this turn.",
+    "development_manifest": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/development-admissions/flow-reversal-v1.json",
+      "sha256": "06db3dc5a3eefa62826b83cae8f8be6b08e258a694aceff5b14b4512523dbf4c"
+    },
     "earliest_recheck_at": "2026-09-10T00:00:00+08:00",
     "formal_confirmation_unchanged": true,
-    "last_batch": {
+    "if_data_still_missing": "Record BLOCKED_DATA, stop this data-dependent research branch and retain a precise reopening prerequisite; move only to one distinct unsearched defensible question, or keep the exploration slot empty.",
+    "native_calls": 0,
+    "native_task_created": false,
+    "new_external_pages": 0,
+    "new_external_queries": 0,
+    "next_condition": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
+    "next_provider_trigger_at": null,
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/next-review.json",
+    "previous_review": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/next-review.json",
+      "sha256": "4410c22b7681220d18ded318f6fa15d4daa8ea5cd9322ceed90878e47a992f02"
+    },
+    "proposed_check": {
+      "additional_budget_authorized": false,
+      "additional_time_needed_if_immediate": 224.877532,
+      "completion_guaranteed": false,
+      "max_charged_seconds": 240,
+      "max_page_attempts": 3,
+      "max_queries": 2
+    },
+    "reason": "Preserved remaining 15.122468 seconds cannot cover the proposed bounded source-and-mechanism check; no budget increase or retrospective refund authorized.",
+    "recorded_at": "2026-09-09T05:09:57.622093+00:00",
+    "research_branch_status": "BLOCKED_DATA",
+    "selected_card": null,
+    "sha256": "fc182e4d7c98cfee7363382aa0b1803c8106e4c224dbe5c6165e7916b7c6cdf1",
+    "source_evidence": {
       "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
       "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
     },
-    "native_task_created": false,
-    "next_condition": "Continue hourly capture and fixed confirmation observation. At the next actual local budget boundary, locate the current official liquidation-event document or official repository copy before retrying this source; do not repeat the unchanged portal URL. No daily batch-count or 09:00 gate.",
-    "next_provider_trigger_at": null,
-    "next_source_question": "Locate an authoritative readable liquidation-event schema and historical coverage statement for BTC/ETH USD-M before assessing any one-hour mechanism.",
-    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/next-review.json",
-    "previous_review": {
-      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/next-review.json",
-      "sha256": "88978a9d16c657945484e0194bbe7452a9b0cdca6611ed6072ab72b638f3aa79"
-    },
-    "reason": "Remaining time is 15.122468 seconds, below the 33.149510 seconds just consumed by one source-open/review/receipt operation. No further URL-location-plus-reading operation can be prudently reserved within the current remaining time; query/page caps are not exhausted.",
-    "recorded_at": "2026-09-09T04:30:23.724548+00:00",
-    "selected_card": null,
-    "sha256": "4410c22b7681220d18ded318f6fa15d4daa8ea5cd9322ceed90878e47a992f02",
-    "source_blocker": "The requested Binance liquidation document redirected to a generic portal; its schema and historical event coverage remain UNKNOWN.",
     "source_status": "BLOCKED_SOURCE_CONTENT",
     "status": "WAIT_DISCOVERY_BUDGET"
   },
@@ -384,7 +403,7 @@
   "scheduler_id": "freqtrade-lab-2",
   "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
   "schema": "research-knowledge-v1",
-  "snapshot_at": "2026-09-09T04:30:23.725101+00:00",
+  "snapshot_at": "2026-09-09T05:17:51.295734+00:00",
   "terminal": {
     "acceptance_native_calls_cumulative": 1,
     "actual_market_native_calls_on_date": 5,
