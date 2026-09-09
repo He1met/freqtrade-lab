@@ -126,6 +126,34 @@
     "variants": 0
   },
   "current_issue": 162,
+  "daily_checkpoint": {
+    "formal_phase": "PRE_CONFIRMATION",
+    "heartbeat": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T115555975Z/summary.json",
+      "sha256": "64eb26f15181393b49b1fd6f697d4f3333e9237844cd70d2efe36dbf6da7191d"
+    },
+    "last_complete_capture_end": "2026-09-09T11:00:00Z",
+    "latest_observer_health": {
+      "intent_sha256": "5a5685b9ad8412cfc8db8b73a1e237037908c29dd971e460726b4a645db827e8",
+      "latest_slot": "20260909T1200Z",
+      "planned_entry": "2026-09-09T12:00:00+00:00",
+      "published_observed_at": "2026-09-09T11:25:29.483682+00:00",
+      "receipt_sha256": "5bcf0aea4ca920d5f3af5a125847636c7be933a27dba89f5218d101f8eaef5fd",
+      "status": "TIMELY_COMPLETE",
+      "timely_pair_count": 2
+    },
+    "note": "Dated daily metadata checkpoint; historical per-delivery fields and economic report remain intact.",
+    "observed_at": "2026-09-09T12:02:20.363348+00:00",
+    "observer_recorded_hour_slots": 20,
+    "report_day": "2026-09-09",
+    "report_sha256": "b55b322bdf5e765f42a464cc155195f2be3575f4c738cc9f295460b190270da0",
+    "runtime_report": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909-supplement-v2.md",
+    "runtime_summary": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909-supplement-v2.json",
+      "sha256": "8f8a31417702e3183124725f52f8c3107b03be50671f4997f7efbd8b2d79d07d"
+    },
+    "summary_sha256": "8f8a31417702e3183124725f52f8c3107b03be50671f4997f7efbd8b2d79d07d"
+  },
   "data_collection": {
     "last_complete_end": "2026-09-09T02:00:00Z",
     "latest_capture_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260909T020000Z/update-receipt.json",
@@ -271,6 +299,8 @@
     "task_id": "perp-round-005-funding-change-v1",
     "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
   },
+  "latest_daily_report": "docs/research/perp-daily-20260909-v1.md",
+  "latest_daily_summary": "docs/research/perp-daily-20260909-v1.summary.json",
   "latest_delivery_report": "docs/research/perp-discovery-timing-v1.md",
   "latest_delivery_summary": "docs/research/perp-discovery-timing-v1.summary.json",
   "latest_report": "docs/research/perp-funding-change-v1.md",
@@ -403,7 +433,7 @@
   "scheduler_id": "freqtrade-lab-2",
   "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
   "schema": "research-knowledge-v1",
-  "snapshot_at": "2026-09-09T05:17:51.295734+00:00",
+  "snapshot_at": "2026-09-09T12:11:01.623071+00:00",
   "terminal": {
     "acceptance_native_calls_cumulative": 1,
     "actual_market_native_calls_on_date": 5,

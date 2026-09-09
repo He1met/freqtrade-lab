@@ -1,0 +1,247 @@
+{
+  "checkpoint_observed_at": "2026-09-09T12:02:20.363348+00:00",
+  "completed_rounds_cumulative": 5,
+  "cpu_seconds": null,
+  "daily_base_preserved": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909.json",
+    "sha256": "7ce488ea2b8a0e81fffd728af3a873eea33f313775b305c886bd2725fe137944"
+  },
+  "development_counter_day": "2026-09-09",
+  "development_counter_day_timezone": "UTC",
+  "discovery_inventory": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T072855074Z/discovery-inventory.json",
+    "sha256": "674db580bb82f4d6a6241fd13743aba772a598f61966eb69aced2c46d982a86e"
+  },
+  "discovery_real_phase_measurement_observed": false,
+  "discovery_usage": {
+    "charged_seconds": 1184.877532,
+    "page_count": 13,
+    "pending_reservations": 0,
+    "query_count": 9,
+    "remaining_seconds": 15.122468,
+    "unfinished_starters": 0
+  },
+  "formal_economic_result": null,
+  "heartbeat": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T115555975Z/summary.json",
+    "sha256": "64eb26f15181393b49b1fd6f697d4f3333e9237844cd70d2efe36dbf6da7191d"
+  },
+  "independent_confirmation": false,
+  "model_money_cost": null,
+  "native_calls": {
+    "confirmation": 0,
+    "development_cumulative": 12,
+    "development_today": 4,
+    "engineering_cumulative": 1,
+    "market_retries": 0,
+    "new_calls_for_this_report": 0
+  },
+  "next_budget_recheck": "2026-09-10T00:00:00+08:00",
+  "next_review": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/next-review.json",
+    "sha256": "fc182e4d7c98cfee7363382aa0b1803c8106e4c224dbe5c6165e7916b7c6cdf1"
+  },
+  "observed_at": "2026-09-09T12:11:01.623071+00:00",
+  "profitable_qualified_strategy": false,
+  "report": {
+    "path": "docs/research/perp-daily-20260909-v1.md",
+    "sha256": "b55b322bdf5e765f42a464cc155195f2be3575f4c738cc9f295460b190270da0"
+  },
+  "report_day": "2026-09-09",
+  "report_day_timezone": "Asia/Shanghai",
+  "rounds": [
+    {
+      "incremental_net_usdt": 14.748312587699957,
+      "round": "round-004-flow-reversal-v2",
+      "source": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-004-flow-reversal-v2/summary.json",
+        "sha256": "08727402fcb9d9192901adbfa7b6e37d569864b76f0d7958a78e03fc838b2a8f"
+      },
+      "variants": {
+        "flow_turn": {
+          "by_pair": {
+            "BTC/USDT:USDT": {
+              "funding_usdt": -0.2211280114597024,
+              "net_usdt": -33.60883157,
+              "position_cycles": 182
+            },
+            "ETH/USDT:USDT": {
+              "funding_usdt": 1.628245348944279,
+              "net_usdt": -314.90304547,
+              "position_cycles": 188
+            }
+          },
+          "by_side": {
+            "long": {
+              "funding_usdt": -2.379380418383768,
+              "net_usdt": -147.61984636,
+              "position_cycles": 207
+            },
+            "short": {
+              "funding_usdt": 3.7864977558683446,
+              "net_usdt": -200.89203068,
+              "position_cycles": 163
+            }
+          },
+          "common_72h_entry_clusters": 142,
+          "completed_position_cycles": 370,
+          "conditional_same_fill_stress_net_usdt": -440.84234913051426,
+          "drawdown_duration_hours": 12641,
+          "funding_usdt": 1.407117337484576,
+          "gross_price_effect_usdt": -165.25804999999855,
+          "net_usdt": -348.51187697451417,
+          "observed_hourly_mtm_drawdown": 0.39656078656097415,
+          "slippage_allowance_usdt": 46.16523607800005,
+          "taker_fee_usdt": 138.49570823400015,
+          "turnover_notional_usdt": 230826.18039000023
+        },
+        "shock_rebound": {
+          "by_pair": {
+            "BTC/USDT:USDT": {
+              "funding_usdt": -0.33960454531847856,
+              "net_usdt": -78.90529011,
+              "position_cycles": 201
+            },
+            "ETH/USDT:USDT": {
+              "funding_usdt": 1.965315375104582,
+              "net_usdt": -284.35489953,
+              "position_cycles": 209
+            }
+          },
+          "by_side": {
+            "long": {
+              "funding_usdt": -2.541412646430263,
+              "net_usdt": -162.35417313,
+              "position_cycles": 229
+            },
+            "short": {
+              "funding_usdt": 4.167123476216367,
+              "net_usdt": -200.90601651,
+              "position_cycles": 181
+            }
+          },
+          "common_72h_entry_clusters": 147,
+          "completed_position_cycles": 410,
+          "conditional_same_fill_stress_net_usdt": -466.82019475821414,
+          "drawdown_duration_hours": 12641,
+          "funding_usdt": 1.6257108297861036,
+          "gross_price_effect_usdt": -157.76589000000013,
+          "net_usdt": -363.2601895622141,
+          "observed_hourly_mtm_drawdown": 0.4259087927029981,
+          "slippage_allowance_usdt": 51.780002598000024,
+          "taker_fee_usdt": 155.3400077940001,
+          "turnover_notional_usdt": 258900.0129900001
+        }
+      },
+      "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+    },
+    {
+      "incremental_net_usdt": -311.7969522362439,
+      "round": "round-005-funding-change-v1",
+      "source": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-005-funding-change-v1/summary.json",
+        "sha256": "e16050706b38253482461b842023ff674a78047ea99637336035ef0fc3cf9d78"
+      },
+      "variants": {
+        "change_contrarian": {
+          "by_pair": {
+            "BTC/USDT:USDT": {
+              "funding_usdt": -0.34734346638641017,
+              "net_usdt": -196.31263793,
+              "position_cycles": 758
+            },
+            "ETH/USDT:USDT": {
+              "funding_usdt": 0.5738641803632841,
+              "net_usdt": -276.76554066,
+              "position_cycles": 752
+            }
+          },
+          "by_side": {
+            "long": {
+              "funding_usdt": -5.878013596997407,
+              "net_usdt": -421.61568502,
+              "position_cycles": 789
+            },
+            "short": {
+              "funding_usdt": 6.104534310974281,
+              "net_usdt": -51.46249357,
+              "position_cycles": 721
+            }
+          },
+          "common_72h_entry_clusters": 177,
+          "completed_position_cycles": 1510,
+          "conditional_same_fill_stress_net_usdt": -788.1670881820228,
+          "drawdown_duration_hours": 12849,
+          "funding_usdt": 0.2265207139768733,
+          "gross_price_effect_usdt": 156.87311999999923,
+          "net_usdt": -473.0781785500234,
+          "observed_hourly_mtm_drawdown": 0.4975099569913489,
+          "slippage_allowance_usdt": 157.54445481599987,
+          "taker_fee_usdt": 472.6333644479996,
+          "turnover_notional_usdt": 787722.2740799984
+        },
+        "level_contrarian": {
+          "by_pair": {
+            "BTC/USDT:USDT": {
+              "funding_usdt": 8.384128308095107,
+              "net_usdt": -123.66824928999999,
+              "position_cycles": 807
+            },
+            "ETH/USDT:USDT": {
+              "funding_usdt": 9.691607138120245,
+              "net_usdt": -37.61297701,
+              "position_cycles": 807
+            }
+          },
+          "by_side": {
+            "long": {
+              "funding_usdt": 0.9896399595976185,
+              "net_usdt": -141.40902675,
+              "position_cycles": 376
+            },
+            "short": {
+              "funding_usdt": 17.086095486617737,
+              "net_usdt": -19.872199549999998,
+              "position_cycles": 1238
+            }
+          },
+          "common_72h_entry_clusters": 180,
+          "completed_position_cycles": 1614,
+          "conditional_same_fill_stress_net_usdt": -555.3447271937791,
+          "drawdown_duration_hours": 10633,
+          "funding_usdt": 18.07573544621537,
+          "gross_price_effect_usdt": 608.7700400000059,
+          "net_usdt": -161.28122631377948,
+          "observed_hourly_mtm_drawdown": 0.494738547695293,
+          "slippage_allowance_usdt": 197.0317504400002,
+          "taker_fee_usdt": 591.0952513200006,
+          "turnover_notional_usdt": 985158.752199999
+        }
+      },
+      "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+    }
+  ],
+  "snapshot_git_head": "6fa897e3f38db448452758ddfa16f48331b61252",
+  "status": "DAILY_EVIDENCE_SUPPLEMENT_COMPLETED",
+  "summary_id": "PERP_DAILY_20260909_V1",
+  "superseded_runtime_supplement": {
+    "reason": "Preserve original saved supplement; correct generated status text to exact TIMELY_COMPLETE. Economic values and checkpoint time unchanged.",
+    "report": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909-supplement-v1.md",
+    "sha256": "92cc0a5f9ee2a14073bc27aa198a490b4d91862e5a1006f35959a33200f66967"
+  },
+  "timing_delivery": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/research/perp-discovery-timing-v1.summary.json",
+    "sha256": "8d3ce1511c58cdac70ccd4a0f86441e20002bf8384e5be567c6162743544adf3"
+  },
+  "validation": {
+    "actual_entrypoint_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "all_19_frozen_code_bindings_match": true,
+    "entire_discovery_inventory_unchanged": true,
+    "source_sha_matches": true,
+    "tests_not_repeated": "Evidence and index only; no research code or frozen policy changed."
+  }
+}
