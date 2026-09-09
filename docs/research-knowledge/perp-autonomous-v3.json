@@ -139,13 +139,29 @@
     "v3_actual_entrypoint": "CANDIDATE_REQUIRED_COMPLETE_17_GET"
   },
   "discovery": {
+    "budget_after_probe": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/budget-after-probe.json",
+      "sha256": "0e7d2246d55818c71f743e9d0eb97763c29c91f885cce6f2d2b5ca1ae3cf2fa0"
+    },
+    "cadence": "CONTINUOUS_SMALL_BATCHES_AFTER_MAINTENANCE",
+    "cadence_policy_path": "docs/protocols/perp-continuous-discovery-v1.json",
+    "cadence_policy_sha256": "74a12988f8359ae18a2df554e18bdf667b93ece826f2b69b5a0a0d1fee63ba26",
+    "charged_seconds_today": 1151.728022,
+    "continuous_receipts": [
+      {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-001-v1.json",
+        "sha256": "403aa583189f3967e8d56760dd288dc64cad2ee3234a49c210ba479b09371001"
+      }
+    ],
+    "daily_batch_count_limit": null,
     "daily_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
     "daily_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
     "last_local_day": "2026-09-09",
-    "last_status": "COMPLETED",
-    "latest_report": "docs/discovery/perp-post-funding-review-v1.md",
-    "next_regular_after": "2026-09-10T09:00:00+08:00",
-    "next_status": "NO_DEFENSIBLE_HYPOTHESIS",
+    "last_status": "COMPLETED_LIMITED_NO_ELIGIBLE_CARD",
+    "latest_report": "docs/research/perp-continuous-discovery-v1.md",
+    "next_regular_after": null,
+    "next_source_question": "Seek primary evidence and public historical event provenance for forced-liquidation liquidity provision lasting at least one hour in BTC/ETH USDT perpetuals. Explicit events are required; do not substitute OHLCV flow reversal or reopen failed branches.",
+    "next_status": "DISCOVERY_CONTINUATION_AVAILABLE",
     "pages_opened": 5,
     "queries_used": 4,
     "report": "docs/discovery/perp-funding-change-review-v1.md",
@@ -156,8 +172,8 @@
     "supplemental_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
     "supplemental_reuses_daily": false,
     "supplemental_status": "COMPLETED_NO_DEFENSIBLE_HYPOTHESIS",
-    "total_pages_today": 10,
-    "total_queries_today": 7,
+    "total_pages_today": 12,
+    "total_queries_today": 9,
     "unique_card": null
   },
   "dispatch": {
@@ -165,14 +181,14 @@
     "actual_writers": 1,
     "binding_sha256": "e187620ae11185442c18955416d60d263583f7813c718fd12bef4c6a3b12d5d6",
     "confirmation": "WAIT_FORWARD",
-    "earliest_recheck_at": "2026-09-10T09:00:00+08:00",
+    "earliest_recheck_at": null,
     "exploration_status": "NONE",
     "maximum_open_confirmation": 1,
     "maximum_open_exploration": 1,
-    "next_condition": "Continue the unchanged fixed confirmation observation. Short-term exploration remains empty until the next scheduled bounded discovery identifies a distinct primary-supported mechanism and legal input/execution conditions before any market task is registered. Today supplementary slot is complete; do not consume the remaining query/page allowance as a second discovery.",
+    "next_condition": "On the next existing heartbeat, maintain first, then inspect the distinct frontier only if an individual bounded source operation fits remaining time. Record WAIT_DISCOVERY_BUDGET if no useful operation can fit; reset eligibility at the actual local budget boundary, never require 09:00 or a new batch-count slot.",
     "policy_path": "docs/protocols/perp-dispatch-policy-v1.json",
     "priority_exploration": null,
-    "reason": "NO_DEFENSIBLE_HYPOTHESIS",
+    "reason": "DISCOVERY_CONTINUATION_AVAILABLE",
     "status_entrypoint": "scripts/perp_research_status.py"
   },
   "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
@@ -237,8 +253,8 @@
     "task_id": "perp-round-005-funding-change-v1",
     "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
   },
-  "latest_delivery_report": "docs/research/perp-funding-change-v1.md",
-  "latest_delivery_summary": "docs/research/perp-funding-change-v1.summary.json",
+  "latest_delivery_report": "docs/research/perp-continuous-discovery-v1.md",
+  "latest_delivery_summary": "docs/research/perp-continuous-discovery-v1.summary.json",
   "latest_report": "docs/research/perp-funding-change-v1.md",
   "latest_summary": "docs/research/perp-funding-change-v1.summary.json",
   "lessons": [
@@ -322,21 +338,49 @@
   "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
   "prior_knowledge_preserved": "docs/research-knowledge/perp-autonomous-v2.json",
   "priority_next_review": {
-    "discovery_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.json",
-    "discovery_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
+    "budget": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/budget-after-probe.json",
+      "remaining": {
+        "charged_seconds": 48.271978,
+        "page_attempts": 4,
+        "queries": 3
+      },
+      "sha256": "0e7d2246d55818c71f743e9d0eb97763c29c91f885cce6f2d2b5ca1ae3cf2fa0"
+    },
+    "cadence_policy": {
+      "path": "docs/protocols/perp-continuous-discovery-v1.json",
+      "sha256": "74a12988f8359ae18a2df554e18bdf667b93ece826f2b69b5a0a0d1fee63ba26"
+    },
+    "discarded_agent_next_question": "Weekend liquidity/calendar direction overlaps the previously screened calendar family; not adopted as a new frontier.",
+    "earliest_recheck_at": null,
+    "formal_confirmation_unchanged": true,
+    "last_batch": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-001-v1.json",
+      "sha256": "403aa583189f3967e8d56760dd288dc64cad2ee3234a49c210ba479b09371001",
+      "status": "COMPLETED_LIMITED_NO_ELIGIBLE_CARD"
+    },
     "native_task_created": false,
-    "next_condition": "Continue the unchanged fixed confirmation observation. Short-term exploration remains empty until the next scheduled bounded discovery identifies a distinct primary-supported mechanism and legal input/execution conditions before any market task is registered. Today supplementary slot is complete; do not consume the remaining query/page allowance as a second discovery.",
-    "next_regular_review_after": "2026-09-10T09:00:00+08:00",
-    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/funding-change-preparation-v1/next-review.json",
-    "reason": "Completed bounded supplemental review found no distinct executable, data-supported hypothesis among relative-value, basis-convergence and calendar-risk leads; remaining exploration budget does not justify manufacturing a task.",
-    "sha256": "d4de7726f5a251c3cd91bb2616619fd3f6c9d13ee77b88cd7acb425b65788ab7",
-    "status": "NO_DEFENSIBLE_HYPOTHESIS"
+    "next_budget_day_at": "2026-09-10T00:00:00+08:00",
+    "next_condition": "On the next existing heartbeat, maintain first, then inspect the distinct frontier only if an individual bounded source operation fits remaining time. Record WAIT_DISCOVERY_BUDGET if no useful operation can fit; reset eligibility at the actual local budget boundary, never require 09:00 or a new batch-count slot.",
+    "next_provider_trigger_at": null,
+    "next_regular_review_after": null,
+    "next_source_question": "Seek primary evidence and public historical event provenance for forced-liquidation liquidity provision lasting at least one hour in BTC/ETH USDT perpetuals. Explicit events are required; do not substitute OHLCV flow reversal or reopen failed branches.",
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/next-review.json",
+    "previous_review": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/funding-change-preparation-v1/next-review.json",
+      "sha256": "d4de7726f5a251c3cd91bb2616619fd3f6c9d13ee77b88cd7acb425b65788ab7"
+    },
+    "reason": "The daily batch-count and 09:00 gates were removed by the user. The latest bounded literature probe selected no eligible experiment; a different source-admission question may continue within real remaining resources after maintenance.",
+    "recorded_at": "2026-09-09T03:50:03.268524+00:00",
+    "selected_card": null,
+    "sha256": "88978a9d16c657945484e0194bbe7452a9b0cdca6611ed6072ab72b638f3aa79",
+    "status": "DISCOVERY_CONTINUATION_AVAILABLE"
   },
   "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1",
   "scheduler_id": "freqtrade-lab-2",
   "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
   "schema": "research-knowledge-v1",
-  "snapshot_at": "2026-09-09T02:21:41.081836+00:00",
+  "snapshot_at": "2026-09-09T03:50:03.269352+00:00",
   "terminal": {
     "acceptance_native_calls_cumulative": 1,
     "actual_market_native_calls_on_date": 5,
