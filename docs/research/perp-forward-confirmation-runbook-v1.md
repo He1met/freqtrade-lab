@@ -37,7 +37,7 @@ confirm_args=(
 
 ## 成功验收后生成唯一后继任务
 
-先按照 [7 小时验收入口](perp-forward-acceptance-runbook-v1.md) 完成原生消费者验收、真实 `finish` 和 **2026-09-10 00:00 UTC 前**的激活。现有任务未终结时不能 enqueue 第二个 `OPEN` 任务。这里生成的是已存在的正式执行器准备绑定，未来输入仍是明确的待取得契约。
+先按照 [7 小时验收入口](perp-forward-acceptance-runbook-v1.md) 完成原生消费者验收、真实 `finish` 和 **2026-09-10 00:00 UTC 前**的激活。2026-09-09 起已安装新 dispatcher：可与一个已准入的短期探索并存，实际 writer 仍排他；下列准备步骤已完成，不重复生成预约。这里生成的是已存在的正式执行器准备绑定，未来输入仍是明确的待取得契约。
 
 ```sh
 mkdir -p "$FTR_CONFIRM_ART"
@@ -70,10 +70,10 @@ task=dict(id='perp-forward-confirmation-v1',kind='confirmation',status='WAITING_
 with (out/'next-task.json').open('x') as f:json.dump(task,f,ensure_ascii=False,indent=2);f.write('\n')
 PY
 "$FTR_PY" scripts/perp_schedule.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" status
-"$FTR_PY" scripts/perp_schedule.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" enqueue --task-json "$FTR_CONFIRM_ART/next-task.json" > "$FTR_CONFIRM_ART/enqueued-task.json"
+"$FTR_PY" scripts/perp_dispatch.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" --dispatch-policy docs/protocols/perp-dispatch-policy-v1.json enqueue --task-json "$FTR_CONFIRM_ART/next-task.json" > "$FTR_CONFIRM_ART/enqueued-task.json"
 ```
 
-在冻结观察期间只继续已有数据与及时意图留存，不调用 native，也不以途中收益改变候选、样本门或窗口。第一次自动触发及真实下次触发须单独的 provider 元数据证明，以上命令与 `ACTIVE` 配置都不能证明它们。
+冻结确认观察继续已有数据与及时意图留存，不调用正式确认 native，也不以途中收益改变候选、样本门或窗口。独立短期探索可按新 dispatcher 的已曝光开发输入准入与预算继续，不能读取确认经济数据作为研究特征。第一次自动触发及真实下次触发须单独的 provider 元数据证明，以上命令与 `ACTIVE` 配置都不能证明它们。
 
 ## 终点形成真实输入，随后仅一次执行
 
@@ -85,7 +85,7 @@ PY
 "$FTR_PY" scripts/perp_forward_confirmation.py "${confirm_args[@]}" --freeze-bundle > "$FTR_CONFIRM_ART/ready-preflight.json"
 "$FTR_PY" -c 'import json,sys; p=json.load(open(sys.argv[1])); assert p["status"]=="READY_NATIVE_ACCEPTANCE" and p["readiness_label"]=="READY_NATIVE_CONFIRMATION" and p["execution_class"]=="confirmation" and p["data_sha256"] and p["native_calls"]==0' "$FTR_CONFIRM_ART/ready-preflight.json"
 "$FTR_PY" scripts/perp_schedule.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" materialize --task-id "$FTR_CONFIRM_TASK" --preflight "$FTR_CONFIRM_ART/ready-preflight.json" > "$FTR_CONFIRM_ART/materialized-task.json"
-"$FTR_PY" scripts/perp_schedule.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" claim --task-id "$FTR_CONFIRM_TASK" > "$FTR_CONFIRM_ART/claim.json"
+"$FTR_PY" scripts/perp_dispatch.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" --dispatch-policy docs/protocols/perp-dispatch-policy-v1.json claim --task-id "$FTR_CONFIRM_TASK" > "$FTR_CONFIRM_ART/claim.json"
 "$FTR_PY" scripts/perp_forward_confirmation.py "${confirm_args[@]}" --execute --claim-json "$FTR_CONFIRM_ART/claim.json" > "$FTR_CONFIRM_ART/execution.stdout.log" 2> "$FTR_CONFIRM_ART/execution.stderr.log"
 "$FTR_PY" scripts/perp_schedule.py --root "$FTR_RUNTIME/scheduler" --policy "$FTR_POLICY" finish --task-id "$FTR_CONFIRM_TASK" --summary "$FTR_CONFIRM_ART/summary.json" --report "$FTR_CONFIRM_ART/report.zh.md" > "$FTR_CONFIRM_ART/finished-task.json"
 ```

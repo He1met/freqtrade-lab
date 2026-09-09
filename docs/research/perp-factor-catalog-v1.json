@@ -1,7 +1,7 @@
 {
   "schema": "perp-factor-catalog-v1",
   "policy_version": "BTC_ETH_PERP_AUTONOMOUS_V1",
-  "as_of": "2026-09-08",
+  "as_of": "2026-09-09",
   "scope": {
     "traded_symbols": [
       "BTCUSDT",
@@ -599,6 +599,31 @@
       "missing_fraction": null,
       "update_frequency": null,
       "does_not_block_market_baseline": true
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "available_at_assumption": "source t+1h+60s; entry t+2h",
+      "coverage_rows_per_asset": 13104,
+      "definition": "Q=(2*taker_buy_base_volume-volume)/volume; previous 6h aggregate sign versus current hour",
+      "historical_PIT_verified": false,
+      "id": "taker_pressure_transition",
+      "not_equivalent_to": [
+        "OI",
+        "net capital inflow",
+        "orderbook OFI"
+      ],
+      "report": "docs/research/perp-dispatch-flow-v1.md",
+      "role": "DEVELOPMENT_FLOW_REVERSAL_CONTROL",
+      "source": "https://github.com/binance/binance-public-data#klines-1",
+      "source_receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/receipt.json",
+        "sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021"
+      },
+      "status": "TESTED_NEGATIVE_STOP_BRANCH",
+      "unit": "dimensionless"
     }
   ]
 }

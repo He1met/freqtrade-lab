@@ -870,3 +870,5 @@ Development proceeds in small, dependent slices:
 5. Optionally open the general FreqUI backtest page when a real loopback instance is available.
 
 文献发现的离线入口、真实来源限制和当前执行域判定见 [有界文献发现](docs/literature-discovery.md)。
+
+当前永续研究使用[双待办单写入调度](docs/research/perp-dispatch-v1.md)。只读状态入口 `scripts/perp_research_status.py` 分别显示固定确认、观察健康、实际计算和唯一短期探索；长期确认等待不会占用空闲计算器。
