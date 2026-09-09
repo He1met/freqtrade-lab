@@ -1,0 +1,40 @@
+{
+  "schema": "discovery-job-v1",
+  "job_id": "issue137-provider-validation-v1",
+  "urls": [
+    "https://www.bis.org/publications/working-paper-1087-crypto-carry",
+    "https://mitsloan.mit.edu/cfi/trading-and-arbitrage-cryptocurrency-markets"
+  ],
+  "titles": [
+    "Crypto carry",
+    "Trading and Arbitrage in Cryptocurrency Markets"
+  ],
+  "institutions": [
+    "Bank for International Settlements",
+    "MIT Sloan"
+  ],
+  "http_seconds": 20,
+  "http_bytes": 1048576,
+  "provider_seconds": 180,
+  "provider_calls": 1,
+  "output_bytes": 1048576,
+  "prompt_bytes": 196608,
+  "deadline_utc": "2026-09-09T00:00:00Z",
+  "codex_binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+  "codex_binary_sha256": "a30ec314bbd0e3721632234d07db7c99855db3b9f1e32dbe8c791947f07e7629",
+  "model": "gpt-5.6-sol",
+  "adapter_sha256": "f2745eb6ece8a453737ae92cdc65010e0e89629779369b0e17c98c8a692979c6",
+  "proposal_schema_sha256": "64e98757b1c561242d685fde6aa3b2d2c0e53aea6984ae98af0e23bd84ec98d1",
+  "auth": "CHATGPT_ONLY_NO_API_KEY_FALLBACK",
+  "scope": "KNOWN_URL_INTEGRATION_NOT_NEW_DISCOVERY",
+  "authorization": "ENGINEERING_ONLY_PENDING_SUPERVISOR_FIXED_HEAD_REVIEW",
+  "engineering_limits_not_economic_gates": true,
+  "implementation_sha256": {
+    "lab/discovery_job.py": "d1c71c16f18cae6277d588ef2e5c33d609f765728c0a7bf676f29e10fc57284c",
+    "lab/literature_discovery.py": "e81d54c5c4562cf67519fda31f496a404e267aa5e255599c18c63519857afccd",
+    "lab/codex_generation.py": "7f578e49d8f8503553c86c15d258dcf6a4bc16040e5992db727f892ac2e7b092",
+    "scripts/run_discovery_job.py": "dd7678c17e17c6d2a094c93f8f2bd64962fb9f368c8fd268f0339b448258cee7"
+  },
+  "model_reasoning_effort": "medium",
+  "provider_readiness": "BLOCKED_TOOL_ISOLATION"
+}

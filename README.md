@@ -853,3 +853,5 @@ Development proceeds in small, dependent slices:
 5. Optionally open the general FreqUI backtest page when a real loopback instance is available.
 
 文献发现的离线入口、真实来源限制和当前执行域判定见 [有界文献发现](docs/literature-discovery.md)。
+
+固定URL到模型提案的单次作业及试运行边界见 [发现作业](docs/discovery-api.md)。
