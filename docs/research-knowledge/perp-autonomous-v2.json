@@ -1,0 +1,105 @@
+{
+  "active_scope": {
+    "leverage": 1,
+    "other_assets_status": "INACTIVE",
+    "products": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ],
+    "spot_status": "ARCHIVED",
+    "timeframe": "1h"
+  },
+  "automatic_wake": {
+    "current_continuation_origin": "USER_AUTHORIZED_SUPERVISOR_MESSAGE",
+    "first_verified_trigger": null,
+    "next_provider_trigger": null,
+    "status": "UNKNOWN"
+  },
+  "avoid_repeating": [
+    "Do not rename unfiltered breakout or rejected volatility scaling as a new independent trial",
+    "Do not relabel spot results as perpetual",
+    "Do not treat hourly orders/two assets/cost scenarios as independent samples",
+    "Do not rerun round-001; its 4 native calls are consumed",
+    "Do not upgrade revised chain history or recent-only OI to independent evidence"
+  ],
+  "current_issue": 162,
+  "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
+  "heartbeat_entrypoint": "scripts/perp_tick.py",
+  "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
+  "historical_knowledge_preserved": "docs/research-knowledge/btc-eth-1000-central-v1.json",
+  "independent_confirmation": {
+    "current_execution_policy": "V2",
+    "original_frozen_policy": "V1, before scheduler migration; no selection/risk rule changed",
+    "protocol": "docs/protocols/perp-independent-confirmation-v1.json",
+    "protocol_sha256": "60ca5096404bb0f33a9fdbf36b74336a8f4cf62ee5107811613feb6ece4710e5",
+    "status": "NOT_ACTIVATED_NO_COST_SUPPORTED_CANDIDATE"
+  },
+  "knowledge_id": "BTC_ETH_PERP_AUTONOMOUS_V2",
+  "latest_report": "docs/research/perp-funding-premium-v1.md",
+  "latest_summary": "docs/research/perp-funding-premium-v1.summary.json",
+  "lessons": [
+    {
+      "mechanism": "unfiltered-24h-breakout",
+      "verdict": "GROSS_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "mechanism": "entry-volatility-reduction",
+      "net_increment_usdt": -12.656415028545894,
+      "verdict": "NO_INCREMENT_OVER_TRAINING_FIXED_REDUCTION"
+    },
+    {
+      "gross_price_usdt": 178.27806000000382,
+      "mechanism": "direction-persistence-breakout",
+      "net_usdt": -83.61947252131063,
+      "observed_hourly_mtm_dd": 0.22557684232867603,
+      "risk_target_is_hard_gate": false,
+      "verdict": "COST_UNSUPPORTED_CONDITIONAL_TURNOVER_DIAGNOSTIC"
+    },
+    {
+      "exit24_net_usdt": -339.1683659549235,
+      "exit48_net_usdt": -368.22314704275163,
+      "mechanism": "extend-opposing-exit-24h-48h",
+      "verdict": "GROSS_AND_COST_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "limitations": [
+        "ETH/short concentration",
+        "thin stressed-cost margin",
+        "10748h drawdown duration",
+        "all historical data exposed"
+      ],
+      "mechanism": "carry-nonpaying-sign",
+      "net_usdt": 80.1788619302656,
+      "risk_target_is_hard_gate": false,
+      "verdict": "LIMITED_DEVELOPMENT_SUPPORT_FORWARD_PREPARATION_ONLY"
+    },
+    {
+      "mechanism": "carry-and-premium-sign-agree",
+      "verdict": "GROSS_AND_COST_UNSUPPORTED_STOP_BRANCH"
+    }
+  ],
+  "mechanism_card": "docs/discovery/perp-breakout-risk-card-v1.md",
+  "next_task": {
+    "earliest_budget_claim": "2026-09-09T00:00:00Z",
+    "id": "perp-forward-native-acceptance-v1",
+    "reason": "One native consumer acceptance on genuine pre-confirmation intents after UTC budget reset; no strategy selection or profit confirmation",
+    "status": "PREPARING_NOT_ENQUEUED",
+    "then": "Activate precommitted funding-family future window only if timely observer/native acceptance passes",
+    "variants": 1
+  },
+  "policy_path": "docs/protocols/perp-autonomous-policy-v2.json",
+  "policy_sha256": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+  "prior_knowledge_preserved": "docs/research-knowledge/perp-autonomous-v1.json",
+  "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1",
+  "scheduler_id": "freqtrade-lab-2",
+  "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
+  "schema": "research-knowledge-v1",
+  "terminal": {
+    "independent_confirmation": false,
+    "native_calls_today": 8,
+    "profitable_qualified_strategy": false,
+    "status": "COMPLETED_DEVELOPMENT",
+    "task_id": "perp-round-003-funding-premium-v1"
+  },
+  "version": 2
+}

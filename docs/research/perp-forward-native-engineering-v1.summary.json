@@ -1,0 +1,79 @@
+{
+  "schema": "perp-forward-native-engineering-v1",
+  "observed_at": "2026-09-08T16:43:58.757785+00:00",
+  "status": "ENGINEERING_READY_WAITING_DATA",
+  "candidate_id": "perp-carry-nonpaying-v1",
+  "conclusion": "最小原生消费者及定向合成验证完成；真实入口按固定时间等待，尚未执行真实市场验收或激活正式确认。",
+  "code_sha256": "fddff29e9e5165748f0f5169f5968d70e1a73e15cb3f8541e474f63375af30c1",
+  "code_bindings": {
+    "docs/protocols/perp-funding-premium-v1.json": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+    "docs/protocols/perp-autonomous-policy-v2.json": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+    "lab/perp_funding_premium.py": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+    "lab/perp_baseline_report.py": "d6a03131fb386c800a4aacae723e97dd6b642ec86f19305cd5bd168bc03aac50",
+    "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+    "scripts/run_perp_funding_premium_v1.py": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca",
+    "docs/protocols/perp-first-experiment-v1.json": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+    "docs/protocols/perp-autonomous-policy-v1.json": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+    "lab/perp_baseline.py": "046e0343ef6669e72334309522f25799e2e6adfd957ed42d8a687205a38d3522",
+    "lab/perp_baseline_runner.py": "5da2896c64f9fbc32be32db9496a42c2a821b889c1bb1a47c88948b857b3b6f2",
+    "scripts/run_perp_experiment.py": "687aa5beef8be460c7324a260198c4435407efd9f9298dd1aee453648e5f6b92",
+    "lab/perp_forward_signal.py": "ec1de508cd4fe5dd947d19fae403ab30cc1ea771bbb78e011687ab701d23b9bc",
+    "lab/perp_schedule.py": "5c5ccdf50bd7f153422f6e9529b43c7cb7b6e42f1576b24c637ac140ace9a2fc",
+    "scripts/perp_forward_signal.py": "f4cdd853af8567f1698a556a4060ecabdd0208e0dde2ede05cc678f513f5eb00",
+    "docs/protocols/perp-forward-native-acceptance-v1.json": "8b58a0949180e2156881b21a42f5017ce90877299b4629ef203f2cf9fdd2fac0",
+    "docs/research/perp-carry-nonpaying-registration-v1.json": "a4ca6146c9fed5e56d2370d22f8c8c4dd5ea8ac478a0f1c6429bbe3bff087460",
+    "docs/protocols/perp-independent-confirmation-v2.json": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "scripts/perp_forward_native_acceptance.py": "810e087ab0a8d10c10a7c0873ed7fc45505ce56e36bc72587c78f5b7b3c2ec79",
+    "lab/perp_forward_native.py": "6f78e82f18fbdef0dd10e838d6f09a39ffc6f0fb7cd6dcf279828ab11530652c"
+  },
+  "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+  "data_sha256": null,
+  "native_market_calls": 0,
+  "synthetic_native_calls": 1,
+  "economic_validation": false,
+  "economic_result": null,
+  "monetary_cost": null,
+  "earliest_ready_at": "2026-09-09T00:10:00Z",
+  "default_cli": {
+    "path": "/private/tmp/perp-migration-v1/acceptance-preflight-v1.json",
+    "sha256": "3328c636c58944387bc588e6c386dd59769e89bedf4a6be66ba45326bb464cce",
+    "status": "WAITING_DATA",
+    "native_calls": 0,
+    "preparation_seconds": 1.2733470409875736
+  },
+  "tests": {
+    "native_wrapper": "1 passed in 2.80s",
+    "contained_synthetic_checks": 2,
+    "pure_followup": "2 tests passed in 1.477s; no native",
+    "ast_and_diff": "PASS",
+    "native_call_seconds": null
+  },
+  "pre_native_errors": [
+    {
+      "stage": "synthetic fixture preparation",
+      "error": "temporary /var vs /private canonical path mismatch",
+      "native_calls": 0,
+      "resolution": "resolve fixture paths"
+    },
+    {
+      "stage": "optional system Python3.9 py_compile",
+      "error": "external macOS cache write PermissionError",
+      "native_calls": 0,
+      "resolution": "pinned Python3.13 read-only ast.parse"
+    }
+  ],
+  "first_actual_observation": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1700Z.receipt.json",
+    "sha256": "210c1b236c8a67fa2c9dd637bbe4c58d225af8cbe62da5af57243e312a324749",
+    "phase": "PRE_CONFIRMATION",
+    "published_observed_at": "2026-09-08T16:40:26.706541+00:00",
+    "pair_status": {
+      "BTC/USDT:USDT": "TIMELY_NO_TRADE",
+      "ETH/USDT:USDT": "TIMELY_NO_TRADE"
+    },
+    "native_calls": 0,
+    "orders": 0
+  },
+  "runbook": "docs/research/perp-forward-acceptance-runbook-v1.md",
+  "next_action": "Wait for fixed 17Z to 00Z actual data, freeze immutable inputs, materialize existing task, claim one bounded acceptance, execute, report/finish, then independently verify activation. Scheduler status owned by root; no queued claim fabricated here."
+}

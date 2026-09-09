@@ -1,0 +1,102 @@
+{
+  "automation": {
+    "next_provider_trigger_at": null,
+    "prompt_sha256": "b0be0f311941ccdc2545810586bc55b068f71bf66b3d1d90a8d6022f3d5037a1",
+    "readback": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/automation-readback.json",
+      "sha256": "4a89562fa250269883220c5b3a0140bb20f58578da12e5cfdb4c890b51681f94"
+    },
+    "status": "ACTIVE",
+    "supervisor_unchanged": true
+  },
+  "code": {
+    "path": "scripts/perp_discovery_timing.py",
+    "sha256": "1fc79253a6b2cdcb709182a37bc8c8ca7a11249b0c4cbd56ec570cae5c433f7d"
+  },
+  "cpu_seconds": null,
+  "daily_usage_unchanged": {
+    "additional_budget_authorized": false,
+    "charged_seconds": 1184.877532,
+    "pages": 13,
+    "queries": 9,
+    "remaining_seconds": 15.122468
+  },
+  "economic_result": null,
+  "engineering_probe": {
+    "automatically_excluded_seconds": 0,
+    "conservative_seconds": 4.960319041,
+    "final_status": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/meter-status-conservative-v1.json",
+      "sha256": "d967aa4fc11aacbb959c87928cbaa9b5064ad218f8fbfde7e3dd5c5f1ca31aec"
+    },
+    "log": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/engineering-entrypoint-probe.timing.jsonl",
+      "sha256": "2c2cdac7369ef9cdbbef8bb626aa1ac5a2a41f8e3861b07c542e580a440a3a55"
+    },
+    "old_status_preserved": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/meter-status.json",
+      "sha256": "1d194633144377b6428ba44b85b387a682849ca0de298e2478df373f504428fd"
+    },
+    "pending_reservation": false,
+    "phase_conservative_seconds": {
+      "MAINTENANCE_WAIT": 4.913866,
+      "REPORT": 0.046453041,
+      "SEARCH_READ": 0.0,
+      "USER_IDLE": 0.0
+    },
+    "phase_wall_seconds": {
+      "MAINTENANCE_WAIT": 4.913866,
+      "REPORT": 0.046452999999999994,
+      "SEARCH_READ": 0.0,
+      "USER_IDLE": 0.0
+    },
+    "real_discovery_phase_measurement_observed": false,
+    "scope": "ENTRYPOINT_ACCEPTANCE_WINDOW_NOT_WHOLE_TURN_OR_DISCOVERY_BATCH"
+  },
+  "fixed_confirmation_unchanged": true,
+  "issue": 162,
+  "lane_status": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/post-integration-status.json",
+    "sha256": "e172eb8cdde69e31e22de32cb5bff632124b8669265b54229978cd68f3c12abe"
+  },
+  "legacy_budget": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/discovery-budget.json",
+    "sha256": "5d4019677e3808b1bde6fe93aac30f8f080144f880f314c81b700cfd89f2a0b1"
+  },
+  "maintenance": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/probe-observation.json",
+    "sha256": "8421f746816de13705c0a437b15c3c2ac388d08fdfa4f502e1e34ad3c0ba57cb"
+  },
+  "market_gets": 15,
+  "model_money_cost": null,
+  "native_calls": 0,
+  "new_external_pages": 0,
+  "new_external_queries": 0,
+  "next_budget_recheck": "2026-09-10T00:00:00+08:00",
+  "next_condition": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
+  "next_review": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/next-review.json",
+    "sha256": "fc182e4d7c98cfee7363382aa0b1803c8106e4c224dbe5c6165e7916b7c6cdf1"
+  },
+  "orders": 0,
+  "origin": "SUPERVISOR_DELEGATED_USER_AUTHORITY_NOT_AUTOMATIC",
+  "policy": {
+    "path": "docs/protocols/perp-discovery-timing-v1.json",
+    "sha256": "416c7dac9667597516459b8f4e4c45037d44409a5310753eb96b9775eb47c3f9"
+  },
+  "report": {
+    "path": "docs/research/perp-discovery-timing-v1.md",
+    "sha256": "4ae5d5aeec183720b268a495e9bda210b9e35bf80b6741e5e6fd7c3448d7269e"
+  },
+  "research_branch_status": "BLOCKED_DATA",
+  "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1",
+  "source_status": "BLOCKED_SOURCE_CONTENT",
+  "status": "ENGINEERING_VERIFIED_SOURCE_CHECK_WAIT_BUDGET",
+  "summary_id": "PERP_DISCOVERY_TIMING_V1",
+  "tests": {
+    "count": 6,
+    "scope": "tests/test_perp_discovery_timing.py; synthetic and temporary CLI; run by implementation agent after conservative-clock fix",
+    "seconds": 0.115,
+    "status": "PASS"
+  }
+}

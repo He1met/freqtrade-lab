@@ -1,0 +1,77 @@
+{
+  "authority": "USER_REQUEST_CONTINUE_DISCOVERY",
+  "automation": {
+    "id": "freqtrade-lab-2",
+    "interval_minutes": 30,
+    "kind": "heartbeat",
+    "new_prompt_automatic_discovery_verified": false,
+    "prompt_sha256": "9c996e5e8d27f37e0e2f80abeb790e04fe62e2566e91c9c835a33c21189a9b36",
+    "readback_verified": true,
+    "status": "ACTIVE"
+  },
+  "budget": {
+    "active_cpu_seconds": null,
+    "charged_seconds": 1151.728022,
+    "continuous_receipts": [
+      {
+        "charged_seconds": 91.806242,
+        "page_attempts": 2,
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-001-v1.json",
+        "queries": 2,
+        "sha256": "403aa583189f3967e8d56760dd288dc64cad2ee3234a49c210ba479b09371001"
+      }
+    ],
+    "legacy_actual_active_seconds": null,
+    "legacy_carry": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/legacy-budget-carry.json",
+      "sha256": "a40d4ef07c692ecd22e029043edb43778172b1c01f6daa465fe1612f4cb54914"
+    },
+    "local_day": "2026-09-09",
+    "model_money_cost": null,
+    "page_attempts": 12,
+    "queries": 9,
+    "recorded_at": "2026-09-09T03:50:03.267297+00:00",
+    "remaining": {
+      "charged_seconds": 48.271978,
+      "page_attempts": 4,
+      "queries": 3
+    }
+  },
+  "cpu_seconds": null,
+  "daily_resource_caps": {
+    "charged_seconds": 1200,
+    "page_open_attempts": 16,
+    "queries": 12
+  },
+  "formal_confirmation_modified": false,
+  "issue": 162,
+  "monetary_cost": null,
+  "native_calls": 0,
+  "next_review": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/next-review.json",
+    "sha256": "88978a9d16c657945484e0194bbe7452a9b0cdca6611ed6072ab72b638f3aa79"
+  },
+  "policy": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/protocols/perp-continuous-discovery-v1.json",
+    "sha256": "74a12988f8359ae18a2df554e18bdf667b93ece826f2b69b5a0a0d1fee63ba26"
+  },
+  "probe": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-001-v1.json",
+    "sha256": "403aa583189f3967e8d56760dd288dc64cad2ee3234a49c210ba479b09371001"
+  },
+  "probe_status": "COMPLETED_LIMITED_NO_ELIGIBLE_CARD",
+  "production_orders": 0,
+  "recorded_at": "2026-09-09T03:50:57.559458+00:00",
+  "removed_gates": [
+    "DAILY_ONE_REGULAR_ONE_SUPPLEMENTAL",
+    "LOCAL_09_00_START"
+  ],
+  "report": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/research/perp-continuous-discovery-v1.md",
+    "sha256": "f88667243b861714eecaa316a1d35422451d53f66f364fc5e1dc5edbb29a4e3d"
+  },
+  "schema": "perp-discovery-cadence-delivery-v1",
+  "selected_card": null,
+  "status": "IMPLEMENTED_AND_USER_TRIGGERED_PROBE_COMPLETED",
+  "validation_scope": "Current JSON/reference integrity, immutable economic bindings, actual automation readback, and read-only lane entrypoint. No execution-code changes or market reruns."
+}

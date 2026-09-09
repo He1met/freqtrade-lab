@@ -1,0 +1,450 @@
+{
+  "active_scope": {
+    "leverage": 1,
+    "other_assets_status": "INACTIVE",
+    "products": [
+      "BTC/USDT:USDT",
+      "ETH/USDT:USDT"
+    ],
+    "spot_status": "ARCHIVED",
+    "timeframe": "1h"
+  },
+  "automatic_wake": {
+    "automatic_native_chain_completed": true,
+    "current_continuation_origin": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+    "evidence": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/activation-observed.json",
+      "sha256": "3c1af1d42d5b8ba4ec8ce6934f77ff24c5a110029d75daf238ef1ba172caa3e1"
+    },
+    "first_verified_trigger": {
+      "actual_turn_id": "01a0821e-81a6-7bf0-90db-2ae25450457f",
+      "automation_id": "freqtrade-lab-2",
+      "provider_observed_at": "2026-09-08T17:43:52.484Z",
+      "provider_tool_event_id": "fco_01a0821e-81b3-7263-ac41-413fbe99f0f6"
+    },
+    "latest_execution": {
+      "actual_turn_id": null,
+      "native_calls": 2,
+      "provider_observed_at": "2026-09-09T01:54:54.062Z",
+      "provider_trigger_id": null,
+      "status": "COMPLETED_DEVELOPMENT_NEGATIVE",
+      "task_id": "perp-round-005-funding-change-v1"
+    },
+    "latest_report": "docs/research/perp-funding-change-v1.md",
+    "native_chain_evidence": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/automatic-native-observed-v1.json",
+      "sha256": "4816a442ed08ae1be3375975e385edc8d2cd455f5d4f4be6b4c29faff0c13dc7"
+    },
+    "native_chain_trigger": {
+      "actual_turn_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
+      "actual_turn_started_at_unix": 1788912443,
+      "automation_id": "freqtrade-lab-2",
+      "cause": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+      "provider_event_id": "fco_01a0837d-a1a7-70e2-924c-b094f3b1f9bf",
+      "provider_observed_at": "2026-09-09T00:07:23.801Z",
+      "provider_trigger_id": null,
+      "recorded_at": "2026-09-09T00:10:38.094305+00:00",
+      "trigger_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
+      "trigger_id_basis": "ACTUAL_TURN_ID_LOCAL_CORRELATION"
+    },
+    "next_provider_trigger": null,
+    "provider_trigger_id": null,
+    "status": "AUTOMATIC_NATIVE_CHAIN_COMPLETED_LIMITED_PASS"
+  },
+  "avoid_repeating": [
+    "Do not rename unfiltered breakout or rejected volatility scaling as a new independent trial",
+    "Do not relabel spot results as perpetual",
+    "Do not treat hourly orders/two assets/cost scenarios as independent samples",
+    "Do not rerun round-001; its 4 native calls are consumed",
+    "Do not upgrade revised chain history or recent-only OI to independent evidence"
+  ],
+  "budget_classes": {
+    "acceptance": "NORMAL_1_PLUS_SPECIFIC_TECHNICAL_RETRY_1_PER_FIXED_CANDIDATE; EACH1800s/CUMULATIVE3600s",
+    "confirmation": "ONE_PER_FROZEN_CANDIDATE_WINDOW_AFTER_END; 2400s",
+    "data": "EXISTING_LIMITS_UNCHANGED_REQUIRED_FIELDS_FIRST",
+    "exploration_daily_variants": 8,
+    "exploration_weekly_variants": 28,
+    "rounds": "REVIEW_CHECKPOINT_EVERY_3_NOT_A_HARD_CAP"
+  },
+  "confirmation_reservation": {
+    "actual_preparation_turn_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
+    "candidate_budget_key": "11d738ef9991c5b3e5e9b6ddd8463b58eece683e7f983cb389633539efbee369",
+    "candidate_sha256": "a4ca6146c9fed5e56d2370d22f8c8c4dd5ea8ac478a0f1c6429bbe3bff087460",
+    "changes_economic_rules": false,
+    "code_binding_role": "ACTUAL_FROZEN_CONFIRMATION_EXECUTOR",
+    "code_bindings": {
+      "docs/protocols/perp-autonomous-policy-v1.json": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+      "docs/protocols/perp-autonomous-policy-v2.json": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+      "docs/protocols/perp-first-experiment-v1.json": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+      "docs/protocols/perp-funding-premium-v1.json": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+      "docs/protocols/perp-independent-confirmation-v2.json": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+      "docs/research/perp-carry-nonpaying-registration-v1.json": "a4ca6146c9fed5e56d2370d22f8c8c4dd5ea8ac478a0f1c6429bbe3bff087460",
+      "lab/perp_baseline.py": "046e0343ef6669e72334309522f25799e2e6adfd957ed42d8a687205a38d3522",
+      "lab/perp_baseline_report.py": "d6a03131fb386c800a4aacae723e97dd6b642ec86f19305cd5bd168bc03aac50",
+      "lab/perp_baseline_runner.py": "5da2896c64f9fbc32be32db9496a42c2a821b889c1bb1a47c88948b857b3b6f2",
+      "lab/perp_forward_confirmation.py": "68183ae6467bbadb03f326f4aba7395ab3dc315deef5a409e4d9df017ce7155e",
+      "lab/perp_forward_native.py": "6f78e82f18fbdef0dd10e838d6f09a39ffc6f0fb7cd6dcf279828ab11530652c",
+      "lab/perp_forward_signal.py": "ec1de508cd4fe5dd947d19fae403ab30cc1ea771bbb78e011687ab701d23b9bc",
+      "lab/perp_funding_premium.py": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+      "lab/perp_schedule.py": "5c5ccdf50bd7f153422f6e9529b43c7cb7b6e42f1576b24c637ac140ace9a2fc",
+      "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+      "scripts/perp_forward_confirmation.py": "5884f05654c1de10d12c5ca8ae5a977cfc2d894c4ff2b271208a44318326c540",
+      "scripts/perp_forward_signal.py": "f4cdd853af8567f1698a556a4060ecabdd0208e0dde2ede05cc678f513f5eb00",
+      "scripts/run_perp_experiment.py": "687aa5beef8be460c7324a260198c4435407efd9f9298dd1aee453648e5f6b92",
+      "scripts/run_perp_funding_premium_v1.py": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca"
+    },
+    "code_sha256": "85c146d2b79e63ba4aa1d976512fda437333d301150ed33c6100b713f1f0d8f1",
+    "contract_ready_at": "2026-12-09T00:00:00+00:00",
+    "data_binding_role": "FUTURE_INPUT_CONTRACT_PENDING",
+    "data_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "earliest_expected_input_ready_at": "2026-12-09T00:10:00+00:00",
+    "economic_selection": false,
+    "executor": "scripts/perp_forward_confirmation.py",
+    "expected_output_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-confirmation-v1",
+    "fingerprint": "b3fcd52329ef5824714ee046beb9512ee182bf3d6f4a055dac2953996289ce8b",
+    "fixed_candidate": true,
+    "fixed_input_window": {
+      "end_exclusive": "2026-12-09T00:00:00+00:00",
+      "start": "2026-09-10T00:00:00+00:00"
+    },
+    "frozen_contract_path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/protocols/perp-independent-confirmation-v2.json",
+    "frozen_contract_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "future_data_note": "data_sha256 only binds the real frozen future-input contract; no future market data SHA is claimed.",
+    "hypothesis": "固定候选的90日真实提前意图与原生终点确认；不在观察期重选或提前评分。",
+    "id": "perp-forward-confirmation-v1",
+    "input_bundle_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/confirmation-inputs-v1",
+    "kind": "confirmation",
+    "max_seconds": 2400,
+    "mechanism": "carry_nonpaying_fixed_90day_confirmation",
+    "native_calls": 1,
+    "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+    "prepared_at": "2026-09-09T00:20:05.802932+00:00",
+    "queued_at": "2026-09-09T00:20:18.848178+00:00",
+    "runbook": "docs/research/perp-forward-confirmation-runbook-v1.md",
+    "status": "WAITING_DATA",
+    "trigger_kind": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+    "variants": 0
+  },
+  "current_issue": 162,
+  "daily_checkpoint": {
+    "formal_phase": "PRE_CONFIRMATION",
+    "heartbeat": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T115555975Z/summary.json",
+      "sha256": "64eb26f15181393b49b1fd6f697d4f3333e9237844cd70d2efe36dbf6da7191d"
+    },
+    "last_complete_capture_end": "2026-09-09T11:00:00Z",
+    "latest_observer_health": {
+      "intent_sha256": "5a5685b9ad8412cfc8db8b73a1e237037908c29dd971e460726b4a645db827e8",
+      "latest_slot": "20260909T1200Z",
+      "planned_entry": "2026-09-09T12:00:00+00:00",
+      "published_observed_at": "2026-09-09T11:25:29.483682+00:00",
+      "receipt_sha256": "5bcf0aea4ca920d5f3af5a125847636c7be933a27dba89f5218d101f8eaef5fd",
+      "status": "TIMELY_COMPLETE",
+      "timely_pair_count": 2
+    },
+    "note": "Dated daily metadata checkpoint; historical per-delivery fields and economic report remain intact.",
+    "observed_at": "2026-09-09T12:02:20.363348+00:00",
+    "observer_recorded_hour_slots": 20,
+    "report_day": "2026-09-09",
+    "report_sha256": "b55b322bdf5e765f42a464cc155195f2be3575f4c738cc9f295460b190270da0",
+    "runtime_report": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909-supplement-v2.md",
+    "runtime_summary": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/reports/daily-20260909-supplement-v2.json",
+      "sha256": "8f8a31417702e3183124725f52f8c3107b03be50671f4997f7efbd8b2d79d07d"
+    },
+    "summary_sha256": "8f8a31417702e3183124725f52f8c3107b03be50671f4997f7efbd8b2d79d07d"
+  },
+  "data_collection": {
+    "last_complete_end": "2026-09-09T02:00:00Z",
+    "latest_capture_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260909T020000Z/update-receipt.json",
+    "new_capture_priority_tested": true,
+    "required": [
+      "ohlcv",
+      "mark",
+      "funding",
+      "premium"
+    ],
+    "v3_actual_entrypoint": "CANDIDATE_REQUIRED_COMPLETE_17_GET"
+  },
+  "discovery": {
+    "automatic_continuation": {
+      "actual_turn_id": null,
+      "provider_observed_at": "2026-09-09T04:24:54.425Z",
+      "provider_trigger_id": null,
+      "receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
+        "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
+      },
+      "verified": true
+    },
+    "budget_after_probe": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/discovery-budget.json",
+      "sha256": "5d4019677e3808b1bde6fe93aac30f8f080144f880f314c81b700cfd89f2a0b1"
+    },
+    "cadence": "CONTINUOUS_SMALL_BATCHES_AFTER_MAINTENANCE",
+    "cadence_policy_path": "docs/protocols/perp-continuous-discovery-v1.json",
+    "cadence_policy_sha256": "74a12988f8359ae18a2df554e18bdf667b93ece826f2b69b5a0a0d1fee63ba26",
+    "charged_seconds_today": 1184.877532,
+    "continuous_receipts": [
+      {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-001-v1.json",
+        "sha256": "403aa583189f3967e8d56760dd288dc64cad2ee3234a49c210ba479b09371001"
+      },
+      {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
+        "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
+      }
+    ],
+    "daily_batch_count_limit": null,
+    "daily_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
+    "daily_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
+    "last_local_day": "2026-09-09",
+    "last_status": "BLOCKED_SOURCE",
+    "latest_report": "docs/research/perp-discovery-timing-v1.md",
+    "next_budget_recheck": "2026-09-10T00:00:00+08:00",
+    "next_regular_after": null,
+    "next_source_question": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
+    "next_status": "WAIT_DISCOVERY_BUDGET",
+    "pages_opened": 5,
+    "queries_used": 4,
+    "report": "docs/discovery/perp-funding-change-review-v1.md",
+    "research_branch_status": "BLOCKED_DATA",
+    "supplemental_new_information": "The selected funding-change card became a genuine negative terminal in round005; one separately registered supplemental slot was then used.",
+    "supplemental_pages_opened": 5,
+    "supplemental_queries_used": 3,
+    "supplemental_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.json",
+    "supplemental_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
+    "supplemental_reuses_daily": false,
+    "supplemental_status": "COMPLETED_NO_DEFENSIBLE_HYPOTHESIS",
+    "timing_policy_path": "docs/protocols/perp-discovery-timing-v1.json",
+    "timing_policy_sha256": "416c7dac9667597516459b8f4e4c45037d44409a5310753eb96b9775eb47c3f9",
+    "total_pages_today": 13,
+    "total_queries_today": 9,
+    "unique_card": null
+  },
+  "dispatch": {
+    "actual_compute": "IDLE",
+    "actual_writers": 1,
+    "binding_sha256": "e187620ae11185442c18955416d60d263583f7813c718fd12bef4c6a3b12d5d6",
+    "confirmation": "WAIT_FORWARD",
+    "earliest_recheck_at": "2026-09-10T00:00:00+08:00",
+    "exploration_status": "NONE",
+    "maximum_open_confirmation": 1,
+    "maximum_open_exploration": 1,
+    "next_condition": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
+    "policy_path": "docs/protocols/perp-dispatch-policy-v1.json",
+    "priority_exploration": null,
+    "reason": "WAIT_DISCOVERY_BUDGET",
+    "status_entrypoint": "scripts/perp_research_status.py"
+  },
+  "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
+  "formal_confirmation_executor": {
+    "activated": true,
+    "actual_wait_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-confirmation-v1/preparation-check.json",
+    "actual_wait_receipt_sha256": "6d6004cc9854cd6435863f6cd0368536927d0d2c84ca67378710b20a35f43105",
+    "block_bootstrap": "IMPLEMENTED_FIXED_30_BLOCKS_SEED162_RESAMPLES2000; FUTURE_RESULT_NULL",
+    "code_sha256": "85c146d2b79e63ba4aa1d976512fda437333d301150ed33c6100b713f1f0d8f1",
+    "earliest_ready_at": "2026-12-09T00:10:00+00:00",
+    "economic_result": null,
+    "executor": "scripts/perp_forward_confirmation.py",
+    "independent_pure_regressions": 4,
+    "market_native_calls": 0,
+    "queue_native_calls_is_future_budget": true,
+    "runbook": "docs/research/perp-forward-confirmation-runbook-v1.md",
+    "same_availability_comparator": "UNKNOWN_NOT_RUN_ADDITIONAL_NATIVE_REQUIRED",
+    "status": "ACTIVATED_WAITING_FIXED_FUTURE_WINDOW",
+    "tests": 13
+  },
+  "forward_observer": {
+    "activated_at": "2026-09-09T00:19:18.291814+00:00",
+    "active": true,
+    "binding": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/observer-binding.json",
+    "binding_sha256": "3a48c439149fa9e3b7394e583fc6267e305c8f91dce3815d777bb960e111f2a4",
+    "formal_window_pair_hours": 0,
+    "latest_published_at": "2026-09-09T02:10:25.042842+00:00",
+    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260909T0300Z.receipt.json",
+    "latest_receipt_sha256": "a85229b153c67c02e75da24ba6aea550d3c6e08bf51e27ebd664e45c9d764dd8",
+    "native_acceptance_sha256": "c280a739fed8d96270ff11c6debfa7b041238992b99ef5a1ec38ec177a633946",
+    "native_calls": 0,
+    "phase": "ACTIVATED_BEFORE_FORMAL_WINDOW",
+    "production_orders": 0,
+    "published_at": "2026-09-08T16:40:26.706541+00:00",
+    "receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1700Z.receipt.json",
+    "receipt_sha256": "210c1b236c8a67fa2c9dd637bbe4c58d225af8cbe62da5af57243e312a324749",
+    "recorded_pair_hours": 22
+  },
+  "heartbeat_entrypoint": "scripts/perp_tick.py",
+  "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
+  "historical_knowledge_preserved": "docs/research-knowledge/btc-eth-1000-central-v1.json",
+  "independent_confirmation": {
+    "activated": true,
+    "activated_at": "2026-09-09T00:19:18.291814+00:00",
+    "actual_native_calls": 0,
+    "current_execution_policy": "V3",
+    "formal_observed_pair_hours": 0,
+    "frozen_economic_policy": "V2",
+    "old_protocol_v1": "NOT_ACTIVATED_NO_COST_SUPPORTED_CANDIDATE_PRESERVED",
+    "protocol": "docs/protocols/perp-independent-confirmation-v2.json",
+    "protocol_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "registration": "docs/research/perp-carry-nonpaying-registration-v1.json",
+    "status": "ACTIVATED_FIXED_WINDOW_NOT_STARTED"
+  },
+  "knowledge_id": "BTC_ETH_PERP_AUTONOMOUS_V3",
+  "last_development_terminal": {
+    "independent_confirmation": false,
+    "native_calls_date_utc": "2026-09-09",
+    "native_calls_on_date": 4,
+    "profitable_qualified_strategy": false,
+    "status": "COMPLETED_DEVELOPMENT",
+    "task_id": "perp-round-005-funding-change-v1",
+    "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+  },
+  "latest_daily_report": "docs/research/perp-daily-20260909-v1.md",
+  "latest_daily_summary": "docs/research/perp-daily-20260909-v1.summary.json",
+  "latest_delivery_report": "docs/research/perp-discovery-timing-v1.md",
+  "latest_delivery_summary": "docs/research/perp-discovery-timing-v1.summary.json",
+  "latest_report": "docs/research/perp-funding-change-v1.md",
+  "latest_summary": "docs/research/perp-funding-change-v1.summary.json",
+  "lessons": [
+    {
+      "mechanism": "unfiltered-24h-breakout",
+      "verdict": "GROSS_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "mechanism": "entry-volatility-reduction",
+      "net_increment_usdt": -12.656415028545894,
+      "verdict": "NO_INCREMENT_OVER_TRAINING_FIXED_REDUCTION"
+    },
+    {
+      "gross_price_usdt": 178.27806000000382,
+      "mechanism": "direction-persistence-breakout",
+      "net_usdt": -83.61947252131063,
+      "observed_hourly_mtm_dd": 0.22557684232867603,
+      "risk_target_is_hard_gate": false,
+      "verdict": "COST_UNSUPPORTED_CONDITIONAL_TURNOVER_DIAGNOSTIC"
+    },
+    {
+      "exit24_net_usdt": -339.1683659549235,
+      "exit48_net_usdt": -368.22314704275163,
+      "mechanism": "extend-opposing-exit-24h-48h",
+      "verdict": "GROSS_AND_COST_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "limitations": [
+        "ETH/short concentration",
+        "thin stressed-cost margin",
+        "10748h drawdown duration",
+        "all historical data exposed"
+      ],
+      "mechanism": "carry-nonpaying-sign",
+      "net_usdt": 80.17886209544349,
+      "risk_target_is_hard_gate": false,
+      "verdict": "LIMITED_DEVELOPMENT_SUPPORT_FORWARD_PREPARATION_ONLY"
+    },
+    {
+      "mechanism": "carry-and-premium-sign-agree",
+      "verdict": "GROSS_AND_COST_UNSUPPORTED_STOP_BRANCH"
+    },
+    {
+      "flow_net_usdt": -348.51187697451417,
+      "incremental_net_usdt": 14.748312587699957,
+      "interpretation": "Fee savings reduced loss; gross effect worsened; stop branch",
+      "mechanism": "shock-rebound-and-taker-flow-turn",
+      "shock_net_usdt": -363.2601895622141,
+      "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+    },
+    {
+      "change_net_usdt": -473.0781785500234,
+      "incremental_net_usdt": -311.7969522362439,
+      "interpretation": "Positive gross effects do not cover complete costs; change worsens result; no sign inversion or holding sweep.",
+      "level_net_usdt": -161.28122631377948,
+      "mechanism": "settled-funding-level-versus-change-contrarian",
+      "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+    }
+  ],
+  "mechanism_card": "docs/discovery/perp-funding-change-review-v1.json",
+  "native_acceptance": {
+    "complete_two_pair_hours": 7,
+    "economic_result": null,
+    "economic_validation": false,
+    "native_position_cycles": 0,
+    "receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-acceptance-v1/acceptance.json",
+    "scheduled_hours": 7,
+    "sha256": "c280a739fed8d96270ff11c6debfa7b041238992b99ef5a1ec38ec177a633946",
+    "status": "LIMITED_PASS",
+    "task_id": "perp-forward-native-acceptance-v1",
+    "timely_entry_signals": 0
+  },
+  "next_task": null,
+  "policy_live": {
+    "migrated_at": "2026-09-08T16:40:18.819964+00:00",
+    "preserved_exploration_rounds": 3,
+    "preserved_exploration_variants": 8,
+    "sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646"
+  },
+  "policy_path": "docs/protocols/perp-autonomous-policy-v3.json",
+  "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+  "prior_knowledge_preserved": "docs/research-knowledge/perp-autonomous-v2.json",
+  "priority_next_review": {
+    "budget": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/discovery-budget.json",
+      "sha256": "5d4019677e3808b1bde6fe93aac30f8f080144f880f314c81b700cfd89f2a0b1"
+    },
+    "current_gap": "No liquidation event records in admitted manifest; hourly original mechanism evidence and free historical event coverage/availability remain UNKNOWN. Only existing metadata and prior returned portal evidence were inspected this turn.",
+    "development_manifest": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/development-admissions/flow-reversal-v1.json",
+      "sha256": "06db3dc5a3eefa62826b83cae8f8be6b08e258a694aceff5b14b4512523dbf4c"
+    },
+    "earliest_recheck_at": "2026-09-10T00:00:00+08:00",
+    "formal_confirmation_unchanged": true,
+    "if_data_still_missing": "Record BLOCKED_DATA, stop this data-dependent research branch and retain a precise reopening prerequisite; move only to one distinct unsearched defensible question, or keep the exploration slot empty.",
+    "native_calls": 0,
+    "native_task_created": false,
+    "new_external_pages": 0,
+    "new_external_queries": 0,
+    "next_condition": "At actual local budget reset, perform one bounded check of a supported alternative official path/repository plus original mechanism evidence. Do not retry the unchanged portal URL. Require both mechanism and legally admitted event data before freezing a finite experiment.",
+    "next_provider_trigger_at": null,
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-timing-v1/next-review.json",
+    "previous_review": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/next-review.json",
+      "sha256": "4410c22b7681220d18ded318f6fa15d4daa8ea5cd9322ceed90878e47a992f02"
+    },
+    "proposed_check": {
+      "additional_budget_authorized": false,
+      "additional_time_needed_if_immediate": 224.877532,
+      "completion_guaranteed": false,
+      "max_charged_seconds": 240,
+      "max_page_attempts": 3,
+      "max_queries": 2
+    },
+    "reason": "Preserved remaining 15.122468 seconds cannot cover the proposed bounded source-and-mechanism check; no budget increase or retrospective refund authorized.",
+    "recorded_at": "2026-09-09T05:09:57.622093+00:00",
+    "research_branch_status": "BLOCKED_DATA",
+    "selected_card": null,
+    "sha256": "fc182e4d7c98cfee7363382aa0b1803c8106e4c224dbe5c6165e7916b7c6cdf1",
+    "source_evidence": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
+      "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
+    },
+    "source_status": "BLOCKED_SOURCE_CONTENT",
+    "status": "WAIT_DISCOVERY_BUDGET"
+  },
+  "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1",
+  "scheduler_id": "freqtrade-lab-2",
+  "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
+  "schema": "research-knowledge-v1",
+  "snapshot_at": "2026-09-09T12:11:01.623071+00:00",
+  "terminal": {
+    "acceptance_native_calls_cumulative": 1,
+    "actual_market_native_calls_on_date": 5,
+    "actual_market_native_calls_utc_date": "2026-09-09",
+    "confirmation_native_calls_cumulative": 0,
+    "development_native_calls_cumulative": 12,
+    "independent_confirmation": false,
+    "market_native_retries": 0,
+    "profitable_qualified_strategy": false,
+    "status": "DEVELOPMENT_BRANCH_STOPPED_CONFIRMATION_CONTINUES",
+    "task_id": "perp-round-005-funding-change-v1"
+  },
+  "version": 3
+}

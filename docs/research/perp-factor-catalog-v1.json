@@ -1,0 +1,644 @@
+{
+  "schema": "perp-factor-catalog-v1",
+  "policy_version": "BTC_ETH_PERP_AUTONOMOUS_V1",
+  "as_of": "2026-09-09",
+  "scope": {
+    "traded_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "market": "USDT_LINEAR_PERPETUAL",
+    "research_exchange": "binance",
+    "execution_venue": "UNCONFIRMED",
+    "capital_usdt": 1000,
+    "capital_basis": "RESEARCH_ASSUMPTION_NO_ACCOUNT_READ"
+  },
+  "historical_stage": "EXPOSED_DEVELOPMENT",
+  "data_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data",
+  "source_receipts": {
+    "historical": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/receipt.json",
+      "sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021"
+    },
+    "coinmetrics": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/cm-supplement-v1/normalization-receipt-v2.json",
+      "sha256": "3300b97b788fc132902007b162836f5ba85c80da88e8b0a3afdf50c9460df89a"
+    },
+    "incremental": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260908T150000Z/update-receipt.json",
+      "sha256": "7897ef37f4d11a590d506245b96906b87ffa42cdc8fd124e9c81d15b7edc6a57"
+    },
+    "forward_availability_correction": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260908T150000Z/observed-availability-v2/receipt.json",
+      "sha256": "06054b2cd8552c165577ac983010c11906b3b7d5e3784a10b486089f4c02a898"
+    }
+  },
+  "factors": [
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "contract_ohlcv",
+      "role": "EXECUTION_AND_SIGNAL_INPUT",
+      "definition": "Binance USD-M individual perpetual hourly OHLCV; taker_buy_base_volume retained",
+      "unit": "price USDT/base; volume base-asset units",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": "ohlcv",
+      "status": "AVAILABLE_DEVELOPMENT",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-ohlcv.jsonl",
+          "sha256": "3853f0e18d941f71c475a448a63e0f8a2e0c71398c639f073cfa05ea2289d3a7",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-ohlcv.jsonl",
+          "sha256": "c04eb1b691bcec15e4320d2f525cdc89e85d9402719aaa56e26d0e89fcb69dc1",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      }
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "mark_price",
+      "role": "VALUATION_RISK_INPUT",
+      "definition": "Hourly exchange mark OHLC; no trade volume semantics",
+      "unit": "USDT/base",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": "mark",
+      "status": "AVAILABLE_DEVELOPMENT",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-mark.jsonl",
+          "sha256": "0fe6cb26c594011fe489e91c3eeb7bdc9a674af006223c1562b31a2a0a704ba1",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-mark.jsonl",
+          "sha256": "7d3797a170bffcfc6c2b1b3b50d5e19e69aa5d74f016e978aeaf14291647d73e",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      }
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "index_price",
+      "role": "EXPLANATORY_INPUT",
+      "definition": "Hourly underlying index OHLC; not executable futures prices",
+      "unit": "USDT/base",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": "index",
+      "status": "AVAILABLE_DEVELOPMENT",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-index.jsonl",
+          "sha256": "bcb7e24a20d9123e135122f0853db22d4d3d7a305e3e299e6dc6034e825f3034",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-index.jsonl",
+          "sha256": "135326ea5c5315d31d9c22593ff50de4bb4dd9d25d87331ad0e3dcfbe9801044",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      }
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "premium_index",
+      "role": "CROWDING_CONDITION_INPUT",
+      "definition": "Hourly official premium index OHLC; not spot-perp executable arbitrage",
+      "unit": "dimensionless fraction",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "fields": "premium",
+      "status": "AVAILABLE_DEVELOPMENT",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-premium.jsonl",
+          "sha256": "fc8a0fc5c021f92a01c8086daf18720f39c86efa9115a11fa03ab75a096ef2bc",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-premium.jsonl",
+          "sha256": "705eb397c9d3b6c4b1f6a73731687dc1fa69c5b3a9433c69258511a7b4c4724f",
+          "rows": 13104,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T23:00:00Z",
+          "expected_rows": 13104,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      }
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Cost at exact fundingTime; signal availability assumes settlement + 1h, never predicted prior to settlement",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 86400,
+      "id": "settled_funding",
+      "role": "COST_AND_LAGGED_CONDITION",
+      "definition": "Actual historical settlement event rate with corresponding official markPrice; signed wallet cashflow -signed_quantity * settlement_mark * rate",
+      "unit": "rate fraction per actual settlement event; mark USDT/base",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#get-funding-rate-history",
+      "fields": [
+        "fundingTime",
+        "fundingRate",
+        "markPrice"
+      ],
+      "status": "AVAILABLE_DEVELOPMENT",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-funding.jsonl",
+          "sha256": "ac5abe935d420a8c3e955b0d76366978ce8a2625376ecd6d1d11c0baa1b1f528",
+          "rows": 1638,
+          "first": "2025-01-01T00:00:00.015000Z",
+          "last": "2026-06-30T16:00:00.005000Z",
+          "observed_interval_seconds": [
+            28799,
+            28800
+          ],
+          "missing_rows": null,
+          "coverage_status": "OBSERVED_SETTLEMENTS_NO_ASSUMED_FIXED_INTERVAL",
+          "first_boundary_seconds": 0,
+          "last_boundary_seconds": 28799
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-funding.jsonl",
+          "sha256": "cf3ed3083c40a6b143bb8a4c710e8ead8811a05a04528d0ca1162a88660320ed",
+          "rows": 1638,
+          "first": "2025-01-01T00:00:00.015000Z",
+          "last": "2026-06-30T16:00:00.005000Z",
+          "observed_interval_seconds": [
+            28799,
+            28800
+          ],
+          "missing_rows": null,
+          "coverage_status": "OBSERVED_SETTLEMENTS_NO_ASSUMED_FIXED_INTERVAL",
+          "first_boundary_seconds": 0,
+          "last_boundary_seconds": 28799
+        }
+      },
+      "quality_detail": {
+        "rows_per_asset": 1638,
+        "actual_interval_min_ms": 28799984,
+        "actual_interval_max_ms": 28800016,
+        "all_settlement_mark_prices_present": true,
+        "missing_event_count": null,
+        "reason": "All observed gaps near 8h in this batch; no universal 8h schedule imposed",
+        "missing_values_never_zero_filled": true,
+        "incremental_revision_overlap_hours": 24
+      }
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Timestamp is documented period end; availability assumes +1h; forward values additionally floored at actual fetch",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "open_interest",
+      "role": "CROWDING_CONDITION_CANDIDATE",
+      "definition": "Separate total open-interest quantity and nominal open-interest value; changes in USD value cannot alone establish new positions or net long interest",
+      "unit": "sumOpenInterest source quantity unit UNVERIFIED; sumOpenInterestValue nominal value, normalize only after unit contract verified",
+      "source": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#open-interest-statistics",
+      "fields": [
+        "sumOpenInterest",
+        "sumOpenInterestValue",
+        "timestamp"
+      ],
+      "status": "FORWARD_COLLECTION_ONLY_PENDING_UNIT_VERIFICATION",
+      "coverage": {
+        "BTCUSDT": {
+          "path": "BTCUSDT-oi.jsonl",
+          "rows": 500,
+          "first": "2026-08-18T20:00:00Z",
+          "last": "2026-09-08T15:00:00Z",
+          "status": "RECENT_ONLY_BEGIN_FORWARD_CAPTURE",
+          "unit_contract_verified": false
+        },
+        "ETHUSDT": {
+          "path": "ETHUSDT-oi.jsonl",
+          "rows": 500,
+          "first": "2026-08-18T20:00:00Z",
+          "last": "2026-09-08T15:00:00Z",
+          "status": "RECENT_ONLY_BEGIN_FORWARD_CAPTURE",
+          "unit_contract_verified": false
+        }
+      },
+      "history_limit": "Official documentation currently only latest 1 month; actual first capture 500 hourly observations; not included in 18-month backtest"
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "directional_persistence_24h",
+      "role": "ENTRY_CONDITION",
+      "definition": "Sum of past 24 completed hourly log returns divided by sum of their absolute values; long >= .25, short <= -.25 in first preregistered comparison",
+      "unit": "dimensionless [-1,1]",
+      "source": "lab/perp_baseline.py:features",
+      "status": "IMPLEMENTED_FIRST_CONTROLLED_EXPERIMENT",
+      "coverage": {
+        "input_hours_per_asset": 13104,
+        "lookback_hours": 24
+      },
+      "missing_policy": "Zero denominator remains missing; no fabricated direction"
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "source_version": "BINANCE_USDM_REST_V1_2026-09-08",
+      "fees_license": "Unauthenticated public API; no paid subscription; redistribution rights not inferred; raw data remain outside Git",
+      "update_frequency": "1h after close + 10 minutes",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "revision_policy": "Immutable capture files; overlapping updates retain both vintages",
+      "historical_available_at_basis": "Closed candle end + 60s conservative assumption; hourly strategy executes one further candle later",
+      "forward_available_at_basis": "max(conservative availability, actual fetched_at); delayed captures cannot replay decisions",
+      "max_age_seconds": 7200,
+      "id": "volatility_risk_24h_168h",
+      "role": "ENTRY_RISK",
+      "definition": "Clip past 168h realized-vol / past 24h realized-vol to [.25,1], std ddof=0; only entry stake changes in first native slice; compare training-calibrated fixed-risk control",
+      "unit": "dimensionless stake multiplier",
+      "source": "lab/perp_baseline.py:features",
+      "status": "IMPLEMENTED_FIRST_CONTROLLED_EXPERIMENT",
+      "coverage": {
+        "input_hours_per_asset": 13104,
+        "lookback_hours": 168
+      },
+      "missing_policy": "Invalid or zero short volatility prevents entry; never increase leverage above1x"
+    },
+    {
+      "id": "network_TxCnt",
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "chain": [
+        "Bitcoin",
+        "Ethereum mainnet"
+      ],
+      "role": "SLOW_BACKGROUND_CONDITION_CANDIDATE",
+      "definition": "Daily count of on-chain user/machine-initiated transactions; protocol issuance changes and UTXO coinbase excluded by provider definition",
+      "unit": "transactions/day",
+      "source": "https://docs.coinmetrics.io/api/v4/",
+      "source_field": "TxCnt",
+      "source_version": "COINMETRICS_COMMUNITY_V4_2026-09-08",
+      "status": "DEVELOPMENT_ONLY_NO_HISTORICAL_VINTAGE",
+      "coverage": {
+        "btc": {
+          "rows": 546,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T00:00:00Z",
+          "expected_rows": 546,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "eth": {
+          "rows": 546,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T00:00:00Z",
+          "expected_rows": 546,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      },
+      "missing_values": 0,
+      "history_catalog": {
+        "BTC": "2009-01-03 onward community daily",
+        "ETH": "2015-07-30 onward community daily",
+        "actual_download": "2025-01-01 through 2026-06-30, 546 rows per asset"
+      },
+      "fees_license": "Community API no key; free non-commercial community use under Creative Commons, per official docs; exact redistribution terms require review before redistribution",
+      "historical_available_at_basis": "event day start +48h conservative delay assumption; actual historical publication/PIT vintage UNKNOWN",
+      "forward_available_at_basis": "max(day start+48h, fetched_at), retain every capture vintage",
+      "fetched_at": "2026-09-08T15:10:00.095042Z",
+      "revision_policy": "No historical PIT; daily revisions remain distinct snapshots",
+      "max_age_seconds": 259200,
+      "update_frequency": "daily",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "inference_limits": [
+        "not 24 independent hourly samples",
+        "network usage not trading direction",
+        "entity labeling unavailable",
+        "not eligible for independent historical confirmation"
+      ]
+    },
+    {
+      "id": "network_AdrActCnt",
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "chain": [
+        "Bitcoin",
+        "Ethereum mainnet"
+      ],
+      "role": "SLOW_BACKGROUND_CONDITION_CANDIDATE",
+      "definition": "Daily unique active addresses, not unique users; chain conventions and L2 migration limit cross-time comparability",
+      "unit": "addresses/day",
+      "source": "https://docs.coinmetrics.io/api/v4/",
+      "source_field": "AdrActCnt",
+      "source_version": "COINMETRICS_COMMUNITY_V4_2026-09-08",
+      "status": "DEVELOPMENT_ONLY_NO_HISTORICAL_VINTAGE",
+      "coverage": {
+        "btc": {
+          "rows": 546,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T00:00:00Z",
+          "expected_rows": 546,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        },
+        "eth": {
+          "rows": 546,
+          "duplicates": 0,
+          "first": "2025-01-01T00:00:00Z",
+          "last": "2026-06-30T00:00:00Z",
+          "expected_rows": 546,
+          "missing_rows": 0,
+          "missing_fraction": 0.0,
+          "gap_examples": [],
+          "out_of_window": 0
+        }
+      },
+      "missing_values": 0,
+      "history_catalog": {
+        "BTC": "2009-01-03 onward community daily",
+        "ETH": "2015-07-30 onward community daily",
+        "actual_download": "2025-01-01 through 2026-06-30, 546 rows per asset"
+      },
+      "fees_license": "Community API no key; free non-commercial community use under Creative Commons, per official docs; exact redistribution terms require review before redistribution",
+      "historical_available_at_basis": "event day start +48h conservative delay assumption; actual historical publication/PIT vintage UNKNOWN",
+      "forward_available_at_basis": "max(day start+48h, fetched_at), retain every capture vintage",
+      "fetched_at": "2026-09-08T15:10:00.095042Z",
+      "revision_policy": "No historical PIT; daily revisions remain distinct snapshots",
+      "max_age_seconds": 259200,
+      "update_frequency": "daily",
+      "timing_fields": [
+        "event_time",
+        "available_at",
+        "fetched_at",
+        "source_version",
+        "quality",
+        "vintage"
+      ],
+      "inference_limits": [
+        "not 24 independent hourly samples",
+        "network usage not trading direction",
+        "entity labeling unavailable",
+        "not eligible for independent historical confirmation"
+      ]
+    },
+    {
+      "id": "glassnode_pit_optional",
+      "role": "OPTIONAL_CHAIN_EXPLANATORY",
+      "source": "https://docs.glassnode.com/data/point-in-time-metrics",
+      "status": "BLOCKED_PERMISSION_AND_COVERAGE_UNVERIFIED",
+      "definition": "Potential point-in-time chain activity or entity-adjusted metric; no paid credential queried",
+      "unit": null,
+      "coverage": null,
+      "fees_license": "No subscription authorized or purchased",
+      "available_at_basis": null,
+      "revision_policy": "Provider PIT and computed_at vs published_at require actual verification",
+      "missing_fraction": null,
+      "update_frequency": null,
+      "does_not_block_market_baseline": true
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "available_at_assumption": "source t+1h+60s; entry t+2h",
+      "coverage_rows_per_asset": 13104,
+      "definition": "Q=(2*taker_buy_base_volume-volume)/volume; previous 6h aggregate sign versus current hour",
+      "historical_PIT_verified": false,
+      "id": "taker_pressure_transition",
+      "not_equivalent_to": [
+        "OI",
+        "net capital inflow",
+        "orderbook OFI"
+      ],
+      "report": "docs/research/perp-dispatch-flow-v1.md",
+      "role": "DEVELOPMENT_FLOW_REVERSAL_CONTROL",
+      "source": "https://github.com/binance/binance-public-data#klines-1",
+      "source_receipt": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/receipt.json",
+        "sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021"
+      },
+      "status": "TESTED_NEGATIVE_STOP_BRANCH",
+      "unit": "dimensionless"
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "available_at": "strictly next hourly boundary after maximum of both declared event+1h availability times",
+      "confirms_OI_or_capital_flow": false,
+      "definition": "Current settled funding minus previous consecutive equal-8h-slot settled funding; compare to current level.",
+      "historical_PIT_verified": false,
+      "id": "settled_funding_change",
+      "report": "docs/research/perp-funding-change-v1.md",
+      "role": "DEVELOPMENT_DIRECTIONAL_FACTOR",
+      "status": "TESTED_NEGATIVE_COST_UNSUPPORTED_STOP_BRANCH",
+      "unit": "rate_fraction"
+    }
+  ]
+}

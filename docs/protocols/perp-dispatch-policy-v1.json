@@ -1,0 +1,28 @@
+{
+  "allowed_development_roots": [
+    "first-capture-v1",
+    "cm-supplement-v1"
+  ],
+  "authority": "User authorized one long future confirmation wait plus one priority short exploration; preserve one writer and all frozen economic rules.",
+  "budget_policy_path": "docs/protocols/perp-autonomous-policy-v3.json",
+  "budget_policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+  "confirmation_protocol_path": "docs/protocols/perp-independent-confirmation-v2.json",
+  "confirmation_protocol_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+  "development_window": {
+    "end_exclusive": "2026-07-01T00:00:00+00:00",
+    "start": "2025-01-01T00:00:00+00:00"
+  },
+  "economic_rules_change": false,
+  "entrypoint": "scripts/perp_dispatch.py",
+  "forbidden_data": "No incremental, forward-warmup, forward-signals, forward-confirmation, or economic data overlapping the frozen confirmation window. No new independent historical permission.",
+  "issue": 162,
+  "legacy_scheduler_sha256": "5c5ccdf50bd7f153422f6e9529b43c7cb7b6e42f1576b24c637ac140ace9a2fc",
+  "maintenance_buffer_seconds": 300,
+  "market_workers": 1,
+  "max_active_mechanisms": 2,
+  "max_open_confirmation": 1,
+  "max_open_research": 1,
+  "protocol_id": "PERP_DISPATCH_V1",
+  "queue_semantics": "One fixed confirmation plus one exploration; RUNNING and UNKNOWN_INTERRUPTED globally exclusive. Required capture and timely intent first. Due or approaching confirmation blocks exploration.",
+  "runtime_policy_change": false
+}

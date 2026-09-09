@@ -1,0 +1,182 @@
+{
+  "status": "COMPLETED",
+  "native_execution_status": "COMPLETED_DEVELOPMENT",
+  "task_binding": {
+    "task_id": "perp-round-003-funding-premium-v1",
+    "code_sha256": "5d578707aebcea206b752b54946252150ca4a966e6f83af5fab18cee3669561b",
+    "data_sha256": "fdd0fc90842731802b8f9c0506e4a93476ea2db9dd277457f759f7014bf65f41",
+    "policy_sha256": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04"
+  },
+  "conclusion": "carry_nonpaying 开发期成本后 +80.178862 USDT、小时 MTM DD 21.4539%，有有限经济支持；carry_premium_agree 净 -136.224900 USDT，停止 premium 符号过滤。正结果集中于 ETH/short，2025 为负、2026 已曝光诊断为正；唯一优先为固定 carry_nonpaying 的家族专属真实前向确认准备，尚未独立准入。",
+  "unique_next_direction": "固定 carry_nonpaying 的家族专属真实前向确认准备；当前尚未独立准入。",
+  "raw_summary_sha256": "a8c5be9287ecda8b159db57c68e53c27330e2df336b4deb12524c4a7b1e9a79c",
+  "reviewed_report_sha256": "2f172613342c6444a4141a57591b249014928414f7db8e4e3e579f82c3c3fe82",
+  "risk_admission_status": "PENDING_SUPERVISOR_REVIEW",
+  "independent_admission": false,
+  "market_native_calls_total": 2,
+  "new_native_calls_this_invocation": 2,
+  "technical_retries": 0,
+  "total_seconds": 7.199848874995951,
+  "preparation_seconds": 1.590792540984694,
+  "version": "PERP_FUNDING_PREMIUM_RESULT_V1",
+  "source_manifest_sha256": "0a05a8d7ce1565b7f6c6fb6961696399e1ff54c30a7425145ac64d184969c0b5",
+  "data_stage": "DEVELOPMENT_ONLY_ALL_HISTORY_EXPOSED_NON_PIT_FACTORS",
+  "variants": {
+    "carry_nonpaying": {
+      "net_usdt": 80.17886209544349,
+      "gross_price_effect_usdt": 222.66391999999934,
+      "taker_fee_usdt": 111.92285292000005,
+      "slippage_allowance_usdt": 37.30761764000002,
+      "funding_usdt": 6.745412655444216,
+      "observed_hourly_mtm_drawdown": 0.214538901198996,
+      "drawdown_duration_hours": 10748,
+      "mean_gross_exposure_fraction": 0.21211088304325398,
+      "max_gross_exposure_fraction": 0.8463876455556084,
+      "native_position_cycles": 249,
+      "common_72h_entry_clusters": 138,
+      "conditional_same_fill_stress_net_usdt": 5.563626815443428,
+      "by_side": {
+        "long": {
+          "position_cycles": 55,
+          "net_usdt": -103.61147504,
+          "funding_usdt": -0.6870107720315376
+        },
+        "short": {
+          "position_cycles": 194,
+          "net_usdt": 183.79033715999998,
+          "funding_usdt": 7.432423427475748
+        }
+      },
+      "by_pair": {
+        "BTC/USDT:USDT": {
+          "position_cycles": 125,
+          "net_usdt": -10.220343030000004,
+          "funding_usdt": 4.650448656175505
+        },
+        "ETH/USDT:USDT": {
+          "position_cycles": 124,
+          "net_usdt": 90.39920514999999,
+          "funding_usdt": 2.094963999268706
+        }
+      },
+      "accounting_reconciliation": "PASS"
+    },
+    "carry_premium_agree": {
+      "net_usdt": -136.2249001059281,
+      "gross_price_effect_usdt": -99.71515000000025,
+      "taker_fee_usdt": 27.297987378000013,
+      "slippage_allowance_usdt": 9.099329126000004,
+      "funding_usdt": -0.1124336019278309,
+      "observed_hourly_mtm_drawdown": 0.23115431501005124,
+      "drawdown_duration_hours": 12307,
+      "mean_gross_exposure_fraction": 0.050227541072293665,
+      "max_gross_exposure_fraction": 0.8015112382865914,
+      "native_position_cycles": 66,
+      "common_72h_entry_clusters": 52,
+      "conditional_same_fill_stress_net_usdt": -154.4235583579281,
+      "by_side": {
+        "long": {
+          "position_cycles": 55,
+          "net_usdt": -101.95794114,
+          "funding_usdt": -0.6377065905266777
+        },
+        "short": {
+          "position_cycles": 11,
+          "net_usdt": -34.266958949999996,
+          "funding_usdt": 0.5252729885988467
+        }
+      },
+      "by_pair": {
+        "BTC/USDT:USDT": {
+          "position_cycles": 30,
+          "net_usdt": -15.70791594,
+          "funding_usdt": 0.48280998138794273
+        },
+        "ETH/USDT:USDT": {
+          "position_cycles": 36,
+          "net_usdt": -120.51698415,
+          "funding_usdt": -0.5952435833157736
+        }
+      },
+      "accounting_reconciliation": "PASS"
+    }
+  },
+  "event_layer": {
+    "label": "OVERLAPPING_24H_EVENTS_DEVELOPMENT_NOT_WALLET_OR_INDEPENDENT",
+    "parent": {
+      "events": 1311,
+      "common_72h_clusters": 177,
+      "mean_gross": -0.00013518452774433944,
+      "mean_cost": 0.0015990272994623545,
+      "mean_funding": -3.367874614570042e-05,
+      "mean_net": -0.0017678905733523938
+    },
+    "variants": {
+      "carry_nonpaying": {
+        "events": 590,
+        "common_72h_clusters": 142,
+        "mean_gross": 0.0016686425335155383,
+        "mean_cost": 0.0015965981308312472,
+        "mean_funding": 7.791611418349383e-05,
+        "mean_net": 0.00014996051686778475
+      },
+      "carry_premium_agree": {
+        "events": 117,
+        "common_72h_clusters": 52,
+        "mean_gross": -0.007645072300577219,
+        "mean_cost": 0.001596284342221764,
+        "mean_funding": 1.3866511622296705e-07,
+        "mean_net": -0.00924121797768276
+      }
+    },
+    "confidence_interval": null
+  },
+  "review": {
+    "carry_nonpaying": {
+      "native_fills_gate_audit": "PASS",
+      "audited_cycles": 249,
+      "largest_winner_usdt": 69.79460442,
+      "net_without_largest_winner_usdt": 10.384257675443493,
+      "periods": {
+        "training": {
+          "initial_equity": 1000.0,
+          "final_equity": 902.7888767995255,
+          "return_fraction": -0.09721112320047454,
+          "version_period_drawdown": 0.20889692778181423
+        },
+        "later_development": {
+          "initial_equity": 902.7888767995255,
+          "final_equity": 1080.1788620954435,
+          "return_fraction": 0.19649110645313095,
+          "version_period_drawdown": 0.1004001852606552
+        },
+        "independently_validated": false,
+        "phase_boundary_positions_carried": true,
+        "note": "Same continuous native account; period returns are descriptive, later period was not a fresh unseen holdout. Lifecycle DD is retained separately."
+      }
+    },
+    "carry_premium_agree": {
+      "native_fills_gate_audit": "PASS",
+      "audited_cycles": 66,
+      "largest_winner_usdt": 33.47714755,
+      "net_without_largest_winner_usdt": -169.70204765592808,
+      "periods": {
+        "training": {
+          "initial_equity": 1000.0,
+          "final_equity": 886.2180075017974,
+          "return_fraction": -0.11378199249820264,
+          "version_period_drawdown": 0.1724865083165713
+        },
+        "later_development": {
+          "initial_equity": 886.2180075017974,
+          "final_equity": 863.7750998940719,
+          "return_fraction": -0.025324364228380913,
+          "version_period_drawdown": 0.0862995953327883
+        },
+        "independently_validated": false,
+        "phase_boundary_positions_carried": true,
+        "note": "Same continuous native account; period returns are descriptive, later period was not a fresh unseen holdout. Lifecycle DD is retained separately."
+      }
+    }
+  }
+}

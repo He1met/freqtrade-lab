@@ -1,0 +1,64 @@
+{
+  "actual_turn_id": null,
+  "batch": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
+    "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
+  },
+  "budget": {
+    "actual_active_seconds_for_legacy": null,
+    "charged_seconds": 1184.877532,
+    "cpu_seconds": null,
+    "local_day": "2026-09-09",
+    "monetary_cost": null,
+    "new_batch": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.json",
+      "sha256": "277de1c29700b330d37c9477ac595d65503673665a9c7ddc2106ec145cb4b9cc"
+    },
+    "page_attempts": 13,
+    "previous": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery-cadence-migration-v1/budget-after-probe.json",
+      "sha256": "0e7d2246d55818c71f743e9d0eb97763c29c91f885cce6f2d2b5ca1ae3cf2fa0"
+    },
+    "queries": 9,
+    "recorded_at": "2026-09-09T04:30:23.723750+00:00",
+    "remaining": {
+      "charged_seconds": 15.122468,
+      "page_attempts": 3,
+      "queries": 3
+    }
+  },
+  "cpu_seconds": null,
+  "discovery_charged_seconds": 33.14951,
+  "discovery_page_attempts": 1,
+  "discovery_queries": 0,
+  "formal_confirmation_started": false,
+  "market_gets": 15,
+  "monetary_cost": null,
+  "native_calls": 0,
+  "new_prompt_automatic_discovery_verified": true,
+  "next_review": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/next-review.json",
+    "sha256": "4410c22b7681220d18ded318f6fa15d4daa8ea5cd9322ceed90878e47a992f02"
+  },
+  "observer_record_count": 13,
+  "orders": 0,
+  "origin": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+  "provider_observed_at": "2026-09-09T04:24:54.425Z",
+  "provider_trigger_id": null,
+  "report": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/research/perp-continuous-discovery-automatic-v1.md",
+    "sha256": "8b24554b4369165c073c32c73cdf9016ec6b4aa8e236e1c566e76849db113493"
+  },
+  "schema": "perp-automatic-continuous-discovery-v1",
+  "source_output": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/continuous-002-v1.source-output.json",
+    "sha256": "fda07e70382b5c3bf2f5316dc3769c53f5aad2a2f54a221f136757dfa16524bf"
+  },
+  "source_result": "GENERIC_PORTAL_MISSING_REQUESTED_CONTENT",
+  "status": "AUTOMATIC_SOURCE_CHECK_COMPLETED_BLOCKED_SOURCE",
+  "status_snapshot": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/heartbeat-receipts/20260909T042454425Z/status-final.json",
+    "sha256": "029597903abbda27f598a3680cfe4c6b2251252daf354363e13798add9f0c179"
+  },
+  "tests_repeated": false
+}

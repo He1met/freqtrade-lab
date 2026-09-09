@@ -1,0 +1,176 @@
+{
+  "automation": {
+    "discovery_configured": true,
+    "discovery_execution_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
+    "id": "freqtrade-lab-2",
+    "prompt_exact_match": true,
+    "prompt_sha256": "899b00ac6ed2d531d525a015a52078ca47863436784de872ac7fdf26931e6bda",
+    "rrule": "FREQ=MINUTELY;INTERVAL=30",
+    "status": "ACTIVE"
+  },
+  "dispatch": {
+    "binding_sha256": "e187620ae11185442c18955416d60d263583f7813c718fd12bef4c6a3b12d5d6",
+    "budget_daily_variants": 8,
+    "budget_weekly_variants": 28,
+    "confirmation_task_unchanged": true,
+    "open_exploration": 0,
+    "preparation_v1_superseded_before_claim": true,
+    "status_script_sha256": "8c8e6b64b8a629b38bc7ed812dd9c9bb659e216e69cb7c298aa2165f6bba7d1d",
+    "writer": "IDLE"
+  },
+  "execution_origin": "USER_AUTHORIZED_DISPATCH_IMPROVEMENT_DURING_EXISTING_AUTOMATIC_TURN",
+  "incremental_net_usdt": 14.748312587699957,
+  "independent_confirmation": false,
+  "input_use": "EXPOSED_DEVELOPMENT_ONLY",
+  "issue": 162,
+  "metrics": {
+    "flow_turn": {
+      "common_72h_entry_clusters": 142,
+      "conditional_same_fill_stress_net_usdt": -440.84234913051426,
+      "drawdown_duration_hours": 12641,
+      "funding_usdt": 1.407117337484576,
+      "gross_price_effect_usdt": -165.25804999999855,
+      "native_position_cycles": 370,
+      "net_usdt": -348.51187697451417,
+      "observed_hourly_mtm_drawdown": 0.39656078656097415,
+      "slippage_allowance_usdt": 46.16523607800005,
+      "taker_fee_usdt": 138.49570823400015,
+      "total_return": -0.34851187697451413
+    },
+    "shock_rebound": {
+      "common_72h_entry_clusters": 147,
+      "conditional_same_fill_stress_net_usdt": -466.82019475821414,
+      "drawdown_duration_hours": 12641,
+      "funding_usdt": 1.6257108297861036,
+      "gross_price_effect_usdt": -157.76589000000013,
+      "native_position_cycles": 410,
+      "net_usdt": -363.2601895622141,
+      "observed_hourly_mtm_drawdown": 0.4259087927029981,
+      "slippage_allowance_usdt": 51.780002598000024,
+      "taker_fee_usdt": 155.3400077940001,
+      "total_return": -0.3632601895622142
+    }
+  },
+  "native_calls": {
+    "development_cumulative": 10,
+    "engineering_acceptance_cumulative": 1,
+    "formal_confirmation": 0,
+    "retries": 0,
+    "this_round": 2
+  },
+  "observed_at": "2026-09-09T01:20:23.754543+00:00",
+  "qualified_profitable_strategy": false,
+  "receipts": {
+    "automation_final": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/automation-discovery-readback.json",
+      "sha256": "b4d208625b5fec284aede0997df6de658d42ab5bbf5cee196c117d0653bed61a"
+    },
+    "check-execution": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/check-execution.json",
+      "sha256": "c7a77b601cf2328c516024f33bef4764e006c839e37b7d1e0f47bd7720624f7d"
+    },
+    "claim-execution": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/claim-execution.json",
+      "sha256": "cf0c493f2c0e244c273cd89fd5f4a53e204f003d3f69f9d3ecd24429652ef080"
+    },
+    "discovery": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
+      "sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9"
+    },
+    "enqueue-execution": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/enqueue-execution.json",
+      "sha256": "b07760411f79fb308cddc33a091d18889ac03e54854b070d4d2dbc4ddef40a12"
+    },
+    "finish-execution": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/finish-execution.json",
+      "sha256": "5555ae4ce378e91c5d0f26808da9914fa901b5fca4a644d71a66e7751d786c90"
+    },
+    "independent_review": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/independent-review.json",
+      "sha256": "4edb1a7a4b393d5cf1a2b5dcd90b15b1ffa220f319c04c74379752565c5b1163"
+    },
+    "maintenance-observer": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/maintenance-observer.json",
+      "sha256": "eea47d1099c42cea3eb3706cdeb687f573653885766c032addb75d9bfb751527"
+    },
+    "maintenance-tick": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/maintenance-tick.json",
+      "sha256": "ba3f1cb5631b6b5b325646c0db0ff8b7080cdf8b318f643a365d3ccc27b584c7"
+    },
+    "native-execution": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/native-execution.json",
+      "sha256": "1599f98b0eb18a0a9d9b7b80871b14b6142dc4cfc2dfdae6ab942ecf74346992"
+    },
+    "status_final": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/dispatch-improvement-v1/revision-2/status-delivery.json",
+      "sha256": "46ea92c3cae85341eb45ca264d6b95d2d0a7a482c0888ebb46cde29303446088"
+    }
+  },
+  "risk_review": {
+    "flow_turn": "RISK_RECALIBRATION_REQUIRED",
+    "shock_rebound": "RISK_RECALIBRATION_REQUIRED"
+  },
+  "same_call_handoff": {
+    "claimed_at": "2026-09-09T01:10:27.485416+00:00",
+    "complete": true,
+    "finished_at": "2026-09-09T01:10:35.304460+00:00",
+    "maintenance_started_at": "2026-09-09T01:10:22.114013+00:00",
+    "native_started_at": "2026-09-09T01:10:27.676388+00:00",
+    "observer_finished_at": "2026-09-09T01:10:27.427165+00:00",
+    "observer_to_claim_seconds": 0.058251
+  },
+  "schema": "perp-dispatch-flow-delivery-v1",
+  "scope": "BTC_ETH_USDT_LINEAR_PERPETUAL",
+  "source_report": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-004-flow-reversal-v2/report.zh.md",
+    "sha256": "a3008c500519cb9ce0c92ad00c5c43a296711444fe6b506f633f98c8002ce578"
+  },
+  "source_summary": {
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-004-flow-reversal-v2/summary.json",
+    "sha256": "08727402fcb9d9192901adbfa7b6e37d569864b76f0d7958a78e03fc838b2a8f"
+  },
+  "status": "COMPLETED",
+  "successor_review": {
+    "discovery_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
+    "discovery_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
+    "native_task_created": false,
+    "next_condition": "Zero-native development preflight must prove source/period/lag/cost bindings, observed nonzero changes and meaningful level-vs-change decision disagreement without inspecting return labels. Only then freeze a separate two-control execution protocol and request scheduler admission under preserved shared budget/lock; no market task created by this receipt.",
+    "next_regular_review_after": "2026-09-10T09:00:00+08:00",
+    "next_work": "Next available heartbeat after required maintenance: zero-native input/decision-disagreement preflight, freeze at most two controls and thin native reuse; current bounded delivery is complete.",
+    "reason": "RESEARCH_PREPARATION_REQUIRED: fixed two-control protocol, actual availability preflight and thin reuse of current native components are not implemented or bound to an executable task.",
+    "selected_card": "settled-funding-change",
+    "status": "RESEARCH_PREPARATION_REQUIRED"
+  },
+  "task_binding": {
+    "code_sha256": "68a27d4d2b0d04c1e3c3f189ff9ff82bdd8873ece594317e3356efbbbea81a4d",
+    "data_sha256": "06db3dc5a3eefa62826b83cae8f8be6b08e258a694aceff5b14b4512523dbf4c",
+    "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+    "task_id": "perp-round-004-flow-reversal-v2"
+  },
+  "task_id": "perp-round-004-flow-reversal-v2",
+  "timings": {
+    "cpu_seconds": null,
+    "discovery_active_seconds": null,
+    "discovery_wall_seconds": 308.591885,
+    "finish_seconds": 0.029338041999999998,
+    "maintenance_seconds": 5.312619959,
+    "monetary_cost": null,
+    "native_and_accounting_seconds": {
+      "flow_turn": 2.7822207499993965,
+      "shock_rebound": 3.161353582981974
+    },
+    "native_engine_seconds": {
+      "flow_turn": 2.226679041981697,
+      "shock_rebound": 2.4200131249963306
+    },
+    "native_process_seconds": 7.5695707500000005,
+    "preflight_seconds": 2.105006959,
+    "queued_to_claim_seconds": 953.012945,
+    "recorded_preparation_start": "2026-09-09T00:48:30.969741+00:00",
+    "report_seconds": null,
+    "review_seconds": null,
+    "unrecorded_earlier_implementation_seconds": null
+  },
+  "unique_next_direction": "关闭冲击反转加主动成交转换分支；唯一后续研究审查为已归档资金费变化机制是否具有独立、可证伪且数据可用的假说，审查前不生成市场任务；既有 carry_nonpaying 确认预约保持。",
+  "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+}

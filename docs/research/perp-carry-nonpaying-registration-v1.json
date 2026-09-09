@@ -1,0 +1,167 @@
+{
+  "schema": "perp-candidate-registration-v1",
+  "candidate_id": "perp-carry-nonpaying-v1",
+  "variant": "carry_nonpaying",
+  "registered_at": "2026-09-08T16:10:13.068639Z",
+  "status": "REGISTERED_NOT_ACTIVATED_PENDING_RUNNER_ACCEPTANCE",
+  "activated": false,
+  "confirmation_protocol_path": "docs/protocols/perp-independent-confirmation-v2.json",
+  "confirmation_protocol_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+  "strategy_sha256": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+  "runner_sha256": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca",
+  "cost_sha256": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+  "cost_binding_basis": "Full immutable V1 protocol SHA contains unchanged 6bp taker+2bp slippage per side and exact funding rule",
+  "data_receipt_sha256": "0a05a8d7ce1565b7f6c6fb6961696399e1ff54c30a7425145ac64d184969c0b5",
+  "data_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-003/manifest.json",
+  "policy_sha256": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+  "policy_path": "docs/protocols/perp-autonomous-policy-v2.json",
+  "candidate_protocol_sha256": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+  "development_report_sha256": "2ff690b204ae7a588feb69419a06ad5965f427fb8464877c7f004252b1d383e3",
+  "development_report_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/experiments/round-003/carry_nonpaying/summary.json",
+  "code_bindings": {
+    "docs/protocols/perp-funding-premium-v1.json": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+    "docs/protocols/perp-autonomous-policy-v2.json": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+    "lab/perp_funding_premium.py": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+    "lab/perp_baseline_report.py": "d6a03131fb386c800a4aacae723e97dd6b642ec86f19305cd5bd168bc03aac50",
+    "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+    "scripts/run_perp_funding_premium_v1.py": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca",
+    "docs/protocols/perp-first-experiment-v1.json": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+    "docs/protocols/perp-autonomous-policy-v1.json": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+    "lab/perp_baseline.py": "046e0343ef6669e72334309522f25799e2e6adfd957ed42d8a687205a38d3522",
+    "lab/perp_baseline_runner.py": "5da2896c64f9fbc32be32db9496a42c2a821b889c1bb1a47c88948b857b3b6f2",
+    "scripts/run_perp_experiment.py": "687aa5beef8be460c7324a260198c4435407efd9f9298dd1aee453648e5f6b92"
+  },
+  "data_bindings": {
+    "core": {
+      "BTCUSDT-ohlcv": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-ohlcv.jsonl",
+        "sha256": "3853f0e18d941f71c475a448a63e0f8a2e0c71398c639f073cfa05ea2289d3a7",
+        "rows": 13104
+      },
+      "BTCUSDT-mark": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-mark.jsonl",
+        "sha256": "0fe6cb26c594011fe489e91c3eeb7bdc9a674af006223c1562b31a2a0a704ba1",
+        "rows": 13104
+      },
+      "BTCUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-funding.jsonl",
+        "sha256": "ac5abe935d420a8c3e955b0d76366978ce8a2625376ecd6d1d11c0baa1b1f528",
+        "rows": 1638
+      },
+      "ETHUSDT-ohlcv": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-ohlcv.jsonl",
+        "sha256": "c04eb1b691bcec15e4320d2f525cdc89e85d9402719aaa56e26d0e89fcb69dc1",
+        "rows": 13104
+      },
+      "ETHUSDT-mark": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-mark.jsonl",
+        "sha256": "7d3797a170bffcfc6c2b1b3b50d5e19e69aa5d74f016e978aeaf14291647d73e",
+        "rows": 13104
+      },
+      "ETHUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-funding.jsonl",
+        "sha256": "cf3ed3083c40a6b143bb8a4c710e8ead8811a05a04528d0ca1162a88660320ed",
+        "rows": 1638
+      },
+      "instrument_rules": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/instrument-rules.json",
+        "sha256": "f295957934864c2d15f3ea5fc3e1c585df6d8e6e62fb8494606194eb42584149"
+      }
+    },
+    "factors": {
+      "BTCUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-funding.jsonl",
+        "sha256": "ac5abe935d420a8c3e955b0d76366978ce8a2625376ecd6d1d11c0baa1b1f528",
+        "rows": 1638
+      },
+      "BTCUSDT-premium": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-premium.jsonl",
+        "sha256": "fc8a0fc5c021f92a01c8086daf18720f39c86efa9115a11fa03ab75a096ef2bc",
+        "rows": 13104
+      },
+      "ETHUSDT-funding": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-funding.jsonl",
+        "sha256": "cf3ed3083c40a6b143bb8a4c710e8ead8811a05a04528d0ca1162a88660320ed",
+        "rows": 1638
+      },
+      "ETHUSDT-premium": {
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-premium.jsonl",
+        "sha256": "705eb397c9d3b6c4b1f6a73731687dc1fa69c5b3a9433c69258511a7b4c4724f",
+        "rows": 13104
+      }
+    }
+  },
+  "window": {
+    "kind": "GENUINELY_FUTURE",
+    "start_inclusive": "2026-09-10T00:00:00Z",
+    "end_exclusive": "2026-12-09T00:00:00Z",
+    "days": 90,
+    "candidate_registration_deadline_exclusive": "2026-09-10T00:00:00Z",
+    "warmup_start": "2026-09-03T00:00:00Z",
+    "warmup_end_exclusive": "2026-09-10T00:00:00Z",
+    "warmup_use": "Price features only; no scored warmup returns. Some warmup hours are still future at freeze and are not claimed acquired.",
+    "initial_positions": "FLAT",
+    "last_new_entry_exclusive": "2026-12-06T00:00:00Z",
+    "maximum_holding_hours": 72,
+    "terminal_accounting": "Exit existing positions under frozen rules, force remaining virtual position at end boundary with actual boundary open after publication. Preserve native actual force-exit timestamp if data ends earlier; do not relabel one-hour-early exit as end-boundary execution.",
+    "missed_activation": "NOT_ACTIVATED_MISSED_START; never backdate candidate registration or silently roll start. A later window requires a pre-start versioned protocol, with this missed window retained.",
+    "warmup_auxiliary_buffer_start": "2026-09-02T00:00:00Z",
+    "warmup_auxiliary_buffer_reason": "One non-scoring engineering buffer day before original seven-day warmup, for 168 return observations plus lag. This does not move, extend or score the 90-day confirmation window."
+  },
+  "signal_rules": {
+    "candidate_variant": "carry_nonpaying",
+    "source_candle": "t",
+    "nominal_cutoff": "t+1h+60s",
+    "planned_entry": "t+2h",
+    "actual_decision": "Observed/fetched at real clock strictly before planned entry; never backdate to nominal cutoff",
+    "funding": "latest declared available<=nominal cutoff and nominal age<=12h; long<=0 short>=0; actual observation<=actual decision",
+    "premium": "finite same-hour completeness/availability required, sign unused",
+    "entry_channel_hours": 24,
+    "exit_channel_hours": 12,
+    "persistence_threshold": 0.25,
+    "maximum_holding_hours": 72,
+    "wallet_usdt": 1000,
+    "nominal_leverage": 1,
+    "per_pair_entry_fraction": 0.4,
+    "stoploss": -0.2
+  },
+  "required_activation_bindings": {
+    "forward_signal_code_bindings": "PENDING_IMPLEMENTATION_AND_ACCEPTANCE",
+    "data_reader_code_bindings": "PENDING_FINAL_FREEZE",
+    "non_scoring_actual_observation_receipt_sha256": null,
+    "scheduler_origin_evidence": "UNKNOWN",
+    "activation_receipt_sha256": null
+  },
+  "timely_coverage_definition": {
+    "denominator": "90 days * 24 scheduled hourly planned-entry slots * 2 pairs = 4320 pair-hours, anchored at window start; include flat periods, no-trade and final 72h with new entries disabled.",
+    "numerator": "Unique immutable TIMELY_SIGNAL or TIMELY_NO_TRADE records with every required input valid/actually available and persisted before planned_entry. A timely omission/WAIT_DATA/LATE/INVALID record does not count as complete timely coverage.",
+    "minimum": 0.95,
+    "required_timely_pair_hours": 4104,
+    "no_trade_rule": "No trade is an observed strategy decision with complete valid data; it is not a substitute for missing features.",
+    "duplicates": "Stable candidate/pair/planned_entry key; count once, preserve first valid record and revisions separately; never insert hindsight records into primary numerator."
+  },
+  "research_risk": {
+    "classification": "ABOVE_TARGET_REVIEW",
+    "research_only": true,
+    "observed_hourly_mtm_drawdown": 0.214538901198996,
+    "drawdown_duration_hours": 10748,
+    "net_usdt": 80.17886209544349,
+    "gross_price_effect_usdt": 222.66391999999934,
+    "funding_usdt": 6.745412655444216,
+    "conditional_same_fill_stress_net_usdt": 5.563626815443428,
+    "by_pair_side_net_usdt": {
+      "BTC_long": 15.24129538,
+      "BTC_short": -25.46163841,
+      "ETH_long": -118.85277042,
+      "ETH_short": 209.25197557
+    },
+    "interpretation": "21.4539% is slightly above the unchanged about-20% target, below the unchanged 30% mandatory recalibration trigger. 10748 underwater hours, ETH-short concentration and only 5.56 USDT stress surplus make support fragile. Future confirmation keeps both assets/directions and all rules; no after-result risk increase, dropping losers, leverage/fund increase or live admission.",
+    "risk_protection_change": false,
+    "parameter_recalibration_performed": false,
+    "economic_qualification": false
+  },
+  "future_signal_calculations": 0,
+  "new_http_requests": 0,
+  "native_calls": 0,
+  "live_trading_authorized": false
+}

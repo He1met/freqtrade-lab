@@ -1,0 +1,229 @@
+{
+  "schema": "perp-discovery-review-v1",
+  "id": "perp-funding-change-review-v1",
+  "issue": 162,
+  "started_at": "2026-09-09T01:12:17+00:00",
+  "finished_at": "2026-09-09T01:17:25.591885+00:00",
+  "timezone": "Asia/Shanghai",
+  "local_day": "2026-09-09",
+  "run_slot": "daily",
+  "dedupe_key": "2026-09-09/daily-v1",
+  "trigger_context": "First DAILY review after Shanghai 09:00; same run also satisfies round-004 terminal empty-slot discovery. No separate supplemental allowance consumed.",
+  "supersedes_initial_label": "supplemental-after-round004",
+  "status": "REVIEW_COMPLETED_CARD_PENDING_PREFLIGHT",
+  "budget": {
+    "max_queries": 4,
+    "queries_used": 4,
+    "max_unique_sources": 6,
+    "unique_sources_opened": 5,
+    "max_seconds": 300,
+    "wall_seconds": 308.591885,
+    "market_native_calls": 0,
+    "market_http_calls": 0,
+    "new_market_tasks": 0,
+    "new_variants_consumed": 0,
+    "technical_market_retries": 0,
+    "readonly_metadata_command_corrections": 1,
+    "monetary_cost": null,
+    "declared_300s_target_exceeded": true,
+    "overrun_seconds": 8.591885,
+    "overrun_reason": "Final writeup completed 8.6 seconds after the approximately five-minute target; no query beyond the four-query cap and no additional market work."
+  },
+  "queries": [
+    {
+      "query": "perpetual futures funding rate changes predict returns paper arxiv",
+      "status": "COMPLETED",
+      "recency_days": null
+    },
+    {
+      "query": "site.developers.binance.com futures Funding Rate History fundingTime fundingRate markPrice",
+      "status": "COMPLETED",
+      "recency_days": null
+    },
+    {
+      "query": "\"funding rate\" \"perpetual\" discussion September 2026",
+      "domains": [
+        "github.com",
+        "reddit.com"
+      ],
+      "status": "COMPLETED_NO_DATE_VERIFIED_ADMISSIBLE_7D_DISCUSSION",
+      "recency_days": 7
+    },
+    {
+      "query": "perpetual funding rate settlement historical data discussion",
+      "domains": [
+        "reddit.com",
+        "github.com"
+      ],
+      "status": "COMPLETED_30D_FALLBACK_DATE_UNCERTAINTY_RETAINED",
+      "recency_days": 30
+    }
+  ],
+  "query_timing": "Executed within actual started_at/finished_at bounds; individual query wall-clock timestamps were not separately instrumented.",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://arxiv.org/abs/2506.08573",
+      "title": "Designing funding rates for perpetual futures in cryptocurrency markets",
+      "kind": "PRIMARY_PAPER",
+      "published_at": "2025-06-10",
+      "updated_at": null,
+      "read_scope": "abstract and submission history",
+      "use": "Funding as a pricing and anchoring mechanism; does not establish directional return predictability for differences."
+    },
+    {
+      "id": "S2",
+      "url": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+      "resolved_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "title": "Binance USD-M Funding Rate History and Funding Rate Info",
+      "kind": "OFFICIAL_DOCUMENTATION",
+      "published_at": null,
+      "updated_at": null,
+      "use": "Settled fundingRate/fundingTime/markPrice field semantics and interval adjustment metadata; no historical availability timestamp is promised."
+    },
+    {
+      "id": "S3",
+      "url": "https://www.binance.com/en/support/faq/detail/360033525031",
+      "title": "Introduction to Binance Futures Funding Rates",
+      "kind": "OFFICIAL_DOCUMENTATION",
+      "published_at": "2019-09-09T02:27",
+      "updated_at": "2026-03-06T07:01",
+      "date_timezone": null,
+      "use": "Premium averaging, clamp/cap and adjustable settlement intervals; funding is not an identified OI or capital-flow measure."
+    },
+    {
+      "id": "S4",
+      "url": "https://github.com/OctopusTakopi/funding-rate-alpha",
+      "title": "Funding Rates as a Cross-Sectional Factor in Perpetual Futures",
+      "kind": "OPEN_SOURCE_DISCOVERY_ONLY",
+      "published_at": null,
+      "updated_at": null,
+      "use": "Author reports regime and control sensitivity; unreplicated warning to separate price effects and carry. No repository claims adopted as local evidence."
+    },
+    {
+      "id": "S5",
+      "url": "https://www.reddit.com/r/Kalshi/comments/1vp6rs8/has_anyone_actually_been_credited_funding_on/",
+      "title": "Has anyone actually been credited funding on their perpetual position?",
+      "kind": "FORUM_DISCOVERY_ONLY_REJECTED",
+      "published_at": null,
+      "updated_at": null,
+      "date_observations": [
+        "Search result: 2026-08-15 / three weeks ago",
+        "Opened page: relative 3h ago; inconsistent with search date"
+      ],
+      "use": "Rejected: different venue/product and contradictory discussion; cannot validate Binance funding or alpha."
+    }
+  ],
+  "recent_coverage": {
+    "seven_day_search_completed": true,
+    "seven_day_date_verified_admissible_discussions": 0,
+    "expanded_to_days": 30,
+    "publication_uncertainty": "UNKNOWN dates and search/page mismatch retained; crawled dates never treated as publication dates.",
+    "excluded_search_hits": "Current BTC signal briefs, promotional content, wrong margin/venue and stale discussions were not adopted as selection evidence."
+  },
+  "data_scope": {
+    "root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1",
+    "receipt_sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021",
+    "window_start": "2025-01-01T00:00:00Z",
+    "window_end_exclusive": "2026-07-01T00:00:00Z",
+    "historical_use": "EXPOSED_DEVELOPMENT_NO_INDEPENDENT_CONFIRMATION",
+    "datasets": [
+      {
+        "symbol": "BTCUSDT",
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-funding.jsonl",
+        "sha256": "ac5abe935d420a8c3e955b0d76366978ce8a2625376ecd6d1d11c0baa1b1f528",
+        "receipt_sha_match": true,
+        "rows": 1638,
+        "fields": [
+          "available_at",
+          "cost_time",
+          "event_time",
+          "fetched_at",
+          "mark_price",
+          "quality",
+          "rate",
+          "source_version",
+          "vintage"
+        ],
+        "first_event_time": "2025-01-01T00:00:00.015000Z",
+        "last_event_time": "2026-06-30T16:00:00.005000Z",
+        "availability_assumption": "SETTLED_RECORD_SIGNAL_LAG_1H_ASSUMPTION",
+        "actual_historical_pit": false,
+        "observed_8h_slots_continuous": true,
+        "finite_rates": true
+      },
+      {
+        "symbol": "ETHUSDT",
+        "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-funding.jsonl",
+        "sha256": "cf3ed3083c40a6b143bb8a4c710e8ead8811a05a04528d0ca1162a88660320ed",
+        "receipt_sha_match": true,
+        "rows": 1638,
+        "fields": [
+          "available_at",
+          "cost_time",
+          "event_time",
+          "fetched_at",
+          "mark_price",
+          "quality",
+          "rate",
+          "source_version",
+          "vintage"
+        ],
+        "first_event_time": "2025-01-01T00:00:00.015000Z",
+        "last_event_time": "2026-06-30T16:00:00.005000Z",
+        "availability_assumption": "SETTLED_RECORD_SIGNAL_LAG_1H_ASSUMPTION",
+        "actual_historical_pit": false,
+        "observed_8h_slots_continuous": true,
+        "finite_rates": true
+      }
+    ],
+    "read_operations": "Local receipt/schema/time/continuity/finite-value checks only; no returns, factor-performance labels, OI values, onchain values or confirmation files read."
+  },
+  "cards": [
+    {
+      "id": "settled-funding-change",
+      "selected": true,
+      "status": "RESEARCH_PREPARATION_REQUIRED",
+      "mechanism": "Incremental settled funding cost can change basis-arbitrage incentives; test whether a one-event funding change contains a contrarian price component beyond the funding level. Directional usefulness remains an inference to falsify.",
+      "factor": "delta_k = settled_rate_k - settled_rate_k_minus_1, only after both declared available_at timestamps; compare only continuous equal-8h-slot events.",
+      "independence": "No price-breakout/persistence entry, no nonpaying sign gate, no taker-flow condition. Change is not a function of latest funding sign; economic independence remains unverified.",
+      "proposed_controls": [
+        "level contrarian: -sign(rate_k)",
+        "change contrarian: -sign(delta_k)"
+      ],
+      "fixed_card_rules": "Zero means flat. First hourly boundary strictly after max(available_at_k, available_at_k_minus_1); enter once per newly available event, hold 8h, no averaging/pyramiding; defer event when existing position has not exited. BTC/ETH, 1x, shared 1000 USDT research wallet, 0.4 per pair, 20% position stop, 6bp taker plus 2bp cash slippage each side and exact settlement funding. No sweeps.",
+      "falsification": "Require complete accounting, positive gross price effect and adequate descriptive sample (30 native position cycles and 12 common 72h entry clusters); net<=0, gross price effect<=0, or no positive incremental net versus level stops this card. Funding receipts alone do not support the directional adjustment hypothesis. Positive remains development-only.",
+      "information_value": "Tests whether a derivative of funding contributes beyond level/carry without retaining the frozen breakout mechanism.",
+      "next_condition": "Zero-native development preflight must prove source/period/lag/cost bindings, observed nonzero changes and meaningful level-vs-change decision disagreement without inspecting return labels. Only then freeze a separate two-control execution protocol and request scheduler admission under preserved shared budget/lock; no market task created by this receipt."
+    },
+    {
+      "id": "settlement-boundary-harvest",
+      "selected": false,
+      "status": "BLOCKED_DATA",
+      "reason": "A final settled rate becomes available under the existing one-hour lag after settlement. Historical expected-rate vintages, executable minute/order-book prices and payment-boundary execution are absent; a just-before/after-settlement harvest would use unavailable information or unsupported fills."
+    },
+    {
+      "id": "oi-onchain-conditioned-funding-change",
+      "selected": false,
+      "status": "BLOCKED_DATA",
+      "reason": "Existing OI historical units and point-in-time interpretation remain unverified; daily onchain TxCnt/AdrActCnt lack historical publication vintages. Neither identifies position crowding or a causal high-frequency joint state without new source admission."
+    }
+  ],
+  "unique_next_card": "settled-funding-change",
+  "queue_action": "NONE_THIS_DISCOVERY",
+  "confirmation": {
+    "candidate_changed": false,
+    "window_changed": false,
+    "confirmation_inputs_read": false,
+    "confirmation_native_calls": 0
+  },
+  "risk": {
+    "research_drawdown_target": 0.2,
+    "slight_excess_is_not_automatic_rejection": true,
+    "live_risk_change_authorized": false
+  },
+  "report_path": "docs/discovery/perp-funding-change-review-v1.md",
+  "runtime_receipt_writer": "root supervisor only",
+  "report_sha256": "5efbae8ef5295309a1d44ccbe7de73b695d06b666fccf7628d0b9c6a8dde356f",
+  "queue_blocker": "RESEARCH_PREPARATION_REQUIRED: fixed two-control protocol, actual availability preflight and thin reuse of current native components are not implemented or bound to an executable task."
+}
