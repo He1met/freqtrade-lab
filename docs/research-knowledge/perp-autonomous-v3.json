@@ -10,7 +10,7 @@
     "timeframe": "1h"
   },
   "automatic_wake": {
-    "automatic_native_chain_completed": false,
+    "automatic_native_chain_completed": true,
     "current_continuation_origin": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
     "evidence": {
       "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/activation-observed.json",
@@ -22,10 +22,26 @@
       "provider_observed_at": "2026-09-08T17:43:52.484Z",
       "provider_tool_event_id": "fco_01a0821e-81b3-7263-ac41-413fbe99f0f6"
     },
-    "latest_report": "docs/research/perp-first-automatic-heartbeat-v1.md",
+    "latest_report": "docs/research/perp-first-automatic-native-v1.md",
+    "native_chain_evidence": {
+      "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/automatic-native-observed-v1.json",
+      "sha256": "4816a442ed08ae1be3375975e385edc8d2cd455f5d4f4be6b4c29faff0c13dc7"
+    },
+    "native_chain_trigger": {
+      "actual_turn_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
+      "actual_turn_started_at_unix": 1788912443,
+      "automation_id": "freqtrade-lab-2",
+      "cause": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+      "provider_event_id": "fco_01a0837d-a1a7-70e2-924c-b094f3b1f9bf",
+      "provider_observed_at": "2026-09-09T00:07:23.801Z",
+      "provider_trigger_id": null,
+      "recorded_at": "2026-09-09T00:10:38.094305+00:00",
+      "trigger_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
+      "trigger_id_basis": "ACTUAL_TURN_ID_LOCAL_CORRELATION"
+    },
     "next_provider_trigger": null,
     "provider_trigger_id": null,
-    "status": "AUTOMATIC_WAKE_AND_READINESS_CHECK_VERIFIED"
+    "status": "AUTOMATIC_NATIVE_CHAIN_COMPLETED_LIMITED_PASS"
   },
   "avoid_repeating": [
     "Do not rename unfiltered breakout or rejected volatility scaling as a new independent trial",
@@ -44,7 +60,8 @@
   },
   "current_issue": 162,
   "data_collection": {
-    "last_complete_end": "2026-09-08T17:00:00Z",
+    "last_complete_end": "2026-09-09T00:00:00Z",
+    "latest_capture_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260909T000000Z/update-receipt.json",
     "new_capture_priority_tested": true,
     "required": [
       "ohlcv",
@@ -52,13 +69,13 @@
       "funding",
       "premium"
     ],
-    "v3_actual_entrypoint": "CANDIDATE_REQUIRED_NO_OP_VERIFIED_0_GET"
+    "v3_actual_entrypoint": "CANDIDATE_REQUIRED_COMPLETE_17_GET"
   },
   "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
   "formal_confirmation_executor": {
-    "activated": false,
-    "actual_wait_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/confirmation-wait-proof-v1.json",
-    "actual_wait_receipt_sha256": "8dc44e774d482222e28584a1d4267c9e144a3f4c3a03ab66e00f81779a90a8e2",
+    "activated": true,
+    "actual_wait_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-confirmation-v1/preparation-check.json",
+    "actual_wait_receipt_sha256": "6d6004cc9854cd6435863f6cd0368536927d0d2c84ca67378710b20a35f43105",
     "block_bootstrap": "IMPLEMENTED_FIXED_30_BLOCKS_SEED162_RESAMPLES2000; FUTURE_RESULT_NULL",
     "code_sha256": "85c146d2b79e63ba4aa1d976512fda437333d301150ed33c6100b713f1f0d8f1",
     "earliest_ready_at": "2026-12-09T00:10:00+00:00",
@@ -66,41 +83,57 @@
     "executor": "scripts/perp_forward_confirmation.py",
     "independent_pure_regressions": 4,
     "market_native_calls": 0,
+    "queue_native_calls_is_future_budget": true,
     "runbook": "docs/research/perp-forward-confirmation-runbook-v1.md",
     "same_availability_comparator": "UNKNOWN_NOT_RUN_ADDITIONAL_NATIVE_REQUIRED",
-    "status": "IMPLEMENTED_READ_ONLY_REAL_WAIT_FORWARD_VERIFIED",
+    "status": "ACTIVATED_WAITING_FIXED_FUTURE_WINDOW",
     "tests": 13
   },
   "forward_observer": {
-    "active": false,
+    "activated_at": "2026-09-09T00:19:18.291814+00:00",
+    "active": true,
     "binding": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/observer-binding.json",
     "binding_sha256": "3a48c439149fa9e3b7394e583fc6267e305c8f91dce3815d777bb960e111f2a4",
-    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1800Z.receipt.json",
-    "latest_receipt_sha256": "a062eede7bbc3b61678d3cd0acc050b8d6c858496c0426f470c0bc3899ce5897",
+    "formal_window_pair_hours": 0,
+    "latest_published_at": "2026-09-09T00:11:01.450761+00:00",
+    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260909T0100Z.receipt.json",
+    "latest_receipt_sha256": "ae3e8b333a1b4e5d0d9458b955ace0a31ab88d25dd0e561c09f846eddd1f6d6c",
+    "native_acceptance_sha256": "c280a739fed8d96270ff11c6debfa7b041238992b99ef5a1ec38ec177a633946",
     "native_calls": 0,
-    "phase": "PRE_CONFIRMATION",
+    "phase": "ACTIVATED_BEFORE_FORMAL_WINDOW",
     "production_orders": 0,
     "published_at": "2026-09-08T16:40:26.706541+00:00",
     "receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1700Z.receipt.json",
     "receipt_sha256": "210c1b236c8a67fa2c9dd637bbe4c58d225af8cbe62da5af57243e312a324749",
-    "recorded_pair_hours": 4
+    "recorded_pair_hours": 18
   },
   "heartbeat_entrypoint": "scripts/perp_tick.py",
   "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
   "historical_knowledge_preserved": "docs/research-knowledge/btc-eth-1000-central-v1.json",
   "independent_confirmation": {
-    "activated": false,
+    "activated": true,
+    "activated_at": "2026-09-09T00:19:18.291814+00:00",
+    "actual_native_calls": 0,
     "current_execution_policy": "V3",
+    "formal_observed_pair_hours": 0,
     "frozen_economic_policy": "V2",
     "old_protocol_v1": "NOT_ACTIVATED_NO_COST_SUPPORTED_CANDIDATE_PRESERVED",
     "protocol": "docs/protocols/perp-independent-confirmation-v2.json",
     "protocol_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
     "registration": "docs/research/perp-carry-nonpaying-registration-v1.json",
-    "status": "REGISTERED_OBSERVER_VERIFIED_WAITING_NATIVE_ACCEPTANCE_REAL_INPUTS"
+    "status": "ACTIVATED_FIXED_WINDOW_NOT_STARTED"
   },
   "knowledge_id": "BTC_ETH_PERP_AUTONOMOUS_V3",
-  "latest_delivery_report": "docs/research/perp-optimization-v3.md",
-  "latest_delivery_summary": "docs/research/perp-optimization-v3.summary.json",
+  "last_development_terminal": {
+    "independent_confirmation": false,
+    "native_calls_date_utc": "2026-09-08",
+    "native_calls_on_date": 8,
+    "profitable_qualified_strategy": false,
+    "status": "COMPLETED_DEVELOPMENT",
+    "task_id": "perp-round-003-funding-premium-v1"
+  },
+  "latest_delivery_report": "docs/research/perp-first-automatic-native-v1.md",
+  "latest_delivery_summary": "docs/research/perp-first-automatic-native-v1.summary.json",
   "latest_report": "docs/research/perp-funding-premium-v1.md",
   "latest_summary": "docs/research/perp-funding-premium-v1.summary.json",
   "lessons": [
@@ -145,41 +178,76 @@
     }
   ],
   "mechanism_card": "docs/discovery/perp-funding-premium-card-v1.md",
+  "native_acceptance": {
+    "complete_two_pair_hours": 7,
+    "economic_result": null,
+    "economic_validation": false,
+    "native_position_cycles": 0,
+    "receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-acceptance-v1/acceptance.json",
+    "scheduled_hours": 7,
+    "sha256": "c280a739fed8d96270ff11c6debfa7b041238992b99ef5a1ec38ec177a633946",
+    "status": "LIMITED_PASS",
+    "task_id": "perp-forward-native-acceptance-v1",
+    "timely_entry_signals": 0
+  },
   "next_task": {
+    "actual_preparation_turn_id": "01a0837d-a19a-7a83-98ab-f9671be727c1",
     "candidate_budget_key": "11d738ef9991c5b3e5e9b6ddd8463b58eece683e7f983cb389633539efbee369",
     "candidate_sha256": "a4ca6146c9fed5e56d2370d22f8c8c4dd5ea8ac478a0f1c6429bbe3bff087460",
     "changes_economic_rules": false,
-    "code_binding_role": "ACTUAL_FROZEN_ACCEPTANCE_EXECUTOR",
-    "code_sha256": "fddff29e9e5165748f0f5169f5968d70e1a73e15cb3f8541e474f63375af30c1",
-    "contract_ready_at": "2026-09-09T00:10:00+00:00",
+    "code_binding_role": "ACTUAL_FROZEN_CONFIRMATION_EXECUTOR",
+    "code_bindings": {
+      "docs/protocols/perp-autonomous-policy-v1.json": "ad5c26b56a7a3c937bca0d5d33ba1ef1e2ec1534585fa19487ccdda5240a12cf",
+      "docs/protocols/perp-autonomous-policy-v2.json": "2224686376845f92a3f49edfb5f507f6cf421048b4d15986351ac8c26ae85b04",
+      "docs/protocols/perp-first-experiment-v1.json": "e5d9afa578a5f321a5edef8809006079930f291247bea40f1546cad8e2dda780",
+      "docs/protocols/perp-funding-premium-v1.json": "291176cf439e1b5b184df77c0d3b85453501c391cc29ed1d700203423b46bbeb",
+      "docs/protocols/perp-independent-confirmation-v2.json": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+      "docs/research/perp-carry-nonpaying-registration-v1.json": "a4ca6146c9fed5e56d2370d22f8c8c4dd5ea8ac478a0f1c6429bbe3bff087460",
+      "lab/perp_baseline.py": "046e0343ef6669e72334309522f25799e2e6adfd957ed42d8a687205a38d3522",
+      "lab/perp_baseline_report.py": "d6a03131fb386c800a4aacae723e97dd6b642ec86f19305cd5bd168bc03aac50",
+      "lab/perp_baseline_runner.py": "5da2896c64f9fbc32be32db9496a42c2a821b889c1bb1a47c88948b857b3b6f2",
+      "lab/perp_forward_confirmation.py": "68183ae6467bbadb03f326f4aba7395ab3dc315deef5a409e4d9df017ce7155e",
+      "lab/perp_forward_native.py": "6f78e82f18fbdef0dd10e838d6f09a39ffc6f0fb7cd6dcf279828ab11530652c",
+      "lab/perp_forward_signal.py": "ec1de508cd4fe5dd947d19fae403ab30cc1ea771bbb78e011687ab701d23b9bc",
+      "lab/perp_funding_premium.py": "3de964d41979b501b09fa6df56ee3b37ac4f69428629d7afc383ce79758dbf96",
+      "lab/perp_schedule.py": "5c5ccdf50bd7f153422f6e9529b43c7cb7b6e42f1576b24c637ac140ace9a2fc",
+      "lab/portfolio_native_export.py": "9509384331e02e66e93347ed14e622a2d495cbdebf0793431e4a984e611129f0",
+      "scripts/perp_forward_confirmation.py": "5884f05654c1de10d12c5ca8ae5a977cfc2d894c4ff2b271208a44318326c540",
+      "scripts/perp_forward_signal.py": "f4cdd853af8567f1698a556a4060ecabdd0208e0dde2ede05cc678f513f5eb00",
+      "scripts/run_perp_experiment.py": "687aa5beef8be460c7324a260198c4435407efd9f9298dd1aee453648e5f6b92",
+      "scripts/run_perp_funding_premium_v1.py": "ce5e0b57109e407ac2acb8a20e9725ed24471eca6030fdc8ae0dc77e5d509eca"
+    },
+    "code_sha256": "85c146d2b79e63ba4aa1d976512fda437333d301150ed33c6100b713f1f0d8f1",
+    "contract_ready_at": "2026-12-09T00:00:00+00:00",
     "data_binding_role": "FUTURE_INPUT_CONTRACT_PENDING",
-    "data_sha256": "f3b2c00cc354b2e0776c985ee4e8a2949b3b8f7721ea2cf746703b0c1fd2f4bd",
-    "earliest_ready_at": "2026-09-09T00:10:00Z",
+    "data_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "earliest_expected_input_ready_at": "2026-12-09T00:10:00+00:00",
     "economic_selection": false,
-    "expected_output_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-acceptance-v1",
-    "exploration_budget_wait_removed": true,
-    "fingerprint": "c18c9a47c7d13289a135ac5fdafb26e6c00213a8b5f88e475d31d8475d43a602",
+    "executor": "scripts/perp_forward_confirmation.py",
+    "expected_output_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-confirmation-v1",
+    "fingerprint": "b3fcd52329ef5824714ee046beb9512ee182bf3d6f4a055dac2953996289ce8b",
     "fixed_candidate": true,
     "fixed_input_window": {
-      "end_exclusive": "2026-09-09T00:00:00+00:00",
-      "start": "2026-09-08T17:00:00+00:00"
+      "end_exclusive": "2026-12-09T00:00:00+00:00",
+      "start": "2026-09-10T00:00:00+00:00"
     },
-    "frozen_contract_path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/protocols/perp-forward-native-acceptance-v1.json",
-    "frozen_contract_sha256": "8b58a0949180e2156881b21a42f5017ce90877299b4629ef203f2cf9fdd2fac0",
-    "hypothesis": "固定候选真实及时意图能否被同一原生引擎因果消费并完成钱包资金费核对；无经济选型。",
-    "id": "perp-forward-native-acceptance-v1",
-    "input_bundle_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/acceptance-inputs-v1",
-    "kind": "acceptance",
-    "max_seconds": 1800,
-    "mechanism": "frozen-carry-nonpaying-native-consumer",
+    "frozen_contract_path": "/Users/shenjianpeng/Documents/freqtrade-lab/.worktrees/btc-eth-perp-v1/docs/protocols/perp-independent-confirmation-v2.json",
+    "frozen_contract_sha256": "e98c56f68f4a7f3390b4fdbb06425500a4c977edeae4b20489c2c4d5d4319dc6",
+    "future_data_note": "data_sha256 only binds the real frozen future-input contract; no future market data SHA is claimed.",
+    "hypothesis": "固定候选的90日真实提前意图与原生终点确认；不在观察期重选或提前评分。",
+    "id": "perp-forward-confirmation-v1",
+    "input_bundle_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/confirmation-inputs-v1",
+    "kind": "confirmation",
+    "max_seconds": 2400,
+    "mechanism": "carry_nonpaying_fixed_90day_confirmation",
     "native_calls": 1,
     "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
-    "queued_at": "2026-09-08T16:43:33.206647+00:00",
-    "runbook": "docs/research/perp-forward-acceptance-runbook-v1.md",
+    "prepared_at": "2026-09-09T00:20:05.802932+00:00",
+    "queued_at": "2026-09-09T00:20:18.848178+00:00",
+    "runbook": "docs/research/perp-forward-confirmation-runbook-v1.md",
     "status": "WAITING_DATA",
-    "trigger_kind": "USER_AUTHORIZED_PREPARATION_ONLY",
-    "variants": 0,
-    "wait_reason": "FIXED_INPUT_WINDOW_AND_PUBLICATION_NOT_COMPLETE"
+    "trigger_kind": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
+    "variants": 0
   },
   "policy_live": {
     "migrated_at": "2026-09-08T16:40:18.819964+00:00",
@@ -194,12 +262,18 @@
   "scheduler_id": "freqtrade-lab-2",
   "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
   "schema": "research-knowledge-v1",
+  "snapshot_at": "2026-09-09T00:26:24.605911+00:00",
   "terminal": {
+    "acceptance_native_calls_cumulative": 1,
+    "actual_market_native_calls_on_date": 1,
+    "actual_market_native_calls_utc_date": "2026-09-09",
+    "confirmation_native_calls_cumulative": 0,
+    "development_native_calls_cumulative": 8,
     "independent_confirmation": false,
-    "native_calls_today": 8,
+    "market_native_retries": 0,
     "profitable_qualified_strategy": false,
-    "status": "COMPLETED_DEVELOPMENT",
-    "task_id": "perp-round-003-funding-premium-v1"
+    "status": "WAITING_FIXED_CONFIRMATION_WINDOW",
+    "task_id": "perp-forward-confirmation-v1"
   },
   "version": 3
 }

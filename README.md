@@ -2,6 +2,7 @@
 
 2026-09-08 起，当前活动方向由 [研究政策 V3](docs/protocols/perp-autonomous-policy-v3.json) 与 [Issue #162](https://github.com/He1met/freqtrade-lab/issues/162) 管理。仅 BTC/ETH、1h、首轮1x，约20%是研究风险目标，实际交易权限不扩展。当前历史数据均按开发暴露处理。探索每日累计8变体、每周累计28变体；3轮为审查检查点，固定候选验收和一次性独立确认单列有界预算。保留全部旧政策已用预算，报告后在预算和真实门槛允许时连续推进唯一后继。
 
+- [首次真实自动原生验收：受限通过与90日观察交接](docs/research/perp-first-automatic-native-v1.md)
 - [最新优化交付：3轮8变体及唯一后继](docs/research/perp-optimization-v3.md)
 - [首次真实自动heartbeat验证](docs/research/perp-first-automatic-heartbeat-v1.md)
 - [固定真实意图的原生验收入口](docs/research/perp-forward-acceptance-runbook-v1.md)
