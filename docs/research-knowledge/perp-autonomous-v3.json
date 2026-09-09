@@ -11,7 +11,7 @@
   },
   "automatic_wake": {
     "automatic_native_chain_completed": true,
-    "current_continuation_origin": "USER_AUTHORIZED_DISPATCH_IMPROVEMENT_DURING_EXISTING_AUTOMATIC_TURN",
+    "current_continuation_origin": "AUTOMATIC_HEARTBEAT_PROVIDER_VERIFIED",
     "evidence": {
       "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/activation-observed.json",
       "sha256": "3c1af1d42d5b8ba4ec8ce6934f77ff24c5a110029d75daf238ef1ba172caa3e1"
@@ -22,7 +22,15 @@
       "provider_observed_at": "2026-09-08T17:43:52.484Z",
       "provider_tool_event_id": "fco_01a0821e-81b3-7263-ac41-413fbe99f0f6"
     },
-    "latest_report": "docs/research/perp-first-automatic-native-v1.md",
+    "latest_execution": {
+      "actual_turn_id": null,
+      "native_calls": 2,
+      "provider_observed_at": "2026-09-09T01:54:54.062Z",
+      "provider_trigger_id": null,
+      "status": "COMPLETED_DEVELOPMENT_NEGATIVE",
+      "task_id": "perp-round-005-funding-change-v1"
+    },
+    "latest_report": "docs/research/perp-funding-change-v1.md",
     "native_chain_evidence": {
       "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/migration/automatic-native-observed-v1.json",
       "sha256": "4816a442ed08ae1be3375975e385edc8d2cd455f5d4f4be6b4c29faff0c13dc7"
@@ -119,8 +127,8 @@
   },
   "current_issue": 162,
   "data_collection": {
-    "last_complete_end": "2026-09-09T01:00:00Z",
-    "latest_capture_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260909T010000Z/update-receipt.json",
+    "last_complete_end": "2026-09-09T02:00:00Z",
+    "latest_capture_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/incremental/20260909T020000Z/update-receipt.json",
     "new_capture_priority_tested": true,
     "required": [
       "ohlcv",
@@ -135,27 +143,36 @@
     "daily_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
     "last_local_day": "2026-09-09",
     "last_status": "COMPLETED",
+    "latest_report": "docs/discovery/perp-post-funding-review-v1.md",
     "next_regular_after": "2026-09-10T09:00:00+08:00",
-    "next_status": "RESEARCH_PREPARATION_REQUIRED",
+    "next_status": "NO_DEFENSIBLE_HYPOTHESIS",
     "pages_opened": 5,
     "queries_used": 4,
     "report": "docs/discovery/perp-funding-change-review-v1.md",
-    "supplemental_reuses_daily": true,
-    "unique_card": "settled-funding-change"
+    "supplemental_new_information": "The selected funding-change card became a genuine negative terminal in round005; one separately registered supplemental slot was then used.",
+    "supplemental_pages_opened": 5,
+    "supplemental_queries_used": 3,
+    "supplemental_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.json",
+    "supplemental_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
+    "supplemental_reuses_daily": false,
+    "supplemental_status": "COMPLETED_NO_DEFENSIBLE_HYPOTHESIS",
+    "total_pages_today": 10,
+    "total_queries_today": 7,
+    "unique_card": null
   },
   "dispatch": {
     "actual_compute": "IDLE",
     "actual_writers": 1,
     "binding_sha256": "e187620ae11185442c18955416d60d263583f7813c718fd12bef4c6a3b12d5d6",
     "confirmation": "WAIT_FORWARD",
-    "earliest_recheck_at": null,
+    "earliest_recheck_at": "2026-09-10T09:00:00+08:00",
     "exploration_status": "NONE",
     "maximum_open_confirmation": 1,
     "maximum_open_exploration": 1,
-    "next_condition": "Zero-native development preflight must prove source/period/lag/cost bindings, observed nonzero changes and meaningful level-vs-change decision disagreement without inspecting return labels. Only then freeze a separate two-control execution protocol and request scheduler admission under preserved shared budget/lock; no market task created by this receipt.",
+    "next_condition": "Continue the unchanged fixed confirmation observation. Short-term exploration remains empty until the next scheduled bounded discovery identifies a distinct primary-supported mechanism and legal input/execution conditions before any market task is registered. Today supplementary slot is complete; do not consume the remaining query/page allowance as a second discovery.",
     "policy_path": "docs/protocols/perp-dispatch-policy-v1.json",
     "priority_exploration": null,
-    "reason": "RESEARCH_PREPARATION_REQUIRED",
+    "reason": "NO_DEFENSIBLE_HYPOTHESIS",
     "status_entrypoint": "scripts/perp_research_status.py"
   },
   "factor_catalog": "docs/research/perp-factor-catalog-v1.json",
@@ -182,9 +199,9 @@
     "binding": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/observer-binding.json",
     "binding_sha256": "3a48c439149fa9e3b7394e583fc6267e305c8f91dce3815d777bb960e111f2a4",
     "formal_window_pair_hours": 0,
-    "latest_published_at": "2026-09-09T01:10:27.256258+00:00",
-    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260909T0200Z.receipt.json",
-    "latest_receipt_sha256": "f59201d38a26790fcc3b491763c72b6022b863fb5c367122aa02512b6d3e3f1e",
+    "latest_published_at": "2026-09-09T02:10:25.042842+00:00",
+    "latest_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260909T0300Z.receipt.json",
+    "latest_receipt_sha256": "a85229b153c67c02e75da24ba6aea550d3c6e08bf51e27ebd664e45c9d764dd8",
     "native_acceptance_sha256": "c280a739fed8d96270ff11c6debfa7b041238992b99ef5a1ec38ec177a633946",
     "native_calls": 0,
     "phase": "ACTIVATED_BEFORE_FORMAL_WINDOW",
@@ -192,7 +209,7 @@
     "published_at": "2026-09-08T16:40:26.706541+00:00",
     "receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/forward-signals/hours/20260908T1700Z.receipt.json",
     "receipt_sha256": "210c1b236c8a67fa2c9dd637bbe4c58d225af8cbe62da5af57243e312a324749",
-    "recorded_pair_hours": 20
+    "recorded_pair_hours": 22
   },
   "heartbeat_entrypoint": "scripts/perp_tick.py",
   "historical_data_use": "EXPOSED_DEVELOPMENT_ONLY; including fitted 2025 and diagnostic 2026; no rolling independent confirmation completed",
@@ -214,16 +231,16 @@
   "last_development_terminal": {
     "independent_confirmation": false,
     "native_calls_date_utc": "2026-09-09",
-    "native_calls_on_date": 2,
+    "native_calls_on_date": 4,
     "profitable_qualified_strategy": false,
     "status": "COMPLETED_DEVELOPMENT",
-    "task_id": "perp-round-004-flow-reversal-v2",
+    "task_id": "perp-round-005-funding-change-v1",
     "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
   },
-  "latest_delivery_report": "docs/research/perp-dispatch-flow-v1.md",
-  "latest_delivery_summary": "docs/research/perp-dispatch-flow-v1.summary.json",
-  "latest_report": "docs/research/perp-dispatch-flow-v1.md",
-  "latest_summary": "docs/research/perp-dispatch-flow-v1.summary.json",
+  "latest_delivery_report": "docs/research/perp-funding-change-v1.md",
+  "latest_delivery_summary": "docs/research/perp-funding-change-v1.summary.json",
+  "latest_report": "docs/research/perp-funding-change-v1.md",
+  "latest_summary": "docs/research/perp-funding-change-v1.summary.json",
   "lessons": [
     {
       "mechanism": "unfiltered-24h-breakout",
@@ -271,9 +288,17 @@
       "mechanism": "shock-rebound-and-taker-flow-turn",
       "shock_net_usdt": -363.2601895622141,
       "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
+    },
+    {
+      "change_net_usdt": -473.0781785500234,
+      "incremental_net_usdt": -311.7969522362439,
+      "interpretation": "Positive gross effects do not cover complete costs; change worsens result; no sign inversion or holding sweep.",
+      "level_net_usdt": -161.28122631377948,
+      "mechanism": "settled-funding-level-versus-change-contrarian",
+      "verdict": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH"
     }
   ],
-  "mechanism_card": "docs/discovery/perp-flow-reversal-card-v1.md",
+  "mechanism_card": "docs/discovery/perp-funding-change-review-v1.json",
   "native_acceptance": {
     "complete_two_pair_hours": 7,
     "economic_result": null,
@@ -297,32 +322,32 @@
   "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
   "prior_knowledge_preserved": "docs/research-knowledge/perp-autonomous-v2.json",
   "priority_next_review": {
-    "discovery_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
-    "discovery_receipt_sha256": "a39546338b65219bc1441e5d836be4132a753ea2efe925534c32d86a553258c9",
+    "discovery_receipt": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.json",
+    "discovery_receipt_sha256": "17b93e71a4f4245939c39b8926e14c27234cf8ef08ed4137fe667b5793958bb3",
     "native_task_created": false,
-    "next_condition": "Zero-native development preflight must prove source/period/lag/cost bindings, observed nonzero changes and meaningful level-vs-change decision disagreement without inspecting return labels. Only then freeze a separate two-control execution protocol and request scheduler admission under preserved shared budget/lock; no market task created by this receipt.",
+    "next_condition": "Continue the unchanged fixed confirmation observation. Short-term exploration remains empty until the next scheduled bounded discovery identifies a distinct primary-supported mechanism and legal input/execution conditions before any market task is registered. Today supplementary slot is complete; do not consume the remaining query/page allowance as a second discovery.",
     "next_regular_review_after": "2026-09-10T09:00:00+08:00",
-    "next_work": "Next available heartbeat after required maintenance: zero-native input/decision-disagreement preflight, freeze at most two controls and thin native reuse; current bounded delivery is complete.",
-    "reason": "RESEARCH_PREPARATION_REQUIRED: fixed two-control protocol, actual availability preflight and thin reuse of current native components are not implemented or bound to an executable task.",
-    "selected_card": "settled-funding-change",
-    "status": "RESEARCH_PREPARATION_REQUIRED"
+    "path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/funding-change-preparation-v1/next-review.json",
+    "reason": "Completed bounded supplemental review found no distinct executable, data-supported hypothesis among relative-value, basis-convergence and calendar-risk leads; remaining exploration budget does not justify manufacturing a task.",
+    "sha256": "d4de7726f5a251c3cd91bb2616619fd3f6c9d13ee77b88cd7acb425b65788ab7",
+    "status": "NO_DEFENSIBLE_HYPOTHESIS"
   },
   "runtime_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1",
   "scheduler_id": "freqtrade-lab-2",
   "scheduler_state": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/scheduler/state.json",
   "schema": "research-knowledge-v1",
-  "snapshot_at": "2026-09-09T01:20:23.755147+00:00",
+  "snapshot_at": "2026-09-09T02:21:41.081836+00:00",
   "terminal": {
     "acceptance_native_calls_cumulative": 1,
-    "actual_market_native_calls_on_date": 3,
+    "actual_market_native_calls_on_date": 5,
     "actual_market_native_calls_utc_date": "2026-09-09",
     "confirmation_native_calls_cumulative": 0,
-    "development_native_calls_cumulative": 10,
+    "development_native_calls_cumulative": 12,
     "independent_confirmation": false,
     "market_native_retries": 0,
     "profitable_qualified_strategy": false,
     "status": "DEVELOPMENT_BRANCH_STOPPED_CONFIRMATION_CONTINUES",
-    "task_id": "perp-round-004-flow-reversal-v2"
+    "task_id": "perp-round-005-funding-change-v1"
   },
   "version": 3
 }

@@ -1,0 +1,71 @@
+{
+  "protocol_id": "PERP_SETTLED_FUNDING_CHANGE_V1",
+  "issue": 162,
+  "frozen_at": "2026-09-09T02:00:04.717448+00:00",
+  "mechanism_card": "docs/discovery/perp-funding-change-review-v1.json",
+  "mechanism_card_sha256": "a27f926029ff91cc9b6d22844ab11090bc5f071182be27d8d50f8bb34e0334b1",
+  "input_preflight_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/funding-change-preparation-v1/input-preflight.json",
+  "input_preflight_sha256": "ce1fa255fe3140a4d514f24665f605c2900b11689535cff2d80250eb4fe5046c",
+  "policy_path": "docs/protocols/perp-autonomous-policy-v3.json",
+  "policy_sha256": "7610af9261f8ff6e4adc12f6045e8d81597b8d11dd2954cf922b026cbdf43646",
+  "dispatch_policy_path": "docs/protocols/perp-dispatch-policy-v1.json",
+  "dispatch_policy_sha256": "841cce89b30e3ca2f1a86c82b42ad46f5c8ec5df3dc4d67e0b9a290ca4c3569d",
+  "source_root": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1",
+  "source_receipt_sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021",
+  "development_manifest_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/development-admissions/flow-reversal-v1.json",
+  "development_manifest_sha256": "06db3dc5a3eefa62826b83cae8f8be6b08e258a694aceff5b14b4512523dbf4c",
+  "source_use": "EXPOSED_DEVELOPMENT_ONLY_NO_CONFIRMATION_INPUTS",
+  "source_start": "2025-01-01T00:00:00Z",
+  "score_start": "2025-01-09T00:00:00Z",
+  "score_end_exclusive": "2026-07-01T00:00:00Z",
+  "training_end_exclusive": "2026-01-01T00:00:00Z",
+  "phase_split_use": "DESCRIPTIVE_DEVELOPMENT_ONLY",
+  "variants": [
+    "level_contrarian",
+    "change_contrarian"
+  ],
+  "economic_rules": {
+    "level_contrarian": "-sign(rate_k)",
+    "change_contrarian": "-sign(rate_k-rate_previous)",
+    "zero": "FLAT_NO_DELAYED_FILL",
+    "common_event_calendar": "Both controls require the same two consecutive observed 8h UTC funding slots, preserving raw millisecond settlement timestamps.",
+    "entry": "floor_hour(max(available_at_k, available_at_previous)) + 1h, strictly later even if availability falls exactly on the hour.",
+    "native_signal": "One pulse at entry_at-1h; only native next-bar shift, no extra shift and no price/volume selection.",
+    "holding_hours": 8,
+    "overlap": "Any position open at the start of the entry hour permanently skips that event, including one due to close during that hour. Never revive by same-bar reversal or later fill.",
+    "tail": "Last executable native bar is end_exclusive-1h; skip events if entry_at+8h is later. No force_exit treated as an 8h observation.",
+    "risk": {
+      "wallet_usdt": 1000,
+      "capital_basis": "RESEARCH_ASSUMPTION_NO_ACCOUNT_READ",
+      "nominal_leverage": 1,
+      "allocation_per_pair": 0.4,
+      "position_stoploss": -0.2,
+      "research_drawdown_target": 0.2,
+      "slight_excess_is_not_automatic_rejection": true,
+      "risk_recalibration_at": 0.3
+    },
+    "costs": {
+      "taker_each_side": 0.0006,
+      "slippage_cash_each_side": 0.0002,
+      "funding": "actual raw events open_timestamp<event_time<=close_timestamp",
+      "stress_extra_each_side": 0.0004
+    }
+  },
+  "budget": {
+    "new_variants": 2,
+    "new_market_native_calls": 2,
+    "maximum_total_seconds": 900,
+    "technical_retries": 0,
+    "market_workers": 1
+  },
+  "verdict": {
+    "minimum_change_cycles": 30,
+    "minimum_common_72h_entry_clusters": 12,
+    "support": "Complete native audit; change gross>0, net>0 and net increment versus level>0. Positive remains LIMITED_DEVELOPMENT_SUPPORT.",
+    "sample_failure": "UNDERPOWERED",
+    "economic_failure": "NO_INCREMENTAL_COST_SUPPORT_STOP_BRANCH",
+    "no_sweeps": true
+  },
+  "unique_next_if_supported": "Review only price-effect, exposure and cost attribution of this exposed-development mechanism; keep carry_nonpaying and its fixed confirmation, no second confirmation.",
+  "unique_next_if_stopped": "Stop the settled-funding level/change directional branch. Reuse today discovery; the next bounded source review may select only a distinct, data-supported hypothesis. Keep the exploration slot empty without one. Continue fixed carry_nonpaying confirmation."
+}

@@ -624,6 +624,21 @@
       },
       "status": "TESTED_NEGATIVE_STOP_BRANCH",
       "unit": "dimensionless"
+    },
+    {
+      "assets": [
+        "BTC",
+        "ETH"
+      ],
+      "available_at": "strictly next hourly boundary after maximum of both declared event+1h availability times",
+      "confirms_OI_or_capital_flow": false,
+      "definition": "Current settled funding minus previous consecutive equal-8h-slot settled funding; compare to current level.",
+      "historical_PIT_verified": false,
+      "id": "settled_funding_change",
+      "report": "docs/research/perp-funding-change-v1.md",
+      "role": "DEVELOPMENT_DIRECTIONAL_FACTOR",
+      "status": "TESTED_NEGATIVE_COST_UNSUPPORTED_STOP_BRANCH",
+      "unit": "rate_fraction"
     }
   ]
 }

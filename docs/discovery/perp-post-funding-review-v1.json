@@ -1,0 +1,387 @@
+{
+  "schema": "perp-discovery-review-v1",
+  "id": "perp-post-funding-review-v1",
+  "issue": 162,
+  "status": "NO_DEFENSIBLE_HYPOTHESIS",
+  "dedupe_key": "2026-09-09/supplemental-v1",
+  "run_slot": "supplemental",
+  "started_at": "2026-09-09T02:12:07.858974+00:00",
+  "worker_observed_start": "2026-09-09T02:13:18+00:00",
+  "finished_at": "2026-09-09T02:16:43.526692+00:00",
+  "artifact_written_at": "2026-09-09T02:18:55.398142+00:00",
+  "trigger": "ROUND005_TERMINAL_EMPTY_SLOT",
+  "daily_receipt_reused": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/daily-v1.json",
+  "starter_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.started.json",
+  "starter_sha256": "52cd03c61c9735f20db5187e3ba79ebd1d6d6a025f00d7065befdef1be005278",
+  "events_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/discovery/2026-09-09/supplemental-v1.events.jsonl",
+  "events_sha256": "4662b240c433b32a8887379f4daa7730930dcbc197d8fc24edd390c603a95117",
+  "events": [
+    {
+      "event": "QUERY_STARTED",
+      "operation_id": "query-1",
+      "query": "bitcoin ether perpetual futures pairs trading cointegration research paper",
+      "recency_days": null,
+      "domains": [
+        "arxiv.org",
+        "papers.ssrn.com"
+      ],
+      "observed_at": "2026-09-09T02:13:55.209312+00:00"
+    },
+    {
+      "event": "QUERY_STARTED",
+      "operation_id": "query-2",
+      "query": "BTC ETH pairs trading basis mean reversion discussion",
+      "recency_days": 7,
+      "domains": [
+        "github.com",
+        "reddit.com"
+      ],
+      "observed_at": "2026-09-09T02:13:55.209403+00:00"
+    },
+    {
+      "event": "QUERY_COMPLETED",
+      "operation_id": "query-1",
+      "status": "SUCCESS_PRIMARY_LEADS",
+      "observed_at": "2026-09-09T02:14:43.821046+00:00"
+    },
+    {
+      "event": "QUERY_COMPLETED",
+      "operation_id": "query-2",
+      "status": "SUCCESS_NO_DATE_VERIFIED_APPLICABLE_7D_LEAD",
+      "observed_at": "2026-09-09T02:14:43.821152+00:00"
+    },
+    {
+      "event": "QUERY_STARTED",
+      "operation_id": "query-3",
+      "query": "BTC ETH relative value pairs trading cointegration discussion",
+      "recency_days": 30,
+      "domains": [
+        "github.com",
+        "reddit.com"
+      ],
+      "observed_at": "2026-09-09T02:14:43.821156+00:00"
+    },
+    {
+      "event": "PAGE_STARTED",
+      "operation_id": "page-1",
+      "url": "https://arxiv.org/abs/2212.06888",
+      "observed_at": "2026-09-09T02:14:43.821162+00:00"
+    },
+    {
+      "event": "PAGE_STARTED",
+      "operation_id": "page-2",
+      "url": "https://arxiv.org/abs/2208.01445",
+      "observed_at": "2026-09-09T02:14:43.821165+00:00"
+    },
+    {
+      "event": "PAGE_STARTED",
+      "operation_id": "page-3",
+      "url": "https://arxiv.org/abs/2109.12142",
+      "observed_at": "2026-09-09T02:14:43.821168+00:00"
+    },
+    {
+      "event": "PAGE_STARTED",
+      "operation_id": "page-4",
+      "url": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Index-Price-Kline-Candlestick-Data",
+      "observed_at": "2026-09-09T02:14:43.821170+00:00"
+    },
+    {
+      "event": "PAGE_STARTED",
+      "operation_id": "page-5",
+      "url": "https://github.com/Risingtell/adaptive-regime-switch-pro",
+      "observed_at": "2026-09-09T02:14:43.821173+00:00"
+    },
+    {
+      "event": "QUERY_COMPLETED",
+      "operation_id": "query-3",
+      "status": "SUCCESS_30D_FALLBACK_NO_VERIFIED_CURRENT_PUBLICATION",
+      "observed_at": "2026-09-09T02:15:29.738329+00:00"
+    },
+    {
+      "event": "PAGE_COMPLETED",
+      "operation_id": "page-1",
+      "status": "SUCCESS",
+      "result": "CONTENT_FETCHED",
+      "observed_at": "2026-09-09T02:15:29.738432+00:00"
+    },
+    {
+      "event": "PAGE_COMPLETED",
+      "operation_id": "page-2",
+      "status": "SUCCESS",
+      "result": "CONTENT_FETCHED",
+      "observed_at": "2026-09-09T02:15:29.738437+00:00"
+    },
+    {
+      "event": "PAGE_COMPLETED",
+      "operation_id": "page-3",
+      "status": "SUCCESS",
+      "result": "CONTENT_FETCHED",
+      "observed_at": "2026-09-09T02:15:29.738441+00:00"
+    },
+    {
+      "event": "PAGE_COMPLETED",
+      "operation_id": "page-4",
+      "status": "SUCCESS",
+      "result": "CONTENT_FETCHED",
+      "observed_at": "2026-09-09T02:15:29.738444+00:00"
+    },
+    {
+      "event": "PAGE_COMPLETED",
+      "operation_id": "page-5",
+      "status": "SUCCESS",
+      "result": "CONTENT_FETCHED",
+      "observed_at": "2026-09-09T02:15:29.738446+00:00"
+    },
+    {
+      "event": "EXTRACT_STARTED",
+      "operation_id": "extract-1",
+      "page_operation_id": "page-1",
+      "purpose": "Read date and mechanism from already opened page; no new URL",
+      "observed_at": "2026-09-09T02:15:29.738449+00:00"
+    },
+    {
+      "event": "EXTRACT_STARTED",
+      "operation_id": "extract-2",
+      "page_operation_id": "page-2",
+      "purpose": "Read date and mechanism from already opened page; no new URL",
+      "observed_at": "2026-09-09T02:15:29.738452+00:00"
+    },
+    {
+      "event": "EXTRACT_STARTED",
+      "operation_id": "extract-3",
+      "page_operation_id": "page-3",
+      "purpose": "Read date and mechanism from already opened page; no new URL",
+      "observed_at": "2026-09-09T02:15:29.738455+00:00"
+    },
+    {
+      "event": "EXTRACT_STARTED",
+      "operation_id": "extract-4",
+      "page_operation_id": "page-4",
+      "purpose": "Read date and mechanism from already opened page; no new URL",
+      "observed_at": "2026-09-09T02:15:29.738458+00:00"
+    },
+    {
+      "event": "EXTRACT_STARTED",
+      "operation_id": "extract-5",
+      "page_operation_id": "page-5",
+      "purpose": "Read date and mechanism from already opened page; no new URL",
+      "observed_at": "2026-09-09T02:15:29.738461+00:00"
+    },
+    {
+      "event": "EXTRACT_COMPLETED",
+      "operation_id": "extract-1",
+      "page_operation_id": "page-1",
+      "status": "SUCCESS",
+      "read_scope": "Existing-page dates, abstract or official fields; no new URL",
+      "observed_at": "2026-09-09T02:16:43.526590+00:00"
+    },
+    {
+      "event": "EXTRACT_COMPLETED",
+      "operation_id": "extract-2",
+      "page_operation_id": "page-2",
+      "status": "SUCCESS",
+      "read_scope": "Existing-page dates, abstract or official fields; no new URL",
+      "observed_at": "2026-09-09T02:16:43.526677+00:00"
+    },
+    {
+      "event": "EXTRACT_COMPLETED",
+      "operation_id": "extract-3",
+      "page_operation_id": "page-3",
+      "status": "SUCCESS",
+      "read_scope": "Existing-page dates, abstract or official fields; no new URL",
+      "observed_at": "2026-09-09T02:16:43.526683+00:00"
+    },
+    {
+      "event": "EXTRACT_COMPLETED",
+      "operation_id": "extract-4",
+      "page_operation_id": "page-4",
+      "status": "SUCCESS",
+      "read_scope": "Existing-page dates, abstract or official fields; no new URL",
+      "observed_at": "2026-09-09T02:16:43.526686+00:00"
+    },
+    {
+      "event": "EXTRACT_COMPLETED",
+      "operation_id": "extract-5",
+      "page_operation_id": "page-5",
+      "status": "SUCCESS",
+      "read_scope": "Existing-page dates, abstract or official fields; no new URL",
+      "observed_at": "2026-09-09T02:16:43.526689+00:00"
+    },
+    {
+      "event": "REVIEW_COMPLETED",
+      "operation_id": "review-final",
+      "status": "NO_DEFENSIBLE_HYPOTHESIS",
+      "queries_used": 3,
+      "pages_used": 5,
+      "queries_remaining": 1,
+      "pages_remaining": 1,
+      "new_market_tasks": 0,
+      "new_native_calls": 0,
+      "reason": "Three candidate families lack an admitted distinct executable directional mechanism; stop voluntarily instead of using remaining search budget.",
+      "observed_at": "2026-09-09T02:16:43.526692+00:00"
+    }
+  ],
+  "budget": {
+    "max_queries": 4,
+    "queries_used": 3,
+    "queries_remaining": 1,
+    "max_pages": 6,
+    "pages_used": 5,
+    "pages_remaining": 1,
+    "page_count_semantics": "Unique URLs opened; two same-page field-extraction calls reread already opened content and are separately logged as EXTRACT operations.",
+    "same_page_extraction_tool_calls": 2,
+    "max_active_seconds": 600,
+    "worker_wall_seconds": 205.526692,
+    "starter_to_review_seconds": 275.667718,
+    "active_cpu_seconds": null,
+    "monetary_cost": null,
+    "new_native_calls": 0,
+    "market_http_calls": 0,
+    "new_market_tasks": 0,
+    "new_variants": 0,
+    "stop_reason": "Conclusion reached before cap; remaining query/page budget intentionally unused.",
+    "page_open_operations": 5,
+    "unique_page_urls_opened": 5,
+    "same_page_find_operations": 8,
+    "source_read_operations_including_repeated_extracts": 13,
+    "underlying_http_fetch_count": null
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://arxiv.org/abs/2212.06888",
+      "title": "Fundamentals of Perpetual Futures",
+      "kind": "PRIMARY_PAPER",
+      "published_at": "2022-12-13",
+      "updated_at": "2024-08-21",
+      "read_scope": "abstract and version history",
+      "support": "Perpetual funding anchors price through incentives but fixed-date convergence is not guaranteed; the paper derives pricing bounds with transaction costs.",
+      "limit": "No local replication; no permission to add a spot/option/other-venue leg and no standalone directional-alpha conclusion."
+    },
+    {
+      "id": "S2",
+      "url": "https://arxiv.org/abs/2208.01445",
+      "title": "Multifractal cross-correlations of bitcoin and ether trading characteristics in the post-COVID-19 time",
+      "kind": "PRIMARY_PAPER",
+      "published_at": "2022-08-02",
+      "updated_at": null,
+      "read_scope": "abstract and version history",
+      "support": "BTC/ETH simultaneous and lagged trading characteristics exhibit cross-correlations; the abstract reports no qualitative leader asymmetry.",
+      "limit": "Cross-correlation evidence alone does not specify a stable executable spread or contemporary hourly cost-after directional rule."
+    },
+    {
+      "id": "S3",
+      "url": "https://arxiv.org/abs/2109.12142",
+      "title": "Periodicity in Cryptocurrency Volatility and Liquidity",
+      "kind": "PRIMARY_PAPER",
+      "published_at": "2021-09-24",
+      "updated_at": "2021-11-03",
+      "read_scope": "abstract and version history",
+      "support": "Recurring weekday, hour and within-hour volume/volatility patterns; related to algorithmic trading and funding times.",
+      "limit": "Describes volatility/liquidity, not a newly identified signed-return entry rule for two linear perpetual contracts."
+    },
+    {
+      "id": "S4",
+      "url": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Index-Price-Kline-Candlestick-Data",
+      "resolved_url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "title": "Binance USD-M Index Price Kline/Candlestick Data",
+      "kind": "OFFICIAL_DOCUMENTATION",
+      "published_at": null,
+      "updated_at": null,
+      "read_scope": "index kline schema",
+      "support": "Index OHLC timestamps are provided; volume-like slots are marked Ignore.",
+      "limit": "Reference index candles do not supply executable fills or a permitted hedge instrument."
+    },
+    {
+      "id": "S5",
+      "url": "https://github.com/Risingtell/adaptive-regime-switch-pro",
+      "title": "adaptive-regime-switch-pro",
+      "kind": "OPEN_SOURCE_DISCOVERY_ONLY_REJECTED",
+      "published_at": null,
+      "updated_at": null,
+      "read_scope": "project overview and search excerpt",
+      "support": "A public BTC/ETH perp regime-switching project surfaced in the 7-day discovery query.",
+      "limit": "Publication date unverified; different venue and unreplicated framework claims. No returns or fitted rules adopted."
+    }
+  ],
+  "cards": [
+    {
+      "id": "btc-eth-relative-value",
+      "selected": false,
+      "status": "NO_DEFENSIBLE_HYPOTHESIS",
+      "distinctness": "Two perpetual legs could express relative value rather than a funding-sign or single-asset entry filter.",
+      "available_data": "Synchronized admitted BTC/ETH OHLCV, marks and exact funding are available.",
+      "missing_evidence": "No frozen economic anchor, hedge rule or supported convergence horizon identified by this bounded primary-source review. Contemporary stability and net edge remain UNKNOWN; neither was measured.",
+      "not_selected_reason": "Correlation does not supply the missing convergence mechanism; fitting a convenient mean-reverting spread now would add result-sensitive modeling choices without the required mechanism evidence.",
+      "reopen_condition": "New primary-source mechanism with a preregisterable hedge and time scale, followed by separate legal development admission; do not substitute a forum z-score recipe."
+    },
+    {
+      "id": "perpetual-index-basis-convergence",
+      "selected": false,
+      "status": "BLOCKED_DATA_AND_EXECUTABLE_EXPRESSION",
+      "distinctness": "Relative pricing against an index is economically different from funding-level/change directional controls.",
+      "available_data": "Raw first-capture index/premium records exist, but are absent from the currently admitted development manifest.",
+      "missing_evidence": "An index reference is not an executable hedge leg; no permitted spot, option or second-venue leg was introduced. Perpetual-only price returns do not isolate convergence of the basis.",
+      "not_selected_reason": "Cannot faithfully claim basis-arbitrage evidence using one unhedged directional leg or ignore admission and execution costs.",
+      "reopen_condition": "A mechanism expressible solely with permitted BTC/ETH USDT perpetual legs, with explicitly admitted inputs and complete execution/cost provenance."
+    },
+    {
+      "id": "calendar-volatility-liquidity",
+      "selected": false,
+      "status": "NO_DEFENSIBLE_DIRECTIONAL_HYPOTHESIS",
+      "distinctness": "Calendar-conditioned market activity is different information from settled funding direction.",
+      "available_data": "Hourly timestamps and OHLCV can express coarse calendar activity; subhour/order-book execution is unavailable.",
+      "missing_evidence": "Primary source supports volume/volatility seasonality, not a signed-return premium or standalone entry rule.",
+      "not_selected_reason": "A risk-timing observation is not a new profitable strategy. Adding hour gates to failed flow/breakout/funding branches would reopen their result-dependent optimization.",
+      "reopen_condition": "A separately supported directional or executable risk-premium mechanism, rather than selection of a favorable hour after viewing returns."
+    }
+  ],
+  "selected_card": null,
+  "recent_sources": {
+    "seven_day_query_completed": true,
+    "expanded_to_days": 30,
+    "date_verified_applicable_7d_sources": 0,
+    "date_verified_applicable_30d_sources": 0,
+    "note": "Search recency filters also returned stale items and recently crawled repositories. Unknown publication dates remain NULL; no source declared recent merely from crawl time."
+  },
+  "local_metadata": {
+    "source_receipt_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/receipt.json",
+    "source_receipt_sha256": "585b1c26ec5f663226aca53f0500d8f1efdc663cc2488f88a2d631bd2cdd4021",
+    "development_admission_path": "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/development-admissions/flow-reversal-v1.json",
+    "development_admission_sha256": "06db3dc5a3eefa62826b83cae8f8be6b08e258a694aceff5b14b4512523dbf4c",
+    "admitted_files": [
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-ohlcv.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-mark.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/BTCUSDT-funding.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-ohlcv.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-mark.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/ETHUSDT-funding.jsonl",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/receipt.json",
+      "/Users/shenjianpeng/Documents/freqtrade-lab-local/perp-autonomous-v1/data/first-capture-v1/instrument-rules.json"
+    ],
+    "window": {
+      "start": "2025-01-01T00:00:00+00:00",
+      "end_exclusive": "2026-07-01T00:00:00+00:00"
+    },
+    "raw_index_rows": {
+      "BTCUSDT": 13104,
+      "ETHUSDT": 13104
+    },
+    "raw_index_is_not_currently_admitted": true,
+    "source_use": "EXPOSED_DEVELOPMENT_ONLY",
+    "operations": "Receipt/manifest metadata only; no price arrays, funding values, returns, labels, new factor results or confirmation files inspected."
+  },
+  "prohibited_replays_preserved": [
+    "funding sign inversion or holding-period tuning after round005",
+    "restart failed flow or breakout as calendar gates",
+    "other assets or instruments",
+    "confirmation-window selection",
+    "paid acquisition"
+  ],
+  "queue_action": "KEEP_PRIORITY_EXPLORATION_EMPTY",
+  "unique_next_condition": "Continue the unchanged fixed confirmation observation. Short-term exploration remains empty until the next scheduled bounded discovery identifies a distinct primary-supported mechanism and legal input/execution conditions before any market task is registered. Today supplementary slot is complete; do not consume the remaining query/page allowance as a second discovery.",
+  "interpretation": "This batch found no defensible next experiment; it does not prove that BTC/ETH can never support one.",
+  "runtime_terminal_receipt_writer": "root supervisor; this agent only appended events and wrote repository discovery artifacts",
+  "report_path": "docs/discovery/perp-post-funding-review-v1.md",
+  "report_sha256": "931b104f6c0b55ef5e5a9b30376e3c20d9ede6a58248a3af3b5de31b7fc76afd"
+}
