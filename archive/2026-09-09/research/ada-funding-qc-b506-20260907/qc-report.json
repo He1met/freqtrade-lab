@@ -1,0 +1,78 @@
+{
+  "D_H_OHLCV_Candidate_Search": 0,
+  "actual_http_get": 3,
+  "byte_budget_semantics": "Retained application bytes <=2MiB; decoded iterator can yield one extra <=4096-byte chunk on crossing, immediately stops; not a wire-byte cap",
+  "ccxt_version": "4.5.68",
+  "decoded_bytes": 1241729,
+  "elapsed_seconds": 0.463,
+  "external_unregistered_exposure": "UNKNOWN",
+  "finished_at": "2026-09-07T05:09:12.557316+00:00",
+  "market": {
+    "baseAsset": "ADA",
+    "contractType": "PERPETUAL",
+    "marginAsset": "USDT",
+    "quoteAsset": "USDT",
+    "status": "TRADING",
+    "symbol": "ADAUSDT"
+  },
+  "market_requests_before_this_gate": 0,
+  "new_market_PnL_observed": false,
+  "qc": {
+    "actual_events": 1092,
+    "duplicate_native_minute_buckets": 0,
+    "duplicate_timestamps": 0,
+    "expected_events": 1092,
+    "extra_buckets": 0,
+    "first_utc": "2023-11-06T00:00:00+00:00",
+    "invalid_associated_mark_count": 0,
+    "last_utc": "2024-11-03T16:00:00+00:00",
+    "missing_8h_buckets": 0,
+    "native_minute_mapping": "existing BINANCE_ASSOCIATED_MARK_BOUNDARY_V1; raw unchanged",
+    "nonfinite_funding_count": 0,
+    "nonregular_count": 0,
+    "strictly_ascending": true,
+    "wrong_symbol_count": 0
+  },
+  "receipts": [
+    {
+      "body_file": "response-1.json",
+      "decoded_bytes": 1108415,
+      "finished_at": "2026-09-07T05:09:12.362184+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 1,
+      "sha256": "94173abbb948fa39f9aea37240bc164e3958c18299dcb2d0149206683d7d761d",
+      "started_at": "2026-09-07T05:09:12.097299+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    },
+    {
+      "body_file": "response-2.json",
+      "decoded_bytes": 122083,
+      "finished_at": "2026-09-07T05:09:12.466456+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 2,
+      "sha256": "0c11a8c25c2314eebbd6662c53907c61939476f12f9ce5faf6d8ccf2ad44815d",
+      "started_at": "2026-09-07T05:09:12.372882+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ADAUSDT&startTime=1699228800000&endTime=1730678399999&limit=1000"
+    },
+    {
+      "body_file": "response-3.json",
+      "decoded_bytes": 11231,
+      "finished_at": "2026-09-07T05:09:12.553295+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 3,
+      "sha256": "32afcb0f915db9e1fc9b070efe5bbfc8710eabe9c42c4731ff970d5f51a0e65d",
+      "started_at": "2026-09-07T05:09:12.467985+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ADAUSDT&startTime=1728000000001&endTime=1730678399999&limit=1000"
+    }
+  ],
+  "redirects_followed": 0,
+  "retries": 0,
+  "started_at": "2026-09-07T05:09:12.094068+00:00",
+  "status": "FUNDING_CALENDAR_ASSOCIATED_MARK_QC_PASS_NOT_SOURCE_READY"
+}

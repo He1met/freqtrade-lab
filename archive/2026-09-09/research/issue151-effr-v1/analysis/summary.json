@@ -1,0 +1,63 @@
+{
+  "verdict": "NO_LONG_COST_SUPPORT",
+  "planned": 21,
+  "status_counts": {
+    "SCORED": 17,
+    "UNKNOWN": 4
+  },
+  "groups": {
+    "UP": 12,
+    "NOT_UP": 5
+  },
+  "costs": {
+    "base": {
+      "UP": {
+        "n": 12,
+        "mean": "-0.068435226457842456053663713432803709969383582834451",
+        "median": "-0.12458905533371262098218012779573174501544421401410",
+        "positive_count": 5,
+        "largest_absolute_unit": 4,
+        "largest_absolute_share": "0.18516289801481657751083903377627234972308155270346",
+        "largest_positive_unit": 4,
+        "largest_positive_share": "0.67350856247396688256386718603439048046737883141804"
+      },
+      "NOT_UP": {
+        "n": 5,
+        "mean": "-0.002933535146740250264901781746155799867177922365092",
+        "median": "0.0924069918999958997317282824313696708884368336682",
+        "positive_count": 3,
+        "largest_absolute_unit": 2,
+        "largest_absolute_share": "0.48894265055755326271185313791504602027406082649050",
+        "largest_positive_unit": 7,
+        "largest_positive_share": "0.46961266989488070162476105523543562995994968931957"
+      },
+      "up_minus_not_up": "-0.065501691311102205788761931686647910102205660469359"
+    },
+    "stress": {
+      "UP": {
+        "n": 12,
+        "mean": "-0.071414260242860231676232892724596670674121642471816",
+        "median": "-0.12738851582642647331465122640901400422601061278419",
+        "positive_count": 5,
+        "largest_absolute_unit": 4,
+        "largest_absolute_share": "0.18276156211866124328301351759946258826915088194406",
+        "largest_positive_unit": 4,
+        "largest_positive_share": "0.68915291732635048123643819412676767229737556022054"
+      },
+      "NOT_UP": {
+        "n": 5,
+        "mean": "-0.006122035580705704403909442337789147461312854494652",
+        "median": "0.0889136037553523488913928442449518171836193021354",
+        "positive_count": 3,
+        "largest_absolute_unit": 2,
+        "largest_absolute_share": "0.49454658589239126966780382257356779236620032196372",
+        "largest_positive_unit": 7,
+        "largest_positive_share": "0.47280517192405426487699998420888649499510440363939"
+      },
+      "up_minus_not_up": "-0.065292224662154527272323450386807523212808787977164"
+    }
+  },
+  "independent_confirmation": false,
+  "causal_identification": false,
+  "wallet": false
+}

@@ -1,0 +1,144 @@
+{
+  "label": "SYNTHETIC_ONLY_NOT_MARKET_EVIDENCE",
+  "native_version": "2026.7",
+  "core_sha256": "7afec2d7c6f924642d410ff3974bf9932982bc9cf2f8c194b266a0b8c77ebf55",
+  "strategy_sha256": "652eb9a89f5e35ade766bb6cb6c1108f15e04813222dbaf1ccb7539d4be1df9f",
+  "fixtures": [
+    {
+      "name": "direction_zero_boundary",
+      "prefix_checks": 5,
+      "native_final_balance": 1024.15527092,
+      "native_trade_count": 4,
+      "trade_summary": [
+        {
+          "open_date": "2030-01-28T00:00:00.000Z",
+          "close_date": "2030-02-11T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 104.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.999984,
+          "funding_fees": -1.0975960836,
+          "profit_abs": 0.8038461,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-02-11T00:00:00.000Z",
+          "close_date": "2030-02-25T00:00:00.000Z",
+          "is_short": true,
+          "open_rate": 105.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.99996,
+          "funding_fees": 1.0549998312,
+          "profit_abs": 0.55499991,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-02-25T00:00:00.000Z",
+          "close_date": "2030-03-04T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 105.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.99996,
+          "funding_fees": -0.549999912,
+          "profit_abs": -1.04999983,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-03-11T00:00:00.000Z",
+          "close_date": "2030-03-31T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 110.0,
+          "close_rate": 121.428571,
+          "stake_amount": 249.99997,
+          "funding_fees": -1.6016231844,
+          "profit_abs": 23.84642474,
+          "exit_reason": "force_exit"
+        }
+      ],
+      "minimum_native_free_cash": 750.000016,
+      "conservative_cash_executable": true
+    },
+    {
+      "name": "intrawEEK_stops",
+      "prefix_checks": 5,
+      "native_final_balance": 963.96352164,
+      "native_trade_count": 6,
+      "trade_summary": [
+        {
+          "open_date": "2030-01-28T00:00:00.000Z",
+          "close_date": "2030-01-30T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 104.0,
+          "close_rate": 95.68,
+          "stake_amount": 249.999984,
+          "funding_fees": -0.1756868019,
+          "profit_abs": -20.65568549,
+          "exit_reason": "stop_loss"
+        },
+        {
+          "open_date": "2030-02-04T00:00:00.000Z",
+          "close_date": "2030-02-11T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 108.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.999912,
+          "funding_fees": -0.5430553644,
+          "profit_abs": -7.98055275,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-02-11T00:00:00.000Z",
+          "close_date": "2030-02-13T00:00:00.000Z",
+          "is_short": true,
+          "open_rate": 105.0,
+          "close_rate": 113.4,
+          "stake_amount": 249.99996,
+          "funding_fees": 0.1743197,
+          "profit_abs": -20.34567702,
+          "exit_reason": "stop_loss"
+        },
+        {
+          "open_date": "2030-02-18T00:00:00.000Z",
+          "close_date": "2030-02-25T00:00:00.000Z",
+          "is_short": true,
+          "open_rate": 101.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.999947,
+          "funding_fees": 0.5599008714,
+          "profit_abs": -9.85098801,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-02-25T00:00:00.000Z",
+          "close_date": "2030-03-04T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 105.0,
+          "close_rate": 105.0,
+          "stake_amount": 249.99996,
+          "funding_fees": -0.549999912,
+          "profit_abs": -1.04999983,
+          "exit_reason": "exit_signal"
+        },
+        {
+          "open_date": "2030-03-11T00:00:00.000Z",
+          "close_date": "2030-03-31T00:00:00.000Z",
+          "is_short": false,
+          "open_rate": 110.0,
+          "close_rate": 121.428571,
+          "stake_amount": 249.99997,
+          "funding_fees": -1.6016231844,
+          "profit_abs": 23.84642474,
+          "exit_reason": "force_exit"
+        }
+      ],
+      "minimum_native_free_cash": 690.1171269,
+      "conservative_cash_executable": true
+    }
+  ],
+  "network_attempts": [],
+  "bounded_ast_validation": "PASSED",
+  "native_matching_calls": 2,
+  "elapsed_seconds": 1.323176666017389,
+  "native_core_unchanged": true,
+  "fixture_count": 2
+}

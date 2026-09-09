@@ -1,0 +1,77 @@
+{
+  "D_H_OHLCV_Candidate_Search": 0,
+  "actual_http_get": 3,
+  "ccxt_version": "4.5.68",
+  "decoded_bytes": 1242829,
+  "elapsed_seconds": 0.434,
+  "external_unregistered_exposure": "UNKNOWN",
+  "finished_at": "2026-09-07T04:01:23.725974+00:00",
+  "market": {
+    "baseAsset": "DOGE",
+    "contractType": "PERPETUAL",
+    "marginAsset": "USDT",
+    "quoteAsset": "USDT",
+    "status": "TRADING",
+    "symbol": "DOGEUSDT"
+  },
+  "market_requests_before_this_gate": 0,
+  "new_market_PnL_observed": false,
+  "qc": {
+    "actual_events": 1092,
+    "duplicate_native_minute_buckets": 0,
+    "duplicate_timestamps": 0,
+    "expected_events": 1092,
+    "extra_buckets": 0,
+    "first_utc": "2023-11-06T00:00:00+00:00",
+    "invalid_associated_mark_count": 0,
+    "last_utc": "2024-11-03T16:00:00+00:00",
+    "missing_8h_buckets": 0,
+    "native_minute_mapping": "existing BINANCE_ASSOCIATED_MARK_BOUNDARY_V1; raw unchanged",
+    "nonfinite_funding_count": 0,
+    "nonregular_count": 0,
+    "strictly_ascending": true,
+    "wrong_symbol_count": 0
+  },
+  "receipts": [
+    {
+      "body_file": "response-1.json",
+      "decoded_bytes": 1108415,
+      "finished_at": "2026-09-07T04:01:23.530607+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 1,
+      "sha256": "3628edb7497ed101cc5de07fe231f6bdde09b7ca5bc9164de2a68cbd73a0f75e",
+      "started_at": "2026-09-07T04:01:23.295222+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    },
+    {
+      "body_file": "response-2.json",
+      "decoded_bytes": 123092,
+      "finished_at": "2026-09-07T04:01:23.636996+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 2,
+      "sha256": "f0d5f293040f6720f86ae559ce645628495a7596d62e125b49e0caac898e1ef4",
+      "started_at": "2026-09-07T04:01:23.540597+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=DOGEUSDT&startTime=1699228800000&endTime=1730678399999&limit=1000"
+    },
+    {
+      "body_file": "response-3.json",
+      "decoded_bytes": 11322,
+      "finished_at": "2026-09-07T04:01:23.723592+00:00",
+      "http_status": 200,
+      "method": "GET",
+      "retry_after": null,
+      "sequence": 3,
+      "sha256": "1cbcf4c778d5d2e456eebe0e1083a386b787f83f28d42c659103df132694ac8d",
+      "started_at": "2026-09-07T04:01:23.637795+00:00",
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=DOGEUSDT&startTime=1728000000001&endTime=1730678399999&limit=1000"
+    }
+  ],
+  "redirects_followed": 0,
+  "retries": 0,
+  "started_at": "2026-09-07T04:01:23.292219+00:00",
+  "status": "FUNDING_CALENDAR_ASSOCIATED_MARK_QC_PASS_NOT_SOURCE_READY"
+}

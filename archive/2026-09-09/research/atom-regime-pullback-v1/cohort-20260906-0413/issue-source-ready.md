@@ -1,0 +1,9 @@
+本阶段已完成：SOURCE READY / consumer QC READY。一次采集实际16/24次HTTP，全部200、零重试；1418行源及930行Search切片UTC日线连续，源文件SHA在consumer检查后保持不变。
+
+- source receipt：`a9012d19d9b87fa586a8b0a91e6c9687e3d669a6882a4cb47b0ab435f12f3588`
+- source provenance：`448552b4b03cfff6788b0e05fc89fed42bb39fe40724b0488193165bde9a5f61`
+- Search provenance：`2241fdd1c11820e0f24bc27ee5c9d7e752cb800255885cf1acc94bc2598bde7c`
+- protocol：`d514b1cb5eafeb880de65f941f2f5ed1863c84adad81016757d2b77db9dce9b4`
+- 综合SOURCE READY回执：`a850d60e41b7dc2f091fcfa413a0006464789e62d756ef5f87fc97a845afed46`
+
+Profile/Generation/Candidate各1，ResearchRun/Execution/Release均0。只读Console preflight为SEARCH_READY，active limit=1、used=0。D仅producer QC，H未采集。尚未授权/运行Search、native或后续阶段，没有经济结论；Issue保持开放，待监督核证后单独放行Search。

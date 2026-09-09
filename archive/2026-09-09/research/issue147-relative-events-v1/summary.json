@@ -1,0 +1,253 @@
+{
+  "verdict": "EXPOSED_DIAGNOSTIC_ONLY",
+  "independent_qualification": false,
+  "planned_units": 17,
+  "status_counts": {
+    "UNKNOWN": 6,
+    "SCORED": 11
+  },
+  "direction_counts": {
+    "BTCUSDT": 6,
+    "ETHUSDT": 5
+  },
+  "cost_cases": {
+    "base": {
+      "stronger_net": {
+        "n": 11,
+        "mean": "-0.016839885778074248686152307849454067632658039214996",
+        "median": "-0.03319457909601646030681726611417065414149857794355",
+        "positive_count": 2,
+        "largest_absolute_unit": 13,
+        "largest_absolute_share": "0.20610677165627894450324163415983132647565571627711",
+        "largest_positive_unit": 13,
+        "largest_positive_share": "0.56279120036629046334375042933550001924333298221426"
+      },
+      "paired_net": {
+        "n": 11,
+        "mean": "0.028086683384943676614283156553522203568213450976556",
+        "median": "0.01356562543490724821657555811089544865450171158421",
+        "positive_count": 8,
+        "largest_absolute_unit": 7,
+        "largest_absolute_share": "0.28815925976557683850275957539362750907363199787521",
+        "largest_positive_unit": 7,
+        "largest_positive_share": "0.31437239497631156692040803091604901191635864032118"
+      }
+    },
+    "stress": {
+      "stronger_net": {
+        "n": 11,
+        "mean": "-0.019983915350180548945676116843261823739770037205646",
+        "median": "-0.03628630829640250095013519421238997413928489122797",
+        "positive_count": 2,
+        "largest_absolute_unit": 13,
+        "largest_absolute_share": "0.19514325011444703826858286763213132304332613439613",
+        "largest_positive_unit": 13,
+        "largest_positive_share": "0.56442143554495559827418860991528498527885209600698"
+      },
+      "paired_net": {
+        "n": 11,
+        "mean": "0.027996865498856490719034996261360783465637312438855",
+        "median": "0.01352224417186117802217388768752837633225831777835",
+        "positive_count": 8,
+        "largest_absolute_unit": 7,
+        "largest_absolute_share": "0.28815925976557683850275957539362750907363199787514",
+        "largest_positive_unit": 7,
+        "largest_positive_share": "0.31437239497631156692040803091604901191635864032116"
+      }
+    }
+  },
+  "sample_status": "FINITE_SMALL_SAMPLE_NO_POWER_CLAIM",
+  "actual_rotation_count": {
+    "base": 0,
+    "stress": 0
+  },
+  "action_coverage_counts": {
+    "base": {
+      "OBSERVED": 12,
+      "NOT_OBSERVED": 5
+    },
+    "stress": {
+      "OBSERVED": 12,
+      "NOT_OBSERVED": 5
+    }
+  },
+  "not_wallet_or_dd": true,
+  "source_grade": "EXPOSED_DEVELOPMENT",
+  "batch_history_exploration": "CONCLUDED_NO_AUTOMATIC_FOLLOWUP",
+  "source_anomalies": {
+    "BTCUSDT": [
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1613012400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1613016000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1614996000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1618884000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1618887600000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1619323200000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619326800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619330400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619334000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1628816400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628820000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628823600000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628827200000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628830800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1632898800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1632902400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1640318400000
+      }
+    ],
+    "ETHUSDT": [
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1613012400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1613016000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1614996000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1618884000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1618887600000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1619323200000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619326800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619330400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1619334000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1628816400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628820000000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628823600000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628827200000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1628830800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1632898800000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "MISSING",
+        "open_ms": 1632902400000
+      },
+      {
+        "cause": "UNKNOWN",
+        "kind": "SHORT",
+        "open_ms": 1640318400000
+      }
+    ]
+  }
+}

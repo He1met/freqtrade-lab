@@ -1,0 +1,5 @@
+监督任务01a05dcc-17fd-7972-9177-9fed95e4b07a已独立验收值前冻结、源与S隔离、15次HTTP、逻辑数据库绑定和实际Search GET状态，并明确授权一次真实Search。
+
+仅当前Console POST /api/search-campaigns，S[20210501,20240101)，一轮一attempt、总新增native=1；无smoke、重跑、变体、消融或下载。协议SHA b64d0193b252a5f94e361ea63465e8a276a2152a0221e3fce4307c32648d11d2；策略SHA b90e501888af817cf9f96c91399f3d9178f31ee5df4b33640c9c281d01e2c944。
+
+先查原生经济、订单时序和成本/现金门；决定性失败时按协议早停昂贵MTM审计并保留NULL。可能通过时须完成全部S附加门，native内部finalist仍需监督独立审阅。D/H/Stress、finalist导入、Release和交易全部禁止。完成后先报告唯一research-terminal，不关闭Issue、不追加最终全球消费记录。

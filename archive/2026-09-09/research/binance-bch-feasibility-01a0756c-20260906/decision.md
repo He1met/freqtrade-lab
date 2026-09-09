@@ -1,0 +1,15 @@
+# Binance BCH 替代路线：检查完成，暂不推荐个人 V1 Issue
+
+2026-09-06；task `01a0756c-74a5-7e42-9487-8adb4633208f`。**官方语义本次未取得，lab 接入还需要 Schema 授权；不是策略失败，也不是认定 Binance 没有文档。**
+
+**1．官方语义/覆盖。** 实际 HTTP 共 4/8 次，单次 GET、无自动重试/重定向：两个旧官方字段页（[funding](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History)、[mark](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data)）均 302；直接请求[现行文档](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data) 为 202，未取得语义正文；[官方历史 README](https://raw.githubusercontent.com/binance/binance-public-data/master/README.md) 为 200，确认日/月文件、USD-M klines 来源、CHECKSUM 与历史可修订，但未补足 funding 映射。BCH 最终率、事件/发布时刻、历史频率、结算 mark、开平边界与完整一年覆盖均 **UNKNOWN**；未取目录/数值样本。“所有 symbols”说明不证明具体全期完整性。网络到此停止。
+
+**2．原生路径（静态）。** native `52bc96f4480b1a0da6a9b455bd00b17fbb6786a5`、CCXT `4.5.68`：`commands/data_commands.py:28` → `data/history/history_utils.py:702,360` → Binance/Exchange → CCXT → converter → `ohlcv_store`。期货默认独立 1h mark、名义 1h funding 文件，文件名不是结算频率。CCXT `async_support/binance.py:9615,9681`：linear 使用 `fapiPublicGetFundingRate`，since→startTime、fundingTime→timestamp、fundingRate→数值；native `exchange.py:3038` 只留时间/率值及零占位，丢弃 info，不另验最终率。mark 通过 price=mark → `fapiPublicGetMarkPriceKlines`（CCXT `:4763`）。funding/mark 走 REST；5m futures 可走 archive＋REST 尾段，1d 走 REST（`binance.py:156`）。
+ 
+历史获取时 funding 不补空行、不丢末条；`converter/converter.py:46,85` 对 1h 输入 floor 到 1min、转 float、聚合同 date，再存储。`backtesting.py:425–457`、`exchange.py:3911,3955` 按 date inner join，用含开平两端区间累加 rate×mark-open×amount、多空反号。**未取 Binance 时间证据，不能断言已丢事件或必须改 native**；mark-open 是否等于结算 mark 仍未证。原生完整性注释与 dry-run 的 15 秒 cutoff 不是官方历史证明。原生 Feather 不自动提供 lab 原始来源回执/SHA、完整性与冻结契约。
+
+**3．lab 精确约束。** clean detached HEAD `9a5c00ba2ad1617645b67c1d0475508ba02c401a`，未刷新远端。`sql/schema_v1.sql:4–8` domain CHECK 仅 OKX，不能把 Binance 伪装为 OKX domain。还涉及 `lab/market_contract.py:6`、`lab/bounded_research.py:603,634,1141,1580–1740`（配置、固定 8h、路径/host、producer 身份）、`lab/search_campaign.py:589`、`lab/research_candidate.py:520,625`、`scripts/run_freqtrade_backtest.py:733,865,1543`（直接使用 Okx）、`lab/backtest_artifact.py:39,544,1213`、`lab/research_bundle.py:684`。因此**不能无 Schema 改动只靠 Profile JSON 接入**。可复用六表、source receipt、Profile JSON，扩展现有 producer/runner/consumer；不需新 runner/平台。native 能否不改仍取决于语义。
+
+**4．工作量/决定。** 假定语义及整年覆盖已证，来源回执/严格 QC 约 1–2 主动工作日，Profile、离线 runner、artifact、Schema 约束贯通及失败验证约 2–3 日，合计 **3–5 日（范围推断）**；采集/计算时间 UNKNOWN，验证跨度不能压成几周。语义当前未得且超过约两日门槛，**不推荐现在开个人 V1 Issue，不留多轮文档/目录审计链**。本轮停止，由监督决定后续。未冻结窗口；未来另行授权仍须整年验证、排除 `[20260531,20260731)`，BCH 跨所不算独立样本，旧 OKX QC 不代表全 S 未曝光。
+
+定位：lab 根 `/Users/shenjianpeng/.codex/worktrees/9ee8/freqtrade-lab`；native 根 `/Users/shenjianpeng/.codex/runs/freqtrade-lab/issue-43-profile-driven-v1/freqtrade/freqtrade`；CCXT 为同项目 `venv/lib/python3.13/site-packages/ccxt`。已读 BCH QC 末页；仅官方文档含示例，没有行情/费率接口、ZIP、ticker/PnL、凭据/敏感 DB、D/H 读取；未执行 download-data/回测/测试，未改 ledger/业务/Schema/Issue，无 subagents。30 分钟内完成，唯一持久交付为此 Git 外报告，相关源码 clean。
